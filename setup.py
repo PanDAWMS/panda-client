@@ -1,4 +1,10 @@
-release_version='0.1.2'
+# set PYTHONPATH to use the current directory first
+import sys
+sys.path.insert(0,'.')
+
+# get release version
+from pandatools import PandaToolsPkgInfo
+release_version = PandaToolsPkgInfo.release_version
 
 import os
 import re

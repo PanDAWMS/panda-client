@@ -33,6 +33,8 @@ usage = """%prog [options]"""
 
 # command-line parameters
 optP = optparse.OptionParser(usage=usage,conflict_handler="resolve")
+optP.add_option('--version',action='store_const',const=True,dest='version',default=False,
+                help='Displays version')
 optP.add_option('--inDS',action='store',dest='inDS',default='',type='string',
                 help='Name of an input dataset or dataset container')
 optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
@@ -84,6 +86,12 @@ optP.add_option('-v',action='store_const',const=True,dest='verbose',default=Fals
 options,args = optP.parse_args()
 if options.verbose:
     print options
+
+# display version
+if options.version:
+    from pandatools import PandaToolsPkgInfo
+    print "Version: %s" % PandaToolsPkgInfo.release_version
+    sys.exit(0)
 
 # set dummy CMTSITE
 if not os.environ.has_key('CMTSITE'):
