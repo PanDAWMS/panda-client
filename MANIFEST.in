@@ -1,0 +1,5 @@
+include *.txt *.py *.cfg
+recursive-include pandatools *.py
+recursive-include scripts *
+recursive-include templates *.template
+
