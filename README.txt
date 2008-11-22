@@ -1,6 +1,6 @@
 ** How to install
 
-svn co https://svn.usatlas.bnl.gov/svn/panda/panda-client
+svn co https://svn.usatlas.bnl.gov/svn/panda/panda-client/current panda-client
 cd panda-client
 python setup.py install --prefix=/path/to/install/dir
 
