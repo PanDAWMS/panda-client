@@ -9,3 +9,21 @@ python setup.py install --prefix=/path/to/install/dir
 
 source /path/to/install/dir/etc/panda/panda_setup.[c]sh
 prun -h
+
+
+** Release Note
+
+current
+  * added PkgInfo
+
+0.1.2 (11/22/2008) 
+  * added --bexec. See C++ ROOT example 
+  * fixed templates generating setup scripts 
+  * support for proxy delegation 
+
+0.1.1 (11/19/2008) 
+  * fixed --libDS 
+  * increment file index for existing outDS 
+
+0.1.0 (11/16/2008) 
+  * first release
