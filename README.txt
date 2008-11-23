@@ -16,6 +16,7 @@ prun -h
 current
   * added PkgInfo
   * moved psequencer from PandaTools CVS repo
+  * make unbuffered
 
 0.1.2 (11/22/2008) 
   * added --bexec. See C++ ROOT example 
