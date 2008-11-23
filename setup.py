@@ -110,7 +110,8 @@ setup(
     packages = [ 'pandatools',
                  ],
     scripts = [ 'scripts/prun', 
-                #'scripts/proot', 
+                #'scripts/proot',
+                'scripts/psequencer',                 
                 ],
     data_files = [ ('etc/panda', ['templates/panda_setup.sh.template',
                                   'templates/panda_setup.csh.template']
