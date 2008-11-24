@@ -4,7 +4,7 @@ import commands
 import ConfigParser
 
 sectionName = 'sequencer'
-confFile = os.path.expanduser('~/.pathena/panda.cfg')
+confFile = os.path.expanduser('%s/panda.cfg' % os.environ['PANDA_CONFIG_ROOT'])
 
 # check file existence
 if not os.path.exists(confFile):

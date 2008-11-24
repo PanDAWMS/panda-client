@@ -572,13 +572,30 @@ if options.nJobs == -1:
             options.nJobs += 1
 
 
+# read jobID
+jobDefinitionID = 0
+jobid_file = '%s/pjobid.dat' % os.environ['PANDA_CONFIG_ROOT']
+if os.path.exists(jobid_file):
+    try:
+        # read line
+        tmpJobIdFile = open(jobid_file)
+        tmpID = tmpJobIdFile.readline()
+        tmpJobIdFile.close()
+        # remove \n
+        tmpID = tmpID.replace('\n','')
+        # convert to int
+        jobDefinitionID = long(tmpID) + 1
+    except:
+        pass
+
+    
 # make jobs
 jobList = []
 
 # buildJob
 if options.libDS == '': 
     jobB = JobSpec()
-    jobB.jobDefinitionID   = 0
+    jobB.jobDefinitionID   = jobDefinitionID
     jobB.jobName           = commands.getoutput('uuidgen')
     if athenaVer != '':
         jobB.AtlasRelease  = athenaVer
@@ -679,7 +696,7 @@ maxTotalSize = long(5*1024*1024*1024)
 indexOffsetMap = {}
 for iJob in range(options.nJobs):
     jobR = JobSpec()
-    jobR.jobDefinitionID   = 0
+    jobR.jobDefinitionID   = jobDefinitionID
     jobR.jobName           = commands.getoutput('uuidgen')
     if athenaVer != '':
         jobR.AtlasRelease  = athenaVer
@@ -696,11 +713,11 @@ for iJob in range(options.nJobs):
         # random seed
         tmpJobO = options.jobParams
         for tmpItem in tmpJobO.split():
-            match = re.match('^%RNDM=(.+)$',tmpItem)
+            match = re.search('%RNDM=(.+)$',tmpItem)
             if match:
                 tmpRndmNum = int(match.group(1)) + iJob
                 # replace parameters
-                tmpJobO = tmpJobO.replace(tmpItem,'%s' % tmpRndmNum)
+                tmpJobO = tmpJobO.replace(match.group(0),'%s' % tmpRndmNum)
         jobR.jobParameters += '-p "%s" ' % urllib.quote(tmpJobO)
     # source files
     fileS = FileSpec()
@@ -877,9 +894,14 @@ print ' Status : %d' % status
 print outstr
 
 # create dir for DB
-dbdir = os.path.expanduser('~/.pathena')
+dbdir = os.path.expanduser(os.environ['PANDA_CONFIG_ROOT'])
 if not os.path.exists(dbdir):
     os.makedirs(dbdir)
+
+# record jobID
+tmpJobIdFile = open(jobid_file,'w')
+tmpJobIdFile.write(jobID)
+tmpJobIdFile.close()
 
 # open DB
 db = shelve.open('%s/job_record' % dbdir)
