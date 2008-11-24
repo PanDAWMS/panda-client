@@ -13,7 +13,7 @@ prun -h
 
 ** Release Note
 
-current
+0.1.3 (11/24/2008)
   * added PkgInfo
   * moved psequencer from PandaTools CVS repo
   * make python unbuffered
