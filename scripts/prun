@@ -900,7 +900,7 @@ if not os.path.exists(dbdir):
 
 # record jobID
 tmpJobIdFile = open(jobid_file,'w')
-tmpJobIdFile.write(jobID)
+tmpJobIdFile.write(str(jobID))
 tmpJobIdFile.close()
 
 # open DB
