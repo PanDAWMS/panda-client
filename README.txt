@@ -13,6 +13,9 @@ prun -h
 
 ** Release Note
 
+0.1.4 (11/25/2008)
+  * fixed --match in prun
+
 0.1.3 (11/24/2008)
   * added PkgInfo
   * moved psequencer from PandaTools CVS repo

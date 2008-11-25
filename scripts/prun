@@ -216,6 +216,11 @@ else:
         options.extFile.append(tmpItem.replace('*','.*'))
 
 
+# LFN matching
+if options.match != '':
+    # convert * to .*
+    options.match = options.match.replace('*','.*')
+
 # get job script
 jobScript = ''
 if options.jobParams == '':
@@ -344,8 +349,6 @@ if options.inDS != '':
     for tmpLFN in tmpKeys:
         # filename matching
         if options.match != '':
-            # convert * to .*
-            options.match= options.match.replace('*','.*')
             if re.search(options.match,tmpLFN) == None:
                 del inputFileMap[tmpLFN]
                 continue
