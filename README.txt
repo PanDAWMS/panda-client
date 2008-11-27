@@ -13,6 +13,9 @@ prun -h
 
 ** Release Note
 
+current
+  * escape $ in pass phrase
+	
 0.1.4 (11/25/2008)
   * fixed --match in prun
 
