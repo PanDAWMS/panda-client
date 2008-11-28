@@ -1171,7 +1171,7 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False):
 # exclude long,xrootd,local queues
 def isExcudedSite(tmpID):
     excludedSite = False
-    for exWord in ['ANALY_LONG_','_LOCAL','_test','_XROOTD']:
+    for exWord in ['ANALY_LONG_','_LOCAL','_test']:
         if re.search(exWord,tmpID) != None:
             excludedSite = True
             break

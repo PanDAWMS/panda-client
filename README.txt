@@ -15,6 +15,7 @@ prun -h
 
 current
   * escape $ in pass phrase
+  * removed _XROOTD from skipped site IDs
 	
 0.1.4 (11/25/2008)
   * fixed --match in prun
