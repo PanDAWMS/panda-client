@@ -15,7 +15,8 @@ prun -h
 
 current
   * escape $ in pass phrase
-  * removed _XROOTD from skipped site IDs
+  * added _XROOTD to AUTO sites
+  * record job params in prun
 	
 0.1.4 (11/25/2008)
   * fixed --match in prun

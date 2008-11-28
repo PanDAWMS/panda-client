@@ -923,6 +923,7 @@ jobRecord['build'] = buildStr
 jobRecord['run'  ] = runStr
 jobRecord['jobO' ] = options.jobParams
 jobRecord['site' ] = jobList[0].computingSite
+jobRecord['jobParams' ] = PsubUtils.convSysArgv()
 
 # record job into DB
 db['%s' % jobID] = jobRecord

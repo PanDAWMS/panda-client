@@ -1,4 +1,5 @@
 import re
+import sys
 import time
 import commands
 
@@ -181,3 +182,19 @@ def uploadProxy(site,myproxy,gridPassPhrase,verbose=False):
             return False
         # return
         return True
+
+
+# convet sys.argv to string
+def convSysArgv():
+    # job params
+    paramStr = ''
+    for item in sys.argv[1:]:
+        match = re.search('(\*| |\'|=)',item)
+        if match == None:
+            # normal parameters
+            paramStr += '%s ' % item
+        else:
+            # quote string
+            paramStr += '"%s" ' % item
+    # return
+    return paramStr[:-1]
