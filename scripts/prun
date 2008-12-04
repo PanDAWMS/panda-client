@@ -106,56 +106,7 @@ if options.devSrv:
     Client.useDevServer()
     
 # check grid-proxy
-gridSrc = Client._getGridSrc()
-if gridSrc == False:
-    sys.exit(EC_Config)
-# use grid-proxy-info first becaus of bug #36573 of voms-proxy-info
-com = '%s grid-proxy-info -e' % gridSrc
-if options.verbose:
-    print com
-status,out = commands.getstatusoutput(com)
-if options.verbose:
-    print status % 255
-    print out
-# check VOMS extension
-vomsFQAN = ''
-if status == 0:
-    # with VOMS extension 
-    com = '%s voms-proxy-info -fqan -exists' % gridSrc    
-    if options.verbose:
-	print com
-    status,out = commands.getstatusoutput(com)
-    if options.verbose:
-	print status % 255
-	print out
-    if status == 0:
-        vomsFQAN = out
-# generate proxy
-gridPassPhrase = ''
-if status != 0 or out.find('Error: VOMS extension not found') != -1:
-    # GRID pass phrase
-    import getpass
-    print "Your identity: " + commands.getoutput('%s grid-cert-info -subject' % gridSrc)
-    gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:')
-    gridPassPhrase = gridPassPhrase.replace('$','\$')
-    # with VOMS extension 
-    com = '%s echo "%s" | voms-proxy-init -voms atlas -pwstdin' % (gridSrc,gridPassPhrase)
-    if options.verbose:
-        print re.sub(gridPassPhrase,"*****",com)
-    status = os.system(com)
-    if status != 0:
-        print "ERROR : could not generate a grid proxy"
-        sys.exit(EC_Config)
-    # get FQAN
-    com = '%s voms-proxy-info -fqan' % gridSrc
-    if options.verbose:
-        print "get FQAN"
-    status,out = commands.getstatusoutput(com)        
-    if status != 0 or out.find('Error: VOMS extension not found') != -1:
-        print "ERROR : could not get FQAN after voms-proxy-init"
-        sys.exit(EC_Config)
-    vomsFQAN = out
-
+gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy(options.verbose)
 
 # save current dir
 curDir = os.path.realpath(os.getcwd())

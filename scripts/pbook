@@ -1,0 +1,245 @@
+#!/usr/bin/python
+
+import os
+import sys
+import atexit
+import datetime
+import tempfile
+import commands
+import optparse
+import readline
+import rlcompleter
+
+from pandatools import PdbUtils
+from pandatools import Client
+from pandatools import BookConfig
+from pandatools import PLogger
+from pandatools import PsubUtils
+from pandatools.BookConfig import bookConf
+
+# readline support
+readline.parse_and_bind('tab: complete')
+readline.parse_and_bind('set show-all-if-ambiguous On')
+
+# history support
+pconfDir = os.path.expanduser(os.environ['PANDA_CONFIG_ROOT'])
+if not os.path.exists(pconfDir):
+    os.makedirs(pconfDir)
+historyFile = '%s/.history' % pconfDir
+if os.path.exists(historyFile):
+    readline.read_history_file(historyFile)
+readline.set_history_length(1024)
+
+# set dummy CMTSITE
+if not os.environ.has_key('CMTSITE'):
+    os.environ['CMTSITE'] = ''
+
+# make tmp dir
+tmpDir = tempfile.mkdtemp()
+
+# exit action
+def _onExit(dirName,hFile):
+    readline.write_history_file(hFile)
+    commands.getoutput('rm -rf %s' % dirName)
+atexit.register(_onExit,tmpDir,historyFile)
+
+# look for PandaTools package
+for path in sys.path:
+    if path == '':
+        path = '.'
+    if os.path.exists(path) and 'pandatools' in os.listdir(path):
+        # make symlink for module name
+        os.symlink('%s/pandatools' % path,'%s/taskbuffer' % tmpDir)
+        break
+sys.path = [tmpDir]+sys.path
+
+
+
+# core class for book keeping
+class PBookCore:
+    # constructor
+    def __init__(self,verbose=False):
+        # verbose
+        self.verbose = verbose
+        # initialize database
+        PdbUtils.initialzieDB(self.verbose)
+
+
+    # synchronize database
+    def sync(self):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        tmpLog.info("Synchronizing local database. It may take a couple of minutes")
+        # get JobIDs in local database
+        localJobIDs = PdbUtils.getListOfJobIDs()
+        # get recent JobIDs from panda server
+        syncTime = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        # set sync time for the first attempt
+        if bookConf.last_synctime == '':
+            bookConf.last_synctime = datetime.datetime.utcnow()-datetime.timedelta(days=180)
+            bookConf.last_synctime = bookConf.last_synctime.strftime('%Y-%m-%d %H:%M:%S')
+        status,remoteJobIDs = Client.getJobIDsInTimeRange(bookConf.last_synctime,verbose=self.verbose)
+        print status,remoteJobIDs
+        if status != 0:
+            tmpLog.error("failed to get JobIDs from panda server")
+            return
+        tmpLog.info("Gotton %s jobs to be updated" % len(remoteJobIDs))
+        # insert if missing
+        for remoteJobID in remoteJobIDs:
+            # check local status
+            if remoteJobID in localJobIDs:
+                # get job info from local database
+                job = PdbUtils.readJobDB(remoteJobID,self.verbose)
+                # skip if frozen
+                if job.dbStatus == 'frozen':
+                    continue
+            tmpLog.info("Updating JobID=%s ..." % remoteJobID)
+            # get PandaIDs
+            status,pandaIDstatus = Client.getPandIDsWithJobID(remoteJobID,verbose=self.verbose)
+            if status != 0:
+                tmpLog.error("failed to get PandaIDs for %s" % remoteJobID) 
+                return
+            pandaIDs = pandaIDstatus.keys()
+            pandaIDs.sort()
+            # get full JobSpec
+            tmpIDs = [pandaIDs[0],pandaIDs[-1]]
+            status,pandaJobs = Client.getFullJobStatus(tmpIDs,verbose=self.verbose)
+            if status != 0:
+                tmpLog.error("failed to get PandaIDs for %s" % remoteJobID) 
+                return
+            # convert to local job spec
+            localJob = PdbUtils.convertPtoD(pandaJobs,pandaIDstatus)
+            # update database 
+            if not remoteJobID in localJobIDs:
+                # insert to DB
+                try:
+                    PdbUtils.insertJobDB(localJob,self.verbose)
+                except:
+                    tmpLog.error("failed to insert JobID=%s to DB" % remoteJobID)
+                    return
+            else:
+                # update
+                try:
+                    PdbUtils.updateJobDB(localJob,self.verbose)
+                except:
+                    tmpLog.error("failed to update DB for JobID=%s" % remoteJobID)
+                return
+        # update sync time
+        bookConf.last_synctime = syncTime
+        BookConfig.updateConfig()
+        tmpLog.info("Completed")
+        
+
+    # get local job info
+    def getJobInfo(self,jobID):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # get job info from local database
+        job = PdbUtils.readJobDB(jobID,self.verbose)
+        # not found
+        if job == None:
+            tmpLog.info("JobID=%s not found in local database. Start database synchronization" % jobID)
+            # sync just in case
+            self.sync()
+            # get job info from local database again
+            job = PdbUtils.readJobDB(jobID,self.verbose)
+            # still missing
+            if job == None:
+                tmpLog.error("JobID=%s not found in database" % jobID)
+                return None
+        # return
+        return job
+
+
+    # get local job list
+    def getLocalJobList(self):
+        # get JobIDs in local database
+        localJobIDs = PdbUtils.getListOfJobIDs()
+        # get jobs
+        localJobs = []
+        for jobID in localJobIDs:
+            job = PdbUtils.readJobDB(jobID,self.verbose)
+            # append
+            localJobs.append(job)
+        # return
+        return localJobs
+    
+        
+    # get status
+    def status(self,jobID):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # get job info from local database
+        job = self.getJobInfo(jobID)
+        if job == None:
+            return None
+        # update if needed
+        timeLimit = datetime.datetime.utcnow() - datetime.timedelta(minutes=10)
+        if job.dbStatus != 'frozen' and job.lastUpdate < timeLimit:
+            # get status from Panda server
+            status,pandaIDstatus = Client.getPandIDsWithJobID(jobID,
+                                                              nJobs=len(job.PandaID.split(',')),
+                                                              verbose=self.verbose)
+            if status != 0:
+                tmpLog.error("failed to get status for JobID=%s" % jobID)
+                return None
+            # convert to local job spec
+            job = PdbUtils.convertPtoD([],pandaIDstatus,job)
+            # insert to DB
+            try:
+                PdbUtils.updateJobDB(job,self.verbose)
+            except:
+                tmpLog.error("failed to update JobID=%s" % jobID)
+                return None
+        # return
+        return job
+
+
+
+###########################################################################
+# main
+
+# parse option
+parser = optparse.OptionParser()
+parser.add_option("-v",action="store_true",dest="verbose",default=False,
+                  help="verbose")
+parser.add_option("--gui",action="store_true",dest="gui",default=False,
+                  help="use GUI")
+parser.add_option('--version',action='store_const',const=True,dest='version',default=False,
+                  help='Displays version')
+parser.add_option('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
+                  help="Please don't use this option. Only for developers to use the dev panda server")
+    
+options, args = parser.parse_args()
+
+# display version
+if options.version:
+    from pandatools import PandaToolsPkgInfo
+    print "Version: %s" % PandaToolsPkgInfo.release_version
+    sys.exit(0)
+
+# use dev server
+if options.devSrv:
+    Client.useDevServer()
+
+# instantiate core
+pbookCore = PBookCore(options.verbose)
+
+# define functions for CUI
+if not options.gui:
+
+    # show status
+    def show(jobID=None):
+        # show all local info
+        if jobID == None:
+            jobList = pbookCore.getLocalJobList()
+            # print
+            for job in jobList:
+                print "======================================"
+                print job
+        else:
+            job = pbookCore.getJobInfo(jobID)
+            # print
+            print "======================================"
+            print job
+            

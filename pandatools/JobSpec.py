@@ -16,7 +16,9 @@ class JobSpec(object):
                    'jobDispatcherErrorCode','jobDispatcherErrorDiag','taskBufferErrorCode',
                    'taskBufferErrorDiag','computingSite','computingElement','jobParameters',
                    'metadata','prodDBlock','dispatchDBlock','destinationDBlock','destinationSE',
-                   'nEvents','grid','cloud','cpuConversion')
+                   'nEvents','grid','cloud','cpuConversion','sourceSite','destinationSite','transferType',
+                   'taskID','cmtConfig','stateChangeTime','prodDBUpdateTime','lockedby','relocationFlag',
+                   'jobExecutionID','VO','pilotTiming','workingGroup','processingType')
     # slots
     __slots__ = _attributes+('Files',)
 

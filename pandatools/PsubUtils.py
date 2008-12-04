@@ -1,10 +1,74 @@
 import re
+import os
 import sys
 import time
 import commands
 
 import Client
 import MyproxyUtils
+import PLogger
+
+# error code
+EC_Config    = 10
+
+
+# check proxy
+def checkGridProxy(verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # check grid-proxy
+    gridSrc = Client._getGridSrc()
+    if gridSrc == False:
+        sys.exit(EC_Config)
+    # use grid-proxy-info first becaus of bug #36573 of voms-proxy-info
+    com = '%s grid-proxy-info -e' % gridSrc
+    if verbose:
+        tmpLog.debug(com)
+    status,out = commands.getstatusoutput(com)
+    if verbose:
+        tmpLog.debug(status % 255)
+        tmpLog.debug(out)
+    # check VOMS extension
+    vomsFQAN = ''
+    if status == 0:
+        # with VOMS extension 
+        com = '%s voms-proxy-info -fqan -exists' % gridSrc    
+        if verbose:
+            tmpLog.debug(com)
+        status,out = commands.getstatusoutput(com)
+        if verbose:
+            tmpLog.debug(status % 255)
+            tmpLog.debug(out)
+        if status == 0:
+            vomsFQAN = out
+    # generate proxy
+    gridPassPhrase = ''
+    if status != 0 or out.find('Error: VOMS extension not found') != -1:
+        # GRID pass phrase
+        import getpass
+        print "Your identity: " + commands.getoutput('%s grid-cert-info -subject' % gridSrc)
+        gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:')
+        gridPassPhrase = gridPassPhrase.replace('$','\$')
+        # with VOMS extension 
+        com = '%s echo "%s" | voms-proxy-init -voms atlas -pwstdin' % (gridSrc,gridPassPhrase)
+        if verbose:
+            tmpLog.debug(re.sub(gridPassPhrase,"*****",com))
+        status = os.system(com)
+        if status != 0:
+            tmpLog.error("could not generate a grid proxy")
+            sys.exit(EC_Config)
+        # get FQAN
+        com = '%s voms-proxy-info -fqan' % gridSrc
+        if verbose:
+            tmpLog.debug("get FQAN")
+        status,out = commands.getstatusoutput(com)        
+        if status != 0 or out.find('Error: VOMS extension not found') != -1:
+            tmpLog.debug("could not get FQAN after voms-proxy-init")
+            sys.exit(EC_Config)
+        vomsFQAN = out
+    # return
+    return gridPassPhrase,vomsFQAN
+    
 
 
 # get cloud according to country FQAN

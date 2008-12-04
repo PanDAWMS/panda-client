@@ -1241,3 +1241,72 @@ def getProxyKey(verbose=False):
         type, value, traceBack = sys.exc_info()
         print "ERROR getProxyKey : %s %s" % (type,value)
         return EC_Failed,None
+
+
+# get JobIDs in a time range
+def getJobIDsInTimeRange(timeRange,dn=None,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/getJobIDsInTimeRange'
+    data = {'timeRange':timeRange}
+    if dn != None:
+        data['dn'] = dn
+    status,output = curl.post(url,data)
+    if status!=0:
+        print output
+        return status,None
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR getJobIDsInTimeRange : %s %s" % (type,value)
+        return EC_Failed,None
+
+
+# get PandaIDs for a JobID
+def getPandIDsWithJobID(jobID,dn=None,nJobs=0,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/getPandIDsWithJobID'
+    data = {'jobID':jobID, 'nJobs':nJobs}
+    if dn != None:
+        data['dn'] = dn
+    status,output = curl.post(url,data)
+    if status!=0:
+        print output
+        return status,None
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR getPandIDsWithJobID : %s %s" % (type,value)
+        return EC_Failed,None
+
+
+# get full job status
+def getFullJobStatus(ids,verbose):
+    # serialize
+    strIDs = pickle.dumps(ids)
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/getFullJobStatus'
+    data = {'ids':strIDs}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR getFullJobStatus : %s %s" % (type,value)
+        return EC_Failed,None

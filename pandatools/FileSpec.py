@@ -7,7 +7,7 @@ class FileSpec(object):
     # attributes
     _attributes = ('rowID','PandaID','GUID','lfn','type','dataset','status','prodDBlock',
                    'prodDBlockToken','dispatchDBlock','dispatchDBlockToken','destinationDBlock',
-                   'destinationDBlockToken','destinationSE','fsize','md5sum')
+                   'destinationDBlockToken','destinationSE','fsize','md5sum','checksum')
     # slots
     __slots__ = _attributes+('_owner',)
 

@@ -17,6 +17,10 @@ current
   * escape $ in pass phrase
   * added _XROOTD to AUTO sites
   * record job params in prun
+  * use new JobSpec and FileSpec
+  * added PdbUtils
+  * added pbook
+  * added PLogger
 	
 0.1.4 (11/25/2008)
   * fixed --match in prun
