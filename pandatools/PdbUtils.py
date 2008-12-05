@@ -99,6 +99,8 @@ class PdbProxy:
         if not retS:
             raise RuntimeError,"cannot get tables"
         # the table already exist or not
+        if retV == []:
+            return False
         return self.tablename in retV[-1].split()
             
 
@@ -108,7 +110,7 @@ class PdbProxy:
         # ver 0_1_1
         sql  = "CREATE TABLE %s (" % self.tablename
         sql += "'id'           INTEGER PRIMARY KEY,"
-        sql += "'jobID'        INTEGER,"
+        sql += "'JobID'        INTEGER,"
         sql += "'PandaID'      TEXT,"
         sql += "'jobStatus'    TEXT,"
         sql += "'site'         VARCHAR(128),"
@@ -204,11 +206,24 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
     # cloud 
     ddata.cloud = pandaJob.cloud
     # job ID
-    ddata.jobID = pandaJob.jobDefinitionID
+    ddata.JobID = pandaJob.jobDefinitionID
     # provenance ID
     ddata.provenanceID = pandaJob.jobExecutionID
     # job parameters
     ddata.jobParams = pandaJob.metadata
+    # job type
+    ddata.jobType = ''
+    trfTypeMap = {
+        'prun'    : ['buildGen','runGen'],
+        'pathena' : ['buildJob','runAthena'],
+        }
+    for jobType,trfs in trfTypeMap.iteritems():
+        for trf in trfs:
+            if pandaJob.transformation.find(trf) != -1:
+                ddata.jobType = jobType
+                break
+        if ddata.jobType != '':
+            break
     # return
     return ddata
 
@@ -240,21 +255,21 @@ def updateJobDB(job,verbose=False):
     # make sql
     sql1  = "UPDATE %s SET " % pdbProxy.tablename
     sql1 += job.values(forUpdate=True)
-    sql1 += " WHERE jobID=%s " % job.jobID
+    sql1 += " WHERE JobID=%s " % job.JobID
     status,out = pdbProxy.execute(sql1)
     if not status:
         raise RuntimeError,"failed to insert job"
 
 
 # read job info from DB
-def readJobDB(jobID,verbose=False):
+def readJobDB(JobID,verbose=False):
     # make sql
     sql1 = "SELECT %s FROM %s " % (LocalJobSpec.columnNames(),pdbProxy.tablename)
-    sql1+= "WHERE jobID=%s" % jobID
+    sql1+= "WHERE JobID=%s" % JobID
     # execute
     status,out = pdbProxy.execute(sql1)
     if not status:
-        raise RuntimeError,"failed to get jobID=%s" % jobID
+        raise RuntimeError,"failed to get JobID=%s" % JobID
     if len(out) == 0:
         return None
     # instantiate LocalJobSpec
@@ -269,18 +284,18 @@ def readJobDB(jobID,verbose=False):
     return job
 
 
-# get list of jobID
+# get list of JobID
 def getListOfJobIDs(nonFrozen=False,verbose=False):
     # make sql
-    sql1 = "SELECT jobID,dbStatus FROM %s " % pdbProxy.tablename
+    sql1 = "SELECT JobID,dbStatus FROM %s " % pdbProxy.tablename
     # execute
     status,out = pdbProxy.execute(sql1)
     if not status:
-        raise RuntimeError,"failed to get list of jobIDs"
+        raise RuntimeError,"failed to get list of JobIDs"
     allList = []
     frozenList = []
     for item in out:
-        # extract jobID
+        # extract JobID
         tmpID = long(item.split('|')[0])
         # status in DB
         tmpStatus = item.split('|')[-1]

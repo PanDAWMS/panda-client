@@ -57,9 +57,6 @@ class install_data_panda (install_data_org):
         for destDir,dataFiles in self.data_files:
             newFilesList = []
             for srcFile in dataFiles:
-                # check extension
-                if not srcFile.endswith('.template'):
-                    raise RuntimeError,"%s doesn't have the .template extension" % srcFile
                 # dest filename
                 destFile = re.sub('\.template$','',srcFile)
                 destFile = destFile.split('/')[-1]
@@ -115,7 +112,8 @@ setup(
                 'scripts/pbook',
                 ],
     data_files = [ ('etc/panda', ['templates/panda_setup.sh.template',
-                                  'templates/panda_setup.csh.template']
+                                  'templates/panda_setup.csh.template',
+                                  'glade/pbook.glade']
                     ),
                    ],
     cmdclass={'install_data': install_data_panda}

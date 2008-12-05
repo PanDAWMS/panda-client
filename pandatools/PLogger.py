@@ -19,7 +19,8 @@ def getPandaLogger():
     if rootLog.handlers == []:
         rootLog.setLevel(logging.DEBUG)
         console = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        #formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        formatter = logging.Formatter('%(levelname)s %(message)s')
         console.setFormatter(formatter)
         rootLog.addHandler(console)
     # return

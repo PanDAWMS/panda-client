@@ -8,7 +8,7 @@ import datetime
 
 class LocalJobSpec(object):
     # attributes
-    _attributes = ('id','jobID','PandaID','jobStatus','site','cloud','jobType',
+    _attributes = ('id','JobID','PandaID','jobStatus','site','cloud','jobType',
                    'jobName','inDS','outDS','libDS','provenanceID','creationTime',
                    'lastUpdate','jobParams','dbStatus') 
     # slots
@@ -42,14 +42,13 @@ class LocalJobSpec(object):
                 statusMap[tmpStatus] += tmpCount
         statusStr = ''
         for tmpStatus,tmpCount in statusMap.iteritems():
-            statusStr += '%s*%d ' % (tmpStatus,tmpCount)
-        statusStr = statusStr[:-1]            
+            statusStr += '\n%8s   %8s : %s' % ('',tmpStatus,tmpCount)
         # string representation
         strFormat = "%15s : %s\n"
         strOut =  ""
-        strOut += strFormat % ("JobID",        self.jobID)
-        strOut += strFormat % ("PandaID",      self.PandaID)
-        strOut += strFormat % ("jobStatus",    statusStr)
+        strOut += strFormat % ("JobID",        self.JobID)
+        strOut += strFormat % ("type",         self.jobType)
+        strOut += strFormat % ("PandaID",      self.encodeCompact()['PandaID'])
         strOut += strFormat % ("site",         self.site)
         strOut += strFormat % ("cloud",        self.cloud)                
         strOut += strFormat % ("inDS",         str(self.inDS))
@@ -59,6 +58,7 @@ class LocalJobSpec(object):
         strOut += strFormat % ("creationTime", self.creationTime.strftime('%Y-%m-%d %H:%M:%S'))
         strOut += strFormat % ("lastUpdate",   self.lastUpdate.strftime('%Y-%m-%d %H:%M:%S'))
         strOut += strFormat % ("params",       self.jobParams)
+        strOut += strFormat % ("jobStatus",    statusStr)
         # return
         return strOut
 

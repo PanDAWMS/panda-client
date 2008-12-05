@@ -65,6 +65,8 @@ class PBookCore:
         self.verbose = verbose
         # initialize database
         PdbUtils.initialzieDB(self.verbose)
+        # check proxy
+        PsubUtils.checkGridProxy(self.verbose)
 
 
     # synchronize database
@@ -133,21 +135,21 @@ class PBookCore:
         
 
     # get local job info
-    def getJobInfo(self,jobID):
+    def getJobInfo(self,JobID):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # get job info from local database
-        job = PdbUtils.readJobDB(jobID,self.verbose)
+        job = PdbUtils.readJobDB(JobID,self.verbose)
         # not found
         if job == None:
-            tmpLog.info("JobID=%s not found in local database. Start database synchronization" % jobID)
+            tmpLog.info("JobID=%s not found in local database. Start database synchronization" % JobID)
             # sync just in case
             self.sync()
             # get job info from local database again
-            job = PdbUtils.readJobDB(jobID,self.verbose)
+            job = PdbUtils.readJobDB(JobID,self.verbose)
             # still missing
             if job == None:
-                tmpLog.error("JobID=%s not found in database" % jobID)
+                tmpLog.error("JobID=%s not found in database" % JobID)
                 return None
         # return
         return job
@@ -159,8 +161,8 @@ class PBookCore:
         localJobIDs = PdbUtils.getListOfJobIDs()
         # get jobs
         localJobs = []
-        for jobID in localJobIDs:
-            job = PdbUtils.readJobDB(jobID,self.verbose)
+        for JobID in localJobIDs:
+            job = PdbUtils.readJobDB(JobID,self.verbose)
             # append
             localJobs.append(job)
         # return
@@ -168,22 +170,22 @@ class PBookCore:
     
         
     # get status
-    def status(self,jobID):
+    def status(self,JobID):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # get job info from local database
-        job = self.getJobInfo(jobID)
+        job = self.getJobInfo(JobID)
         if job == None:
             return None
         # update if needed
         timeLimit = datetime.datetime.utcnow() - datetime.timedelta(minutes=10)
         if job.dbStatus != 'frozen' and job.lastUpdate < timeLimit:
             # get status from Panda server
-            status,pandaIDstatus = Client.getPandIDsWithJobID(jobID,
+            status,pandaIDstatus = Client.getPandIDsWithJobID(JobID,
                                                               nJobs=len(job.PandaID.split(',')),
                                                               verbose=self.verbose)
             if status != 0:
-                tmpLog.error("failed to get status for JobID=%s" % jobID)
+                tmpLog.error("failed to get status for JobID=%s" % JobID)
                 return None
             # convert to local job spec
             job = PdbUtils.convertPtoD([],pandaIDstatus,job)
@@ -191,7 +193,7 @@ class PBookCore:
             try:
                 PdbUtils.updateJobDB(job,self.verbose)
             except:
-                tmpLog.error("failed to update JobID=%s" % jobID)
+                tmpLog.error("failed to update JobID=%s" % JobID)
                 return None
         # return
         return job
@@ -201,25 +203,32 @@ class PBookCore:
 # main for interactive session
 def intmain(pbookCore):
     # show status
-    def show(jobID=None):
+    def show(JobID=None):
         # show all local info
-        if jobID == None:
+        if JobID == None:
             jobList = pbookCore.getLocalJobList()
             # print
             for job in jobList:
                 print "======================================"
                 print job
         else:
-            job = pbookCore.getJobInfo(jobID)
+            job = pbookCore.getJobInfo(JobID)
             # print
             print "======================================"
             print job
 
     # go to interactive prompt
-    code.interact(banner="PBook %s" % (PandaToolsPkgInfo.release_version),
+    code.interact(banner="\nStart pBook %s" % (PandaToolsPkgInfo.release_version),
                   local=locals())
 
 
+
+# main for GUI session
+def guimain(pbookCore):
+    import gtk
+    from pandatools import BookGUI
+    pbookGuiMain = BookGUI.PBookGuiMain(pbookCore)
+    gtk.main()
 
 # overall main
 if __name__ == "__main__":
@@ -249,7 +258,11 @@ if __name__ == "__main__":
     # instantiate core
     pbookCore = PBookCore(options.verbose)
 
-    # CUI
-    if not options.gui:
+    # main
+    if options.gui:
+        # GUI
+        guimain(pbookCore)
+    else:
+        # CUI
         intmain(pbookCore)
     

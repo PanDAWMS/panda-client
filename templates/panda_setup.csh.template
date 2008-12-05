@@ -5,4 +5,4 @@ else
     setenv PYTHONPATH @@install_purelib@@
 endif 
 setenv PANDA_CONFIG_ROOT ~/.pathena
-
+setenv PANDA_SYS @@install_dir@@

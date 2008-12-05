@@ -1,4 +1,4 @@
 export PATH=@@install_scripts@@:$PATH
 export PYTHONPATH=@@install_purelib@@${PYTHONPATH:+:$PYTHONPATH}
 export PANDA_CONFIG_ROOT=~/.pathena
-
+export PANDA_SYS=@@install_dir@@

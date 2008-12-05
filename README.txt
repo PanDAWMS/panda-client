@@ -18,9 +18,9 @@ current
   * added _XROOTD to AUTO sites
   * record job params in prun
   * use new JobSpec and FileSpec
-  * added PdbUtils
   * added pbook
-  * added PLogger
+  * added logger
+  * added glade stuff
 	
 0.1.4 (11/25/2008)
   * fixed --match in prun
