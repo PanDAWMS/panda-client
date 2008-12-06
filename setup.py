@@ -115,6 +115,17 @@ setup(
                                   'templates/panda_setup.csh.template',
                                   'glade/pbook.glade']
                     ),
+                   ('etc/panda/icons', ['icons/retry.png',
+                                        'icons/update.png',
+                                        'icons/kill.png',
+                                        'icons/pandamon.png',
+                                        'icons/savannah.png',
+                                        'icons/config.png',
+                                        'icons/back.png',
+                                        'icons/sync.png',
+                                        'icons/forward.png']
+                    ),
+                                     
                    ],
     cmdclass={'install_data': install_data_panda}
 )

@@ -4,6 +4,7 @@ import os
 import sys
 import code
 import atexit
+import signal
 import datetime
 import tempfile
 import commands
@@ -230,6 +231,12 @@ def guimain(pbookCore):
     pbookGuiMain = BookGUI.PBookGuiMain(pbookCore)
     gtk.main()
 
+# kill whole process
+def catch_sig(sig, frame):
+    # kill
+    commands.getoutput('kill -9 -- -%s' % os.getpgrp())
+
+
 # overall main
 if __name__ == "__main__":
 
@@ -255,14 +262,25 @@ if __name__ == "__main__":
     if options.devSrv:
         Client.useDevServer()
 
-    # instantiate core
-    pbookCore = PBookCore(options.verbose)
-
-    # main
-    if options.gui:
-        # GUI
-        guimain(pbookCore)
+    # fork for Ctl-c
+    fork_child_pid = os.fork()
+    if fork_child_pid == -1:
+        print "ERROR : Failed to fork"
+        sys.exit(1)
+    if fork_child_pid == 0:
+        # instantiate core
+        pbookCore = PBookCore(options.verbose)
+        # main
+        if options.gui:
+            # GUI
+            guimain(pbookCore)
+        else:
+            # CUI
+            intmain(pbookCore)
     else:
-        # CUI
-        intmain(pbookCore)
+        # set handler
+        signal.signal(signal.SIGINT, catch_sig)
+        signal.signal(signal.SIGHUP, catch_sig)
+        signal.signal(signal.SIGTERM,catch_sig)
+        os.wait()
     
