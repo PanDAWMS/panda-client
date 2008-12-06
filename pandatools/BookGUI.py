@@ -100,13 +100,7 @@ class PSumView:
         # set tag
         self.tag = self.buffer.create_tag('default')
         self.tag.set_property("font", "monospace")
-        # background
-        """
-        pixbuf = gtk.gdk.pixbuf_new_from_file('/usatlas/u/maeno/tmp/status.PNG')
-        pixmap,mask = pixbuf.render_pixmap_and_mask()
-        tv_win = self.sumView.get_window(gtk.TEXT_WINDOW_TEXT)
-        tv_win.set_back_pixmap(pixmap, gtk.FALSE)
-        """
+
 
     # show summary
     def showJobInfo(self):
@@ -147,6 +141,12 @@ class PStatView:
         tag.set_property("size-points", 10)
         tag.set_property('foreground','black')
         self.tags['DEBUG'] = tag
+        # warning
+        tag = self.buffer.create_tag('WARNING')
+        tag.set_property("font", "monospace")
+        tag.set_property("size-points", 10)
+        tag.set_property('foreground','orange')
+        self.tags['WARNING'] = tag
         # error
         tag = self.buffer.create_tag('ERROR')
         tag.set_property("font", "monospace")
@@ -158,31 +158,40 @@ class PStatView:
         # dummy handlers
         self.handlers = ['']
 
+
     # formatter
     def formatter(self,level,msg):
         # format
         return self.format % (level,msg)
-    
-    # emulation for logging
-    def info(self,msg):
-        level = 'INFO'
+
+
+    # write message with level
+    def write(self,level,msg):
         message = self.formatter(level,msg)
         self.buffer.insert_with_tags_by_name(self.buffer.get_end_iter(),
                                              message,level)
+        self.buffer.place_cursor(self.buffer.get_end_iter())
+        #self.statView.scroll_to_iter(self.buffer.get_end_iter(), 0.1)
+
+        
+    # emulation for logging
+    def info(self,msg):
+        self.write('INFO',msg)
+
 
     # emulation for logging
     def debug(self,msg):
-        level = 'DEBUG'
-        message = self.formatter(level,msg)        
-        self.buffer.insert_with_tags_by_name(self.buffer.get_end_iter(),
-                                             message,level)
+        self.write('DEBUG',msg)        
+
+
+    # emulation for logging
+    def warning(self,msg):
+        self.write('WARNING',msg)
+
 
     # emulation for logging
     def error(self,msg):
-        level = 'ERROR'
-        message = self.formatter(level,msg)        
-        self.buffer.insert_with_tags_by_name(self.buffer.get_end_iter(),
-                                             message,level)
+        self.write('ERROR',msg)        
 
 
 # tree view for job list
@@ -201,15 +210,24 @@ class PTreeView:
         # column names
         self.columnNames =  ['JobID','creationTime']
         # max number of jobs in tree
-        self.maxJobs = 25
+        self.maxJobs = 20
         # load job list
         self.reloadJobList()
         # set columns
         self.setColumns()
         # connect signals
         self.treeView.get_selection().connect('changed',self.showJob)
-        
+        # pixel buffer
+        self.pbMap = {}
+        for tmpStatus,tmpFname, in {'finished' : 'green.png',
+                                   'failed'   : 'red.png',
+                                   'running'  : 'yellow.png'
+                                   }.iteritems():
+            pixbuf = gtk.gdk.pixbuf_new_from_file(os.environ['PANDA_SYS'] \
+                                                  + "/etc/panda/icons/" + tmpFname)
+            self.pbMap[tmpStatus] = pixbuf
 
+        
     # reload job list
     def reloadJobList(self,refresh=True):
         # read Jobs from DB
@@ -239,32 +257,46 @@ class PTreeView:
         # set model
         self.treeView.set_model(listModel)
 
-    
+
     # set columns
     def setColumns(self):
         # JobID has icon+text
         cellpb = gtk.CellRendererPixbuf()
         tvcolumn = gtk.TreeViewColumn(self.columnNames[0], cellpb)
+        tvcolumn.set_cell_data_func(cellpb, self.setIcon)
         cell = gtk.CellRendererText()
         tvcolumn.pack_start(cell, False)
-        tvcolumn.set_cell_data_func(cell, self.getJobID)
+        tvcolumn.set_cell_data_func(cell, self.setJobID)
         self.treeView.append_column(tvcolumn)
         # text only for other parameters
         for attr in self.columnNames[1:]:
             cell = gtk.CellRendererText()
             tvcolumn = gtk.TreeViewColumn(attr, cell)
-            tvcolumn.set_cell_data_func(cell,self.getValue,attr)
+            tvcolumn.set_cell_data_func(cell,self.setValue,attr)
             self.treeView.append_column(tvcolumn)
 
-        
-    # set columns
-    def getJobID(self,column,cell,model,iter):
+
+    # set ID column
+    def setJobID(self,column,cell,model,iter):
         jobID = model.get_value(iter, 0)
         cell.set_property('text', jobID)
 
 
+    # set icon
+    def setIcon(self,column,cell,model,iter):
+        jobID = model.get_value(iter, 0)
+        job = self.guiGlobal.getJob(jobID)
+        if job.dbStatus != 'frozen':
+            pb = self.pbMap['running']
+        elif job.jobStatus.find('failed') != -1:
+            pb = self.pbMap['failed']
+        else:
+            pb = self.pbMap['finished']
+        cell.set_property('pixbuf', pb)
+
+        
     # set columns
-    def getValue(self,column,cell,model,iter,attr):
+    def setValue(self,column,cell,model,iter,attr):
         jobID = model.get_value(iter, 0)
         job = self.guiGlobal.getJob(jobID)
         var = getattr(job,attr)

@@ -124,7 +124,8 @@ class PdbProxy:
         sql += "'provenanceID' INTEGER,"
         sql += "'creationTime' TIMESTAMP,"
         sql += "'lastUpdate'   TIMESTAMP,"
-        sql += "'dbStatus'     VARCHAR(20),"        
+        sql += "'dbStatus'     VARCHAR(20),"
+        sql += "'buildStatus'  VARCHAR(20),"        
         sql = sql[:-1]
         sql += ")"
         # execute
@@ -167,12 +168,14 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
     pandaJob = pandaJobList[0]
     if pandaJob.prodSourceLabel == 'panda':
         # build Jobs
+        ddata.buildStatus = pandaJob.jobStatus
         for tmpFile in pandaJob.Files:
             if tmpFile.type == 'output':
                 ddata.libDS = tmpFile.lfn
                 break
     else:
         # noBuild or libDS
+        ddata.buildStatus = ''
         for tmpFile in pandaJob.Files:
             if tmpFile.type == 'input' and tmpFile.lfn.endswith('.lib.tgz'):
                 ddata.libDS = tmpFile.lfn

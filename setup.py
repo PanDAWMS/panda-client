@@ -123,7 +123,11 @@ setup(
                                         'icons/config.png',
                                         'icons/back.png',
                                         'icons/sync.png',
-                                        'icons/forward.png']
+                                        'icons/forward.png',
+                                        'icons/red.png',
+                                        'icons/green.png',
+                                        'icons/yellow.png',
+                                        ]
                     ),
                                      
                    ],

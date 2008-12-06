@@ -10,7 +10,7 @@ class LocalJobSpec(object):
     # attributes
     _attributes = ('id','JobID','PandaID','jobStatus','site','cloud','jobType',
                    'jobName','inDS','outDS','libDS','provenanceID','creationTime',
-                   'lastUpdate','jobParams','dbStatus') 
+                   'lastUpdate','jobParams','dbStatus','buildStatus') 
     # slots
     __slots__ = _attributes
 
@@ -40,7 +40,7 @@ class LocalJobSpec(object):
                 if not statusMap.has_key(tmpStatus):
                     statusMap[tmpStatus] = 0
                 statusMap[tmpStatus] += tmpCount
-        statusStr = ''
+        statusStr = self.dbStatus
         for tmpStatus,tmpCount in statusMap.iteritems():
             statusStr += '\n%8s   %8s : %s' % ('',tmpStatus,tmpCount)
         # string representation
