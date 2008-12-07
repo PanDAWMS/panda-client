@@ -7,9 +7,13 @@ import gtk.glade
 import threading
 import commands
 import Queue
+import BookConfig
+import PLogger
 
 gobject.threads_init()
 gtk.gdk.threads_init()
+
+
   
 # thread to synchronize database in background
 class Synchronizer(threading.Thread):
@@ -39,6 +43,47 @@ class Synchronizer(threading.Thread):
         # emit signal
         self.pEmitter.emit("on_syncEnd")
 
+
+
+# thread to open url
+class UrlOpener(threading.Thread):
+    
+    # constructor
+    def __init__(self,url,queue):
+        # init thread
+        threading.Thread.__init__(self)
+        # url
+        self.url = url
+        # queue
+        self.queue = queue
+        # browser type
+        self.browser = 'firefox'
+        # logger
+        self.tmpLog = PLogger.getPandaLogger()
+
+
+    # run
+    def run(self):
+        if self.browser == 'firefox':
+            # check application
+            status,output = commands.getstatusoutput('which %s' % self.browser)
+            if status != 0:
+                self.tmpLog.error('%s is unavailable' % self.browser)
+                return
+            # check version
+            status,output = commands.getstatusoutput('%s -v' % self.browser)
+            version = output.split()[2]
+            version = version[:-1]
+            if version < '2.0':
+                self.tmpLog.warning("too old %s : version %s It wouldn't work properly" % (self.browser,version))
+            # open url
+            com = '%s %s' % (self.browser,self.url)
+            commands.getstatusoutput(com)
+        # release queue
+        self.queue.put(True)
+        return
+
+        
 
 # global data
 class PBookGuiGlobal:
@@ -109,7 +154,7 @@ class PSumView:
 
 
     # show summary
-    def showJobInfo(self):
+    def showJobInfo(self,widget):
         # get job
         jobID = self.guiGlobal.getCurrentJob()
         job   = self.guiGlobal.getJob(jobID)
@@ -202,19 +247,20 @@ class PStatView:
         self.write('ERROR',msg)        
 
 
+
 # tree view for job list
 class PTreeView:
     
     # constructor
-    def __init__(self,treeView,sumView,guiGlobal,pbookCore):
+    def __init__(self,treeView,guiGlobal,pbookCore,pEmitter):
         # tree view
         self.treeView = treeView
         # global data
         self.guiGlobal = guiGlobal
         # core of pbook
         self.pbookCore = pbookCore
-        # summary view
-        self.sumView = sumView
+        # emitter
+        self.pEmitter = pEmitter
         # column names
         self.columnNames =  ['JobID','creationTime']
         # max number of jobs in tree
@@ -318,8 +364,8 @@ class PTreeView:
         iter = model.get_iter(selected[0])
         jobID = model.get_value(iter,0)
         self.guiGlobal.setCurrentJob(jobID)
-        # show job info in summary view
-        self.sumView.showJobInfo()
+        # emit signal
+        self.pEmitter.emit("on_setNewJob")
 
 
 # sync button
@@ -366,11 +412,60 @@ class PRangeButton:
         self.pEmitter.emit("on_rangeChanged",False)
 
 
+# wev button
+class PWebButton:
+
+    # constructor
+    def __init__(self,url):
+        # url
+        self.url = url
+        # queue to avoid duplication
+        self.queue = Queue.Queue(1)
+        self.queue.put(True)
+
+
+    # clicked action
+    def on_clicked(self,widget):
+        try:
+            ret = self.queue.get_nowait()
+        except:
+            return
+        # make opener
+        thr = UrlOpener(self.url,self.queue)
+        thr.start()
+
+
+
+# config button
+class PConfigButton:
+
+    # constructor
+    def __init__(self,gladefile):
+        # XML name
+        self.gladefile = gladefile
+
+
+    # clicked action
+    def on_clicked(self,widget):
+        # get dialog
+        widget = gtk.glade.XML(self.gladefile,"configDialog")
+        dlg = widget.get_widget("configDialog")
+        # run
+        result = dlg.run()
+        # destroy
+        dlg.destroy()
+        # get result
+        if result == gtk.RESPONSE_OK:
+            pass
+        return result
+
+
 
 # emitter
 class PEmitter(gobject.GObject):
     __gsignals__ = {
         'on_syncEnd'      : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
+        'on_setNewJob'    : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
         'on_rangeChanged' : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (bool,)),
         'on_triggerSync'  : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),        
         }
@@ -397,25 +492,26 @@ class PBookGuiMain:
 
         # load glade file
         gladefile = os.environ['PANDA_SYS'] + "/etc/panda/pbook.glade"  
-        self.rootXML = gtk.glade.XML(gladefile)
+        mainWindow = gtk.glade.XML(gladefile,"mainWindow")
         # global data
         pbookGuiGlobal = PBookGuiGlobal()
         # emitter
         self.pEmitter = PEmitter()
         # instantiate components
-        statView = PStatView(self.rootXML.get_widget("statusTextView"))
-        sumView  = PSumView(self.rootXML.get_widget("summaryTextView"),
+        statView = PStatView(mainWindow.get_widget("statusTextView"))
+        sumView  = PSumView(mainWindow.get_widget("summaryTextView"),
                             pbookGuiGlobal)
-        treeView = PTreeView(self.rootXML.get_widget("mainTreeView"),
-                             sumView,
-                             pbookGuiGlobal,
-                             pbookCore)
-        syncButton = PSyncButton(self.rootXML.get_widget("syncButton"),
+        treeView = PTreeView(mainWindow.get_widget("mainTreeView"),
+                             pbookGuiGlobal,pbookCore,self.pEmitter)
+        syncButton = PSyncButton(mainWindow.get_widget("syncButton"),
                                  pbookCore,self.pEmitter)
-        backButton = PRangeButton(self.rootXML.get_widget("backButton"),
+        backButton = PRangeButton(mainWindow.get_widget("backButton"),
                                   pbookGuiGlobal,-treeView.maxJobs,self.pEmitter)
-        forwardButton = PRangeButton(self.rootXML.get_widget("forwardButton"),
+        forwardButton = PRangeButton(mainWindow.get_widget("forwardButton"),
                                      pbookGuiGlobal,treeView.maxJobs,self.pEmitter)
+        configButton = PConfigButton(gladefile)
+        pandaMonButton = PWebButton('http://panda.cern.ch')
+        savannahButton = PWebButton('https://savannah.cern.ch/projects/panda/')
         
         # set icons
         iconMap = {
@@ -431,27 +527,31 @@ class PBookGuiMain:
             }
         for buttonName,iconName in iconMap.iteritems():
             image = gtk.Image()
-            image.set_from_file(os.environ['PANDA_SYS'] + "/etc/panda/icons/" + iconName)
+            image.set_from_file(os.environ['PANDA_SYS'] + "/etc/panda/icons/"
+                                + iconName)
             image.show()
-            button = self.rootXML.get_widget(buttonName)
+            button = mainWindow.get_widget(buttonName)
             button.set_icon_widget(image)
 
         # set gtk_main_quit handler
-        signal_dic = { "gtk_main_quit"         : overallQuit,
-                       "on_syncButton_clicked" : syncButton.on_clicked,
-                       "on_forwardButton_clicked" : forwardButton.on_clicked,
-                       "on_backButton_clicked" : backButton.on_clicked,                       
+        signal_dic = { "gtk_main_quit"             : overallQuit,
+                       "on_syncButton_clicked"     : syncButton.on_clicked,
+                       "on_forwardButton_clicked"  : forwardButton.on_clicked,
+                       "on_backButton_clicked"     : backButton.on_clicked,
+                       "on_configButton_clicked"   : configButton.on_clicked,
+                       "on_pandaMonButton_clicked" : pandaMonButton.on_clicked,
+                       "on_savannahButton_clicked" : savannahButton.on_clicked,
                        }
-        self.rootXML.signal_autoconnect(signal_dic)
+        mainWindow.signal_autoconnect(signal_dic)
         
         # set logger
-        import PLogger
         PLogger.setLogger(statView)
 
         # connect signales
         self.pEmitter.connect('on_triggerSync',  syncButton.on_clicked)
         self.pEmitter.connect('on_syncEnd',      treeView.reloadJobList)
-        self.pEmitter.connect('on_rangeChanged', treeView.reloadJobList)                
+        self.pEmitter.connect('on_rangeChanged', treeView.reloadJobList)
+        self.pEmitter.connect('on_setNewJob',    sumView.showJobInfo)
         
         # set timer for initial sync
         gtk.timeout_add(1000, self.runSynchronizer)

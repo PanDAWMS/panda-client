@@ -10,7 +10,8 @@ class LocalJobSpec(object):
     # attributes
     _attributes = ('id','JobID','PandaID','jobStatus','site','cloud','jobType',
                    'jobName','inDS','outDS','libDS','provenanceID','creationTime',
-                   'lastUpdate','jobParams','dbStatus','buildStatus','retryID') 
+                   'lastUpdate','jobParams','dbStatus','buildStatus','retryID',
+                   'commandToPilot') 
     # slots
     __slots__ = _attributes
 
@@ -239,7 +240,10 @@ class LocalJobSpec(object):
         if toBeFrozen:
             self.dbStatus = 'frozen'
         else:
-            self.dbStatus = 'running'
+            if self.commandToPilot=='tobekilled':
+                self.dbStatus = 'killing'
+            else:
+                self.dbStatus = 'running'
         # return
         return ret
 

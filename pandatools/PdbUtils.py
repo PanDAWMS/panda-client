@@ -109,24 +109,25 @@ class PdbProxy:
     def createTable(self):
         # ver 0_1_1
         sql  = "CREATE TABLE %s (" % self.tablename
-        sql += "'id'           INTEGER PRIMARY KEY,"
-        sql += "'JobID'        INTEGER,"
-        sql += "'PandaID'      TEXT,"
-        sql += "'jobStatus'    TEXT,"
-        sql += "'site'         VARCHAR(128),"
-        sql += "'cloud'        VARCHAR(20),"
-        sql += "'jobType'      VARCHAR(20),"
-        sql += "'jobName'      VARCHAR(128),"
-        sql += "'inDS'         TEXT,"
-        sql += "'outDS'        TEXT,"
-        sql += "'libDS'        VARCHAR(255),"
-        sql += "'jobParams'    TEXT,"
-        sql += "'retryID'      INTEGER,"        
-        sql += "'provenanceID' INTEGER,"
-        sql += "'creationTime' TIMESTAMP,"
-        sql += "'lastUpdate'   TIMESTAMP,"
-        sql += "'dbStatus'     VARCHAR(20),"
-        sql += "'buildStatus'  VARCHAR(20),"        
+        sql += "'id'             INTEGER PRIMARY KEY,"
+        sql += "'JobID'          INTEGER,"
+        sql += "'PandaID'        TEXT,"
+        sql += "'jobStatus'      TEXT,"
+        sql += "'site'           VARCHAR(128),"
+        sql += "'cloud'          VARCHAR(20),"
+        sql += "'jobType'        VARCHAR(20),"
+        sql += "'jobName'        VARCHAR(128),"
+        sql += "'inDS'           TEXT,"
+        sql += "'outDS'          TEXT,"
+        sql += "'libDS'          VARCHAR(255),"
+        sql += "'jobParams'      TEXT,"
+        sql += "'retryID'        INTEGER,"        
+        sql += "'provenanceID'   INTEGER,"
+        sql += "'creationTime'   TIMESTAMP,"
+        sql += "'lastUpdate'     TIMESTAMP,"
+        sql += "'dbStatus'       VARCHAR(20),"
+        sql += "'buildStatus'    VARCHAR(20),"
+        sql += "'commandToPilot' VARCHAR(20),"        
         sql = sql[:-1]
         sql += ")"
         # execute
@@ -153,9 +154,15 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
     pandIDs.sort()
     pStr = ''
     sStr = ''
+    ddata.commandToPilot = ''
     for tmpID in pandIDs:
+        # PandaID
         pStr += '%s,' % tmpID
-        sStr += '%s,' % pandaIDstatus[tmpID]
+        # status
+        sStr += '%s,' % pandaIDstatus[tmpID][0]
+        # commandToPilot
+        if pandaIDstatus[tmpID][1] == 'tobekilled':
+            ddata.commandToPilot = 'tobekilled'
     pStr = pStr[:-1]
     sStr = sStr[:-1]
     # job status

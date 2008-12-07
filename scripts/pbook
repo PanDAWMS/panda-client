@@ -18,7 +18,7 @@ from pandatools import BookConfig
 from pandatools import PLogger
 from pandatools import PsubUtils
 from pandatools import PandaToolsPkgInfo
-from pandatools.BookConfig import bookConf
+from pandatools import BookConfig
 
 # readline support
 readline.parse_and_bind('tab: complete')
@@ -80,6 +80,7 @@ class PBookCore:
         # get recent JobIDs from panda server
         syncTime = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         # set sync time for the first attempt
+        bookConf = BookConfig.getConfig()
         if bookConf.last_synctime == '':
             bookConf.last_synctime = datetime.datetime.utcnow()-datetime.timedelta(days=180)
             bookConf.last_synctime = bookConf.last_synctime.strftime('%Y-%m-%d %H:%M:%S')
@@ -130,9 +131,10 @@ class PBookCore:
                     tmpLog.error("failed to update DB for JobID=%s" % remoteJobID)
                     return
         # update sync time
+        bookConf = BookConfig.getConfig()
         bookConf.last_synctime = syncTime
-        BookConfig.updateConfig()
-        tmpLog.info("Completed")
+        BookConfig.updateConfig(bookConf)
+        tmpLog.info("Synchronization Completed")
         
 
     # get local job info
@@ -211,7 +213,7 @@ def intmain(pbookCore):
             print job
 
     # go to interactive prompt
-    code.interact(banner="\nStart pBook %s" % (PandaToolsPkgInfo.release_version),
+    code.interact(banner="\nStart pBook %s" % PandaToolsPkgInfo.release_version,
                   local=locals())
 
 
@@ -221,7 +223,12 @@ def guimain(pbookCore):
     import gtk
     from pandatools import BookGUI
     pbookGuiMain = BookGUI.PBookGuiMain(pbookCore)
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    tmpLog.info("Start pBook %s" % PandaToolsPkgInfo.release_version)
+    # GTK main
     gtk.main()
+    
 
 # kill whole process
 def catch_sig(sig, frame):

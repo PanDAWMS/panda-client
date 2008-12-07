@@ -17,31 +17,41 @@ if not os.path.exists(confFile):
     parser.write(confFH)
     confFH.close()
 
-# instantiate parser
-parser=ConfigParser.ConfigParser()
-parser.read(confFile)
-
-# config class
-class _bookConfig:
-    pass
-bookConf = _bookConfig()
-del _bookConfig
-
-# expand sequencer section
-for key,val in parser.items(sectionName):
-    # convert int/bool
-    if re.search('^\d+$',val) != None:
-        val = int(val)
-    elif re.search('true',val,re.I) != None:
-        val = True
-    elif re.search('false',val,re.I) != None:
-        val = False
-    # set attributes    
-    setattr(bookConf,key,val)
+# get config
+def getConfig():
+    # instantiate parser
+    parser=ConfigParser.ConfigParser()
+    parser.read(confFile)
+    # config class
+    class _bookConfig:
+        pass
+    bookConf = _bookConfig()
+    # expand sequencer section
+    for key,val in parser.items(sectionName):
+        # convert int/bool
+        if re.search('^\d+$',val) != None:
+            val = int(val)
+        elif re.search('true',val,re.I) != None:
+            val = True
+        elif re.search('false',val,re.I) != None:
+            val = False
+        # set attributes    
+        setattr(bookConf,key,val)
+    # return
+    return bookConf
 
 
 # update
-def updateConfig():
+def updateConfig(bookConf):
+    # instantiate parser
+    parser=ConfigParser.ConfigParser()
+    parser.read(confFile)
+    # set new values
+    for attr in dir(bookConf):
+        if not attr.startswith('_'):
+            val = getattr(bookConf,attr)
+            if val != None:
+                parser.set(sectionName,attr,val)
     # keep old config
     status,out = commands.getstatusoutput('mv %s %s.back' % (confFile,confFile))
     if status != 0:
@@ -50,4 +60,5 @@ def updateConfig():
     # update conf
     conFH = open(confFile,'w')
     parser.write(conFH)
+    # close
     conFH.close()
