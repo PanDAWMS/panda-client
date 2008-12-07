@@ -10,7 +10,7 @@ class LocalJobSpec(object):
     # attributes
     _attributes = ('id','JobID','PandaID','jobStatus','site','cloud','jobType',
                    'jobName','inDS','outDS','libDS','provenanceID','creationTime',
-                   'lastUpdate','jobParams','dbStatus','buildStatus') 
+                   'lastUpdate','jobParams','dbStatus','buildStatus','retryID') 
     # slots
     __slots__ = _attributes
 
@@ -43,17 +43,26 @@ class LocalJobSpec(object):
         statusStr = self.dbStatus
         for tmpStatus,tmpCount in statusMap.iteritems():
             statusStr += '\n%8s   %8s : %s' % ('',tmpStatus,tmpCount)
+        # number of jobs
+        nJobs = len(self.PandaID.split(','))
+        if self.buildStatus != '':
+            # including buildJob
+            nJobsStr = "%d + 1(build)" % (nJobs-1)
+        else:
+            nJobsStr = "%d" % nJobs
         # string representation
         strFormat = "%15s : %s\n"
         strOut =  ""
         strOut += strFormat % ("JobID",        self.JobID)
         strOut += strFormat % ("type",         self.jobType)
         strOut += strFormat % ("PandaID",      self.encodeCompact()['PandaID'])
+        strOut += strFormat % ("nJobs",        nJobsStr)
         strOut += strFormat % ("site",         self.site)
         strOut += strFormat % ("cloud",        self.cloud)                
         strOut += strFormat % ("inDS",         str(self.inDS))
         strOut += strFormat % ("outDS",        str(self.outDS))
         strOut += strFormat % ("libDS",        str(self.libDS))
+        strOut += strFormat % ("retryID",      self.provenanceID)        
         strOut += strFormat % ("provenanceID", self.provenanceID)
         strOut += strFormat % ("creationTime", self.creationTime.strftime('%Y-%m-%d %H:%M:%S'))
         strOut += strFormat % ("lastUpdate",   self.lastUpdate.strftime('%Y-%m-%d %H:%M:%S'))
@@ -102,6 +111,8 @@ class LocalJobSpec(object):
                 val = val.strftime('%Y-%m-%d %H:%M:%S')
             # add colum name for UPDATE
             if forUpdate:
+                if val == 'NULL' and attr == 'id':
+                    continue
                 retS += '%s=' % attr
             # value    
             if val == 'NULL':

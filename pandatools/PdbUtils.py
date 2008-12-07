@@ -121,6 +121,7 @@ class PdbProxy:
         sql += "'outDS'        TEXT,"
         sql += "'libDS'        VARCHAR(255),"
         sql += "'jobParams'    TEXT,"
+        sql += "'retryID'      INTEGER,"        
         sql += "'provenanceID' INTEGER,"
         sql += "'creationTime' TIMESTAMP,"
         sql += "'lastUpdate'   TIMESTAMP,"
@@ -186,9 +187,11 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
     oDSlist = []
     for tmpFile in pandaJob.Files:
         if tmpFile.type == 'input' and not tmpFile.lfn.endswith('.lib.tgz'):
-            iDSlist.append(tmpFile.dataset)
+            if not tmpFile.dataset in iDSlist:
+                iDSlist.append(tmpFile.dataset)
         elif tmpFile.type == 'output':
-            oDSlist.append(tmpFile.dataset)
+            if not tmpFile.dataset in oDSlist:
+                oDSlist.append(tmpFile.dataset)
     # convert to string
     ddata.inDS = ''
     for iDS in iDSlist:
@@ -210,6 +213,8 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
     ddata.cloud = pandaJob.cloud
     # job ID
     ddata.JobID = pandaJob.jobDefinitionID
+    # retry ID
+    ddata.retryID = 0
     # provenance ID
     ddata.provenanceID = pandaJob.jobExecutionID
     # job parameters

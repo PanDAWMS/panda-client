@@ -70,18 +70,19 @@
 		<widget class="GtkToolbar" id="toolbar3">
 		  <property name="visible">True</property>
 		  <property name="orientation">GTK_ORIENTATION_HORIZONTAL</property>
-		  <property name="toolbar_style">GTK_TOOLBAR_ICONS</property>
+		  <property name="toolbar_style">GTK_TOOLBAR_BOTH</property>
 		  <property name="tooltips">True</property>
 		  <property name="show_arrow">True</property>
 
 		  <child>
 		    <widget class="GtkToolButton" id="backButton">
 		      <property name="visible">True</property>
-		      <property name="label" translatable="yes"></property>
+		      <property name="label" translatable="yes">Back</property>
 		      <property name="use_underline">True</property>
 		      <property name="visible_horizontal">True</property>
 		      <property name="visible_vertical">True</property>
 		      <property name="is_important">False</property>
+		      <signal name="clicked" handler="on_backButton_clicked" last_modification_time="Sun, 07 Dec 2008 01:57:32 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="expand">False</property>
@@ -105,7 +106,7 @@
 		  <child>
 		    <widget class="GtkToolButton" id="syncButton">
 		      <property name="visible">True</property>
-		      <property name="label" translatable="yes"></property>
+		      <property name="label" translatable="yes">Sync</property>
 		      <property name="use_underline">True</property>
 		      <property name="visible_horizontal">True</property>
 		      <property name="visible_vertical">True</property>
@@ -134,11 +135,12 @@
 		  <child>
 		    <widget class="GtkToolButton" id="forwardButton">
 		      <property name="visible">True</property>
-		      <property name="label" translatable="yes"></property>
+		      <property name="label" translatable="yes">Forward</property>
 		      <property name="use_underline">True</property>
 		      <property name="visible_horizontal">True</property>
 		      <property name="visible_vertical">True</property>
 		      <property name="is_important">False</property>
+		      <signal name="clicked" handler="on_forwardButton_clicked" last_modification_time="Sun, 07 Dec 2008 01:57:42 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="expand">False</property>
@@ -183,6 +185,7 @@
 		      <property name="visible_horizontal">True</property>
 		      <property name="visible_vertical">True</property>
 		      <property name="is_important">False</property>
+		      <signal name="clicked" handler="on_retryButton_clicked" last_modification_time="Sun, 07 Dec 2008 01:58:21 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="expand">False</property>
@@ -211,6 +214,7 @@
 		      <property name="visible_horizontal">True</property>
 		      <property name="visible_vertical">True</property>
 		      <property name="is_important">False</property>
+		      <signal name="clicked" handler="on_updateButton_clicked" last_modification_time="Sun, 07 Dec 2008 01:58:32 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="expand">False</property>
@@ -239,6 +243,7 @@
 		      <property name="visible_horizontal">True</property>
 		      <property name="visible_vertical">True</property>
 		      <property name="is_important">False</property>
+		      <signal name="clicked" handler="on_killButton_clicked" last_modification_time="Sun, 07 Dec 2008 01:58:44 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="expand">False</property>
@@ -267,6 +272,7 @@
 		      <property name="visible_horizontal">True</property>
 		      <property name="visible_vertical">True</property>
 		      <property name="is_important">False</property>
+		      <signal name="clicked" handler="on_pandaMonButton_clicked" last_modification_time="Sun, 07 Dec 2008 01:58:56 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="expand">False</property>
@@ -328,6 +334,7 @@
 		      <property name="visible_horizontal">True</property>
 		      <property name="visible_vertical">True</property>
 		      <property name="is_important">False</property>
+		      <signal name="clicked" handler="on_configButton_clicked" last_modification_time="Sun, 07 Dec 2008 01:59:07 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="expand">False</property>
@@ -356,6 +363,7 @@
 		      <property name="visible_horizontal">True</property>
 		      <property name="visible_vertical">True</property>
 		      <property name="is_important">False</property>
+		      <signal name="clicked" handler="on_savannahButton_clicked" last_modification_time="Sun, 07 Dec 2008 01:59:17 GMT"/>
 		    </widget>
 		    <packing>
 		      <property name="expand">False</property>
@@ -447,7 +455,7 @@
 
 		  <child>
 		    <widget class="GtkTextView" id="statusTextView">
-		      <property name="height_request">150</property>
+		      <property name="height_request">155</property>
 		      <property name="visible">True</property>
 		      <property name="can_focus">True</property>
 		      <property name="editable">False</property>

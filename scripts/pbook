@@ -128,7 +128,7 @@ class PBookCore:
                     PdbUtils.updateJobDB(localJob,self.verbose)
                 except:
                     tmpLog.error("failed to update DB for JobID=%s" % remoteJobID)
-                return
+                    return
         # update sync time
         bookConf.last_synctime = syncTime
         BookConfig.updateConfig()

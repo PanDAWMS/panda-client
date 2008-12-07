@@ -15,7 +15,7 @@ gtk.gdk.threads_init()
 class Synchronizer(threading.Thread):
     
     # constructor
-    def __init__(self,syncQueue):
+    def __init__(self,syncQueue,pEmitter):
         # init thread
         threading.Thread.__init__(self)
         # queue
@@ -25,6 +25,8 @@ class Synchronizer(threading.Thread):
             self.pbookCore = self.syncQueue.get_nowait()
         except:
             self.pbookCore = None
+        # emitter
+        self.pEmitter = pEmitter
 
     # run
     def run(self):
@@ -34,6 +36,8 @@ class Synchronizer(threading.Thread):
         self.pbookCore.sync()
         # put back queue
         self.syncQueue.put(self.pbookCore)
+        # emit signal
+        self.pEmitter.emit("on_syncEnd")
 
 
 # global data
@@ -72,13 +76,15 @@ class PBookGuiGlobal:
 
     # set offset of jobs
     def setJobOffset(self,change):
+        # try
+        tmpOffset = self.jobOffset + change
+        # reset if out of range
+        if tmpOffset >= len(self.jobMap):
+            return
+        elif tmpOffset < 0:
+            tmpOffset = 0
         # set
-        self.offset += change
-        # reset offset
-        if self.jobOffset > len(self.jobMap):
-            self.jobOffset = len(self.jobMap)
-        elif self.jobOffset < 0:
-            self.jobOffset = 0
+        self.jobOffset = tmpOffset
 
     # get offset
     def getJobOffset(self):
@@ -167,11 +173,13 @@ class PStatView:
 
     # write message with level
     def write(self,level,msg):
+        # insert message
         message = self.formatter(level,msg)
         self.buffer.insert_with_tags_by_name(self.buffer.get_end_iter(),
                                              message,level)
-        self.buffer.place_cursor(self.buffer.get_end_iter())
-        #self.statView.scroll_to_iter(self.buffer.get_end_iter(), 0.1)
+        # scroll
+        mark = self.buffer.get_mark("insert")
+        self.statView.scroll_mark_onscreen(mark)
 
         
     # emulation for logging
@@ -229,7 +237,7 @@ class PTreeView:
 
         
     # reload job list
-    def reloadJobList(self,refresh=True):
+    def reloadJobList(self,slot_obj=None,refresh=True):
         # read Jobs from DB
         if refresh:
             tmpList = self.pbookCore.getLocalJobList()
@@ -262,7 +270,7 @@ class PTreeView:
     def setColumns(self):
         # JobID has icon+text
         cellpb = gtk.CellRendererPixbuf()
-        tvcolumn = gtk.TreeViewColumn(self.columnNames[0], cellpb)
+        tvcolumn = gtk.TreeViewColumn("  %s" % self.columnNames[0], cellpb)
         tvcolumn.set_cell_data_func(cellpb, self.setIcon)
         cell = gtk.CellRendererText()
         tvcolumn.pack_start(cell, False)
@@ -271,7 +279,7 @@ class PTreeView:
         # text only for other parameters
         for attr in self.columnNames[1:]:
             cell = gtk.CellRendererText()
-            tvcolumn = gtk.TreeViewColumn(attr, cell)
+            tvcolumn = gtk.TreeViewColumn("     %s" % attr, cell)
             tvcolumn.set_cell_data_func(cell,self.setValue,attr)
             self.treeView.append_column(tvcolumn)
 
@@ -300,7 +308,7 @@ class PTreeView:
         jobID = model.get_value(iter, 0)
         job = self.guiGlobal.getJob(jobID)
         var = getattr(job,attr)
-        cell.set_property('text', var)  
+        cell.set_property('text', "   %s" % var)  
 
         
     # show job info
@@ -318,7 +326,7 @@ class PTreeView:
 class PSyncButton:
 
     # constructor
-    def __init__(self,syncButton,pbookCore):
+    def __init__(self,syncButton,pbookCore,pEmitter):
         # sync button
         self.syncButton = syncButton
         # core
@@ -326,17 +334,60 @@ class PSyncButton:
         # queue for synchronizer
         self.syncQueue = Queue.Queue(1)
         self.syncQueue.put(pbookCore)
+        # emitter
+        self.pEmitter = pEmitter
 
     # synchronze database
     def on_clicked(self,widget):
-        synchronizer = Synchronizer(self.syncQueue)
+        synchronizer = Synchronizer(self.syncQueue,self.pEmitter)
         synchronizer.start()
+
+
+# range button
+class PRangeButton:
+
+    # constructor
+    def __init__(self,rangeButton,guiGlobal,change,pEmitter):
+        # button
+        self.rangeButton = rangeButton
+        # global
+        self.guiGlobal = guiGlobal
+        # changed value
+        self.change = change
+        # emitter
+        self.pEmitter = pEmitter
+
+
+    # clicked action
+    def on_clicked(self,widget):
+        # chage offset
+        self.guiGlobal.setJobOffset(self.change)
+        # emit signal
+        self.pEmitter.emit("on_rangeChanged",False)
+
+
+
+# emitter
+class PEmitter(gobject.GObject):
+    __gsignals__ = {
+        'on_syncEnd'      : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
+        'on_rangeChanged' : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (bool,)),
+        'on_triggerSync'  : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),        
+        }
+            
+    def __init__(self):
+        gobject.GObject.__init__(self)
+
+gobject.type_register(PEmitter)
+
 
 
 # wrapper for gtk.main_quit
 def overallQuit(*arg):
     gtk.main_quit()
     commands.getoutput('kill -9 -- -%s' % os.getpgrp())    
+
+
 
 # main
 class PBookGuiMain:
@@ -349,6 +400,8 @@ class PBookGuiMain:
         self.rootXML = gtk.glade.XML(gladefile)
         # global data
         pbookGuiGlobal = PBookGuiGlobal()
+        # emitter
+        self.pEmitter = PEmitter()
         # instantiate components
         statView = PStatView(self.rootXML.get_widget("statusTextView"))
         sumView  = PSumView(self.rootXML.get_widget("summaryTextView"),
@@ -358,7 +411,11 @@ class PBookGuiMain:
                              pbookGuiGlobal,
                              pbookCore)
         syncButton = PSyncButton(self.rootXML.get_widget("syncButton"),
-                                 pbookCore)
+                                 pbookCore,self.pEmitter)
+        backButton = PRangeButton(self.rootXML.get_widget("backButton"),
+                                  pbookGuiGlobal,-treeView.maxJobs,self.pEmitter)
+        forwardButton = PRangeButton(self.rootXML.get_widget("forwardButton"),
+                                     pbookGuiGlobal,treeView.maxJobs,self.pEmitter)
         
         # set icons
         iconMap = {
@@ -381,34 +438,26 @@ class PBookGuiMain:
 
         # set gtk_main_quit handler
         signal_dic = { "gtk_main_quit"         : overallQuit,
-                       "on_syncButton_clicked" : syncButton.on_clicked}
+                       "on_syncButton_clicked" : syncButton.on_clicked,
+                       "on_forwardButton_clicked" : forwardButton.on_clicked,
+                       "on_backButton_clicked" : backButton.on_clicked,                       
+                       }
         self.rootXML.signal_autoconnect(signal_dic)
         
         # set logger
         import PLogger
         PLogger.setLogger(statView)
 
-        # queue for synchronizer
-        syncQueue = Queue.Queue(1)
-        syncQueue.put(pbookCore)
-
-        # trigger synchronizer
-        class TriggerSync(gobject.GObject):
-            __gsignals__ = {
-                'on_triggerSync': (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),
-                }
-            
-            def __init__(self):
-                gobject.GObject.__init__(self)
-                
-        gobject.type_register(TriggerSync)
-        self.triggerSync = TriggerSync()
-        self.triggerSync.connect('on_triggerSync', syncButton.on_clicked)
-        # set timer
+        # connect signales
+        self.pEmitter.connect('on_triggerSync',  syncButton.on_clicked)
+        self.pEmitter.connect('on_syncEnd',      treeView.reloadJobList)
+        self.pEmitter.connect('on_rangeChanged', treeView.reloadJobList)                
+        
+        # set timer for initial sync
         gtk.timeout_add(1000, self.runSynchronizer)
 
         
     # run synchronizer in background
     def runSynchronizer(self):
-        self.triggerSync.emit("on_triggerSync")
+        self.pEmitter.emit("on_triggerSync")
         return False
