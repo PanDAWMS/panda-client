@@ -151,6 +151,8 @@ class PSumView:
         # set tag
         self.tag = self.buffer.create_tag('default')
         self.tag.set_property("font", "monospace")
+        # set color
+        self.sumView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))
 
 
     # show summary
@@ -208,7 +210,8 @@ class PStatView:
         self.format = ' %6s : %s\n'
         # dummy handlers
         self.handlers = ['']
-
+        # set color
+        self.statView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))
 
     # formatter
     def formatter(self,level,msg):
@@ -280,6 +283,8 @@ class PTreeView:
             pixbuf = gtk.gdk.pixbuf_new_from_file(os.environ['PANDA_SYS'] \
                                                   + "/etc/panda/icons/" + tmpFname)
             self.pbMap[tmpStatus] = pixbuf
+        # set color
+        self.treeView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))        
 
         
     # reload job list
