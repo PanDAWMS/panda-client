@@ -25,30 +25,36 @@ class PdbProxy:
         self.tablename = 'jobtable_%s' % self.version
         # verbose
         self.verbose = verbose
-        # logger
-        self.log = None
                               
-                 
+
+    # set verbose
+    def setVerbose(self,verbose):
+        # verbose
+        self.verbose = verbose
+                        
+        
     # execute SQL
     def execute(self,sql,var={}):
+        # logger  
+        tmpLog = PLogger.getPandaLogger()
         # expanda variables
         for tmpKey,tmpVal in var.iteritems():
             sql = sql.replqce(tmpKey,str(tmpVal))
         # construct command
         com = '%s %s "%s"' % (self.engine,self.database,sql)
         if self.verbose:
-            self.log.debug("DB Req : " + com)
+            tmpLog.debug("DB Req : " + com)
         # execute
         status,output = commands.getstatusoutput(com)
         status %= 255
         # return
         if status != 0:
-            self.log.error(status)
-            self.log.error(output)
+            tmpLog.error(status)
+            tmpLog.error(output)
             return False,output
         else:
             if self.verbose:
-                self.log.debug("   Ret : " + output)
+                tmpLog.debug("   Ret : " + output)
             outList = output.split('\n')
             # remove ''
             try:
@@ -60,8 +66,6 @@ class PdbProxy:
 
     # initialize database
     def initialize(self):
-        # logger  
-        self.log = PLogger.getPandaLogger()
         # import sqlite3
         # check if sqlite3 is available
         com = 'which %s' % self.engine
@@ -188,6 +192,8 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
             if tmpFile.type == 'input' and tmpFile.lfn.endswith('.lib.tgz'):
                 ddata.libDS = tmpFile.lfn
                 break
+    # job parameters
+    ddata.jobParams = pandaJob.metadata
     # extract datasets
     pandaJob = pandaJobList[-1]
     iDSlist  = []
@@ -224,8 +230,6 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
     ddata.retryID = 0
     # provenance ID
     ddata.provenanceID = pandaJob.jobExecutionID
-    # job parameters
-    ddata.jobParams = pandaJob.metadata
     # job type
     ddata.jobType = ''
     trfTypeMap = {
@@ -243,13 +247,16 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
     return ddata
 
 
+
+# instantiate database proxy
+pdbProxy = PdbProxy()
+
+
 # just initialize DB
 def initialzieDB(verbose=False):
-    # instantiate database proxy
-    global pdbProxy
-    pdbProxy = PdbProxy(verbose)
     pdbProxy.initialize()
-
+    pdbProxy.setVerbose(verbose)
+    
 
 # insert job info to DB
 def insertJobDB(job,verbose=False):

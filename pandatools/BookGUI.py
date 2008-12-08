@@ -212,6 +212,12 @@ class PStatView:
         self.handlers = ['']
         # set color
         self.statView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))
+        # queue for serialization
+        self.queue = Queue.Queue(1)
+        self.queue.put(True)
+        # wrap mode
+        self.statView.set_wrap_mode(gtk.WRAP_CHAR)
+        
 
     # formatter
     def formatter(self,level,msg):
@@ -228,27 +234,35 @@ class PStatView:
         # scroll
         mark = self.buffer.get_mark("insert")
         self.statView.scroll_mark_onscreen(mark)
+        gtk.threads_leave()
 
         
     # emulation for logging
     def info(self,msg):
-        self.write('INFO',msg)
+        sem = self.queue.get()
+        gobject.idle_add(self.write,'INFO',msg)
+        self.queue.put(sem)
 
 
     # emulation for logging
     def debug(self,msg):
-        self.write('DEBUG',msg)        
-
+        sem = self.queue.get()        
+        gobject.idle_add(self.write,'DEBUG',msg)        
+        self.queue.put(sem)
+        
 
     # emulation for logging
     def warning(self,msg):
-        self.write('WARNING',msg)
-
+        sem = self.queue.get()        
+        gobject.idle_add(self.write,'WARNING',msg)
+        self.queue.put(sem)
+        
 
     # emulation for logging
     def error(self,msg):
-        self.write('ERROR',msg)        
-
+        sem = self.queue.get()        
+        gobject.idle_add(self.write,'ERROR',msg)        
+        self.queue.put(sem)
 
 
 # tree view for job list
@@ -466,6 +480,42 @@ class PConfigButton:
 
 
 
+# update button
+class PUpdateButton:
+
+    # constructor
+    def __init__(self,pbookCore,guiGlobal,pEmitter):
+        # core
+        self.pbookCore = pbookCore
+        # global
+        self.guiGlobal = guiGlobal
+        # emitter
+        self.pEmitter = pEmitter
+
+
+    # clicked action
+    def on_clicked(self,widget):
+        # logger
+        tmpLog = PLogger.getPandaLogger()
+        # get jobID
+        jobID = self.guiGlobal.getCurrentJob()
+        if jobID == None:
+            tmpLog.warning('No job is selected. Please click a job in the left list first')
+            return
+        # skip if frozen
+        job = self.guiGlobal.getJob(jobID)
+        if job.dbStatus == 'frozen':
+            tmpLog.info('Update is not required for frozen job')
+            return
+        # get updated info
+        updatedJob = self.pBookCore.status(jobID)
+        # update global data
+        self.guiGlobal.updateJob(updatedJob)
+        # emit signal
+        self.pEmitter.emit("on_setNewJob")
+
+
+
 # emitter
 class PEmitter(gobject.GObject):
     __gsignals__ = {
@@ -508,16 +558,17 @@ class PBookGuiMain:
                             pbookGuiGlobal)
         treeView = PTreeView(mainWindow.get_widget("mainTreeView"),
                              pbookGuiGlobal,pbookCore,self.pEmitter)
-        syncButton = PSyncButton(mainWindow.get_widget("syncButton"),
-                                 pbookCore,self.pEmitter)
-        backButton = PRangeButton(mainWindow.get_widget("backButton"),
-                                  pbookGuiGlobal,-treeView.maxJobs,self.pEmitter)
-        forwardButton = PRangeButton(mainWindow.get_widget("forwardButton"),
-                                     pbookGuiGlobal,treeView.maxJobs,self.pEmitter)
-        configButton = PConfigButton(gladefile)
+        syncButton     = PSyncButton(mainWindow.get_widget("syncButton"),
+                                     pbookCore,self.pEmitter)
+        backButton     = PRangeButton(mainWindow.get_widget("backButton"),
+                                      pbookGuiGlobal,-treeView.maxJobs,self.pEmitter)
+        forwardButton  = PRangeButton(mainWindow.get_widget("forwardButton"),
+                                      pbookGuiGlobal,treeView.maxJobs,self.pEmitter)
+        configButton   = PConfigButton(gladefile)
         pandaMonButton = PWebButton('http://panda.cern.ch')
         savannahButton = PWebButton('https://savannah.cern.ch/projects/panda/')
-        
+        updateButton   = PUpdateButton(pbookCore,pbookGuiGlobal,self.pEmitter)
+
         # set icons
         iconMap = {
             'retryButton'    : 'retry.png',
@@ -546,6 +597,7 @@ class PBookGuiMain:
                        "on_configButton_clicked"   : configButton.on_clicked,
                        "on_pandaMonButton_clicked" : pandaMonButton.on_clicked,
                        "on_savannahButton_clicked" : savannahButton.on_clicked,
+                       "on_updateButton_clicked" : updateButton.on_clicked,                       
                        }
         mainWindow.signal_autoconnect(signal_dic)
         

@@ -1,4 +1,7 @@
-#!/usr/bin/python
+#!/bin/bash
+
+"exec" "python" "-u" "-Wignore" "$0" "$@"
+
 
 import os
 import sys
@@ -60,14 +63,15 @@ sys.path = [tmpDir]+sys.path
 
 # core class for book keeping
 class PBookCore:
+
     # constructor
-    def __init__(self,verbose=False):
+    def __init__(self,enforceEnter=False,verbose=False):
         # verbose
         self.verbose = verbose
         # initialize database
         PdbUtils.initialzieDB(self.verbose)
         # check proxy
-        PsubUtils.checkGridProxy(self.verbose)
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy('',enforceEnter,self.verbose)
 
 
     # synchronize database
@@ -75,6 +79,8 @@ class PBookCore:
         # get logger
         tmpLog = PLogger.getPandaLogger()
         tmpLog.info("Synchronizing local database. It may take a couple of minutes")
+        # check proxy
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
         # get JobIDs in local database
         localJobIDs = PdbUtils.getListOfJobIDs()
         # get recent JobIDs from panda server
@@ -85,9 +91,8 @@ class PBookCore:
             bookConf.last_synctime = datetime.datetime.utcnow()-datetime.timedelta(days=180)
             bookConf.last_synctime = bookConf.last_synctime.strftime('%Y-%m-%d %H:%M:%S')
         status,remoteJobIDs = Client.getJobIDsInTimeRange(bookConf.last_synctime,verbose=self.verbose)
-        print status,remoteJobIDs
         if status != 0:
-            tmpLog.error("failed to get JobIDs from panda server")
+            tmpLog.error("Failed to get JobIDs from panda server")
             return
         tmpLog.info("Gotton %s jobs to be updated" % len(remoteJobIDs))
         # insert if missing
@@ -103,7 +108,7 @@ class PBookCore:
             # get PandaIDs
             status,pandaIDstatus = Client.getPandIDsWithJobID(remoteJobID,verbose=self.verbose)
             if status != 0:
-                tmpLog.error("failed to get PandaIDs for %s" % remoteJobID) 
+                tmpLog.error("Failed to get PandaIDs for %s" % remoteJobID) 
                 return
             pandaIDs = pandaIDstatus.keys()
             pandaIDs.sort()
@@ -111,7 +116,7 @@ class PBookCore:
             tmpIDs = [pandaIDs[0],pandaIDs[-1]]
             status,pandaJobs = Client.getFullJobStatus(tmpIDs,verbose=self.verbose)
             if status != 0:
-                tmpLog.error("failed to get PandaIDs for %s" % remoteJobID) 
+                tmpLog.error("Failed to get PandaIDs for %s" % remoteJobID) 
                 return
             # convert to local job spec
             localJob = PdbUtils.convertPtoD(pandaJobs,pandaIDstatus)
@@ -121,14 +126,14 @@ class PBookCore:
                 try:
                     PdbUtils.insertJobDB(localJob,self.verbose)
                 except:
-                    tmpLog.error("failed to insert JobID=%s to DB" % remoteJobID)
+                    tmpLog.error("Failed to insert JobID=%s to local DB" % remoteJobID)
                     return
             else:
                 # update
                 try:
                     PdbUtils.updateJobDB(localJob,self.verbose)
                 except:
-                    tmpLog.error("failed to update DB for JobID=%s" % remoteJobID)
+                    tmpLog.error("Failed to update local DB for JobID=%s" % remoteJobID)
                     return
         # update sync time
         bookConf = BookConfig.getConfig()
@@ -145,7 +150,7 @@ class PBookCore:
         job = PdbUtils.readJobDB(JobID,self.verbose)
         # not found
         if job == None:
-            tmpLog.warning("JobID=%s not found in local database. Database synchronization may be needed" % JobID)
+            tmpLog.warning("JobID=%s not found in local DB. Synchronization may be needed" % JobID)
             return None
         # return
         return job
@@ -169,18 +174,22 @@ class PBookCore:
     def status(self,JobID):
         # get logger
         tmpLog = PLogger.getPandaLogger()
+        # check proxy
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
         # get job info from local database
         job = self.getJobInfo(JobID)
         if job == None:
+            tmpLog.warning("JobID=%s not found in local DB. Synchronization may be needed" % JobID)            
             return None
         # update if needed
         if job.dbStatus != 'frozen':
+            tmpLog.info("Getting status for JobID=%s ..." % remoteJobID)            
             # get status from Panda server
             status,pandaIDstatus = Client.getPandIDsWithJobID(JobID,
                                                               nJobs=len(job.PandaID.split(',')),
                                                               verbose=self.verbose)
             if status != 0:
-                tmpLog.error("failed to get status for JobID=%s" % JobID)
+                tmpLog.error("Failed to get status for JobID=%s" % JobID)
                 return None
             # convert to local job spec
             job = PdbUtils.convertPtoD([],pandaIDstatus,job)
@@ -188,15 +197,53 @@ class PBookCore:
             try:
                 PdbUtils.updateJobDB(job,self.verbose)
             except:
-                tmpLog.error("failed to update JobID=%s" % JobID)
+                tmpLog.error("Failed to update local DB for JobID=%s" % JobID)
                 return None
         # return
         return job
 
 
+    # kill
+    def kill(self,JobID):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # check proxy
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
+        # get job info from local database
+        job = self.getJobInfo(JobID)
+        if job == None:
+            tmpLog.warning("JobID=%s not found in local DB. Synchronization may be needed" % JobID)            
+            return None
+	# skip frozen job
+        if job.dbStatus == 'frozen':
+            tmpLog.info('Skip because all sub-jobs already finished/failed')
+            return
+        # get PandaID list
+        killJobs = job.PandaID.split(',')
+        # kill
+        tmpLog.info('Sending kill command ...')
+        status,output = Client.killJobs(killJobs,self.verbose)
+        if status != 0:
+            tmpLog.error(output)
+            tmpLog.error("Failed to kill JobID=%s" % JobID)
+            return
+        # update database
+        job.commandToPilot = 'tobekilled'
+        # update DB
+        try:
+            PdbUtils.updateJobDB(job,self.verbose)
+        except:
+            tmpLog.error("Failed to update local DB for JobID=%s" % JobID)
+            return
+        # done
+        tmpLog.info('Done. JobID=%s will be killed in 30min' % JobID)
+        return
+
+
 
 # main for interactive session
 def intmain(pbookCore):
+
     # show status
     def show(JobID=None):
         # show all local info
@@ -211,6 +258,12 @@ def intmain(pbookCore):
             # print
             print "======================================"
             print job
+
+
+    # kill
+    def kill(JobID):
+        pbookCore.kill(JobID)
+
 
     # go to interactive prompt
     code.interact(banner="\nStart pBook %s" % PandaToolsPkgInfo.release_version,
@@ -245,6 +298,8 @@ if __name__ == "__main__":
                       help="verbose")
     parser.add_option("--gui",action="store_true",dest="gui",default=False,
                       help="use GUI")
+    parser.add_option("--noPass",action="store_true",dest="noPass",default=False,
+                      help="disable to enter pass phrase for GUI")
     parser.add_option('--version',action='store_const',const=True,dest='version',default=False,
                       help='Displays version')
     parser.add_option('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
@@ -267,13 +322,18 @@ if __name__ == "__main__":
         print "ERROR : Failed to fork"
         sys.exit(1)
     if fork_child_pid == 0:
-        # instantiate core
-        pbookCore = PBookCore(options.verbose)
         # main
         if options.gui:
+            # instantiate core with pass phrase
+            if options.noPass:
+                pbookCore = PBookCore(False,options.verbose)
+            else:
+                pbookCore = PBookCore(True,options.verbose)                
             # GUI
             guimain(pbookCore)
         else:
+            # instantiate core
+            pbookCore = PBookCore(False,options.verbose)
             # CUI
             intmain(pbookCore)
     else:

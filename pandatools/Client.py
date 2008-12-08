@@ -356,13 +356,14 @@ def getJobStatus(ids):
 
 
 # kill jobs
-def killJobs(ids):
+def killJobs(ids,verbose=False):
     # serialize
     strIDs = pickle.dumps(ids)
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey  = _x509()
+    curl.verbose = verbose    
     # execute
     url = baseURLSSL + '/killJobs'
     data = {'ids':strIDs}

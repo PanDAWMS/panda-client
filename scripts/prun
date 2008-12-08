@@ -106,7 +106,7 @@ if options.devSrv:
     Client.useDevServer()
     
 # check grid-proxy
-gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy(options.verbose)
+gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose)
 
 # save current dir
 curDir = os.path.realpath(os.getcwd())
