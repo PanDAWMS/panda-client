@@ -1,3 +1,4 @@
+import re
 import os
 import sys
 import gtk
@@ -142,17 +143,66 @@ class PSumView:
     
     # constructor
     def __init__(self,sumView,guiGlobal):
-        # text view
+        # widget
         self.sumView = sumView
         # global data
         self.guiGlobal = guiGlobal
-        # text buffer
-        self.buffer = self.sumView.get_buffer()
-        # set tag
-        self.tag = self.buffer.create_tag('default')
-        self.tag.set_property("font", "monospace")
-        # set color
-        self.sumView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))
+        # sizes
+        self.nLines = 17+1
+        self.nColumns = 4
+        # resize
+        self.sumView.resize(self.nLines,self.nColumns)
+        # create TextViews
+        self.allBufList = []
+        for iLine in range(self.nLines):
+            bufList = []
+            for item in ('label','value'):
+                # text buffer
+                textBuf = gtk.TextBuffer()
+                # set tag
+                tag = textBuf.create_tag('default')
+                tag.set_property("font", "monospace")
+                tag = textBuf.create_tag('red')
+                tag.set_property("font", "monospace")
+                tag.set_property('foreground','darkred')
+                tag = textBuf.create_tag('green')
+                tag.set_property("font", "monospace")
+                tag.set_property('foreground','darkgreen')
+                tag = textBuf.create_tag('yellow')
+                tag.set_property("font", "monospace")
+                tag.set_property('foreground','goldenrod')
+                tag = textBuf.create_tag('navy')
+                tag.set_property("font", "monospace")
+                tag.set_property('foreground','navy')
+                tag = textBuf.create_tag('skyblue')
+                tag.set_property("font", "monospace")
+                tag.set_property('foreground','cyan')
+                # create textview
+                textView = gtk.TextView(textBuf)
+                # properties
+                textView.set_editable(False)
+                textView.set_cursor_visible(False)
+                # set size and justification
+                if item == 'label':
+                    textView.set_size_request(120,-1)
+                    textView.set_justification(gtk.JUSTIFY_RIGHT)
+                else:
+                    textView.set_size_request(460,-1)
+                    textView.set_justification(gtk.JUSTIFY_LEFT)                    
+                # color
+                textView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))
+                # wrap mode
+                textView.set_wrap_mode(gtk.WRAP_CHAR)
+                # append
+                if item == 'label':
+                    self.sumView.attach(textView,0,1,iLine,iLine+1)
+                else:
+                    self.sumView.attach(textView,1,self.nColumns-1,iLine,iLine+1)
+                bufList.append(textBuf)
+            # append
+            self.allBufList.append(bufList)
+        # show
+        self.sumView.show_all()
 
 
     # show summary
@@ -161,14 +211,80 @@ class PSumView:
         jobID = self.guiGlobal.getCurrentJob()
         job   = self.guiGlobal.getJob(jobID)
         # make string
-        strJob  = "\n\n"
+        strJob  = "\n"
         strJob += str(job)
-        # flush
-        self.buffer.delete(self.buffer.get_start_iter(),
-                           self.buffer.get_end_iter())
-        self.buffer.insert_with_tags_by_name(self.buffer.get_end_iter(),
-                                             strJob,'default')
-        
+        strJob += "\n\n"        
+        # split to lines
+        lines = strJob.split('\n')
+        # fill
+        jobStatusRows  = False
+        jobStatusLines = ''
+        jobStatusIdx   = 0
+        for iLine in range(len(lines)):
+            # check limit
+            if iLine+1 > self.nLines:
+                continue
+            # decompose line to label and value
+            line = lines[iLine]
+            match = re.search('^([^:]+:)(.*)',line)
+            if match == None:
+                items = [line,'']
+            else:
+                items = match.groups()
+            # fill
+            if not jobStatusRows:
+                iItem = 0
+                for strLabel in items:
+                    # remove redundant white spaces
+                    strLabel = strLabel.strip()
+                    strLabel += ' '
+                    # get textbuffer
+                    textbuf = self.allBufList[iLine][iItem]
+                    # delete
+                    textbuf.delete(textbuf.get_start_iter(),
+                                   textbuf.get_end_iter())
+                    # set color
+                    tagname = 'default'
+                    if line.strip().startswith('jobStatus') and iItem != 0:
+                        if strLabel.find('frozen') != -1:
+                            tagname = 'navy'
+                        elif strLabel.find('killing') != -1:
+                            tagname = 'yellow'                            
+                        else:
+                            tagname = 'skyblue'
+                    # write
+                    textbuf.insert_with_tags_by_name(textbuf.get_end_iter(),
+                                                     strLabel,tagname)
+                    # increment
+                    iItem += 1
+                if line.strip().startswith('jobStatus'):
+                    jobStatusRows = True
+                    jobStatusIdx = iLine +1
+                    # get textbuffer
+                    textbuf = self.allBufList[iLine+1][1]
+                    # delete
+                    textbuf.delete(textbuf.get_start_iter(),
+                                   textbuf.get_end_iter())
+            else:
+                # get textbuffer
+                textbuf = self.allBufList[jobStatusIdx][1]
+                # change color
+                tagname = 'default'                
+                if line.find('finished') != -1:
+                    tagname = 'green'
+                elif line.find('failed') != -1:
+                    tagname = 'red'
+                else:
+                    tagname = 'yellow'
+                # reformat
+                items = line.strip().split()
+                if len(items) > 1:
+                    strLine = '%10s : %s\n' % (items[0],items[-1])
+                else:
+                    strLine = '\n'
+                textbuf.insert_with_tags_by_name(textbuf.get_end_iter(),
+                                                 strLine,tagname)
+
         
 
 # text view for status
@@ -207,7 +323,7 @@ class PStatView:
         tag.set_property('foreground','red')
         self.tags['ERROR'] = tag
         # format
-        self.format = ' %6s : %s\n'
+        self.format = ' %7s : %s\n'
         # dummy handlers
         self.handlers = ['']
         # set color
@@ -505,7 +621,7 @@ class PUpdateButton:
         # skip if frozen
         job = self.guiGlobal.getJob(jobID)
         if job.dbStatus == 'frozen':
-            tmpLog.info('Update is not required for frozen job')
+            tmpLog.info('Update is not required for frozen jobs')
             return
         # get updated info
         updatedJob = self.pBookCore.status(jobID)
@@ -554,7 +670,7 @@ class PBookGuiMain:
         self.pEmitter = PEmitter()
         # instantiate components
         statView = PStatView(mainWindow.get_widget("statusTextView"))
-        sumView  = PSumView(mainWindow.get_widget("summaryTextView"),
+        sumView  = PSumView(mainWindow.get_widget("summaryTable"),
                             pbookGuiGlobal)
         treeView = PTreeView(mainWindow.get_widget("mainTreeView"),
                              pbookGuiGlobal,pbookCore,self.pEmitter)
