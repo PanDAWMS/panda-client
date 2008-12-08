@@ -41,7 +41,7 @@ class Synchronizer(threading.Thread):
         # put back queue
         self.syncQueue.put(self.pbookCore)
         # emit signal
-        self.pEmitter.emit("on_syncEnd")
+        gobject.idle_add(self.pEmitter.emit,"on_syncEnd")
 
 
 

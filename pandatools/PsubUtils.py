@@ -46,6 +46,7 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False):
         # GRID pass phrase
         if gridPassPhrase == '':
             import getpass
+            tmpLog.info("Need to generate a grid proxy")            
             print "Your identity: " + commands.getoutput('%s grid-cert-info -subject' % gridSrc)
             gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:')
             gridPassPhrase = gridPassPhrase.replace('$','\$')
