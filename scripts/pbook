@@ -270,6 +270,10 @@ class PBookCore:
         if localJob.dbStatus != 'frozen':
             tmpLog.warning('Cannot retry un-frozen jobs')
             return
+	# skip already retried
+        if localJob.retryID != '0':
+            tmpLog.warning('This job was already retried by JobID=%s' % localJob.retryID)
+            return
         # check status of buildJob
         if not localJob.buildStatus in ['','finished']:
             tmpLog.warning('Cannot retry when status of buildJob %s is %s (!= finished)' \
@@ -289,11 +293,13 @@ class PBookCore:
             tmpLog.info('No failed jobs to be retried')
             return
         # get full job spec
+        tmpLog.info("Getting job info for JobID=%s ..." % JobID)                    
         idxJL  = 0
         nQuery = 500
         pandaJobs = []
         while idxJL < len(jobList):
             # avoid burst query
+            tmpLog.info(" %5s/%s" % (idxJL,len(jobList)))
             status,oTmp = Client.getFullJobStatus(jobList[idxJL:idxJL+nQuery],
                                                   verbose=self.verbose)
             if status != 0:
@@ -354,6 +360,7 @@ class PBookCore:
             # append
             retryJobs.append(job)
         # submit
+        tmpLog.info("Submitting job ...")
         status,out = Client.submitJobs(retryJobs,verbose=self.verbose)
         if out == None or status != 0:
             tmpLog.error(status)
@@ -391,6 +398,8 @@ class PBookCore:
         except:
             tmpLog.error("Failed to insert JobID=%s to local DB" % newJobID)
             return
+        # done
+        tmpLog.info('Submitted new JobID=%s' % newJobID)
                             
 
 
