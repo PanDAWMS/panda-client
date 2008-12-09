@@ -63,7 +63,7 @@ class LocalJobSpec(object):
         strOut += strFormat % ("inDS",         str(self.inDS))
         strOut += strFormat % ("outDS",        str(self.outDS))
         strOut += strFormat % ("libDS",        str(self.libDS))
-        strOut += strFormat % ("retryID",      self.provenanceID)        
+        strOut += strFormat % ("retryID",      self.retryID)        
         strOut += strFormat % ("provenanceID", self.provenanceID)
         strOut += strFormat % ("creationTime", self.creationTime.strftime('%Y-%m-%d %H:%M:%S'))
         strOut += strFormat % ("lastUpdate",   self.lastUpdate.strftime('%Y-%m-%d %H:%M:%S'))
@@ -112,7 +112,7 @@ class LocalJobSpec(object):
                 val = val.strftime('%Y-%m-%d %H:%M:%S')
             # add colum name for UPDATE
             if forUpdate:
-                if val == 'NULL' and attr == 'id':
+                if attr == 'id':
                     continue
                 retS += '%s=' % attr
             # value    

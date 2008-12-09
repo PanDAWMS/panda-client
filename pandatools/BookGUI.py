@@ -3,6 +3,7 @@ import os
 import sys
 import gtk
 import time
+import pango
 import gobject
 import gtk.glade
 import threading
@@ -95,30 +96,37 @@ class PBookGuiGlobal:
         self.currentJob = None
         self.jobOffset = 0
 
+
     # set job map
     def setJobMap(self,jobMap):
         self.jobMap = jobMap
 
+
     # get job map
     def getJobMap(self):
         return self.jobMap
+
 
     # set current job
     def setCurrentJob(self,jobID):
         if self.jobMap.has_key(jobID):
             self.currentJob = jobID
 
+
     # update job
     def updateJob(self,job):
         self.jobMap[job.JobID] = job
+
 
     # get current job
     def getCurrentJob(self):
         return self.currentJob
 
+
     # get job
     def getJob(self,jobID):
         return self.jobMap[jobID]
+
 
     # set offset of jobs
     def setJobOffset(self,change):
@@ -132,28 +140,67 @@ class PBookGuiGlobal:
         # set
         self.jobOffset = tmpOffset
 
+
     # get offset
     def getJobOffset(self):
         return self.jobOffset
 
-    
+
+
+# jump to JobID
+class PJumper:
+
+    # constructor
+    def __init__(self,guiGlobal,pEmitter):
+        # jobID to jump to
+        self.jobID = None
+        # global data
+        self.guiGlobal = guiGlobal
+        # emitter
+        self.pEmitter = pEmitter
+
+
+    # set jobID
+    def setJobID(self,jobID):
+        self.jobID = jobID
+
+        
+    # action
+    def on_clicked(self,tag,textview,event,iter):
+        # mouse clicked
+        if event.type == gtk.gdk.BUTTON_PRESS:
+            if self.jobID != None:
+                # set jobID to global
+                self.guiGlobal.setCurrentJob(self.jobID)
+                # emit
+                self.pEmitter.emit("on_setNewJob")
+
+
 
 # text view for summary
 class PSumView:
     
     # constructor
-    def __init__(self,sumView,guiGlobal):
+    def __init__(self,sumView,guiGlobal,pEmitter):
         # widget
         self.sumView = sumView
         # global data
         self.guiGlobal = guiGlobal
+        # emitter
+        self.pEmitter = pEmitter
+        # jumper
+        self.jumper = {'retryID'      : PJumper(self.guiGlobal,self.pEmitter),
+                       'provenanceID' : PJumper(self.guiGlobal,self.pEmitter),
+                       }
+        self.firstJump = True
         # sizes
         self.nLines = 17+1
         self.nColumns = 4
         # resize
         self.sumView.resize(self.nLines,self.nColumns)
         # create TextViews
-        self.allBufList = []
+        self.allBufList  = []
+        self.textViewMap = {}
         for iLine in range(self.nLines):
             bufList = []
             for item in ('label','value'):
@@ -179,6 +226,7 @@ class PSumView:
                 tag.set_property('foreground','cyan')
                 # create textview
                 textView = gtk.TextView(textBuf)
+                self.textViewMap[textBuf] = textView
                 # properties
                 textView.set_editable(False)
                 textView.set_cursor_visible(False)
@@ -188,7 +236,8 @@ class PSumView:
                     textView.set_justification(gtk.JUSTIFY_RIGHT)
                 else:
                     textView.set_size_request(460,-1)
-                    textView.set_justification(gtk.JUSTIFY_LEFT)                    
+                    textView.set_justification(gtk.JUSTIFY_LEFT)
+                    textView.set_right_margin(20)
                 # color
                 textView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))
                 # wrap mode
@@ -203,6 +252,10 @@ class PSumView:
             self.allBufList.append(bufList)
         # show
         self.sumView.show_all()
+        # cursors
+        self.cursors = {'normal' : gtk.gdk.Cursor(gtk.gdk.XTERM),
+                        'link'   : gtk.gdk.Cursor(gtk.gdk.HAND2)
+                        }
 
 
     # show summary
@@ -213,7 +266,7 @@ class PSumView:
         # make string
         strJob  = "\n"
         strJob += str(job)
-        strJob += "\n\n"        
+        strJob += "\n"       
         # split to lines
         lines = strJob.split('\n')
         # fill
@@ -252,6 +305,31 @@ class PSumView:
                             tagname = 'yellow'                            
                         else:
                             tagname = 'skyblue'
+                    # add jumper
+                    match = re.search('\s*(\S+)\s*:',line)
+                    if match != None:
+                        realLabel = match.group(1)
+                        if self.jumper.has_key(realLabel) and iItem != 0:
+                            # set jobID
+                            jumper = self.jumper[realLabel]
+                            jobID = strLabel.strip()
+                            if jobID == '0':
+                                jumper.setJobID(None)
+                                strLabel = ''
+                                # change mouse cursor
+                                self.textViewMap[textbuf].get_window(gtk.TEXT_WINDOW_TEXT).set_cursor(self.cursors['normal'])
+                            else:
+                                jumper.setJobID(jobID)
+                                # set tagname
+                                tagname = 'hyperlink'
+                                # change mouse cursor
+                                self.textViewMap[textbuf].get_window(gtk.TEXT_WINDOW_TEXT).set_cursor(self.cursors['link'])
+                            # setup textview
+                            if self.firstJump:
+                                # add connection
+                                tag = textbuf.create_tag("hyperlink",foreground='blue',
+                                                         underline=pango.UNDERLINE_SINGLE)
+                                tag.connect('event',jumper.on_clicked)
                     # write
                     textbuf.insert_with_tags_by_name(textbuf.get_end_iter(),
                                                      strLabel,tagname)
@@ -285,6 +363,8 @@ class PSumView:
                 textbuf.insert_with_tags_by_name(textbuf.get_end_iter(),
                                                  strLine,tagname)
 
+        # disable first flag
+        self.firstJump = False
         
 
 # text view for status
@@ -518,10 +598,12 @@ class PSyncButton:
         # emitter
         self.pEmitter = pEmitter
 
+
     # synchronze database
     def on_clicked(self,widget):
         synchronizer = Synchronizer(self.syncQueue,self.pEmitter)
         synchronizer.start()
+
 
 
 # range button
@@ -624,7 +706,7 @@ class PUpdateButton:
             tmpLog.info('Update is not required for frozen jobs')
             return
         # get updated info
-        updatedJob = self.pBookCore.status(jobID)
+        updatedJob = self.pbookCore.status(jobID)
         # update global data
         self.guiGlobal.updateJob(updatedJob)
         # emit signal
@@ -640,10 +722,11 @@ class PEmitter(gobject.GObject):
         'on_rangeChanged' : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (bool,)),
         'on_triggerSync'  : (gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, ()),        
         }
-            
+    # constructor
     def __init__(self):
         gobject.GObject.__init__(self)
 
+# register emitter
 gobject.type_register(PEmitter)
 
 
@@ -651,7 +734,8 @@ gobject.type_register(PEmitter)
 # wrapper for gtk.main_quit
 def overallQuit(*arg):
     gtk.main_quit()
-    commands.getoutput('kill -9 -- -%s' % os.getpgrp())    
+    #commands.getoutput('kill -9 -- -%s' % os.getpgrp())
+    commands.getoutput('kill -- -%s' % os.getpgrp())        
 
 
 
@@ -671,7 +755,7 @@ class PBookGuiMain:
         # instantiate components
         statView = PStatView(mainWindow.get_widget("statusTextView"))
         sumView  = PSumView(mainWindow.get_widget("summaryTable"),
-                            pbookGuiGlobal)
+                            pbookGuiGlobal,self.pEmitter)
         treeView = PTreeView(mainWindow.get_widget("mainTreeView"),
                              pbookGuiGlobal,pbookCore,self.pEmitter)
         syncButton     = PSyncButton(mainWindow.get_widget("syncButton"),
@@ -684,7 +768,6 @@ class PBookGuiMain:
         pandaMonButton = PWebButton('http://panda.cern.ch')
         savannahButton = PWebButton('https://savannah.cern.ch/projects/panda/')
         updateButton   = PUpdateButton(pbookCore,pbookGuiGlobal,self.pEmitter)
-
         # set icons
         iconMap = {
             'retryButton'    : 'retry.png',
@@ -704,7 +787,6 @@ class PBookGuiMain:
             image.show()
             button = mainWindow.get_widget(buttonName)
             button.set_icon_widget(image)
-
         # set gtk_main_quit handler
         signal_dic = { "gtk_main_quit"             : overallQuit,
                        "on_syncButton_clicked"     : syncButton.on_clicked,
@@ -716,16 +798,13 @@ class PBookGuiMain:
                        "on_updateButton_clicked" : updateButton.on_clicked,                       
                        }
         mainWindow.signal_autoconnect(signal_dic)
-        
         # set logger
         PLogger.setLogger(statView)
-
         # connect signales
         self.pEmitter.connect('on_triggerSync',  syncButton.on_clicked)
         self.pEmitter.connect('on_syncEnd',      treeView.reloadJobList)
         self.pEmitter.connect('on_rangeChanged', treeView.reloadJobList)
         self.pEmitter.connect('on_setNewJob',    sumView.showJobInfo)
-        
         # set timer for initial sync
         gtk.timeout_add(1000, self.runSynchronizer)
 

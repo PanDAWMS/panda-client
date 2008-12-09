@@ -81,6 +81,10 @@ def _x509():
     return ''
 
 
+# keep list of tmp files for cleanup
+globalTmpDir = ''
+
+
 # curl class
 class _Curl:
     # constructor
@@ -114,7 +118,10 @@ class _Curl:
         for key in data.keys():
             strData += 'data="%s"\n' % urllib.urlencode({key:data[key]})
         # write data to temporary config file
-        tmpFD,tmpName = tempfile.mkstemp()
+        if globalTmpDir != '':
+            tmpFD,tmpName = tempfile.mkstemp(dir=globalTmpDir)
+        else:
+            tmpFD,tmpName = tempfile.mkstemp()            
         os.write(tmpFD,strData)
         os.close(tmpFD)
         com += ' --config %s' % tmpName
@@ -156,7 +163,10 @@ class _Curl:
         for key in data.keys():
             strData += 'data="%s"\n' % urllib.urlencode({key:data[key]})
         # write data to temporary config file
-        tmpFD,tmpName = tempfile.mkstemp()
+        if globalTmpDir != '':
+            tmpFD,tmpName = tempfile.mkstemp(dir=globalTmpDir)
+        else:
+            tmpFD,tmpName = tempfile.mkstemp()
         os.write(tmpFD,strData)
         os.close(tmpFD)
         com += ' --config %s' % tmpName
@@ -1311,3 +1321,9 @@ def getFullJobStatus(ids,verbose):
         type, value, traceBack = sys.exc_info()
         print "ERROR getFullJobStatus : %s %s" % (type,value)
         return EC_Failed,None
+
+
+# set tmp dir
+def setGlobalTmpDir(tmpDir):
+    global globalTmpDir
+    globalTmpDir = tmpDir

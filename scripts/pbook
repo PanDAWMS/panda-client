@@ -3,9 +3,11 @@
 "exec" "python" "-u" "-Wignore" "$0" "$@"
 
 
+import re
 import os
 import sys
 import code
+import time
 import atexit
 import signal
 import datetime
@@ -13,7 +15,6 @@ import tempfile
 import commands
 import optparse
 import readline
-import rlcompleter
 
 from pandatools import PdbUtils
 from pandatools import Client
@@ -22,6 +23,7 @@ from pandatools import PLogger
 from pandatools import PsubUtils
 from pandatools import PandaToolsPkgInfo
 from pandatools import BookConfig
+
 
 # readline support
 readline.parse_and_bind('tab: complete')
@@ -32,6 +34,7 @@ pconfDir = os.path.expanduser(os.environ['PANDA_CONFIG_ROOT'])
 if not os.path.exists(pconfDir):
     os.makedirs(pconfDir)
 historyFile = '%s/.history' % pconfDir
+# history file
 if os.path.exists(historyFile):
     readline.read_history_file(historyFile)
 readline.set_history_length(1024)
@@ -43,11 +46,22 @@ if not os.environ.has_key('CMTSITE'):
 # make tmp dir
 tmpDir = tempfile.mkdtemp()
 
+# set tmp dir in Client
+Client.setGlobalTmpDir(tmpDir)
+
+# fork PID 
+fork_child_pid = None
+
 # exit action
 def _onExit(dirName,hFile):
-    readline.write_history_file(hFile)
+    # save history only for master process
+    if fork_child_pid == 0:
+        readline.write_history_file(hFile)
+    # remove tmp dir
     commands.getoutput('rm -rf %s' % dirName)
 atexit.register(_onExit,tmpDir,historyFile)
+
+
 
 # look for PandaTools package
 for path in sys.path:
@@ -183,7 +197,7 @@ class PBookCore:
             return None
         # update if needed
         if job.dbStatus != 'frozen':
-            tmpLog.info("Getting status for JobID=%s ..." % remoteJobID)            
+            tmpLog.info("Getting status for JobID=%s ..." % JobID)            
             # get status from Panda server
             status,pandaIDstatus = Client.getPandIDsWithJobID(JobID,
                                                               nJobs=len(job.PandaID.split(',')),
@@ -199,6 +213,7 @@ class PBookCore:
             except:
                 tmpLog.error("Failed to update local DB for JobID=%s" % JobID)
                 return None
+            tmpLog.info("Updated JobID=%s" % JobID)                        
         # return
         return job
 
@@ -216,7 +231,7 @@ class PBookCore:
             return None
 	# skip frozen job
         if job.dbStatus == 'frozen':
-            tmpLog.info('Skip because all sub-jobs already finished/failed')
+            tmpLog.info('Skip. All subJobs already finished/failed')
             return
         # get PandaID list
         killJobs = job.PandaID.split(',')
@@ -240,12 +255,179 @@ class PBookCore:
         return
 
 
+    # retry
+    def retry(self,JobID):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # check proxy
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
+        # get job info from local database
+        localJob = self.getJobInfo(JobID)
+        if localJob == None:
+            tmpLog.warning("JobID=%s not found in local DB. Synchronization may be needed" % JobID)            
+            return None
+	# skip running job
+        if localJob.dbStatus != 'frozen':
+            tmpLog.warning('Cannot retry un-frozen jobs')
+            return
+        # check status of buildJob
+        if not localJob.buildStatus in ['','finished']:
+            tmpLog.warning('Cannot retry when status of buildJob %s is %s (!= finished)' \
+                           % (localJob.PandaID.split(',')[0],localJob.buildStatus))
+            return
+        # get list of failed jobs
+        pandaIDs  = localJob.PandaID.split(',')
+        statusList= localJob.jobStatus.split(',')
+        jobList = []
+        for idx in range(len(pandaIDs)):
+            # check status
+            if statusList[idx] != 'failed':
+                continue
+            jobList.append(pandaIDs[idx])
+        # no failed job
+        if jobList == []:
+            tmpLog.info('No failed jobs to be retried')
+            return
+        # get full job spec
+        idxJL  = 0
+        nQuery = 500
+        pandaJobs = []
+        while idxJL < len(jobList):
+            # avoid burst query
+            status,oTmp = Client.getFullJobStatus(jobList[idxJL:idxJL+nQuery],
+                                                  verbose=self.verbose)
+            if status != 0:
+                tmpLog.error(status)
+                tmpLog.error(oTmp)
+                tmpLog.error("Cannot get job info from Panda server")
+                return
+            pandaJobs += oTmp
+            idxJL += nQuery
+            time.sleep(1)
+        # reset some parameters
+        retryJobs    = []
+        retrySite    = None
+        retryElement = None
+        for idx in range(len(jobList)):
+            job = pandaJobs[idx]
+            # skip exired
+            if job == None:
+                tmpLog.warning("Could not retry jobs older than 30 days : JobID=%s (PandaID=%s) expired" \
+                               % (JobID,jobList[idxJob]))
+                return
+            # unify sitename
+            if retrySite == None:
+                retrySite    = job.computingSite
+                retryElement = job.computingElement
+            # reset
+            job.jobStatus           = None
+            job.commandToPilot      = None
+            job.startTime           = None
+            job.endTime             = None
+            job.attemptNr           = 1+job.attemptNr
+            job.transExitCode       = None
+            job.pilotErrorCode      = None
+            job.exeErrorCode        = None
+            job.ddmErrorCode        = None
+            job.taskBufferErrorCode = None
+            job.computingSite       = retrySite
+            job.computingElement    = retryElement
+            job.dispatchDBlock      = None
+            job.jobExecutionID      = JobID
+            for file in job.Files:
+                file.rowID = None
+                if file.type in ('output','log'):
+                    file.destinationDBlock=file.dataset
+                    # add attempt nr
+                    oldName  = file.lfn
+                    file.lfn = re.sub("\.\d+$","",file.lfn)
+                    file.lfn = "%s.%d" % (file.lfn,job.attemptNr)
+                    newName  = file.lfn
+                    # modify jobParameters
+                    job.jobParameters = re.sub("'%s'" % oldName ,"'%s'" % newName,
+                                               job.jobParameters)
+                    # look for output in trf
+                    oldGenelicName = re.sub('\.\d+$','',oldName)
+                    match = re.search(oldGenelicName+'(\.\d+)*(%20|")',job.jobParameters)
+                    if match != None:
+                        job.jobParameters = job.jobParameters.replace(match.group(0),newName+match.group(2))
+            # append
+            retryJobs.append(job)
+        # submit
+        status,out = Client.submitJobs(retryJobs,verbose=self.verbose)
+        if out == None or status != 0:
+            tmpLog.error(status)
+            tmpLog.error(out)
+            tmpLog.error("Failed to submit jobs to Panda server")
+            return
+        # update database
+        pandaIDstatus = {}
+        newJobID = None
+        for items in out:
+            # get newJobID
+            if newJobID == None:
+                newJobID = items[1]
+            # check PandaID
+            PandaID = items[0]
+            if PandaID == 'NULL':
+                tmpLog.error("Panda server returned wrong IDs. It may have a temporary problem")
+                return
+            # dummy statuso
+            pandaIDstatus[PandaID] = ('defined','NULL')
+        # set retry ID
+        localJob.retryID = newJobID
+        try:
+            PdbUtils.updateJobDB(localJob,self.verbose)
+        except:
+            tmpLog.error("Failed to set retryID for JobID=%s" % JobID)
+            return
+        # set new paramers
+        newLocalJob = PdbUtils.convertPtoD(retryJobs,pandaIDstatus)
+        newLocalJob.JobID = newJobID
+        newLocalJob.creationTime = datetime.datetime.utcnow()
+        # insert to DB
+        try:
+            PdbUtils.insertJobDB(newLocalJob,self.verbose)
+        except:
+            tmpLog.error("Failed to insert JobID=%s to local DB" % newJobID)
+            return
+                            
+
+
+# keep original help
+_orgHelp = help
+
+
 
 # main for interactive session
 def intmain(pbookCore):
 
+    # help
+    def help(*arg):
+        """Print help"""
+        # use built-in help
+        if len(arg) > 0:
+            apply(_orgHelp,arg)
+            return
+        # print available methods
+        str = """Available functions:
+
+   show
+   kill
+   retry
+         
+For more info, do help(show) for example."""
+        print str
+        
+                                        
     # show status
     def show(JobID=None):
+        """Print job records. All records will be shown if JobID is omitted
+        
+         example:
+           >>> show()
+           >>> show(12)
+         """
         # show all local info
         if JobID == None:
             jobList = pbookCore.getLocalJobList()
@@ -254,7 +436,7 @@ def intmain(pbookCore):
                 print "======================================"
                 print job
         else:
-            job = pbookCore.getJobInfo(JobID)
+            job = pbookCore.status(JobID)
             # print
             print "======================================"
             print job
@@ -262,13 +444,27 @@ def intmain(pbookCore):
 
     # kill
     def kill(JobID):
+        """Kill all subJobs in JobID
+
+         example:
+           >>> kill(15)
+        """
         pbookCore.kill(JobID)
+
+
+    # retry
+    def retry(JobID):
+        """Retry failed subJobs in JobID
+
+         example:
+           >>> retry(15)
+        """
+        pbookCore.retry(JobID)
 
 
     # go to interactive prompt
     code.interact(banner="\nStart pBook %s" % PandaToolsPkgInfo.release_version,
                   local=locals())
-
 
 
 # main for GUI session
@@ -285,6 +481,8 @@ def guimain(pbookCore):
 
 # kill whole process
 def catch_sig(sig, frame):
+    # cleanup
+    _onExit(tmpDir,historyFile)
     # kill
     commands.getoutput('kill -9 -- -%s' % os.getpgrp())
 
@@ -305,7 +503,7 @@ if __name__ == "__main__":
     parser.add_option('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
                       help="Please don't use this option. Only for developers to use the dev panda server")
     
-    options, args = parser.parse_args()
+    options,args = parser.parse_args()
 
     # display version
     if options.version:
