@@ -543,7 +543,13 @@ if os.path.exists(jobid_file):
     except:
         pass
 
-    
+
+# full execution string
+fullExecString = PsubUtils.convSysArgv()
+
+# job name
+jobName = 'prun.%s' % commands.getoutput('uuidgen')
+
 # make jobs
 jobList = []
 
@@ -551,7 +557,8 @@ jobList = []
 if options.libDS == '': 
     jobB = JobSpec()
     jobB.jobDefinitionID   = jobDefinitionID
-    jobB.jobName           = commands.getoutput('uuidgen')
+    jobB.jobName           = jobName
+    jobB.metadata          = fullExecString
     if athenaVer != '':
         jobB.AtlasRelease  = athenaVer
         jobB.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
@@ -652,7 +659,8 @@ indexOffsetMap = {}
 for iJob in range(options.nJobs):
     jobR = JobSpec()
     jobR.jobDefinitionID   = jobDefinitionID
-    jobR.jobName           = commands.getoutput('uuidgen')
+    jobR.jobName           = jobName
+    jobR.metadata          = fullExecString
     if athenaVer != '':
         jobR.AtlasRelease  = athenaVer
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer

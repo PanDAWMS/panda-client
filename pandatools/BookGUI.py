@@ -47,6 +47,43 @@ class Synchronizer(threading.Thread):
 
 
 
+# thread to retry in background
+class RetryWorker(threading.Thread):
+    
+    # constructor
+    def __init__(self,jobID,guiGlobal,retryQueue,pEmitter):
+        # init thread
+        threading.Thread.__init__(self)
+        # JobID
+        self.jobID = jobID
+        # global data
+        self.guiGlobal = guiGlobal
+        # queue
+        self.retryQueue = retryQueue
+        # try to get core
+        try:
+            self.pbookCore = self.retryQueue.get_nowait()
+        except:
+            self.pbookCore = None
+        # emitter
+        self.pEmitter = pEmitter
+
+    # run
+    def run(self):
+        if self.pbookCore == None:
+            return
+        # retry
+        self.pbookCore.retry(self.jobID)
+        # put back queue
+        self.retryQueue.put(self.pbookCore)
+        # reset offset
+        self.guiGlobal.resetJobOffset()
+        # emit signal
+        gobject.idle_add(self.pEmitter.emit,"on_syncEnd")
+
+
+
+
 # thread to open url
 class UrlOpener(threading.Thread):
     
@@ -92,14 +129,22 @@ class PBookGuiGlobal:
 
     # constructor
     def __init__(self):
+        # list of jobs in local DB
         self.jobMap = {}
+        # current JobID
         self.currentJob = None
+        # current job offset
         self.jobOffset = 0
-
+        # lock
+        self.lock = Queue.Queue(1)
+        self.lock.put(True)
+        
 
     # set job map
     def setJobMap(self,jobMap):
+        lock = self.lock.get()
         self.jobMap = jobMap
+        self.lock.put(lock)
 
 
     # get job map
@@ -109,14 +154,18 @@ class PBookGuiGlobal:
 
     # set current job
     def setCurrentJob(self,jobID):
+        lock = self.lock.get()        
         if self.jobMap.has_key(jobID):
             self.currentJob = jobID
-
+        self.lock.put(lock)
+        
 
     # update job
     def updateJob(self,job):
+        lock = self.lock.get()
         self.jobMap[job.JobID] = job
-
+        self.lock.put(lock)
+        
 
     # get current job
     def getCurrentJob(self):
@@ -128,18 +177,28 @@ class PBookGuiGlobal:
         return self.jobMap[jobID]
 
 
+    # reset offset of jobs
+    def resetJobOffset(self):
+        lock = self.lock.get()
+        # reset to 0
+        self.jobOffset = 0
+        self.lock.put(lock)
+        
+        
     # set offset of jobs
     def setJobOffset(self,change):
+        lock = self.lock.get()        
         # try
         tmpOffset = self.jobOffset + change
         # reset if out of range
         if tmpOffset >= len(self.jobMap):
-            return
+            tmpOffset = self.jobOffset
         elif tmpOffset < 0:
             tmpOffset = 0
         # set
         self.jobOffset = tmpOffset
-
+        self.lock.put(lock)
+        
 
     # get offset
     def getJobOffset(self):
@@ -211,19 +270,22 @@ class PSumView:
                 tag.set_property("font", "monospace")
                 tag = textBuf.create_tag('red')
                 tag.set_property("font", "monospace")
-                tag.set_property('foreground','darkred')
+                tag.set_property('foreground','red2')
+                tag = textBuf.create_tag('pink')
+                tag.set_property("font", "monospace")
+                tag.set_property('foreground','deeppink')
                 tag = textBuf.create_tag('green')
                 tag.set_property("font", "monospace")
-                tag.set_property('foreground','darkgreen')
+                tag.set_property('foreground','green4')
                 tag = textBuf.create_tag('yellow')
                 tag.set_property("font", "monospace")
-                tag.set_property('foreground','goldenrod')
+                tag.set_property('foreground','darkgoldenrod')
                 tag = textBuf.create_tag('navy')
                 tag.set_property("font", "monospace")
                 tag.set_property('foreground','navy')
                 tag = textBuf.create_tag('skyblue')
                 tag.set_property("font", "monospace")
-                tag.set_property('foreground','cyan')
+                tag.set_property('foreground','darkturquoise')
                 # create textview
                 textView = gtk.TextView(textBuf)
                 self.textViewMap[textBuf] = textView
@@ -302,7 +364,7 @@ class PSumView:
                         if strLabel.find('frozen') != -1:
                             tagname = 'navy'
                         elif strLabel.find('killing') != -1:
-                            tagname = 'yellow'                            
+                            tagname = 'pink'                            
                         else:
                             tagname = 'skyblue'
                     # add jumper
@@ -434,9 +496,12 @@ class PStatView:
 
         
     # emulation for logging
-    def info(self,msg):
+    def info(self,msg,withLock=False):
         sem = self.queue.get()
-        gobject.idle_add(self.write,'INFO',msg)
+        if withLock:
+            self.write('INFO',msg)
+        else:
+            gobject.idle_add(self.write,'INFO',msg)            
         self.queue.put(sem)
 
 
@@ -623,10 +688,16 @@ class PRangeButton:
 
     # clicked action
     def on_clicked(self,widget):
+        # get current offset
+        oldOffset = self.guiGlobal.getJobOffset()
         # chage offset
         self.guiGlobal.setJobOffset(self.change)
+        # get new offset
+        newOffset = self.guiGlobal.getJobOffset()
         # emit signal
-        self.pEmitter.emit("on_rangeChanged",False)
+        if oldOffset != newOffset:
+            self.pEmitter.emit("on_rangeChanged",False)
+
 
 
 # wev button
@@ -714,6 +785,84 @@ class PUpdateButton:
 
 
 
+# kill button
+class PKillButton:
+
+    # constructor
+    def __init__(self,pbookCore,guiGlobal,pEmitter):
+        # core
+        self.pbookCore = pbookCore
+        # global
+        self.guiGlobal = guiGlobal
+        # emitter
+        self.pEmitter = pEmitter
+
+
+    # clicked action
+    def on_clicked(self,widget):
+        # logger
+        tmpLog = PLogger.getPandaLogger()
+        # get jobID
+        jobID = self.guiGlobal.getCurrentJob()
+        if jobID == None:
+            tmpLog.warning('No job is selected. Please click a job in the left list first')
+            return
+        # skip if frozen
+        job = self.guiGlobal.getJob(jobID)
+        if job.dbStatus == 'frozen':
+            tmpLog.info('All subJobs already finished/failed')            
+            return
+        # kill
+        self.pbookCore.kill(jobID)
+        # get job info
+        updatedJob = self.pbookCore.getJobInfo(jobID)
+        # update global data
+        self.guiGlobal.updateJob(updatedJob)
+        # emit signal
+        self.pEmitter.emit("on_setNewJob")
+
+
+
+# retry button
+class PRetryButton:
+
+    # constructor
+    def __init__(self,pbookCore,guiGlobal,pEmitter):
+        # core
+        self.pbookCore = pbookCore
+        # global
+        self.guiGlobal = guiGlobal
+        # emitter
+        self.pEmitter = pEmitter
+        # queue for retry wokers
+        self.retryQueue = Queue.Queue(1)
+        self.retryQueue.put(pbookCore)
+
+
+    # clicked action
+    def on_clicked(self,widget):
+        # logger
+        tmpLog = PLogger.getPandaLogger()
+        # get jobID
+        jobID = self.guiGlobal.getCurrentJob()
+        if jobID == None:
+            tmpLog.warning('No job is selected. Please click a job in the left list first')
+            return
+        # skip if frozen
+        job = self.guiGlobal.getJob(jobID)
+        if job.dbStatus != 'frozen':
+            tmpLog.warning('Cannot retry running jobs')
+            return
+	# skip already retried
+        if job.retryID != '0':
+            tmpLog.warning('This job was already retried by JobID=%s' % job.retryID)
+            return
+        # retry
+        thr = RetryWorker(jobID,self.guiGlobal,self.retryQueue,self.pEmitter)
+        thr.start()
+
+
+
 # emitter
 class PEmitter(gobject.GObject):
     __gsignals__ = {
@@ -768,6 +917,8 @@ class PBookGuiMain:
         pandaMonButton = PWebButton('http://panda.cern.ch')
         savannahButton = PWebButton('https://savannah.cern.ch/projects/panda/')
         updateButton   = PUpdateButton(pbookCore,pbookGuiGlobal,self.pEmitter)
+        killButton     = PKillButton(pbookCore,pbookGuiGlobal,self.pEmitter)
+        retryButton    = PRetryButton(pbookCore,pbookGuiGlobal,self.pEmitter)                
         # set icons
         iconMap = {
             'retryButton'    : 'retry.png',
@@ -795,7 +946,9 @@ class PBookGuiMain:
                        "on_configButton_clicked"   : configButton.on_clicked,
                        "on_pandaMonButton_clicked" : pandaMonButton.on_clicked,
                        "on_savannahButton_clicked" : savannahButton.on_clicked,
-                       "on_updateButton_clicked" : updateButton.on_clicked,                       
+                       "on_updateButton_clicked"   : updateButton.on_clicked,
+                       "on_killButton_clicked"     : killButton.on_clicked,
+                       "on_retryButton_clicked"    : retryButton.on_clicked,                       
                        }
         mainWindow.signal_autoconnect(signal_dic)
         # set logger

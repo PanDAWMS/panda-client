@@ -15,6 +15,7 @@ import tempfile
 import commands
 import optparse
 import readline
+import threading
 
 from pandatools import PdbUtils
 from pandatools import Client
@@ -231,7 +232,7 @@ class PBookCore:
             return None
 	# skip frozen job
         if job.dbStatus == 'frozen':
-            tmpLog.info('Skip. All subJobs already finished/failed')
+            tmpLog.info('All subJobs already finished/failed')
             return
         # get PandaID list
         killJobs = job.PandaID.split(',')
@@ -268,7 +269,7 @@ class PBookCore:
             return None
 	# skip running job
         if localJob.dbStatus != 'frozen':
-            tmpLog.warning('Cannot retry un-frozen jobs')
+            tmpLog.warning('Cannot retry running jobs')
             return
 	# skip already retried
         if localJob.retryID != '0':
@@ -293,13 +294,14 @@ class PBookCore:
             tmpLog.info('No failed jobs to be retried')
             return
         # get full job spec
-        tmpLog.info("Getting job info for JobID=%s ..." % JobID)                    
+        tmpLog.info("Retrying JobID=%s ..." % JobID)
+        tmpLog.info("Getting job info")
         idxJL  = 0
         nQuery = 500
         pandaJobs = []
         while idxJL < len(jobList):
             # avoid burst query
-            tmpLog.info(" %5s/%s" % (idxJL,len(jobList)))
+            tmpLog.info(" %5s/%s" % (idxJL,len(jobList)))                
             status,oTmp = Client.getFullJobStatus(jobList[idxJL:idxJL+nQuery],
                                                   verbose=self.verbose)
             if status != 0:
@@ -310,6 +312,7 @@ class PBookCore:
             pandaJobs += oTmp
             idxJL += nQuery
             time.sleep(1)
+        tmpLog.info(" %5s/%s" % (len(jobList),len(jobList)))            
         # reset some parameters
         retryJobs    = []
         retrySite    = None
@@ -360,7 +363,7 @@ class PBookCore:
             # append
             retryJobs.append(job)
         # submit
-        tmpLog.info("Submitting job ...")
+        tmpLog.info("Submitting job ...")            
         status,out = Client.submitJobs(retryJobs,verbose=self.verbose)
         if out == None or status != 0:
             tmpLog.error(status)
@@ -399,8 +402,8 @@ class PBookCore:
             tmpLog.error("Failed to insert JobID=%s to local DB" % newJobID)
             return
         # done
-        tmpLog.info('Submitted new JobID=%s' % newJobID)
-                            
+        tmpLog.info('Done. New JobID=%s' % newJobID)
+            
 
 
 # keep original help
