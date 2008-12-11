@@ -51,7 +51,7 @@ optP.add_option('--official',action='store_const',const=True,dest='official',def
                 help='Produce official dataset')
 optP.add_option('--nFiles',action='store',dest='nFiles',default=0,type='int',
                 help='Use a limited number of files in the input dataset')
-optP.add_option('--nFilesPerJob',action='store',dest='nFilesPerJob',default=20,type='int',
+optP.add_option('--nFilesPerJob',action='store',dest='nFilesPerJob',default=None,type='int',
                 help='Number of files on which each sub-job runs (default 20)')
 optP.add_option('--nJobs',action='store',dest='nJobs',default=-1,type='int',
                 help='Maximum number of sub-jobs. If the number of input files (N_in) is less than nJobs*nFilesPerJob, only N_in/nFilesPerJob sub-jobs will be instantiated')
@@ -514,6 +514,53 @@ from taskbuffer.JobSpec  import JobSpec
 from taskbuffer.FileSpec import FileSpec
 
 
+# max total filesize on each WN
+maxTotalSize = long(5*1024*1024*1024)
+
+# set number of files per job
+if options.inDS != '' and options.nFilesPerJob == None:
+    # count total size for inputs
+    totalSize = 0
+    for tmpLFN in inputFileList:
+        vals = inputFileMap[tmpLFN]
+        try:
+            totalSize += long(vals['fsize'])
+        except:
+            pass
+    # the number of files per max total
+    tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize)
+    if tmpMod != 0:
+        tmpNSplit += 1
+    tmpNFiles,tmpMod = divmod(len(inputFileList),tmpNSplit)
+    if tmpMod != 0:
+        tmpNFiles += 1
+    # set upper limit
+    upperLimitOnFiles = 20
+    if tmpNFiles > upperLimitOnFiles:
+        tmpNFiles = upperLimitOnFiles
+    # check again just in case
+    iDiv = 0
+    subTotal = 0
+    for tmpLFN in inputFileList:
+        vals =inputFileMap[tmpLFN]
+        try:
+            subTotal += long(vals['fsize'])
+        except:
+            pass
+        iDiv += 1
+        if iDiv >= tmpNFiles:
+            # check
+            if subTotal > maxTotalSize:
+                # decrement
+                tmpNFiles -= 1
+                break
+            # reset
+            iDiv = 0
+            subTotal = 0
+    # set
+    options.nFilesPerJob = tmpNFiles
+                                                            
+
 # calculate number of jobs
 if options.nJobs == -1:
     if options.inDS == '':
@@ -650,9 +697,6 @@ if options.outputs != '' and outputDSexist:
         if not tmpLFN in existingFilesInOutDS:
             existingFilesInOutDS[tmpLFN] = None
 
-
-# max total filesize on each WN
-maxTotalSize = long(5*1024*1024*1024)
 
 # runJobs
 indexOffsetMap = {}

@@ -301,7 +301,7 @@ class PSumView:
                     textView.set_justification(gtk.JUSTIFY_LEFT)
                     textView.set_right_margin(20)
                 # color
-                #textView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))
+                textView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("ghostwhite"))                
                 # wrap mode
                 textView.set_wrap_mode(gtk.WRAP_CHAR)
                 # append
@@ -469,7 +469,7 @@ class PStatView:
         # dummy handlers
         self.handlers = ['']
         # set color
-        self.statView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))
+        self.statView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("ghostwhite"))        
         # queue for serialization
         self.queue = Queue.Queue(1)
         self.queue.put(True)
@@ -559,7 +559,7 @@ class PTreeView:
                                                   + "/etc/panda/icons/" + tmpFname)
             self.pbMap[tmpStatus] = pixbuf
         # set color
-        #self.treeView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))        
+        self.treeView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("ghostwhite"))         
 
         
     # reload job list

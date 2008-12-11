@@ -17,10 +17,11 @@ current
   * escape $ in pass phrase
   * added _XROOTD to AUTO sites
   * record job params in prun
-  * use new JobSpec and FileSpec
+  * use the latest DB schema
   * added pbook
   * added logger
-  * added glade stuff
+  * added GUI stuff
+  * automatic adjustment for nFilesPerJob in prun
 	
 0.1.4 (11/25/2008)
   * fixed --match in prun
