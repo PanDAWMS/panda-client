@@ -4,6 +4,7 @@ local job specification
 """
 
 import re
+import urllib
 import datetime
 
 class LocalJobSpec(object):
@@ -156,6 +157,8 @@ class LocalJobSpec(object):
                 for tmpN in range(tmpCount):
                     sStr += "%s," % tmpStatus
         self.jobStatus = sStr[:-1]
+        # job parameters
+        self.jobParams = urllib.unquote(self.jobParams)
         # datetime
         for attr in self._attributes:
             val = getattr(self,attr)
@@ -236,6 +239,8 @@ class LocalJobSpec(object):
         else:
             sStr += '%s*%s,' % (sStatus,nStatus)
         ret['jobStatus'] = sStr[:-1]
+        # job parameters
+        ret['jobParams'] = urllib.quote(self.jobParams)
         # set dbStatus
         if toBeFrozen:
             self.dbStatus = 'frozen'

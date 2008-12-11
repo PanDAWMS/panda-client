@@ -301,7 +301,7 @@ class PSumView:
                     textView.set_justification(gtk.JUSTIFY_LEFT)
                     textView.set_right_margin(20)
                 # color
-                textView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))
+                #textView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))
                 # wrap mode
                 textView.set_wrap_mode(gtk.WRAP_CHAR)
                 # append
@@ -443,25 +443,25 @@ class PStatView:
         # info
         tag = self.buffer.create_tag('INFO')
         tag.set_property("font", "monospace")
-        tag.set_property("size-points", 10)
+        #tag.set_property("size-points", 10)
         tag.set_property('foreground','blue')
         self.tags['INFO'] = tag
         # debug
         tag = self.buffer.create_tag('DEBUG')
         tag.set_property("font", "monospace")
-        tag.set_property("size-points", 10)
+        #tag.set_property("size-points", 10)
         tag.set_property('foreground','black')
         self.tags['DEBUG'] = tag
         # warning
         tag = self.buffer.create_tag('WARNING')
         tag.set_property("font", "monospace")
-        tag.set_property("size-points", 10)
+        #tag.set_property("size-points", 10)
         tag.set_property('foreground','orange')
         self.tags['WARNING'] = tag
         # error
         tag = self.buffer.create_tag('ERROR')
         tag.set_property("font", "monospace")
-        tag.set_property("size-points", 10)
+        #tag.set_property("size-points", 10)
         tag.set_property('foreground','red')
         self.tags['ERROR'] = tag
         # format
@@ -559,7 +559,7 @@ class PTreeView:
                                                   + "/etc/panda/icons/" + tmpFname)
             self.pbMap[tmpStatus] = pixbuf
         # set color
-        self.treeView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))        
+        #self.treeView.modify_base(gtk.STATE_NORMAL, gtk.gdk.color_parse("gray90"))        
 
         
     # reload job list
@@ -735,16 +735,27 @@ class PConfigButton:
 
     # clicked action
     def on_clicked(self,widget):
+        # set config parameters
+        bookConf = BookConfig.getConfig()
+        # get pathname of grid source file
+        gridSrc = bookConf.grid_src
         # get dialog
         widget = gtk.glade.XML(self.gladefile,"configDialog")
         dlg = widget.get_widget("configDialog")
+        # get entry
+        gridSrcEntry = widget.get_widget("gridSrcEntry")
+        gridSrcEntry.set_text(gridSrc)
         # run
         result = dlg.run()
-        # destroy
-        dlg.destroy()
         # get result
         if result == gtk.RESPONSE_OK:
-            pass
+            # update config
+            bookConf = BookConfig.getConfig()
+            bookConf.grid_src = gridSrcEntry.get_text()
+            BookConfig.updateConfig(bookConf)
+        # destroy
+        dlg.destroy()
+        # return
         return result
 
 

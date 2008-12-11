@@ -13,6 +13,12 @@ if not os.path.exists(confFile):
     parser.add_section(sectionName)
     # set dummy time
     parser.set(sectionName,'last_synctime','')
+    # set grid source file
+    if os.environ.has_key('PATHENA_GRID_SETUP_SH'):
+        parser.set(sectionName,'grid_src',os.environ['PATHENA_GRID_SETUP_SH'])        
+    else:
+        parser.set(sectionName,'grid_src','')
+    # write
     confFH = open(confFile,'w')
     parser.write(confFH)
     confFH.close()
