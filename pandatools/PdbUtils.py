@@ -283,6 +283,17 @@ def updateJobDB(job,verbose=False):
         raise RuntimeError,"failed to insert job"
 
 
+# set retryID
+def setRetryID(job,verbose=False):
+    # make sql
+    sql1  = "UPDATE %s SET " % pdbProxy.tablename
+    sql1 += "retryID=%s " % job.JobID
+    sql1 += " WHERE JobID=%s " % job.provenanceID
+    status,out = pdbProxy.execute(sql1)
+    if not status:
+        raise RuntimeError,"failed to set retryID"
+
+
 # read job info from DB
 def readJobDB(JobID,verbose=False):
     # make sql

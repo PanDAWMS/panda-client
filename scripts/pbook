@@ -93,7 +93,7 @@ class PBookCore:
     def sync(self):
         # get logger
         tmpLog = PLogger.getPandaLogger()
-        tmpLog.info("Synchronizing local database. It may take a couple of minutes")
+        tmpLog.info("Synchronizing local database ...")
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
         # get JobIDs in local database
@@ -143,6 +143,13 @@ class PBookCore:
                 except:
                     tmpLog.error("Failed to insert JobID=%s to local DB" % remoteJobID)
                     return
+                # set retryID
+                if not localJob.provenanceID in [0,'0']:
+                    try:
+                        PdbUtils.setRetryID(localJob,self.verbose)
+                    except:
+                        tmpLog.error("Failed to set retryID for JobID=%s in local DB" % remoteJobID)
+                        return
             else:
                 # update
                 try:
@@ -474,6 +481,8 @@ For more info, do help(show) for example."""
         pbookCore.retry(JobID)
 
 
+    # run sync
+    pbookCore.sync()
     # go to interactive prompt
     code.interact(banner="\nStart pBook %s" % PandaToolsPkgInfo.release_version,
                   local=locals())
