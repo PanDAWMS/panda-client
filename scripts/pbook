@@ -434,7 +434,7 @@ def intmain(pbookCore):
             apply(_orgHelp,arg)
             return
         # print available methods
-        str = """Available functions:
+        str = """The following commands are available:
 
    sync
    show
