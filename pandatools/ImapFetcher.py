@@ -5,7 +5,9 @@ import datetime
 
 import PMailParser
 import SeqConfig
-from SeqConfig import seqConf
+
+seqConf = SeqConfig.getConfig()
+
 
 class ImapFetcher:
 
@@ -187,10 +189,12 @@ class ImapFetcher:
             strUIDs = ''
             for dir,uid in self.uidMap.iteritems():
                 strUIDs += '%s,%s,' % (dir,uid)
-            strUIDs = strUIDs[:-1] 
+            strUIDs = strUIDs[:-1]
+            # set uid
+            global seqConf
             seqConf.imap_uid = strUIDs
             # update config
-            SeqConfig.updateConfig()
+            SeqConfig.updateConfig(seqConf)
             if verbose:
                 print 'set UID=%s' % strUIDs
         # end session

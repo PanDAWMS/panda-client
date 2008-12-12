@@ -20,6 +20,7 @@ import threading
 from pandatools import PdbUtils
 from pandatools import Client
 from pandatools import BookConfig
+from pandatools import GlobalConfig
 from pandatools import PLogger
 from pandatools import PsubUtils
 from pandatools import PandaToolsPkgInfo
@@ -44,9 +45,9 @@ if not os.environ.has_key('CMTSITE'):
     os.environ['CMTSITE'] = ''
 
 # set grid source file
-bookConf = BookConfig.getConfig()
-if bookConf.grid_src != '' and not os.environ.has_key('PATHENA_GRID_SETUP_SH'):
-    os.environ['PATHENA_GRID_SETUP_SH'] = bookConf.grid_src
+globalConf = GlobalConfig.getConfig()
+if globalConf.grid_src != '' and not os.environ.has_key('PATHENA_GRID_SETUP_SH'):
+    os.environ['PATHENA_GRID_SETUP_SH'] = globalConf.grid_src
 
 # make tmp dir
 tmpDir = tempfile.mkdtemp()

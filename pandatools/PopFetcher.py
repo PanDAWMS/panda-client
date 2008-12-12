@@ -3,7 +3,9 @@ import poplib
 
 import PMailParser
 import SeqConfig
-from SeqConfig import seqConf
+
+seqConf = SeqConfig.getConfig()
+
 
 class PopFetcher:
 
@@ -145,9 +147,10 @@ class PopFetcher:
         # update config
         if updateUIDL:
             # set pop_uidl
+            global seqConf
             seqConf.pop_uidl = self.uidl
             # update
-            SeqConfig.updateConfig()
+            SeqConfig.updateConfig(seqConf)
             if verbose:
                 print 'set UIDL=%s' % self.uidl
         # end session

@@ -4,7 +4,10 @@ import threading
 import PopFetcher
 import ImapFetcher
 
-from SeqConfig import seqConf
+import SeqConfig
+
+seqConf = SeqConfig.getConfig()
+
 
 # wrapper to avoid redundant access to mail server
 class WrappedFetcher:

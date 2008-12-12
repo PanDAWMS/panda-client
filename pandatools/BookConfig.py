@@ -4,24 +4,33 @@ import commands
 import ConfigParser
 
 sectionName = 'book'
-confFile = os.path.expanduser('%s/pbook.cfg' % os.environ['PANDA_CONFIG_ROOT'])
+confFile = os.path.expanduser('%s/panda.cfg' % os.environ['PANDA_CONFIG_ROOT'])
 
 
-# create config file when missing
+# create config or add section when missing
+parser=ConfigParser.ConfigParser()
+newFlag = False
 if not os.path.exists(confFile):
-    parser=ConfigParser.ConfigParser()
+    # create new config
+    newFlag = True
+else:
+    # add section
+    parser.read(confFile)
+    if not parser.has_section(sectionName):
+        newFlag = True
+# new file or missing section
+if newFlag:
+    # add section
     parser.add_section(sectionName)
     # set dummy time
     parser.set(sectionName,'last_synctime','')
-    # set grid source file
-    if os.environ.has_key('PATHENA_GRID_SETUP_SH'):
-        parser.set(sectionName,'grid_src',os.environ['PATHENA_GRID_SETUP_SH'])        
-    else:
-        parser.set(sectionName,'grid_src','')
+    # keep old config just in case
+    status,out = commands.getstatusoutput('mv %s %s.back' % (confFile,confFile))
     # write
     confFH = open(confFile,'w')
     parser.write(confFH)
     confFH.close()
+
 
 # get config
 def getConfig():

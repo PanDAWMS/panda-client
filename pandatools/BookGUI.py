@@ -9,7 +9,7 @@ import gtk.glade
 import threading
 import commands
 import Queue
-import BookConfig
+import GlobalConfig
 import PLogger
 
 gobject.threads_init()
@@ -736,9 +736,9 @@ class PConfigButton:
     # clicked action
     def on_clicked(self,widget):
         # set config parameters
-        bookConf = BookConfig.getConfig()
+        globalConf = GlobalConfig.getConfig()
         # get pathname of grid source file
-        gridSrc = bookConf.grid_src
+        gridSrc = globalConf.grid_src
         # get dialog
         widget = gtk.glade.XML(self.gladefile,"configDialog")
         dlg = widget.get_widget("configDialog")
@@ -750,9 +750,9 @@ class PConfigButton:
         # get result
         if result == gtk.RESPONSE_OK:
             # update config
-            bookConf = BookConfig.getConfig()
-            bookConf.grid_src = gridSrcEntry.get_text()
-            BookConfig.updateConfig(bookConf)
+            globalConf = GlobalConfig.getConfig()
+            globalConf.grid_src = gridSrcEntry.get_text()
+            GlobalConfig.updateConfig(globalConf)
         # destroy
         dlg.destroy()
         # return

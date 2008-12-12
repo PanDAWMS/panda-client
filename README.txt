@@ -16,12 +16,12 @@ prun -h
 current
   * escape $ in pass phrase
   * added _XROOTD to AUTO sites
-  * record job params in prun
-  * use the latest DB schema
+  * migrated the latest DB schema
   * added pbook
   * added logger
   * added GUI stuff
   * automatic adjustment for nFilesPerJob in prun
+  * unified config file
 	
 0.1.4 (11/25/2008)
   * fixed --match in prun

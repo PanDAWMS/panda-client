@@ -93,13 +93,19 @@ if options.version:
     print "Version: %s" % PandaToolsPkgInfo.release_version
     sys.exit(0)
 
+from pandatools import Client
+from pandatools import PsubUtils
+from pandatools import AthenaUtils
+from pandatools import GlobalConfig
+
 # set dummy CMTSITE
 if not os.environ.has_key('CMTSITE'):
     os.environ['CMTSITE'] = ''
 
-from pandatools import Client
-from pandatools import PsubUtils
-from pandatools import AthenaUtils
+# set grid source file
+globalConf = GlobalConfig.getConfig()
+if globalConf.grid_src != '' and not os.environ.has_key('PATHENA_GRID_SETUP_SH'):
+    os.environ['PATHENA_GRID_SETUP_SH'] = globalConf.grid_src
 
 # use dev server
 if options.devSrv:

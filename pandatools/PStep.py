@@ -5,7 +5,9 @@ import tempfile
 import time
 import traceback
 
-from SeqConfig import seqConf
+import SeqConfig
+
+seqConf = SeqConfig.getConfig()
 
 
 class PStep:
