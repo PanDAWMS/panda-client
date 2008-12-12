@@ -98,10 +98,10 @@ class PBookCore:
     def sync(self):
         # get logger
         tmpLog = PLogger.getPandaLogger()
-        tmpLog.info("Synchronizing local database ...")
+        tmpLog.info("Synchronizing local repository ...")
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
-        # get JobIDs in local database
+        # get JobIDs in local repository
         localJobIDs = PdbUtils.getListOfJobIDs()
         # get recent JobIDs from panda server
         syncTime = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
@@ -119,7 +119,7 @@ class PBookCore:
         for remoteJobID in remoteJobIDs:
             # check local status
             if remoteJobID in localJobIDs:
-                # get job info from local database
+                # get job info from local repository
                 job = PdbUtils.readJobDB(remoteJobID,self.verbose)
                 # skip if frozen
                 if job.dbStatus == 'frozen':
@@ -146,21 +146,21 @@ class PBookCore:
                 try:
                     PdbUtils.insertJobDB(localJob,self.verbose)
                 except:
-                    tmpLog.error("Failed to insert JobID=%s to local DB" % remoteJobID)
+                    tmpLog.error("Failed to insert JobID=%s to local repository" % remoteJobID)
                     return
                 # set retryID
                 if not localJob.provenanceID in [0,'0']:
                     try:
                         PdbUtils.setRetryID(localJob,self.verbose)
                     except:
-                        tmpLog.error("Failed to set retryID for JobID=%s in local DB" % remoteJobID)
+                        tmpLog.error("Failed to set retryID for JobID=%s in local repository" % remoteJobID)
                         return
             else:
                 # update
                 try:
                     PdbUtils.updateJobDB(localJob,self.verbose)
                 except:
-                    tmpLog.error("Failed to update local DB for JobID=%s" % remoteJobID)
+                    tmpLog.error("Failed to update local repository for JobID=%s" % remoteJobID)
                     return
         # update sync time
         bookConf = BookConfig.getConfig()
@@ -173,11 +173,11 @@ class PBookCore:
     def getJobInfo(self,JobID):
         # get logger
         tmpLog = PLogger.getPandaLogger()
-        # get job info from local database
+        # get job info from local repository
         job = PdbUtils.readJobDB(JobID,self.verbose)
         # not found
         if job == None:
-            tmpLog.warning("JobID=%s not found in local DB. Synchronization may be needed" % JobID)
+            tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)
             return None
         # return
         return job
@@ -185,7 +185,7 @@ class PBookCore:
 
     # get local job list
     def getLocalJobList(self):
-        # get JobIDs in local database
+        # get JobIDs in local repository
         localJobIDs = PdbUtils.getListOfJobIDs()
         # get jobs
         localJobs = []
@@ -203,10 +203,10 @@ class PBookCore:
         tmpLog = PLogger.getPandaLogger()
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
-        # get job info from local database
+        # get job info from local repository
         job = self.getJobInfo(JobID)
         if job == None:
-            tmpLog.warning("JobID=%s not found in local DB. Synchronization may be needed" % JobID)            
+            tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)            
             return None
         # update if needed
         if job.dbStatus != 'frozen':
@@ -224,7 +224,7 @@ class PBookCore:
             try:
                 PdbUtils.updateJobDB(job,self.verbose)
             except:
-                tmpLog.error("Failed to update local DB for JobID=%s" % JobID)
+                tmpLog.error("Failed to update local repository for JobID=%s" % JobID)
                 return None
             tmpLog.info("Updated JobID=%s" % JobID)                        
         # return
@@ -237,10 +237,10 @@ class PBookCore:
         tmpLog = PLogger.getPandaLogger()
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
-        # get job info from local database
+        # get job info from local repository
         job = self.getJobInfo(JobID)
         if job == None:
-            tmpLog.warning("JobID=%s not found in local DB. Synchronization may be needed" % JobID)            
+            tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)            
             return None
 	# skip frozen job
         if job.dbStatus == 'frozen':
@@ -261,7 +261,7 @@ class PBookCore:
         try:
             PdbUtils.updateJobDB(job,self.verbose)
         except:
-            tmpLog.error("Failed to update local DB for JobID=%s" % JobID)
+            tmpLog.error("Failed to update local repository for JobID=%s" % JobID)
             return
         # done
         tmpLog.info('Done. JobID=%s will be killed in 30min' % JobID)
@@ -274,10 +274,10 @@ class PBookCore:
         tmpLog = PLogger.getPandaLogger()
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
-        # get job info from local database
+        # get job info from local repository
         localJob = self.getJobInfo(JobID)
         if localJob == None:
-            tmpLog.warning("JobID=%s not found in local DB. Synchronization may be needed" % JobID)            
+            tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)            
             return None
 	# skip running job
         if localJob.dbStatus != 'frozen':
@@ -411,7 +411,7 @@ class PBookCore:
         try:
             PdbUtils.insertJobDB(newLocalJob,self.verbose)
         except:
-            tmpLog.error("Failed to insert JobID=%s to local DB" % newJobID)
+            tmpLog.error("Failed to insert JobID=%s to local repository" % newJobID)
             return
         # done
         tmpLog.info('Done. New JobID=%s' % newJobID)
@@ -487,9 +487,9 @@ For more info, do help(show) for example."""
         pbookCore.retry(JobID)
 
 
-    # synchronize local database
+    # synchronize local repository
     def sync():
-        """Synchronize local database
+        """Synchronize local repository
 
          example:
            >>> sync()
