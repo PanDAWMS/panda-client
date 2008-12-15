@@ -1,6 +1,6 @@
 #!/bin/bash
 
-"exec" "python" "-u" "-Wignore" "$0" "$@"
+"exec" "/usr/bin/python" "-u" "-Wignore" "$0" "$@"
 
 
 import re
