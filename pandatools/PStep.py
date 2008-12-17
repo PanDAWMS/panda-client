@@ -65,16 +65,17 @@ class PStep:
         if self.status != 0:
             print 'ERROR: %s failed' % self.name
             return
-        # check whether command is pathena
-        match = re.search('(^|\s|\n|;|/)pathena\s',self.command)
-        if match != None:
+        # check whether command is pathena/prun
+        matchA = re.search('(^|\s|\n|;|/)pathena\s',self.command)
+        matchR = re.search('(^|\s|\n|;|/)prun\s',self.command)        
+        if matchA != None or matchR != None:
             # parse output to extract JobID 
             for line in self.output.split('\n'):
                 match = re.search('^\s*JobID\s+:\s+(\d+)',line)
                 if match != None:
                     self.isPanda = True
                     self.JobID   = int(match.group(1))
-        # wait result for pathena
+        # wait result for pathena/prun
         if self.isPanda and wait:
             self.waitResult()
             
@@ -89,7 +90,7 @@ class PStep:
         # set status and output
         res.status = self.status
         res.output = self.output
-        # wait result for pathena
+        # wait result for pathena/prun
         if self.isPanda:
             pResult = self.waitResult()
             # set values of Notification

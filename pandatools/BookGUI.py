@@ -793,7 +793,9 @@ class PUpdateButton:
         self.guiGlobal.updateJob(updatedJob)
         # emit signal
         self.pEmitter.emit("on_setNewJob")
-
+        # update list
+        self.pEmitter.emit("on_rangeChanged",False)
+        
 
 
 # kill button

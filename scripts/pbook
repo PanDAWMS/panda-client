@@ -346,18 +346,19 @@ class PBookCore:
             job.startTime           = None
             job.endTime             = None
             job.attemptNr           = 1+job.attemptNr
+            for attr in job._attributes:
+                if attr.endswith('ErrorCode') or attr.endswith('ErrorDiag'):
+                    setattr(job,attr,None)
             job.transExitCode       = None
-            job.pilotErrorCode      = None
-            job.exeErrorCode        = None
-            job.ddmErrorCode        = None
-            job.taskBufferErrorCode = None
             job.computingSite       = retrySite
             job.computingElement    = retryElement
             job.dispatchDBlock      = None
             job.jobExecutionID      = JobID
             for file in job.Files:
                 file.rowID = None
-                if file.type in ('output','log'):
+                if file.type == 'input':
+                    file.status = 'ready'
+                elif file.type in ('output','log'):
                     file.destinationDBlock=file.dataset
                     # add attempt nr
                     oldName  = file.lfn
