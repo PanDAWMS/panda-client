@@ -13,10 +13,10 @@ prun -h
 
 ** Release Note
 
-current
+0.1.5 (12/17/2008)
   * escape $ in pass phrase
   * added _XROOTD to AUTO sites
-  * migrated the latest DB schema
+  * migrated to the latest DB schema
   * added pbook
   * added logger
   * added GUI stuff
@@ -46,3 +46,6 @@ current
   * first release
 
 
+** Acknowledge
+
+   Icons from http://iconka.com
