@@ -329,7 +329,7 @@ if options.inDS != '':
                 else:
                     print "ERROR : could not find supported locations for %s" % options.inDS
                 sys.exit(EC_Dataset)
-            # run brorage
+            # run brokerage
             tmpSites = []
             for tmpItem in dsLocationMap.values():
                 tmpSites += tmpItem
