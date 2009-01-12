@@ -722,6 +722,10 @@ for iJob in range(options.nJobs):
     jobR.computingSite     = options.site
     jobR.cloud             = Client.PandaSites[options.site]['cloud']
     jobR.jobParameters     = '-j "%s" ' % jobScript
+    # source URL
+    matchURL = re.search("(http.*://[^/]+)/",Client.baseURLSSL)
+    if matchURL != None:
+        jobR.jobParameters += "--sourceURL %s " % matchURL.group(1)
     if options.jobParams != '':
         # random seed
         tmpJobO = options.jobParams
