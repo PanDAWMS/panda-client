@@ -1,0 +1,3327 @@
+#!/bin/bash
+
+"exec" "python" "-u" "-Wignore" "$0" "$@"
+
+import os
+import re
+import sys
+import time
+import atexit
+import commands
+import optparse
+import shelve
+import datetime
+import urllib
+import random
+import fcntl
+import types
+import traceback
+
+from PandaTools import Client
+from PandaTools import AthenaUtils
+
+####################################################################3
+
+# error code
+EC_Config    = 10
+EC_CMT       = 20
+EC_Extractor = 30
+EC_Dataset   = 40
+EC_Post      = 50
+EC_Archive   = 60
+EC_Split     = 70
+EC_MyProxy   = 80
+
+#@ Number of events to skip in the file
+nEventsToSkip=0
+#@ Events blok counter per file
+nSkips =0
+
+# suffix for shadow dataset
+suffixShadow = "_shadow"
+
+
+# max size per job
+maxTotalSize = long(5*1024*1024*1024)
+        
+
+# default cloud/site
+defaultCloud = 'US'
+defaultSite  = 'ANALY_BNL_ATLAS_1'
+
+usage = """%prog [options] <jobOption1.py> [<jobOption2.py> [...]]
+
+'%prog --help' prints a summary of the options"""
+
+
+# command-line parameters
+optP = optparse.OptionParser(usage=usage,conflict_handler="resolve")
+# special options
+optP.add_option('--split', action='store', dest='split',  default=-1,
+                type='int',    help='Number of sub-jobs to which a job is split')
+optP.add_option('--nFilesPerJob', action='store', dest='nFilesPerJob',  default=-1, type='int', help='Number of files on which each sub-job runs')
+## If this flag is set to be non negative then nFiles perJob is Supposed to be "1".
+optP.add_option('--nEventsPerJob', action='store', dest='nEventsPerJob',  default=-1,
+                type='int',    help='Number of events on which each sub-job runs')
+optP.add_option('--nEventsPerFile', action='store', dest='nEventsPerFile',  default=0,
+                type='int',    help='Number of events per file')
+optP.add_option('--site', action='store', dest='site',  default=None,
+                type='string',    help='Site name where jobs are sent (default:%s' % defaultSite)
+optP.add_option('--inDS',  action='store', dest='inDS',  default='',
+                type='string', help='Name of an input dataset')
+optP.add_option('--minDS',  action='store', dest='minDS',  default='',
+                type='string', help='Dataset name for minimum bias stream')
+optP.add_option('--nMin',  action='store', dest='nMin',  default=-1,
+                type='int', help='Number of minimum bias files per one signal file')
+optP.add_option('--cavDS',  action='store', dest='cavDS',  default='',
+                type='string', help='Dataset name for cavern stream')
+optP.add_option('--nCav',  action='store', dest='nCav',  default=-1,
+                type='int', help='Number of cavern files per one signal file')
+optP.add_option('--libDS', action='store', dest='libDS', default='',
+                type='string', help='Name of a library dataset')
+optP.add_option('--useCommonHalo', action='store_const', const=False, dest='useCommonHalo',  default=True,
+                help="use an integrated DS for BeamHalo")
+optP.add_option('--beamHaloDS',  action='store', dest='beamHaloDS',  default='',
+                type='string', help='Dataset name for beam halo')
+optP.add_option('--beamHaloADS',  action='store', dest='beamHaloADS',  default='',
+                type='string', help='Dataset name for beam halo A-side')
+optP.add_option('--beamHaloCDS',  action='store', dest='beamHaloCDS',  default='',
+                type='string', help='Dataset name for beam halo C-side')
+optP.add_option('--nBeamHalo',  action='store', dest='nBeamHalo',  default=-1,
+                type='int', help='Number of beam halo files per sub job')
+optP.add_option('--nBeamHaloA',  action='store', dest='nBeamHaloA',  default=-1,
+                type='int', help='Number of beam halo files for A-side per sub job')
+optP.add_option('--nBeamHaloC',  action='store', dest='nBeamHaloC',  default=-1,
+                type='int', help='Number of beam halo files for C-side per sub job')
+optP.add_option('--useCommonGas', action='store_const', const=False, dest='useCommonGas',  default=True,
+                help="use an integrated DS for BeamGas")
+optP.add_option('--beamGasDS',  action='store', dest='beamGasDS',  default='',
+                type='string', help='Dataset name for beam gas')
+optP.add_option('--beamGasHDS',  action='store', dest='beamGasHDS',  default='',
+                type='string', help='Dataset name for beam gas Hydrogen')
+optP.add_option('--beamGasCDS',  action='store', dest='beamGasCDS',  default='',
+                type='string', help='Dataset name for beam gas Carbon')
+optP.add_option('--beamGasODS',  action='store', dest='beamGasODS',  default='',
+                type='string', help='Dataset name for beam gas Oxygen')
+optP.add_option('--nBeamGas',  action='store', dest='nBeamGas',  default=-1,
+                type='int', help='Number of beam gas files per sub job')
+optP.add_option('--nBeamGasH',  action='store', dest='nBeamGasH',  default=-1,
+                type='int', help='Number of beam gas files for Hydrogen per sub job')
+optP.add_option('--nBeamGasC',  action='store', dest='nBeamGasC',  default=-1,
+                type='int', help='Number of beam gas files for Carbon per sub job')
+optP.add_option('--nBeamGasO',  action='store', dest='nBeamGasO',  default=-1,
+                type='int', help='Number of beam gas files for Oxygen per sub job')
+optP.add_option('--outDS', action='store', dest='outDS', default='',
+                type='string', help='Name of an output dataset. OUTDS will contain all output files')
+optP.add_option('--destSE',action='store', dest='destSE',default='',
+                type='string', help='Destination strorage element. All outputs go to DESTSE (default :%BNL_ATLAS_2)')
+optP.add_option('--nFiles', '--nfiles', action='store', dest='nfiles',  default=0,
+                type='int',    help='Use an limited number of files in the input dataset')
+optP.add_option('--nSkipFiles', action='store', dest='nSkipFiles',  default=0,
+                type='int',    help='Skip N files in the input dataset')
+optP.add_option('-v', action='store_const', const=True, dest='verbose',  default=False,
+                help='Verbose')
+optP.add_option('-l', '--long', action='store_const', const=True, dest='long',  default=False,
+                help='Send job to a long queue')
+optP.add_option('--blong', action='store_const', const=True, dest='blong',  default=False,
+                help='Send build job to a long queue')
+optP.add_option('--cloud',action='store', dest='cloud',default=None,
+                type='string', help='cloud where jobs are submitted (default:%s)' % defaultCloud)
+optP.add_option('--noBuild', action='store_const', const=True, dest='nobuild',  default=False,
+                help='Skip buildJob')
+optP.add_option('--individualOutDS', action='store_const', const=True, dest='individualOutDS',  default=False,
+                help='Create individual output dataset for each data-type. By default, all output files are added to one output dataset')
+optP.add_option('--noRandom', action='store_const', const=True, dest='norandom',  default=False,
+                help='Enter random seeds manually')
+optP.add_option('--memory', action='store', dest='memory',  default=-1,
+                type='int',    help='Required memory size')
+optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=-1, type='int',
+                help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
+optP.add_option('--official', action='store_const', const=True, dest='official',  default=False,
+                help='Produce official dataset')
+optP.add_option('--extFile', action='store', dest='extFile',  default='',
+                help='pathena exports files with some special extensions (.C, .dat, .py .xml) in the current directory. If you want to add other files, specify their names, e.g., data1,root,data2.doc')
+optP.add_option('--extOutFile', action='store', dest='extOutFile',  default='',
+                help='define extra output files, e.g., output1.txt,output2.dat')
+optP.add_option('--supStream', action='store', dest='supStream',  default='',
+                help='suppress some output streams. e.g., ESD,TAG ')
+optP.add_option('--noSubmit', action='store_const', const=True, dest='nosubmit',  default=False,
+                help="Don't submit jobs")
+optP.add_option('--test', action='store_const', const=True, dest='testMode',  default=False,
+                help="Submit test jobs")
+optP.add_option('--generalInput', action='store_const', const=True, dest='generalInput',  default=False,
+                help='Read input files with general format except POOL,ROOT,ByteStream')
+optP.add_option('--tmpDir', action='store', dest='tmpDir', default='',
+                type='string', help='Temporary directory in which an archive file is created')
+optP.add_option('--shipInput', action='store_const', const=True, dest='shipinput',  default=False,
+                help='Ship input files to remote WNs')
+optP.add_option('--noLock', action='store_const', const=True, dest='nolock',  default=False,
+                help="Don't create a lock for local database access")
+optP.add_option('--fileList', action='store', dest='filelist', default='',
+                type='string', help='List of files in the input dataset to be run')
+optP.add_option('--myproxy', action='store', dest='myproxy', default='pandaprx.usatlas.bnl.gov',
+                type='string', help='Name of the myproxy server')
+optP.add_option('--dbRelease', action='store', dest='dbRelease', default='',
+                type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz')
+optP.add_option('--addPoolFC', action='store', dest='addPoolFC',  default='',
+                help="file names to be inserted into PoolFileCatalog.xml except input files. e.g., MyCalib1.root,MyGeom2.root") 
+optP.add_option('--skipScan', action='store_const', const=True, dest='skipScan', default=False,
+                help='Skip LRC/LFC lookup at job submission')
+optP.add_option('--inputFileList', action='store', dest='inputFileList', default='',
+                type='string', help='name of file which contains a list of files to be run in the input dataset')
+optP.add_option('--removeFileList', action='store', dest='removeFileList', default='',
+                type='string', help='name of file which contains a list of files to be removed from the input dataset')
+optP.add_option('--corCheck', action='store_const', const=True, dest='corCheck',  default=False,
+                help='Enable a checker to skip corrupted files')
+optP.add_option('--prestage', action='store_const', const=True, dest='prestage',  default=False,
+                help='EXPERIMENTAL : Enable prestager. Make sure that you are authorized')
+optP.add_option('--novoms', action='store_const', const=False, dest='voms',  default=True,
+                help="don't use VOMS extensions")
+optP.add_option('--useNextEvent', action='store_const', const=True, dest='useNextEvent',  default=False,
+                help="Set this option if your jobO uses theApp.nextEvent() e.g. for G4")
+optP.add_option('--ara', action='store_const', const=True, dest='ara',  default=False,
+                help='use Athena ROOT Access')
+optP.add_option('--ares', action='store_const', const=True, dest='ares',  default=False,
+                help='use Athena ROOT Access + PyAthena, i.e., use athena.py instead of python on WNs')
+optP.add_option('--araOutFile', action='store', dest='araOutFile',  default='',
+                help='define output files for ARA, e.g., output1.root,output2.root')
+optP.add_option('--trf', action='store', dest='trf',  default=False,
+                help='run transformation, e.g. --trf "csc_atlfast_trf.py %IN %OUT.AOD.root %OUT.ntuple.root -1 0"')
+optP.add_option('--spaceToken', action='store', dest='spaceToken', default='',
+                type='string', help='spacetoken for outputs. e.g., ATLASLOCALGROUPDISK')
+optP.add_option('--notSkipMissing', action='store_const', const=True, dest='notSkipMissing',  default=False,
+                help='If input files are not read from SE, they will be skipped by default. This option disables the functionality')
+optP.add_option('--burstSubmit', action='store', dest='burstSubmit', default='',
+                type='string', help="Please don't use this option. Only for site validation by experts")
+optP.add_option('--devSrv', action='store_const', const=True, dest='devSrv',  default=False,
+                help="Please don't use this option. Only for developers to use the dev panda server")
+optP.add_option('--useAIDA', action='store_const', const=True, dest='useAIDA',  default=False,
+                help="use AIDA")
+optP.add_option('--inputType', action='store', dest='inputType', default='',
+                type='string', help='File type in input dataset which contains multiple file types')
+optP.add_option('--mcData', action='store', dest='mcData', default='',
+                type='string', help='Create a symlink with linkName to .dat which is contained in input file')
+optP.add_option('--pfnList', action='store', dest='pfnList', default='',
+                type='string', help='Name of file which contains a list of input PFNs. Those files can be un-registered in DDM')
+optP.add_option('--useExperimental', action='store_const', const=True, dest='useExperimental',  default=False,
+                help='use experimental features')
+# athena options
+optP.add_option('-c',action='store',dest='singleLine',type='string',default='',metavar='COMMAND',
+                help='One-liner, runs before any jobOs')
+optP.add_option('-p',action='store',dest='preConfig',type='string',default='',metavar='BOOTSTRAP',
+                help='location of bootstrap file')
+
+# parse options
+options,args = optP.parse_args()
+if options.verbose:
+    print options
+
+# use dev server
+if options.devSrv:
+    Client.useDevServer()
+    
+# error
+if options.outDS == '':
+    print "ERROR : no outDS"
+    print "   pathena [--inDS input] --outDS output myJobO.py"
+    sys.exit(EC_Config)
+if options.split < -1 :
+    print "ERROR : Number of jobs should be a positive integer"
+    sys.exit(EC_Config)
+if options.shipinput and options.inDS != '' and options.pfnList != '':
+    print "ERROR : --shipInput, --pfnList and --inDS cannot be used at the same time"
+    sys.exit(EC_Config)
+
+# libDS
+if options.libDS == 'LAST':
+    options.libDS = commands.getoutput("pathena_util -c 'print get(LAST)[\"libDS\"]\'")
+
+# absolute path for PFN list
+if options.pfnList != '':
+    options.pfnList = os.path.realpath(options.pfnList)
+
+# burst submission
+if options.burstSubmit != '':
+    # don't scan LRC/LFC
+    options.skipScan = True
+    # reset cloud/site. They will be overwritten at submission
+    options.cloud = None
+    options.site  = None
+    # disable individual output
+    options.individualOutDS = False
+    # check libDS stuff
+    if options.libDS != '' or options.nobuild:
+        print "ERROR : --libDS or --nobuild cannot be used together with --burstSubmit"
+        sys.exit(EC_Config)
+        
+
+# split options are mutually exclusive
+if (options.nFilesPerJob > 0 and options.nEventsPerJob > 0):
+    print "ERROR : split by files and split by events can not be defined sumaltaneously"
+    sys.exit(EC_Config)
+
+# check DBRelease
+if options.dbRelease != '' and options.dbRelease.find(':') == -1:
+    print "ERROR : invalid argument for --dbRelease. Must be DatasetName:FileName"  
+    sys.exit(EC_Config)
+    
+# additinal files
+options.extFile = options.extFile.split(',')
+options.extOutFile = options.extOutFile.split(',')
+try:
+    options.extOutFile.remove('')
+except:
+    pass
+
+# set ara on when ares is used
+if options.ares:
+    options.ara = True
+
+# output files for ARA
+if options.ara and options.araOutFile == '':
+    print "ERROR : --araOutFile is needed when ARA (--ara) is used"
+    sys.exit(EC_Config)
+for tmpName in options.araOutFile.split(','):
+    if tmpName != '':
+        options.extOutFile.append(tmpName)
+
+# shadow DS for individualOutDS
+if options.individualOutDS:
+    # use log DS as shadow DS
+    suffixShadow = "_log" + suffixShadow
+    
+# file list
+tmpList = options.filelist.split(',')
+options.filelist = []
+for tmpItem in tmpList:
+    if tmpItem == '':
+        continue
+    # wild card
+    tmpItem = tmpItem.replace('*','.*')
+    # append
+    options.filelist.append(tmpItem) 
+# read file list from file
+if options.inputFileList != '':
+    rFile = open(options.inputFileList)
+    for line in rFile:
+        line = re.sub('\n','',line)
+        options.filelist.append(line)
+    rFile.close()
+
+# removed files
+if options.removeFileList == '':
+    # empty
+    options.removeFileList = []
+else:
+    # read from file
+    rList = []
+    rFile = open(options.removeFileList)
+    for line in rFile:
+        line = re.sub('\n','',line)        
+        rList.append(line)
+    rFile.close()
+    options.removeFileList = rList
+
+# file type
+options.inputType = options.inputType.split(',')
+try:
+    options.inputType.remove('')
+except:
+    pass
+
+# suppressed streams
+options.supStream = options.supStream.upper().split(',')
+try:
+    options.supStream.remove('')
+except:
+    pass
+
+# set nFilesPerJob for MC data
+if options.mcData != '':
+    options.nFilesPerJob = 1
+    
+# set nfiles
+if options.nFilesPerJob > 0 and options.nfiles == 0 and options.split > 0:
+    options.nfiles = options.nFilesPerJob * options.split
+
+# check grid-proxy
+gridSrc = Client._getGridSrc()
+if gridSrc == False:
+    sys.exit(EC_Config)
+# use grid-proxy-info first becaus of bug #36573 of voms-proxy-info
+com = '%s grid-proxy-info -e' % gridSrc
+if options.verbose:
+    print com
+status,out = commands.getstatusoutput(com)
+if options.verbose:
+    print status % 255
+    print out
+# check VOMS extension
+vomsFQAN = ''
+if status == 0 and options.voms:
+    # with VOMS extension 
+    com = '%s voms-proxy-info -fqan -exists' % gridSrc    
+    if options.verbose:
+	print com
+    status,out = commands.getstatusoutput(com)
+    if options.verbose:
+	print status % 255
+	print out
+    if status == 0:
+        vomsFQAN = out
+# generate proxy
+gridPassPhrase = ''
+if status != 0 or out.find('Error: VOMS extension not found') != -1:
+    # GRID pass phrase
+    import getpass
+    print "Your identity: " + commands.getoutput('%s grid-cert-info -subject' % gridSrc)
+    gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:')
+    gridPassPhrase = gridPassPhrase.replace('$','\$')
+    if options.voms:
+        # with VOMS extension 
+        com = '%s echo "%s" | voms-proxy-init -voms atlas -pwstdin' % (gridSrc,gridPassPhrase)
+    else:
+        # classic proxy
+        com = '%s echo "%s" | grid-proxy-init -pwstdin' % (gridSrc,gridPassPhrase)
+    if options.verbose:
+        print re.sub(gridPassPhrase,"*****",com)
+    status = os.system(com)
+    if status != 0:
+        print "ERROR : could not generate a grid proxy"
+        sys.exit(EC_Config)
+    # get FQAN
+    if options.voms:
+        com = '%s voms-proxy-info -fqan' % gridSrc
+        if options.verbose:
+            print "get FQAN"
+        status,out = commands.getstatusoutput(com)        
+        if status != 0 or out.find('Error: VOMS extension not found') != -1:
+            print "ERROR : could not get FQAN after voms-proxy-init"
+            sys.exit(EC_Config)
+        vomsFQAN = out
+
+# set cloud according to country FQAN
+expCloudFlag = False
+if options.cloud == None and options.voms and options.burstSubmit == '':
+    # check countries
+    for tmpCloud,spec in Client.PandaClouds.iteritems():
+        # loop over all FQANs
+        for tmpFQAN in vomsFQAN.split('\n'):
+            # look for matching country
+            for tmpCountry in spec['countries'].split(','):
+                # skip blank
+                if tmpCountry == '':
+                    continue
+                # look for /atlas/xyz/
+                if re.search('^/atlas/%s/' % tmpCountry, tmpFQAN) != None:
+                    # set cloud
+                    options.cloud = tmpCloud
+                    if options.verbose:
+                        print "  match %s %s %s" % (tmpCloud,tmpCountry,tmpFQAN)
+                    break
+            # escape
+            if options.cloud != None:
+                break
+        # escape
+        if options.cloud !=None:
+            break
+    # set default
+    if options.cloud ==None:
+        options.cloud = defaultCloud
+        if options.verbose:
+            print "  use default %s" % options.cloud
+    if options.verbose:
+        print "set cloud=%s" % options.cloud
+elif options.cloud != None:
+    # use cloud explicitly
+    expCloudFlag = True
+
+        
+# set site=AUTO when cloud is specified
+if options.cloud == None:
+    # set default cloud
+    options.cloud = defaultCloud
+    if options.site == None:
+        # set default site
+        options.site = defaultSite
+else:
+    # check cloud
+    foundCloud = False
+    for tmpID,spec in Client.PandaSites.iteritems():
+        if options.cloud == spec['cloud']:
+            foundCloud = True
+            break
+    if not foundCloud:
+        print "ERROR : unsupported cloud:%s" % options.cloud
+        sys.exit(EC_Config)
+    if options.site == None:
+        # set site=AUTO
+        options.site = 'AUTO'
+
+# convert DQ2 ID to Panda sitename
+if not options.site in ['AUTO',None,defaultSite]+Client.PandaSites.keys():
+    origSite = options.site
+    for tmpID,tmpSpec in Client.PandaSites.iteritems():
+        # get list of DQ2 IDs
+        srmv2ddmList = []
+        for tmpDdmID in tmpSpec['setokens'].values():
+            srmv2ddmList.append(Client.convSrmV2ID(tmpDdmID))
+        # use Panda sitename
+        if Client.convSrmV2ID(origSite) in srmv2ddmList:
+            options.site = tmpID
+            # keep non-online site just in case
+            if tmpSpec['status']=='online':
+                break
+
+# get DN
+shortName = ''
+distinguishedName = ''
+output = commands.getoutput('%s grid-proxy-info -identity' % gridSrc)
+for line in output.split('/'):
+    if line.startswith('CN='):
+        distinguishedName = re.sub('^CN=','',line)
+        distinguishedName = re.sub('\d+$','',distinguishedName)
+        distinguishedName = re.sub('\.','',distinguishedName)
+        distinguishedName = re.sub('\(','',distinguishedName)
+        distinguishedName = re.sub('\)','',distinguishedName)
+	distinguishedName = distinguishedName.strip()
+        if re.search(' ',distinguishedName) != None:
+            # look for full name
+	    distinguishedName = distinguishedName.replace(' ','')
+	    break
+        elif shortName == '':
+            # keep short name
+            shortName = distinguishedName
+        distinguishedName = ''
+# use short name
+if distinguishedName == '':
+    distinguishedName = shortName
+
+# remove ' & "
+distinguishedName = re.sub('[\'\"]','',distinguishedName)
+        
+# check    
+if distinguishedName == '':
+    print 'could not get DISTINGUISHEDNAME from %s' % output
+    sys.exit(EC_Config)
+        
+# check output dataset format
+matStr = '^user' + ('%s' % time.strftime('%y',time.gmtime())) + '\.' + distinguishedName + '\.'
+if (not options.official) and re.match(matStr,options.outDS) == None:
+    print "ERROR : outDS must be 'user%s.%s.<user-controlled string...'" % \
+          (time.strftime('%y',time.gmtime()),distinguishedName)
+    print "        e.g., user%s.%s.test1234" % \
+          (time.strftime('%y',time.gmtime()),distinguishedName)
+    print "    Please use 'user%s.' instead of 'user.' to follow ATL-GEN-INT-2007-001" % \
+          time.strftime('%y',time.gmtime())
+    sys.exit(EC_Config)
+
+# check if output dataset is unique
+options.outputDSexist = False
+tmpDatasets = Client.getDatasets(options.outDS,options.verbose)
+if len(tmpDatasets) != 0:
+    options.outputDSexist = True
+
+# check if shadow dataset exists
+options.shadowDSexist = False
+tmpDatasets = Client.getDatasets("%s%s" % (options.outDS,suffixShadow),options.verbose)
+if len(tmpDatasets) != 0:
+    options.shadowDSexist = True
+
+
+# save current dir
+currentDir = os.path.realpath(os.getcwd())
+
+# get Athena versions
+stA,retA = AthenaUtils.getAthenaVer()
+# failed
+if not stA:
+    sys.exit(EC_CMT)
+workArea  = retA['workArea'] 
+athenaVer = retA['athenaVer'] 
+groupArea = retA['groupArea'] 
+cacheVer  = retA['cacheVer'] 
+nightVer  = retA['nightVer']
+
+# error    
+if athenaVer == '':
+    for line in lines:
+        print line
+    print "ERROR : could not get Athena version"
+    sys.exit(EC_CMT)
+        
+# get run directory
+# remove special characters                    
+sString=re.sub('[\+]','.',workArea)
+runDir = re.sub('^%s' % sString, '', currentDir)
+if runDir == currentDir:
+    print "ERROR : you need to run pathena in a directory under %s" % workArea
+    sys.exit(EC_Config)
+elif runDir == '':
+    runDir = '.'
+elif runDir.startswith('/'):
+    runDir = runDir[1:]
+runDir = runDir+'/'
+
+# get job options
+jobO = ''
+if options.trf:
+    # use trf's parameters
+    jobO = options.trf
+else:
+    # get jobOs from command-line
+    if options.preConfig != '':
+        jobO += '-p %s ' % options.preConfig
+    if options.singleLine != '':
+        options.singleLine = options.singleLine.replace('"','\'')
+        jobO += '-c "%s" ' % options.singleLine
+    for arg in args:
+        jobO += ' %s' % arg
+if jobO == "":
+    print "ERROR : no jobOptions"
+    print "   pathena [--inDS input] --outDS output myJobO.py"
+    sys.exit(EC_Config)
+
+# ARA uses trf I/F
+if options.ara:
+    if options.ares:
+        jobO = "athena.py " + jobO        
+    elif jobO.endswith(".C"):
+        jobO = "root -l " + jobO
+    else:
+        jobO = "python " + jobO        
+    options.trf = jobO
+
+# choose site automatically
+if options.site == "AUTO" and (not options.outputDSexist) and options.libDS == '' and \
+       (options.inDS == '' or options.shipinput):
+    # get sites belonging to a cloud
+    tmpSites = []
+    for tmpID,spec in Client.PandaSites.iteritems():
+        if spec['cloud']==options.cloud and spec['status']=='online':
+            # exclude long,xrootd,local queues
+            if Client.isExcudedSite(tmpID):
+                continue
+            tmpSites.append(tmpID)
+    status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose)    
+    if status != 0:
+        print 'failed to run brokerage for automatic assignment: %s' % out  
+        sys.exit(EC_Config)
+    if not Client.PandaSites.has_key(out):
+	print 'brokerage gave wrong PandaSiteID:%s' % out
+	sys.exit(EC_Config)
+    # set site
+    options.site = out
+
+# correct site and destSE
+if options.site != "AUTO":
+    # add ANALY_
+    if not options.site.startswith('ANALY_'):
+        options.site = 'ANALY_%s' % options.site
+    # patch for BNL
+    if options.site == "ANALY_BNL":
+        options.site = "ANALY_BNL_ATLAS_1"
+    # long queue
+    if options.long and not options.site.startswith('ANALY_LONG_'):
+        tmpsite = re.sub('ANALY_','ANALY_LONG_',options.site)
+        tmpsite = re.sub('_\d+$','',tmpsite)
+        # if sitename exists
+        if Client.PandaSites.has_key(tmpsite):
+            options.site = tmpsite
+    # destination. It will be set later if site is chosen automatically 
+    if options.destSE == '':
+        options.destSE = options.site
+
+if options.verbose:
+    print "== parameters =="
+    print "Site       : %s" % options.site
+    print "Athena     : %s" % athenaVer
+    if groupArea != '':
+        print "Group Area : %s" % groupArea
+    if cacheVer != '':
+        print "ProdCache  : %s" % cacheVer[1:]
+    if nightVer != '':
+        print "Nightly    : %s" % nightVer[1:]        
+    print "RunDir     : %s" % runDir
+    print "jobO       : %s" % jobO.lstrip()
+    
+# extract run configuration    
+options.outHist   =False
+options.outNtuple =[]
+options.outRDO    =False
+options.outESD    =False
+options.outAOD    =False
+options.outTAG    =False
+options.outAANT   =[]
+options.outTHIST  =[]
+options.outIROOT  =[]
+options.outStream1=False
+options.outStream2=False
+options.outBS     =False
+options.outSelBS  =False
+options.outStreamG=[]
+options.outMeta   =[]
+options.outMS     =[]
+options.inBS      =False
+options.inColl    =False
+options.inMinBias =False
+options.inCavern  =False
+options.inBeamGas =False
+options.inBeamHalo=False
+options.backNavi  =False
+options.shipFiles =[]
+options.rndmStream=[]
+options.rndmNumbers=[]
+options.collRefName='Token'
+options.noInput   =False
+
+print 'extracting run configuration'
+if not options.trf:
+    # run ConfigExtractor for normal jobO 
+    out = commands.getoutput('athena.py %s %s %s' %
+                             ('PandaTools/FakeAppMgr.py',jobO,'PandaTools/ConfigExtractor.py'))
+    failExtractor = True
+    for line in out.split('\n'):
+        match = re.findall('^ConfigExtractor > (.+)',line)
+        if len(match):
+            # suppress some streams
+            if match[0].startswith("Output="):
+                tmpSt = match[0].replace('=',' ').split()[-1]
+                if tmpSt.upper() in options.supStream:
+                    continue
+            failExtractor = False
+            if options.useAIDA and match[0]=='Output=HIST':
+                options.outHist = True
+            if options.useAIDA and match[0].startswith('Output=NTUPLE'):
+                tmpItems = match[0].split()
+                options.outNtuple.append(tmpItems[1])
+            if match[0]=='Output=RDO':
+                options.outRDO = True
+            if match[0]=='Output=ESD':
+                options.outESD = True
+            if match[0]=='Output=AOD':
+                options.outAOD = True
+            if match[0]=='Output=TAG':            
+                options.outTAG = True
+            if match[0].startswith('Output=AANT'):
+                tmpItems = match[0].split()
+                options.outAANT.append(tuple(tmpItems[1:]))
+            if match[0].startswith('Output=THIST'):            
+                tmpItems = match[0].split()
+                options.outTHIST.append(tmpItems[1])
+            if match[0].startswith('Output=IROOT'):            
+                tmpItems = match[0].split()
+                options.outIROOT.append(tmpItems[1])
+            if match[0].startswith('Output=STREAM1'):
+                options.outStream1 = True
+            if match[0]=='Output=STREAM2':                        
+                options.outStream2 = True
+            if match[0]=='Output=BS':            
+                options.outBS = True
+            if match[0].startswith('Output=STREAMG'):            
+                tmpItems = match[0].split()
+                options.outStreamG = tmpItems[1].split(',')
+            if match[0].startswith('Output=META'):            
+                tmpItems = match[0].split()
+                options.outMeta.append(tuple(tmpItems[1:]))
+            if match[0].startswith('Output=MS'):
+                tmpItems = match[0].split()            
+                options.outMS.append(tuple(tmpItems[1:]))
+            if match[0]=='No Input':
+                options.noInput = True
+            if match[0]=='Input=BS':                        
+                options.inBS = True
+            if match[0].startswith('Output=SelBS'):            
+                tmpItems = match[0].split()
+                options.outSelBS = tmpItems[1]
+            if match[0]=='Input=COLL':                        
+                options.inColl = True
+            if match[0].startswith('Input=COLLREF'):
+                tmpRef = match[0].split()[-1]
+                if tmpRef == 'Input=COLLREF':
+		    # use default token when ref is empty
+                    tmpRef = 'Token'
+                elif tmpRef != 'Token' and (not tmpRef.endswith('_ref')):
+                    # append _ref
+                    tmpRef += '_ref'
+                options.collRefName = tmpRef
+            if match[0]=='Input=MINBIAS':
+                options.inMinBias = True
+            if match[0]=='Input=CAVERN':
+                options.inCavern = True
+            if match[0]=='Input=BEAMHALO':
+                options.inBeamHalo = True
+            if match[0]=='Input=BEAMGAS':
+                options.inBeamGas = True
+            if match[0]=='BackNavigation=ON':                        
+                options.backNavi = True
+            if match[0].startswith('RndmStream'):
+                tmpItems = match[0].split()
+                options.rndmStream.append(tmpItems[1])
+            if match[0].startswith('RndmGenFile'):
+                tmpItems = match[0].split()
+                options.extFile.append(tmpItems[-1])
+            if match[0].startswith('InputFiles'):
+                if options.shipinput:
+                    tmpItems = match[0].split()
+                    options.shipFiles = tmpItems[1:]
+                else:
+                    continue
+            if match[0].startswith('CondInput'):
+                tmpItems = match[0].split()
+                if options.addPoolFC == "":
+                    options.addPoolFC = tmpItems[-1]
+                else:
+                    options.addPoolFC += ",%s" % tmpItems[-1]                
+            print line
+    # extractor failed
+    if failExtractor:
+        print out
+        print "ERROR : Extractor could not parse jobO"
+        sys.exit(EC_Extractor)
+else:
+    # parse parameters for trf
+    for tmpItem in jobO.split():
+        match = re.search('\%OUT\.(.+)',tmpItem)
+        if match:
+            # append basenames to extOutFile
+            options.extOutFile.append(match.group(1))
+
+# append .root for tag files
+if options.inColl:
+    for file in tuple(options.shipFiles):
+        if not file.endswith(".root"):
+            options.shipFiles.remove(file)
+            options.shipFiles.append('%s.root' % file)
+
+# append to extFile
+options.extFile += options.shipFiles
+
+# no output jobs
+if not (options.outHist or options.outESD or options.outAOD or options.outTAG 
+        or options.outStream1 or options.outStream2 or options.outBS or options.outRDO
+        or options.outSelBS
+        or (options.outNtuple  != [])
+        or (options.outAANT    != [])
+        or (options.outTHIST   != [])
+        or (options.outIROOT   != [])
+        or (options.extOutFile != [])
+        or (options.outStreamG != [])
+        or (options.outMeta    != [])
+        or (options.outMS      != [])        
+        ):
+    print "ERROR : No output is defined"
+    sys.exit(EC_Extractor)
+
+# check ship files in the current dir
+for file in options.shipFiles:
+    if not os.path.exists(file):
+        print "ERROR : %s needs exist in the current directory when using --shipInput" % file
+        sys.exit(EC_Extractor)
+
+# get random number
+if len(options.rndmStream) != 0:
+    if options.norandom:
+        print
+        print "Initial random seeds need to be defined."
+        print "Enter two numbers for each random stream."
+        print "  e.g., PYTHIA : 4789899 989240512"
+        print
+    for stream in options.rndmStream:
+        if options.norandom:
+            # enter manually
+            while True:
+                str = raw_input("%s : " % stream)
+                num = str.split()
+                if len(num) == 2:
+                    break
+                print " Two numbers are needed"
+            options.rndmNumbers.append([int(num[0]),int(num[1])])
+        else:
+            # automatic
+            options.rndmNumbers.append([random.randint(1,5000000),random.randint(1,5000000)])
+    if options.norandom:
+        print
+    
+# create tmp dir
+if options.tmpDir == '':
+    tmpDir = '%s/%s' % (currentDir,commands.getoutput('uuidgen'))
+else:
+    tmpDir = '%s/%s' % (options.tmpDir,commands.getoutput('uuidgen'))    
+os.makedirs(tmpDir)
+
+# exit action
+def _onExit(dir):
+    commands.getoutput('rm -rf %s' % dir)
+atexit.register(_onExit,tmpDir)
+
+
+#####################################################################
+# archive sources and send it to HTTP-reachable location
+
+# matching for extFiles
+def matchExtFile(fileName):
+    # .py/.dat/.C/.xml
+    for tmpExtention in ['.py','.dat','.C','.xml']:
+        if fileName.endswith(tmpExtention):
+            return True
+    # check filename
+    baseName = fileName.split('/')[-1]
+    for patt in options.extFile:
+        if patt.find('*') == -1:
+            # regular matching
+            if patt == baseName:
+                return True
+        else:
+            # use regex for *
+            tmpPatt = patt.replace('*','.*')
+            if re.search(tmpPatt,baseName) != None:
+                return True
+    # not matched
+    return False
+
+
+archiveName = ""
+if options.libDS == '' and not options.nobuild:
+    # archive sources
+    print 'archive sources'
+
+    #####################################################################
+    # subroutines
+    
+    # scan InstallArea to get a list of local packages
+    def getFileList(dir,files,forPackage,readLink=True):
+        list = os.listdir(dir)
+        for item in list:
+            # skip if doc
+            if item == 'doc':
+                continue
+            fullName=dir+'/'+item
+            if os.path.isdir(fullName):
+                # ignore symlinked dir just under InstallArea/include
+                # they are created for g77
+                if os.path.islink(fullName) and re.search('/InstallArea/include$',dir) != None:
+                    pass
+                elif os.path.islink(fullName) and readLink and forPackage:
+                    # resolve symlink
+                    getFileList(os.readlink(fullName),files,forPackage,readLink)
+                else:
+		    getFileList(fullName,files,forPackage,readLink)
+            else:
+                if os.path.islink(fullName):
+                    if readLink:
+                        appFileName = os.readlink(fullName)
+                    else:
+                        appFileName = os.path.abspath(fullName)                        
+                else:
+                    appFileName = os.path.abspath(fullName)
+                # remove redundant //
+                appFilename = re.sub('//','/',appFileName)
+                # append
+                files.append(appFileName)
+                    
+    # get package list
+    def getPackages(_workArea):
+        installFiles = []
+        getFileList(_workArea+'/InstallArea',installFiles,True)
+        # get list of packages
+        cmt_config = os.environ['CMTCONFIG']
+        _packages = []
+        for iFile in installFiles:
+            # ignore InstallArea stuff
+            if re.search('/InstallArea/',iFile):
+                continue
+            # converted to real path
+            file = os.path.realpath(iFile)
+            # remove special characters
+            sString=re.sub('[\+]','.',os.path.realpath(_workArea))
+            # look for /share/ , /python/, /i686-slc3-gcc323-opt/, .h
+            for target in ('share/','python/',cmt_config+'/','[^/]+\.h'):
+                res = re.search(sString+'/(.+)/'+target,file)
+                if res:
+                    # append
+                    pName = res.group(1)
+                    if target in ['[^/]+\.h']:
+                        # convert PackageDir/PackageName/PackageName to PackageDir/PackageName
+                        pName = re.sub('/[^/]+$','',pName)
+                    if not pName in _packages:
+                        if os.path.isdir(_workArea+'/'+pName):
+                            _packages.append(pName)
+                    break
+        return _packages
+
+        
+    # archive files
+    def archiveFiles(_workArea,_packages,_archiveFullName):
+        _curdir = os.getcwd()
+        # change dir
+        os.chdir(_workArea)
+        for pack in _packages:
+            # archive subdirs
+            list = os.listdir(pack)
+            for item in list:
+                # ignore libraries
+                if item.startswith('i686') or item.startswith('i386') or item.startswith('x86_64') \
+                   or item=='dict' or item=='pool' or item =='pool_plugins':
+                    continue
+                # run dir
+                if item=='run':
+                    files = []
+                    getFileList('%s/%s/run' % (_workArea,pack),files,False)
+                    for iFile in files:
+                        # converted to real path
+                        file = os.path.realpath(iFile)
+                        # archive .py/.dat/.C files only
+                        if matchExtFile(file):
+                            # remove special characters                    
+                            sString=re.sub('[\+]','.',os.path.realpath(_workArea))
+                            relPath = re.sub('^%s/' % sString, '', file)
+                            # if replace is failed or the file is symlink, try non-converted path names
+                            if relPath.startswith('/') or os.path.islink(iFile):
+                                sString=re.sub('[\+]','.',workArea)
+                                relPath = re.sub(sString+'/','',iFile)
+                            if os.path.islink(iFile):
+                                out = commands.getoutput('tar -rh %s -f %s' % (relPath,_archiveFullName))                
+                            else:
+                                out = commands.getoutput('tar rf %s %s' % (_archiveFullName,relPath))                
+                            if options.verbose:
+                                print relPath
+                                if out != '':    
+                                    print out
+                    continue
+                # else
+                out = commands.getoutput('tar rf %s %s/%s' % (_archiveFullName,pack,item))
+                if options.verbose:
+                    print "%s/%s" % (pack,item)
+                    if out != '':    
+                        print out
+        # back to previous dir
+        os.chdir(_curdir)
+
+    #####################################################################
+    # execute
+
+    # get packages in private area 
+    packages = getPackages(workArea)
+    # check TestRelease since it doesn't create any links in InstallArea
+    if os.path.exists('%s/TestRelease' % workArea):
+        # the TestRelease could be created by hand
+        packages.append('TestRelease')
+
+    if options.verbose:
+        print "== private packages =="
+        for pack in packages:
+            print pack
+        print "== private files =="
+        
+    # create archive
+    archiveName     = 'sources.%s.tar' % commands.getoutput('uuidgen')
+    archiveFullName = "%s/%s" % (tmpDir,archiveName)
+    # archive private area
+    archiveFiles(workArea,packages,archiveFullName)
+    # archive current (run) dir
+    files = []
+    os.chdir(workArea)
+    getFileList('%s/%s' % (workArea,runDir),files,False,False)
+    for file in files:
+        # remove special characters                    
+        sString=re.sub('[\+]','.',os.path.realpath(workArea))
+        relPath = re.sub(sString+'/','',os.path.realpath(file))
+        # if replace is failed or the file is symlink, try non-converted path names
+        if relPath.startswith('/') or os.path.islink(file):
+            sString=re.sub('[\+]','.',workArea)
+            relPath = re.sub(sString+'/','',file)
+        # archive .py/.dat/.C/.xml files only
+        if not matchExtFile(relPath):
+            continue
+        # ignore InstallArea
+        if relPath.startswith('InstallArea'):
+            continue
+        # check if already archived
+        alreadyFlag = False
+        for pack in packages:
+            if relPath.startswith(pack):
+                alreadyFlag = True
+                break
+        # archive
+        if not alreadyFlag:
+            if os.path.islink(file):
+                out = commands.getoutput('tar -rh %s -f %s' % (relPath,archiveFullName))                
+            else:
+                out = commands.getoutput('tar rf %s %s' % (archiveFullName,relPath))                
+            if options.verbose:
+                print relPath
+                if out != '':    
+                    print out
+    # back to current dir            
+    os.chdir(currentDir)
+    
+else:
+    # archive jobO
+    print 'archive jobOs and modules'
+
+    # get real jobOs
+    def getJobOs(dir,files):
+        list = os.listdir(dir)
+        for item in list:
+            fullName=dir+'/'+item
+            if os.path.isdir(fullName):
+                # dir
+                getJobOs(fullName,files)
+            else:
+                # python and other extFiles
+                if matchExtFile(fullName):
+                    files.append(fullName)
+                    
+    # get jobOs
+    files = []
+    os.chdir(workArea)
+    getJobOs('%s' % workArea,files)
+    # create archive
+    archiveName     = 'jobO.%s.tar' % commands.getoutput('uuidgen')
+    archiveFullName = "%s/%s" % (tmpDir,archiveName)
+    # archive
+    if options.verbose:
+        print "== py files =="
+    for file in files:
+        # remove special characters                    
+        sString=re.sub('[\+]','.',workArea)
+        relPath = re.sub(sString+'/','',file)
+        # append
+        out = commands.getoutput('tar -rh %s -f %s' % (relPath,archiveFullName))
+        if options.verbose:
+            print relPath
+            if out != '':    
+                print out
+
+
+# archive InstallArea
+if options.libDS == '':
+    print 'archive InstallArea'
+
+    # get file list
+    def getFiles(dir,files,ignoreLib,ignoreSymLink):
+        if options.verbose:
+            print "  getFiles(%s)" % dir
+        list = os.listdir(dir)
+        for item in list:
+            if ignoreLib and (item.startswith('i686') or item.startswith('i386') or
+                              item.startswith('x86_64')):
+                continue
+            fullName=dir+'/'+item
+            if os.path.isdir(fullName):
+                # ignore symlinked dir just under InstallArea/include
+                if ignoreSymLink and os.path.islink(fullName) and re.search('InstallArea/include$',dir) != None:
+                    continue
+                # dir
+                getFiles(fullName,files,False,ignoreSymLink)
+            else:
+                files.append(fullName)
+
+    # get cmt files
+    def getCMTFiles(dir,files):
+        list = os.listdir(dir)
+        for item in list:
+            fullName=dir+'/'+item
+            if os.path.isdir(fullName):
+                # dir
+                getCMTFiles(fullName,files)
+            else:
+                if re.search('cmt/requirements$',fullName) != None:
+                    files.append(fullName)
+
+    # get files
+    areaList = []
+    # workArea must be first
+    areaList.append(workArea)
+    if groupArea != '':
+        areaList.append(groupArea)
+    # groupArea archive    
+    groupFileName = re.sub('^sources','groupArea',archiveName)
+    groupFullName = "%s/%s" % (tmpDir,groupFileName)
+    allFiles = []    
+    for areaName in areaList:    
+        # archive
+        if options.verbose:
+            print "== InstallArea under %s ==" % areaName
+        files = []
+        cmtFiles = []
+        os.chdir(areaName)
+        if areaName==workArea and not options.nobuild:
+            # ignore i686 for workArea
+            getFiles('InstallArea',files,True,True)
+        else:
+            # groupArea
+            if not os.path.exists('InstallArea'):
+                if options.verbose:
+                    print "  Doesn't exist. Skip"
+                continue
+            getFiles('InstallArea',files,False,False)
+            # cmt/requirements is needed for non-release packages
+            for itemDir in os.listdir(areaName):
+                if itemDir != 'InstallArea' and os.path.isdir(itemDir) and \
+                       (not os.path.islink(itemDir)):
+                    getCMTFiles(itemDir,cmtFiles)
+        # remove special characters                    
+        sString=re.sub('[\+]','.',os.path.realpath(areaName))
+        # archive files if they are under the area
+        for file in files+cmtFiles:
+            relPath = re.sub(sString+'/','',os.path.realpath(file))
+            if not relPath.startswith('/'):
+                # use files in private InstallArea instead of group InstallArea
+                if not file in allFiles:
+                    # append
+                    if file in files:
+                        out = commands.getoutput('tar -rh %s -f %s' % (file,archiveFullName))
+                    else:
+                        # requirements files
+                        out = commands.getoutput('tar -rh %s -f %s' % (file,groupFullName))
+                    allFiles.append(file)
+                    if options.verbose:
+                        print file
+                        if out != '':    
+                            print out
+    # append groupArea to sources
+    if groupArea != '':
+        os.chdir(tmpDir)
+        if os.path.exists(groupFileName):
+            out = commands.getoutput('tar -rh %s -f %s' % (groupFileName,archiveFullName))
+            if out != '':    
+                print out
+            commands.getoutput('rm -rf %s' % groupFullName)    
+
+            
+# back to tmp dir        
+os.chdir(tmpDir)
+
+# compress
+status,out = commands.getstatusoutput('gzip %s' % archiveName)
+archiveName += '.gz'
+if status !=0 or options.verbose:
+    print out
+
+# check archive
+status,out = commands.getstatusoutput('ls -l %s' % archiveName)
+if options.verbose:
+    print out
+if status != 0:
+    print "ERROR : Failed to archive working area."
+    print "        If you see 'Disk quota exceeded', try '--tmpDir /tmp'" 
+    sys.exit(EC_Archive)
+
+# check symlinks
+print "check symbolic links"
+status,out = commands.getstatusoutput('tar tvfz %s' % archiveName)
+if status != 0:
+    print "ERROR : Failed to expand archive"
+    sys.exit(EC_Archive)
+symlinks = []    
+for line in out.split('\n'):
+    items = line.split()
+    if items[0].startswith('l') and items[-1].startswith('/'):
+        symlinks.append(line)
+if symlinks != []:
+    print "WARNING : Found some unresolved symlinks which may cause a problem"
+    print "              See, e.g., http://savannah.cern.ch/bugs/?43885"
+    print "           Please ignore if you believe they are harmless"    
+    for symlink in symlinks:
+        print "  %s" % symlink
+        
+# put sources/jobO via HTTP POST
+if not options.nosubmit:
+    print "post sources/jobO"
+    status,out = Client.putFile(archiveName,options.verbose)
+    if out != 'True':
+        print "ERROR : %s" % status
+        print out
+        sys.exit(EC_Post)
+
+
+####################################################################3
+# datasets 
+
+dataset          = options.inDS
+cavernDataset    = options.cavDS
+minbiasDataset   = options.minDS
+beamHaloDataset  = options.beamHaloDS
+beamHaloAdataset = options.beamHaloADS
+beamHaloCdataset = options.beamHaloCDS
+beamGasDataset   = options.beamGasDS
+beamGasHdataset  = options.beamGasHDS
+beamGasCdataset  = options.beamGasCDS
+beamGasOdataset  = options.beamGasODS
+
+# get outDS location
+outDSlocations = []
+if options.outputDSexist:
+    if options.verbose:
+        print "get locations for outDS:%s" % options.outDS
+    outDSlocations = Client.getLocations(options.outDS,[],options.cloud,True,options.verbose)
+    # set site when AUTO
+    if options.site == "AUTO":
+        # get PandaID corresponding to DQ2ID
+        for tmpID,tmpSpec in Client.PandaSites.iteritems():
+            if Client.convSrmV2ID(tmpSpec['ddm']) in outDSlocations and tmpSpec['status']=='online':
+                # exclude long,xrootd,local queues
+                if Client.isExcudedSite(tmpID):
+                    continue
+                options.site  = tmpID
+                options.cloud = tmpSpec['cloud']
+                print "set site -> %s cloud:%s (outDS:%s exists at %s)" % \
+                      (options.site,options.cloud,options.outDS,outDSlocations)                
+                break
+    # check
+    if options.site == "AUTO":
+        print "ERROR : cannot find appropriate site for outDS:%s locations:%s" % \
+              (options.outDS,outDSlocations)
+        sys.exit(EC_Dataset)
+
+# get libDS location
+libDSlocations = []
+if options.libDS != '':
+    if options.verbose:
+        print "get locations for libDS:%s" % options.libDS
+    libDSlocations = Client.getLocations(options.libDS,[],options.cloud,True,options.verbose)
+    # set site when AUTO
+    if options.site == "AUTO":
+        # get PandaID corresponding to MaxSite
+        for tmpID,tmpSpec in Client.PandaSites.iteritems():
+            if Client.convSrmV2ID(tmpSpec['ddm']) in libDSlocations and tmpSpec['status']=='online':
+                # exclude long,xrootd,local queues
+                if Client.isExcudedSite(tmpID):
+                    continue
+                options.site  = tmpID
+                options.cloud = tmpSpec['cloud']
+                print "set site -> %s cloud:%s (libDS:%s exists at %s)" % \
+                      (options.site,options.cloud,options.libDS,libDSlocations)                
+                break
+    # check
+    if options.site == "AUTO":
+        print "ERROR : cannot find appropriate site for libDS:%s locations:%s" % \
+              (options.libDS,libDSlocations)
+        sys.exit(EC_Dataset)
+        
+    
+#@ List of files in the dataset
+fileList      = []
+cavernList    = []
+minbiasList   = []
+beamHaloList  = []
+beamHaloAList = []
+beamHaloCList = []
+beamGasList   = []
+beamGasHList  = []
+beamGasCList  = []
+beamGasOList  = []
+if options.inDS != '' or options.shipinput or options.pfnList != '':
+    if options.inDS != '':
+        # query files in shadow dataset
+        shadowList = []
+        if options.shadowDSexist:
+            shadowList = Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose)
+        # query files in dataset
+        print "query files in dataset:%s" % dataset
+        tmpList  = Client.queryFilesInDataset(dataset,options.verbose)
+        # remove files
+        for tmpKey in tmpList.keys():
+            if tmpKey in options.removeFileList:
+                del tmpList[tmpKey]
+        # get locations when site==AUTO
+        if options.site == "AUTO":
+            dsLocationMap = Client.getLocations(dataset,tmpList,options.cloud,False,options.verbose,expCloud=expCloudFlag)
+	    # no location
+            if dsLocationMap == {}:
+                if expCloudFlag:
+                    print "ERROR : could not find supported locations in the %s cloud for %s" % (options.cloud,dataset)
+                else:
+                    print "ERROR : could not find supported locations for %s" % dataset
+                sys.exit(EC_Dataset)
+            # run brorage
+            tmpSites = []
+            for tmpItem in dsLocationMap.values():
+                tmpSites += tmpItem
+            status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose)
+            if status != 0:
+                print 'failed to run brokerage for automatic assignment: %s' % out
+                sys.exit(EC_Config)
+	    if not Client.PandaSites.has_key(out):
+                print 'brokerage gave wrong PandaSiteID:%s' % out
+                sys.exit(EC_Config)
+	    # set site
+            options.site = out
+            # patch for BNL
+            if options.site == "ANALY_BNL":
+                options.site = "ANALY_BNL_ATLAS_1"
+            # long queue
+            if options.long and not options.site.startswith('ANALY_LONG_'):
+                tmpsite = re.sub('ANALY_','ANALY_LONG_',options.site)
+                tmpsite = re.sub('_\d+$','',tmpsite)
+                # if sitename exists
+                if Client.PandaSites.has_key(tmpsite):
+                    options.site = tmpsite
+            # destination
+            if options.destSE == '':
+                options.destSE = options.site
+            if options.verbose:
+                print "chosen site=%s destSE=%s" % (options.site,options.destSE)
+        dsLocations = [Client.PandaSites[options.site]['ddm']]
+        # no avalable sites
+        if dsLocations == []:
+            print "ERROR : %s is not available at supported sites" % dataset
+            sys.exit(EC_Dataset)
+        # loop over all sites to get missing files
+        missList = tmpList
+        maxSite  = dsLocations[0]
+        if options.skipScan:
+            # skip remote scan
+            missList = []
+        else:
+            # loop over all locations
+            for dsLocation in dsLocations:
+                if Client.getLRC(dsLocation) != None:
+                    # LRC
+                    tmpMissList = Client.getMissLFNsFromLRC(tmpList,Client.getLRC(dsLocation),options.verbose)
+                elif Client.getLFC(dsLocation) != None:
+                    # LFC
+                    tmpMissList = Client.getMissLFNsFromLFC(tmpList,dsLocation,True,options.verbose)
+                else:
+                    tmpMissList = []
+                # choose min missList
+                if options.verbose:
+                    print "%s holds %s files" % (dsLocation,len(tmpList)-len(tmpMissList))
+                if len(missList) >= len(tmpMissList):
+                    missList = tmpMissList
+                    maxSite = dsLocation
+        # No files available        
+        if len(tmpList) == len(missList):
+            print "ERROR : No files available at %s" % dsLocations
+            sys.exit(EC_Dataset)
+        # extract file types when the dataset contains multiple types (e.g., AANT1,AANT2, ..)
+        fileType = []
+        for fileName in tmpList.keys():
+            # ignore log file
+            if len(re.findall('.log.tgz.\d+$',fileName)) or len(re.findall('.log.tgz$',fileName)):
+                continue
+            # get file type
+            match = re.search('\.([^\.]+)\._\d+\.[pool\.]*[coll\.]*root\.*\d*',fileName)
+            if match != None:
+                tmpType = match.group(1)
+                if not tmpType in fileType:
+                    fileType.append(tmpType)
+            else:
+                match = re.search('_\d+\.([^\.]+)\.[pool\.]*[coll\.]*root\.*\d*',fileName)
+                if match != None:
+                    tmpType = match.group(1)
+                    if not tmpType in fileType:
+                        fileType.append(tmpType)
+            # missing at remote site
+            if fileName in missList:
+                continue
+            # already used by previous jobs
+            if fileName in shadowList:
+                continue
+            # append
+            fileList.append((fileName,tmpList[fileName]))
+        # regards tid datasets as a single type
+        if len(fileType) > 1:
+            tidType = []
+            for tmpType in fileType:
+                # tid or short LFN
+                if re.search('^v\d+_tid\d+$',tmpType) != None or \
+                       re.search('^\d+$',tmpType) != None:
+                    tidType.append(tmpType)
+            # tid only
+            if len(fileType) == len(tidType):
+                fileType = []
+        # reset fileList if multiple file types
+        if len(fileType) > 1:
+            fileList = []
+            print "\nThere are %d types of files in the input dataset" % len(fileType)
+            print "[0] : ALL"
+            for i in range(len(fileType)):
+                print "[%d] : %s" % (i+1,fileType[i])
+	    # pre-defined
+            indexes = []
+            if options.inputType != []:
+                print "pre-defined -> %s" % options.inputType
+                for tmp_type in options.inputType:
+                    try:
+                        indexes.append(fileType.index(tmp_type)+1)
+                    except:
+                        pass
+            while True and indexes == []:
+                indexes = []
+                try:
+                    strIndex = raw_input('Which one to use as input? [0-%d] : ' % len(fileType))
+                    strIndexes = strIndex.split(',')
+                    for item in strIndexes:
+                        # collect correct indexes
+                        index = int(item)
+                        if index >= 0 and index <= len(fileType):
+                            indexes.append(index)
+                    if indexes != []:
+                        break
+                except:
+                    pass
+            if 0 in indexes:
+                targetType = fileType
+            else:
+                targetType = []
+                for index in indexes:
+                    targetType.append(fileType[index-1])
+            for fileName in tmpList.keys():
+                # missing at remote site
+                if fileName in missList:
+                    continue
+                # already used by previous jobs
+                if fileName in shadowList:
+                    continue
+                # get file type
+                match = re.search('\.([^\.]+)\._\d+\.[pool\.]*[coll\.]*root\.*\d*',fileName)
+                if match != None:
+                    tmpType = match.group(1)
+                    if tmpType in targetType:
+                        fileList.append((fileName,tmpList[fileName]))
+                else:
+                    match = re.search('_\d+\.([^\.]+)\.[pool\.]*[coll\.]*root\.*\d*',fileName)
+                    if match != None:
+                        tmpType = match.group(1)
+                        if tmpType in targetType:
+                            fileList.append((fileName,tmpList[fileName]))
+    elif options.pfnList != '':
+        # read PFNs from a file
+        rFile = open(options.pfnList)
+        for line in rFile:
+            line = re.sub('\n','',line)
+            fileList.append(line)
+        rFile.close()
+    else:
+        # ship input files
+        devidedByGUID = False 
+        # extract GUIDs
+        guidCollMap,guidCollList = AthenaUtils.getGUIDfromColl(athenaVer,options.shipFiles,
+                                                               currentDir,
+                                                               options.collRefName,
+                                                               options.verbose)
+        # if works
+        if guidCollList != []:
+            # use GUIDs for looping
+            fileList = guidCollList
+            # use GUID boundaries
+            devidedByGUID = True
+        else:
+            # use input collections for looping
+            fileList = options.shipFiles
+    # filename matching        
+    if options.filelist != []:
+        # collect filenames
+        if options.inDS != '':
+            collFileNames = []
+            for tmpName,tmpVal in fileList:
+                collFileNames.append(tmpName)
+        else:
+            collFileNames = fileList
+        # check matching    
+        matchedFileList = []
+        for pattern in options.filelist:
+            if re.search('\*',pattern) != None:
+                # wildcard matching
+                for tmpFile in collFileNames:
+                    if re.search(pattern,tmpFile) != None:
+                        matchedFileList.append(tmpFile)
+            else:
+                # normal matching
+                if pattern in collFileNames:
+                    matchedFileList.append(pattern)
+        # trim
+        for tmpFile in tuple(fileList):
+            # get filename
+            if options.inDS != '':
+                compName = tmpFile[0]
+            else:
+                compName = tmpFile
+            # check    
+            if not compName in matchedFileList:
+                fileList.remove(tmpFile)
+    # no input files                
+    if len(fileList) == 0:
+        print "ERROR : No (new) files available in %s" % dataset
+        print "        pathena runs on files which were failed or were not used in"
+        print "        previous submissions if it runs with the same inDS and outDS"
+        sys.exit(EC_Dataset)
+    # sort
+    fileList.sort()
+    # skip files
+    if options.nSkipFiles > len(fileList):
+        print "ERROR : the number of files in %s is less than nSkipFiles" % dataset
+        print "        N files=%s : nSkipFiles=%s" % (len(fileList),options.nSkipFiles) 
+        sys.exit(EC_Dataset)
+    fileList = fileList[options.nSkipFiles:]
+    # use limited number of files
+    #@ Truncate the filelist if asked by user
+    if options.nfiles > 0:
+        fileList = fileList[:options.nfiles]
+
+    # set # of events for shipInput
+    if options.shipinput and options.nFilesPerJob == -1 and options.nEventsPerJob == -1:
+	# non GUID boundaries
+	if not devidedByGUID:
+	    options.nEventsPerJob = 2000
+        
+    # set # of split
+    #@some interesting default behaviour here
+    #@ If number of jobs is "undefined" or "not specified by user"
+    #@ split dataset in number of chunsk with nFilesPerJob files per job
+    #@ if nFilesPerJob are not specified by user then split AOD files list in chunks of 10 files
+    #@ split other file types in chunks of 20 files.
+    #
+    if options.nEventsPerJob != -1:
+        if options.nEventsPerFile == 0:
+            options.nEventsPerFile = Client.nEvents(options.inDS,options.verbose,(not options.shipinput),fileList,currentDir)
+	if options.nEventsPerJob > options.nEventsPerFile:
+	    tmpDiv,tmpMod = divmod(options.nEventsPerJob,options.nEventsPerFile)
+	    options.nFilesPerJob = tmpDiv
+	    if tmpMod != 0:
+		options.nFilesPerJob += 1
+	    options.nEventsPerJob = -1
+
+	    
+    if options.split == -1:
+        # count total size for inputs
+        totalSize = 0 
+        for fileName,vals in fileList:
+            try:
+                totalSize += long(vals['fsize'])
+            except:
+                pass
+        #@ If number of jobs is not defined then....
+        #@ For splitting by files case
+        if(options.nEventsPerJob == -1):
+            if options.nFilesPerJob > 0:
+                defaultNFile = options.nFilesPerJob
+            elif re.search('\.AOD\.',options.inDS,re.I) == None:
+                defaultNFile = 10
+            else:
+                defaultNFile = 20
+            tmpNSplit,tmpMod = divmod(len(fileList),defaultNFile)
+            if tmpMod != 0:
+                tmpNSplit += 1
+            # check size limit
+            if totalSize/tmpNSplit > maxTotalSize:
+                # reset to meet the size limit
+                tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize)
+                if tmpMod != 0:
+                    tmpNSplit += 1
+                # calculate N files
+                (divF,modF) = divmod(len(fileList),tmpNSplit)
+                if modF != 0:
+                    divF += 1
+                # check again just in case
+                iDiv = 0
+                subTotal = 0
+                for fileName,vals in fileList:
+                    try:
+                        subTotal += long(vals['fsize'])
+                    except:
+                        pass
+                    iDiv += 1
+                    if iDiv >= divF:
+                        # check
+                        if subTotal > maxTotalSize:
+                            # recalcurate
+                            if divF != 1:
+                                divF -= 1
+                            tmpNSplit,tmpMod = divmod(len(fileList),divF)
+                            if tmpMod != 0:
+                                tmpNSplit += 1
+                            break
+			# reset
+                        iDiv = 0
+                        subTotal = 0
+            # set            
+            options.split = tmpNSplit
+        #@ For splitting by events case
+        else:
+            #@ split by number of events defined
+            defaultNFile=1 #Each job has one input file in this case
+            #@ tmpNSplit - number of jobs per file in case of splitting by event number
+            tmpNSplit, tmpMod = divmod(options.nEventsPerFile, options.nEventsPerJob)
+            if tmpMod != 0:
+                tmpNSplit +=1
+            #@ Number of Jobs calculated here:
+            options.split = tmpNSplit*len(fileList)
+
+    # input stream for minimum bias
+    if options.inMinBias or (options.trf and jobO.find('%MININ') != -1):
+        if options.minDS == "":
+            # read from stdin   
+            print
+            print "This job uses Minimum-Bias stream"
+            while True:
+                minbiasDataset = raw_input("Enter dataset name for Minimum Bias : ")
+                minbiasDataset = minbiasDataset.strip()
+                if minbiasDataset != "":
+                    break
+        else:
+            minbiasDataset = options.minDS
+        # query files in dataset
+        print "query files in dataset:%s" % minbiasDataset
+        tmpList = Client.queryFilesInDataset(minbiasDataset,options.verbose)
+        for item in tmpList.keys():
+            # remove log
+            if re.search('log\.tgz(\.\d+)*',item) != None:
+                continue
+            minbiasList.append((item,tmpList[item]))
+        # sort
+        minbiasList.sort()
+        # number of files per one signal
+        if options.nMin < 0:
+            while True:
+                str = raw_input("Enter the number of Minimum-Bias files per one signal file : ")
+                try:
+                    options.nMin = int(str)
+                    break
+                except:
+                    pass
+        # check # of files
+        if len(minbiasList) < options.nMin:
+            print "ERROR : %s contains only %s files which is less than %s" % \
+                  (minbiasDataset,len(minbiasList),options.nMin)
+            sys.exit(EC_Dataset)
+
+    # input stream for cavern
+    if options.inCavern or (options.trf and jobO.find('%CAVIN') != -1):
+        if options.cavDS == "":
+            # read from stdin                  
+            print
+            print "This job uses Cavern stream"
+            while True:
+                cavernDataset = raw_input("Enter dataset name for Cavern : ")
+                cavernDataset = cavernDataset.strip()
+                if cavernDataset != "":
+                    break
+        else:
+            cavernDataset = options.cavDS
+        # query files in dataset
+        print "query files in dataset:%s" % cavernDataset
+        tmpList = Client.queryFilesInDataset(cavernDataset,options.verbose)
+        for item in tmpList.keys():
+            # remove log
+            if re.search('log\.tgz(\.\d+)*',item) != None:
+                continue
+            cavernList.append((item,tmpList[item]))
+        # sort
+        cavernList.sort()
+        # number of files per one signal
+        if options.nCav < 0:
+            while True:
+                str = raw_input("Enter the number of Cavern files per one signal file : ")
+                try:
+                    options.nCav = int(str)
+                    break
+                except:
+                    pass
+        # check # of files
+        if len(cavernList) < options.nCav:
+            print "ERROR : %s contains only %s files which is less than %s" % \
+                  (cavernDataset,len(cavernList),options.nCav)
+            sys.exit(EC_Dataset)
+    # input stream for beam halo
+    if options.inBeamHalo or (options.trf and jobO.find('%BHIN') != -1):
+	# use common DS
+	if options.useCommonHalo:
+	    if options.beamHaloDS == "":
+                # read from stdin                  
+                print
+                print "This job uses BeamHalo stream"
+                while True:
+                    beamHaloDataset = raw_input("Enter dataset name for BeamHalo : ")
+                    beamHaloDataset = beamHaloDataset.strip()
+                    if beamHaloDataset != "":
+                        break
+            # query files in dataset
+            print "query files in dataset:%s" % beamHaloDataset
+            tmpList = Client.queryFilesInDataset(beamHaloDataset,options.verbose)
+            for item in tmpList.keys():
+                # remove log
+                if re.search('log\.tgz(\.\d+)*',item) != None:
+                    continue
+                beamHaloList.append((item,tmpList[item]))
+            # sort
+            beamHaloList.sort()
+            # number of files per one sub job
+            if options.nBeamHalo < 0:
+                while True:
+                    str = raw_input("Enter the number of BeamHalo files per one sub job : ")
+                    try:
+                        options.nBeamHalo = int(str)
+                        break
+                    except:
+                        pass
+            # check # of files
+            if len(beamHaloList) < options.nBeamHalo:
+                print "ERROR : %s contains only %s files which is less than %s" % \
+                      (beamHaloDataset,len(beamHaloList),options.nBeamHalo)
+                sys.exit(EC_Dataset)
+	else:	
+            # get DS for A-side        
+            if options.beamHaloADS == "":
+                # read from stdin                  
+                print
+                print "This job uses BeamHalo stream"
+                while True:
+                    beamHaloAdataset = raw_input("Enter dataset name for BeamHalo A-side : ")
+                    beamHaloAdataset = beamHaloAdataset.strip()
+                    if beamHaloAdataset != "":
+                        break
+            # get DS for C-side
+            if options.beamHaloCDS == "":
+                # read from stdin                  
+                while True:
+                    beamHaloCdataset = raw_input("Enter dataset name for BeamHalo C-side : ")
+                    beamHaloCdataset = beamHaloCdataset.strip()
+                    if beamHaloCdataset != "":
+                        break
+            # query files in dataset
+            print "query files in dataset:%s" % beamHaloAdataset
+            tmpList = Client.queryFilesInDataset(beamHaloAdataset,options.verbose)
+            for item in tmpList.keys():
+                # remove log
+                if re.search('log\.tgz(\.\d+)*',item) != None:
+                    continue
+                beamHaloAList.append((item,tmpList[item]))
+            print "query files in dataset:%s" % beamHaloCdataset
+            tmpList = Client.queryFilesInDataset(beamHaloCdataset,options.verbose)
+            for item in tmpList.keys():
+                # remove log
+                if re.search('log\.tgz(\.\d+)*',item) != None:
+                    continue
+                beamHaloCList.append((item,tmpList[item]))
+            # sort
+            beamHaloAList.sort()
+            beamHaloCList.sort()
+            # number of files per one sub job
+            if options.nBeamHaloA < 0:
+                while True:
+                    str = raw_input("Enter the number of BeamHalo files for A-side per one sub job : ")
+                    try:
+                        options.nBeamHaloA = int(str)
+                        break
+                    except:
+                        pass
+            if options.nBeamHaloC < 0:
+                # use default ratio
+                options.nBeamHaloC = int(0.02/1.02*options.nBeamHaloA)
+            # check # of files
+            if len(beamHaloAList) < options.nBeamHaloA:
+                print "ERROR : %s contains only %s files which is less than %s" % \
+                      (beamHaloAdataset,len(beamHaloAList),options.nBeamHaloA)
+                sys.exit(EC_Dataset)
+            if len(beamHaloCList) < options.nBeamHaloC:
+                print "ERROR : %s contains only %s files which is less than %s" % \
+                      (beamHaloCdataset,len(beamHaloCList),options.nBeamHaloC)
+                sys.exit(EC_Dataset)
+    # input stream for beam gas
+    if options.inBeamGas or (options.trf and jobO.find('%BGIN') != -1):
+	# use common DS
+	if options.useCommonGas:
+            # get BeamGas DS
+            if options.beamGasDS == "":
+                # read from stdin                  
+                print
+                print "This job uses BeamGas stream"
+                while True:
+                    beamGasDataset = raw_input("Enter dataset name for BeamGas : ")
+                    beamGasDataset = beamGasDataset.strip()
+                    if beamGasDataset != "":
+                        break
+            # query files in dataset
+            print "query files in dataset:%s" % beamGasDataset
+            tmpList = Client.queryFilesInDataset(beamGasDataset,options.verbose)
+            for item in tmpList.keys():
+                # remove log
+                if re.search('log\.tgz(\.\d+)*',item) != None:
+                    continue
+                beamGasList.append((item,tmpList[item]))
+            # sort
+            beamGasList.sort()
+            # number of files per one sub job
+            if options.nBeamGas < 0:
+                while True:
+                    str = raw_input("Enter the number of BeamGas files per one sub job : ")
+                    try:
+                        options.nBeamGas = int(str)
+                        break
+                    except:
+                        pass
+            # check # of files
+            if len(beamGasList) < options.nBeamGas:
+                print "ERROR : %s contains only %s files which is less than %s" % \
+                      (beamGasDataset,len(beamGasList),options.nBeamGas)
+                sys.exit(EC_Dataset)
+        else:
+            # get DS for H
+            if options.beamGasHDS == "":
+                # read from stdin                  
+                print
+                print "This job uses BeamGas stream"
+                while True:
+                    beamGasHdataset = raw_input("Enter dataset name for BeamGas Hydrogen : ")
+                    beamGasHdataset = beamGasHdataset.strip()
+                    if beamGasHdataset != "":
+                        break
+            # get DS for C
+            if options.beamGasCDS == "":
+                # read from stdin                  
+                while True:
+                    beamGasCdataset = raw_input("Enter dataset name for BeamGas Carbon : ")
+                    beamGasCdataset = beamGasCdataset.strip()
+                    if beamGasCdataset != "":
+                        break
+            # get DS for O
+            if options.beamGasODS == "":
+                # read from stdin                  
+                while True:
+                    beamGasOdataset = raw_input("Enter dataset name for BeamGas Oxygen : ")
+                    beamGasOdataset = beamGasOdataset.strip()
+                    if beamGasOdataset != "":
+                        break
+            # query files in dataset
+            print "query files in dataset:%s" % beamGasHdataset
+            tmpList = Client.queryFilesInDataset(beamGasHdataset,options.verbose)
+            for item in tmpList.keys():
+                # remove log
+                if re.search('log\.tgz(\.\d+)*',item) != None:
+                    continue
+                beamGasHList.append((item,tmpList[item]))
+            print "query files in dataset:%s" % beamGasCdataset
+            tmpList = Client.queryFilesInDataset(beamGasCdataset,options.verbose)
+            for item in tmpList.keys():
+                # remove log
+                if re.search('log\.tgz(\.\d+)*',item) != None:
+                    continue
+                beamGasCList.append((item,tmpList[item]))
+            print "query files in dataset:%s" % beamGasOdataset
+            tmpList = Client.queryFilesInDataset(beamGasOdataset,options.verbose)
+            for item in tmpList.keys():
+                # remove log
+                if re.search('log\.tgz(\.\d+)*',item) != None:
+                    continue
+                beamGasOList.append((item,tmpList[item]))
+            # sort
+            beamGasHList.sort()
+            beamGasCList.sort()
+            beamGasOList.sort()        
+            # number of files per one sub job
+            if options.nBeamGasH < 0:
+                while True:
+                    str = raw_input("Enter the number of BeamGas files for Hydrogen per one sub job : ")
+                    try:
+                        options.nBeamGasH = int(str)
+                        break
+                    except:
+                        pass
+            if options.nBeamGasC < 0:
+                # use default ratio
+                options.nBeamGasC = int(options.nBeamGasH*7/90)
+            if options.nBeamGasO < 0:
+                # use default ratio
+                options.nBeamGasO = int(options.nBeamGasH*3/90)
+            # check # of files
+            if len(beamGasHList) < options.nBeamGasH:
+                print "ERROR : %s contains only %s files which is less than %s" % \
+                      (beamGasHdataset,len(beamGasHList),options.nBeamGasH)
+                sys.exit(EC_Dataset)
+            if len(beamGasCList) < options.nBeamGasC:
+                print "ERROR : %s contains only %s files which is less than %s" % \
+                      (beamGasCdataset,len(beamGasCList),options.nBeamGasC)
+                sys.exit(EC_Dataset)
+            if len(beamGasOList) < options.nBeamGasO:
+                print "ERROR : %s contains only %s files which is less than %s" % \
+                      (beamGasOdataset,len(beamGasOList),options.nBeamGasO)
+                sys.exit(EC_Dataset)
+else:
+    if options.split <= 0:
+        options.split = 1
+
+# get DB datasets
+dbrFiles  = {}
+dbrDsList = []
+if options.trf or options.dbRelease != '':
+    if options.trf:
+        # parse jobO for TRF
+        tmpItems = jobO.split()
+    else:
+        # mimic a trf parameter to reuse following algorithm
+        tmpItems = ['%DB='+options.dbRelease]
+    # look for DBRelease
+    for tmpItem in tmpItems:
+        match = re.search('%DB=([^:]+):(.+)$',tmpItem)
+        if match:
+            tmpDbrDS  = match.group(1)
+            tmpDbrLFN = match.group(2)
+            # get files in the dataset
+            if not tmpDbrDS in dbrDsList:
+                print "query files in dataset:%s" % tmpDbrDS
+                tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
+                # append
+                for tmpLFN,tmpVal in tmpList.iteritems():
+                    dbrFiles[tmpLFN] = tmpVal
+                dbrDsList.append(tmpDbrDS)
+            # check
+            if not dbrFiles.has_key(tmpDbrLFN):
+                print "ERROR : %s is not in %s" (tmpDbrLFN,tmpDbrDS)
+		sys.exit(EC_Dataset)
+
+# index
+indexFiles   = 0
+indexCavern  = 0
+indexMin     = 0
+indexBHalo   = 0
+indexBHaloA  = 0
+indexBHaloC  = 0
+indexBGas    = 0
+indexBGasH   = 0
+indexBGasC   = 0
+indexBGasO   = 0
+indexNT      = 0
+indexHIST    = 0
+indexRDO     = 0
+indexESD     = 0
+indexAOD     = 0
+indexAANT    = 0
+indexTAG     = 0
+indexTHIST   = 0
+indexIROOT   = 0
+indexEXT     = 0
+indexStream1 = 0
+indexStream2 = 0
+indexStreamG = 0
+indexBS      = 0
+indexSelBS   = 0
+indexMeta    = 0
+indexMS      = 0
+
+# get maximum index
+def getIndex(list,pattern):
+    maxIndex = 0
+    for item in list:
+        match = re.match(pattern,item)
+        if match != None:
+            tmpIndex = int(match.group(1))
+            if maxIndex < tmpIndex:
+                maxIndex = tmpIndex
+    return maxIndex
+
+# increase index
+if options.outputDSexist:
+    # query files in dataset from DDM
+    print "query files in dataset:%s" % options.outDS
+    tmpList = Client.queryFilesInDataset(options.outDS,options.verbose)
+    # query files in dataset from Panda
+    status,tmpMap = Client.queryLastFilesInDataset([options.outDS],options.verbose)
+    for tmpLFN in tmpMap[options.outDS]:
+        if not tmpLFN in tmpList:
+            tmpList[tmpLFN] = None
+    # index
+    indexHIST    = getIndex(tmpList,"%s\.hist\._(\d+)\.root" % options.outDS)
+    indexRDO     = getIndex(tmpList,"%s\.RDO\._(\d+)\.pool\.root" % options.outDS)    
+    indexESD     = getIndex(tmpList,"%s\.ESD\._(\d+)\.pool\.root" % options.outDS)
+    indexAOD     = getIndex(tmpList,"%s\.AOD\._(\d+)\.pool\.root" % options.outDS)
+    indexTAG     = getIndex(tmpList,"%s\.TAG\._(\d+)\.coll\.root" % options.outDS)
+    indexStream1 = getIndex(tmpList,"%s\.Stream1\._(\d+)\.pool\.root" % options.outDS)
+    indexStream2 = getIndex(tmpList,"%s\.Stream2\._(\d+)\.pool\.root" % options.outDS)
+    indexBS      = getIndex(tmpList,"%s\.BS\._(\d+)\.data" % options.outDS)
+    indexSelBS   = getIndex(tmpList,"%s\.%s\._(\d+)\.data" % (options.outDS,options.outSelBS))        
+    for sName in options.outNtuple:
+        tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (options.outDS,sName))
+        if tmpIndex > indexNT:
+            indexNT  = tmpIndex
+    for sName in options.outTHIST:
+        tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (options.outDS,sName))
+        if tmpIndex > indexTHIST:
+            indexTHIST  = tmpIndex
+    for aName,sName in options.outAANT:
+        tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (options.outDS,sName))
+        if tmpIndex > indexAANT:
+            indexAANT  = tmpIndex
+    for sIndex,sName in enumerate(options.outIROOT):
+        tmpIndex = getIndex(tmpList,"%s\.iROOT%s\._(\d+)\.%s" % (options.outDS,sIndex,sName))
+        if tmpIndex > indexIROOT:
+            indexIROOT  = tmpIndex
+    for sIndex,sName in enumerate(options.extOutFile):
+        # change * to X and add .tgz
+        if sName.find('*') != -1:
+            sName = sName.replace('*','XYZ')
+            sName = '%s.tgz' % sName
+        tmpIndex = getIndex(tmpList,"%s\.EXT%s\._(\d+)\.%s" % (options.outDS,sIndex,sName))
+        if tmpIndex > indexEXT:
+            indexEXT  = tmpIndex
+    for sName in options.outStreamG:
+        tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (options.outDS,sName))
+        if tmpIndex > indexStreamG:
+            indexStreamG = tmpIndex
+    for sName,sAsso in options.outMeta:
+        iMeta = 0
+        if sAsso == 'None':
+            tmpIndex = getIndex(tmpList,"%s\.META%s\._(\d+)\.root" % (options.outDS,iMeta))
+            iMeta += 1
+            if tmpIndex > indexMeta:
+                indexMeta = tmpIndex
+    for sName,sAsso in options.outMS:
+        tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (options.outDS,sName))
+        if tmpIndex > indexMS:
+            indexMS = tmpIndex
+
+####################################################################3
+# submit jobs
+
+# cloud
+jobCloud = None
+if Client.PandaSites.has_key(options.site):
+    jobCloud = Client.PandaSites[options.site]['cloud']
+
+# check location for outDS and libDS
+if options.outputDSexist and outDSlocations != []:
+    if not Client.convSrmV2ID(Client.PandaSites[options.site]['ddm']) in outDSlocations:
+        print "ERROR : Jobs need to be sent to %s where outDS:%s exists" % (outDSlocations,options.outDS)
+        sys.exit(EC_Dataset)
+if options.libDS != '' and libDSlocations != []:
+    if not Client.convSrmV2ID(Client.PandaSites[options.site]['ddm']) in libDSlocations:
+        print "ERROR : Jobs need to be sent to %s where libDS:%s exists" % (libDSlocations,options.libDS)
+        sys.exit(EC_Dataset)
+
+# disable prestager lookup for too many subJobs
+prestageLookUp = False # TEMPORARY
+maxSubForPrestage = 10
+if options.prestage and (options.split > maxSubForPrestage):
+    prestageLookUp = False
+    print "WARNING : disable prestage lookup (the number of subjobs > %s)" % maxSubForPrestage
+
+# upload proxy for glexec
+if Client.PandaSites.has_key(options.site):
+    if Client.PandaSites[options.site]['glexec'] == 'uid':
+	from PandaTools import MyproxyUtils
+        # get proxy key
+        status,proxyKey = Client.getProxyKey(options.verbose)
+        if status != 0:
+            print proxyKey
+            print "ERROR : could not get proxy key"
+            sys.exit(EC_MyProxy)
+        # check if the proxy is valid in MyProxy
+        mypIF = MyproxyUtils.MyProxyInterface()
+        mypIF.pilotownerDN = commands.getoutput('%s grid-proxy-info -identity' % gridSrc).split('\n')[-1]
+        mypIF.servername = options.myproxy
+        proxyValid = False
+        # check existing key
+        if proxyKey != {}:
+            proxyValid = mypIF.check(proxyKey['credname'],options.verbose)
+        # expired
+        if not proxyValid:
+            # upload proxy
+            newkey = mypIF.delegate(gridPassPhrase,options.verbose)
+            # register proxykey
+            status,retO = Client.registerProxyKey(newkey,commands.getoutput('hostname -f'),
+                                                  options.myproxy,options.verbose)
+        if status != 0:
+            print retO
+            print "ERROR : could not register proxy key"
+            sys.exit(EC_MyProxy)
+# create dir for DB
+dbdir = os.path.expanduser('~/.pathena')
+if not os.path.exists(dbdir):
+    os.makedirs(dbdir)
+
+# get lock for DB access
+dbLockName = '%s/.lock_job_record' % dbdir    
+dbLock = open(dbLockName,'w')
+if not options.nolock:
+    fcntl.flock(dbLock,fcntl.LOCK_EX)
+
+# open DB
+db = shelve.open('%s/job_record' % dbdir)
+
+# get job IDs
+_jobIDs = db.keys()
+
+# determin Job ID
+if len(_jobIDs) == 0:
+    jobID = 1
+else:
+    # comparison function for sort
+    def compFunc (a,b):
+        intA = int(a)
+        intB = int(b)
+        if intA > intB:
+            return -1
+        elif intA < intB:    
+            return 1
+        else:
+            return 0
+    # sort    
+    _jobIDs.sort(compFunc)
+    # determin Job ID
+    jobID = 1+int(_jobIDs[0])
+
+# look for PandaTools package
+for path in sys.path:
+    if path == '':
+        path = '.'
+    if os.path.exists(path) and 'PandaTools' in os.listdir(path):
+        # make symlink for module name.
+        # This is needed since pickle reserves fully qualified module name
+        os.symlink('%s/PandaTools' % path,'taskbuffer')
+        break
+sys.path = [tmpDir]+sys.path
+from taskbuffer.JobSpec  import JobSpec
+from taskbuffer.FileSpec import FileSpec
+
+jobList = []
+jobDefinitionID   = jobID
+
+jobName = commands.getoutput('uuidgen')
+
+# job params
+paramStr = ''
+for item in sys.argv[1:]:
+    match = re.search('(\*| |\'|=)',item)
+    if match == None:
+        # normal parameters
+        paramStr += '%s ' % item
+    else:
+        # quote string
+        paramStr += '"%s" ' % item
+paramStr = paramStr[:-1]        
+
+# build job
+if options.nobuild:
+    pass
+elif options.libDS == '': 
+    jobB = JobSpec()
+    jobB.jobDefinitionID   = jobDefinitionID
+    jobB.jobName           = jobName
+    jobB.AtlasRelease      = 'Atlas-%s' % athenaVer
+    jobB.homepackage       = 'AnalysisTransforms'+cacheVer+nightVer
+    jobB.transformation    = '%s/buildJob-00-00-03' % Client.baseURLSUB
+    hostName = commands.getoutput('hostname').split('.')[0]
+    jobB.destinationDBlock = 'user%s.%s.%s_%s.lib._%06d' % (time.strftime('%y',time.gmtime()),distinguishedName,
+                                                            hostName,random.randint(0,100),jobDefinitionID)
+    if options.useExperimental and options.destSE != '':
+        # write outputs to destSE
+        jobB.destinationSE     = options.destSE
+    else:
+        jobB.destinationSE     = options.site
+    jobB.prodSourceLabel   = 'panda'        
+    if options.testMode:    
+        jobB.processingType = 'prod_test'
+    jobB.assignedPriority  = 2000
+    jobB.computingSite = options.site
+    jobB.cloud = Client.PandaSites[options.site]['cloud']
+    jobB.metadata = paramStr
+    fileBO = FileSpec()
+    fileBO.lfn = '%s.lib.tgz' % jobB.destinationDBlock
+    fileBO.type = 'output'
+    fileBO.dataset = jobB.destinationDBlock
+    fileBO.destinationDBlock = jobB.destinationDBlock
+    fileBO.destinationSE = jobB.destinationSE
+    jobB.addFile(fileBO)
+    fileBI = FileSpec()
+    fileBI.lfn = archiveName
+    fileBI.type = 'input'
+    jobB.jobParameters     = '-i %s -o %s' % (fileBI.lfn,fileBO.lfn)
+    # source URL
+    matchURL = re.search("(http.*://[^/]+)/",Client.baseURLSSL)
+    if matchURL != None:
+        jobB.jobParameters += " --sourceURL %s " % matchURL.group(1)
+    # log    
+    file = FileSpec()
+    file.lfn  = '%s.log.tgz' % jobB.destinationDBlock
+    file.type = 'log'
+    file.dataset = jobB.destinationDBlock
+    file.destinationDBlock = jobB.destinationDBlock
+    file.destinationSE = jobB.destinationSE
+    jobB.addFile(file)
+    # set space token
+    for file in jobB.Files:
+        if file.type in ['output','log']:
+            if options.spaceToken != '':
+                file.destinationDBlockToken = options.spaceToken
+            else:
+                defaulttoken = Client.PandaSites[options.site]['defaulttoken']
+                file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
+    # append
+    jobList.append(jobB)
+else:
+    # query files in lib dataset to reuse libraries
+    print "query files in lib-dataset:%s" % options.libDS
+    tmpList = Client.queryFilesInDataset(options.libDS,options.verbose)
+    tmpFileList = []
+    tmpGUIDmap = {}
+    for fileName in tmpList.keys():
+        # ignore log file
+        if len(re.findall('.log.tgz.\d+$',fileName)) or len(re.findall('.log.tgz$',fileName)):
+            continue
+        tmpFileList.append(fileName)
+        tmpGUIDmap[fileName] = tmpList[fileName]['guid'] 
+    # incomplete libDS
+    if tmpFileList == []:
+        # look for lib.tgz
+        for indexID,tmpTmp in enumerate(_jobIDs):
+            tmpID = _jobIDs[-1-indexID]
+            jobRec = db[tmpID]
+            if jobRec['libDS'] == options.libDS:
+                if options.verbose:
+                    print "query job:%s" % jobRec['build']
+                # query job status
+                s,o = Client.getJobStatus([jobRec['build']])
+                if s == 0:
+                    try:
+                        tmpJob = o[0]
+                        # check job status
+                        if options.verbose:
+                            print " job status -> %s" % tmpJob.jobStatus
+                        # buildJob failed    
+                        if tmpJob.jobStatus == 'failed':
+                            print "ERROR : buildJob %s failed to produce %s" % \
+                                  (jobRec['build'],options.libDS)
+                            sys.exit(EC_Dataset)
+                        for tmpFile in tmpJob.Files:
+                            # append lib.tgz
+                            if tmpFile.type=='output':
+                                tmpFileList.append(tmpFile.lfn)
+                                if tmpFile.GUID == 'NULL':
+                                    tmpGUIDmap[tmpFile.lfn] = None
+                                else:
+                                    tmpGUIDmap[tmpFile.lfn] = tmpFile.GUID
+                                break
+                    except:
+                        pass
+                # escape from DB loop    
+                break
+    # check file list                
+    if len(tmpFileList) != 1:
+        print "ERROR : dataset %s contains %s" % (options.libDS,tmpFileList)
+        sys.exit(EC_Dataset)
+    # instantiate FileSpec
+    fileBO = FileSpec()
+    fileBO.lfn = tmpFileList[0]
+    fileBO.GUID = tmpGUIDmap[fileBO.lfn]
+    fileBO.dataset = options.libDS
+    fileBO.destinationDBlock = options.libDS
+    if fileBO.GUID != 'NULL':
+        fileBO.status = 'ready'
+    
+# run athena            
+
+# split job
+#@ Loop for jobs here
+for iSubJob in range(options.split):
+    # terminate condition: no remaining files
+    if (dataset != '' or options.shipinput or options.pfnList != '') and indexFiles >= len(fileList):
+        break
+    # instantiate sub-job
+    jobR = JobSpec()
+    jobR.jobDefinitionID   = jobDefinitionID
+    jobR.jobName           = jobName
+    jobR.AtlasRelease      = 'Atlas-%s' % athenaVer
+    jobR.homepackage       = 'AnalysisTransforms'+cacheVer+nightVer
+    jobR.transformation    = '%s/runAthena-00-00-11' % Client.baseURLSUB
+    if dataset == '':
+        jobR.prodDBlock        = 'NULL'
+    else:
+        jobR.prodDBlock        = dataset
+    jobR.destinationDBlock = options.outDS
+    if options.useExperimental and options.destSE != '':
+        # write outputs to destSE
+        jobR.destinationSE     = options.destSE
+    else:
+        jobR.destinationSE     = options.site
+    jobR.prodSourceLabel   = 'user'        
+    if options.testMode:    
+        jobR.processingType = 'prod_test'
+    jobR.assignedPriority  = 1000
+    jobR.cloud             = jobCloud
+    jobR.metadata          = paramStr    
+    # memory
+    if options.memory != -1:
+        jobR.minRamCount = options.memory
+    # CPU count
+    if options.maxCpuCount != -1:
+        jobR.maxCpuCount = options.maxCpuCount
+    jobR.computingSite = options.site
+    jobR.cloud = Client.PandaSites[options.site]['cloud']
+    # source files
+    if not options.nobuild:
+        fileS = FileSpec()
+        fileS.lfn     = fileBO.lfn
+        fileS.GUID    = fileBO.GUID
+        fileS.type    = 'input'
+        fileS.status  = fileBO.status
+        fileS.dataset = fileBO.destinationDBlock
+        fileS.dispatchDBlock = fileBO.destinationDBlock
+        jobR.addFile(fileS)
+    # input files
+    inList       = []
+    minList      = []
+    cavList      = []
+    bhaloList    = []
+    bgasList     = []
+    guidBoundary = []
+    if dataset != '' or options.shipinput or options.pfnList != '':
+        # calculate N files
+        (divF,modF) = divmod(len(fileList),options.split)
+        if modF != 0:
+            divF += 1
+        #If split by events was specified then
+        if options.nEventsPerJob > 0:
+           #@Calculate how many events to skip
+           nEventsToSkip = nSkips*options.nEventsPerJob
+           # @Increment number of skipped blocks
+           nSkips = nSkips + 1
+           #Take just one file
+           divF = 1
+           # @ If splitting of file per event is complete then take the next file
+           if nEventsToSkip >= options.nEventsPerFile :
+               nEventsToSkip = 0
+               nSkips        = 1
+               indexFiles   += divF
+        # File Selector    
+        tmpList = fileList[indexFiles:indexFiles+divF]
+        if dataset != '':
+            # check prestage
+            if options.prestage and tmpList != [] and prestageLookUp:
+                # collect GUIDs
+                guidStr = ''
+                for fileName,vals in tmpList:
+                    guidStr += '%s+' % vals['guid']
+                guidStr = guidStr[:-1]
+                # check
+                """
+                com = 'curl -k --silent %s/staged?guids=%s' % \
+                      (Client.pathena_conf.sites[bareID]['prestage'],guidStr)
+                if options.verbose:
+                    print com
+                stG,outG = commands.getstatusoutput(com)
+                if options.verbose:
+                    print stG,outG
+                """
+                # FIXME
+                stG  = 0
+                outG = 'False'               
+            else:
+                # set False to use prestage
+                stG  = 0
+                outG = 'False'               
+            totalSize = 0
+	    for fileName,vals in tmpList:
+                # instantiate  FileSpec
+                file = FileSpec()
+                file.lfn            = fileName
+		file.GUID           = vals['guid']
+		file.fsize          = vals['fsize']
+		file.md5sum         = vals['md5sum']
+                file.dataset        = dataset
+                file.prodDBlock     = dataset
+                if not options.prestage:
+                    file.dispatchDBlock = dataset
+                elif stG==0 and outG=='True':
+                    # already staged
+                    file.dispatchDBlock = dataset                    
+                file.type           = 'input'
+                file.status         = 'ready'
+                jobR.addFile(file)
+                inList.append(fileName)
+                try:
+                    totalSize += long(file.fsize)
+                except:
+                    pass
+            # size check    
+            if totalSize > maxTotalSize:
+                print "ERROR : A subjob has %s input files and requires %sMB of disk space." \
+                      % (len(tmpList), (totalSize >> 20))
+                print "        It must be less than %sMB to avoid overflowing the remote disk." \
+                      % (maxTotalSize >> 20)
+                print "        Please split the job using --nFilesPerJob."
+                sys.exit(EC_Split)
+        else:        
+	    for fileName in tmpList:
+                # use GUID boundaries or not
+                if devidedByGUID:
+                    # collect GUIDs
+                    guidBoundary.append(fileName)
+                    # fileName is a GUID in this case 
+                    realFileName = guidCollMap[fileName]
+                    if not realFileName in inList:
+                        inList.append(realFileName)
+                else:
+                    inList.append(fileName)
+        # Minimum Bias
+        if indexMin+options.nMin*divF >= len(minbiasList):
+            # re-use files when Minimum-Bias files are not enough   
+            indexMin = 0   
+        tmpList = minbiasList[indexMin:indexMin+options.nMin*divF]
+        indexMin += options.nMin*divF
+        # check prestage
+        if options.prestage and tmpList != [] and prestageLookUp:
+            # collect GUIDs
+            guidStr = ''
+            for fileName,vals in tmpList:
+                guidStr += '%s+' % vals['guid']
+            guidStr = guidStr[:-1]
+            # check
+            """
+            com = 'curl -k --silent %s/staged?guids=%s' % \
+                  (Client.pathena_conf.sites[bareID]['prestage'],guidStr)
+            if options.verbose:
+                print com
+            stG,outG = commands.getstatusoutput(com)
+            if options.verbose:
+                print stG,outG
+            """
+            # FIXME
+            stG  = 0
+            outG = 'False'               
+        else:
+            # set False to use prestage
+            stG  = 0
+            outG = 'False'               
+        for fileName,vals in tmpList:
+            # instantiate  FileSpec
+            file = FileSpec()
+            file.lfn            = fileName
+            file.GUID           = vals['guid']
+	    file.fsize          = vals['fsize']
+	    file.md5sum         = vals['md5sum']
+            file.dataset        = minbiasDataset
+            file.prodDBlock     = minbiasDataset
+            if not options.prestage:
+                file.dispatchDBlock = minbiasDataset
+            elif stG==0 and outG=='True':
+                # already staged
+                file.dispatchDBlock = minbiasDataset
+            file.type       = 'input'
+            file.status     = 'ready'
+            jobR.addFile(file)
+            minList.append(fileName)
+        # Cavern
+        if indexCavern+options.nCav*divF >= len(cavernList):
+            # re-use files when Cavern files are not enough   
+            indexCavern = 0   
+        tmpList = cavernList[indexCavern:indexCavern+options.nCav*divF]
+        indexCavern += options.nCav*divF
+        # check prestage
+        if options.prestage and tmpList != [] and prestageLookUp:
+            # collect GUIDs
+            guidStr = ''
+            for fileName,vals in tmpList:
+                guidStr += '%s+' % vals['guid']
+            guidStr = guidStr[:-1]
+            # check
+            """
+            com = 'curl -k --silent %s/staged?guids=%s' % \
+                  (Client.pathena_conf.sites[bareID]['prestage'],guidStr)
+            if options.verbose:
+                print com
+            stG,outG = commands.getstatusoutput(com)
+            if options.verbose:
+                print stG,outG
+            """
+            # FIXME
+            stG  = 0
+            outG = 'False'               
+        else:
+            # set False to use prestage
+            stG  = 0
+            outG = 'False'               
+        for fileName,vals in tmpList:
+            # instantiate  FileSpec
+            file = FileSpec()
+            file.lfn            = fileName
+            file.GUID           = vals['guid']
+	    file.fsize          = vals['fsize']
+	    file.md5sum         = vals['md5sum']
+            file.dataset        = cavernDataset
+            file.prodDBlock     = cavernDataset
+            if not options.prestage:                
+                file.dispatchDBlock = cavernDataset
+            elif stG==0 and outG=='True':
+                # already staged
+                file.dispatchDBlock = cavernDataset
+            file.type           = 'input'
+            file.status         = 'ready'
+            jobR.addFile(file)
+            cavList.append(fileName)
+        # BeamHalo
+        if options.useCommonHalo:
+            # integrated dataset
+            if indexBHalo+options.nBeamHalo >= len(beamHaloList):
+                # re-use files when BeamHalo files are not enough   
+                indexBHalo = 0   
+            tmpList = beamHaloList[indexBHalo:indexBHalo+options.nBeamHalo]
+            indexBHalo += options.nBeamHalo
+        else:
+            # separate datasets
+            if indexBHaloA+options.nBeamHaloA >= len(beamHaloAList):
+                # re-use files when BeamHalo files are not enough   
+                indexBHaloA = 0   
+            if indexBHaloC+options.nBeamHaloC >= len(beamHaloCList):
+                # re-use files when BeamHalo files are not enough   
+                indexBHaloC = 0   
+            tmpList = beamHaloAList[indexBHaloA:indexBHaloA+options.nBeamHaloA] + \
+                      beamHaloCList[indexBHaloC:indexBHaloC+options.nBeamHaloC]
+            indexBHaloA += options.nBeamHaloA
+            indexBHaloC += options.nBeamHaloC
+        tmpIndex = 0
+        for fileName,vals in tmpList:
+            # instantiate  FileSpec
+            file = FileSpec()
+            file.lfn            = fileName
+            file.GUID           = vals['guid']
+	    file.fsize          = vals['fsize']
+	    file.md5sum         = vals['md5sum']
+            if options.useCommonHalo:
+                # integrated dataset
+                file.dataset        = beamHaloDataset
+                file.prodDBlock     = beamHaloDataset
+                file.dispatchDBlock = beamHaloDataset
+            else:
+                # separate datasets
+                if tmpIndex < options.nBeamHaloA:
+                    file.dataset        = beamHaloAdataset
+                    file.prodDBlock     = beamHaloAdataset
+                    file.dispatchDBlock = beamHaloAdataset
+                else:
+                    file.dataset        = beamHaloCdataset
+                    file.prodDBlock     = beamHaloCdataset
+                    file.dispatchDBlock = beamHaloCdataset
+            file.type           = 'input'
+            file.status         = 'ready'
+            jobR.addFile(file)
+            bhaloList.append(fileName)
+            tmpIndex += 1
+        # BeamGas
+        if options.useCommonGas:
+            # integrated dataset
+            if indexBGas+options.nBeamGas >= len(beamGasList):
+                # re-use files when BeamGas files are not enough   
+                indexBGasO = 0   
+            tmpList = beamGasList[indexBGas:indexBGas+options.nBeamGas]
+            indexBGas += options.nBeamGas
+        else:
+            # separate dataset
+            if indexBGasH+options.nBeamGasH >= len(beamGasHList):
+                # re-use files when BeamGas files are not enough   
+                indexBGasH = 0   
+            if indexBGasC+options.nBeamGasC >= len(beamGasCList):
+                # re-use files when BeamGas files are not enough   
+                indexBGasC = 0   
+            if indexBGasO+options.nBeamGasO >= len(beamGasOList):
+                # re-use files when BeamGas files are not enough   
+                indexBGasO = 0   
+            tmpList = beamGasHList[indexBGasH:indexBGasH+options.nBeamGasH] + \
+                      beamGasCList[indexBGasC:indexBGasC+options.nBeamGasC] + \
+                      beamGasOList[indexBGasO:indexBGasO+options.nBeamGasO]
+            indexBGasH += options.nBeamGasH
+            indexBGasC += options.nBeamGasC
+            indexBGasO += options.nBeamGasO
+        tmpIndex = 0
+        for fileName,vals in tmpList:
+            # instantiate  FileSpec
+            file = FileSpec()
+            file.lfn            = fileName
+            file.GUID           = vals['guid']
+	    file.fsize          = vals['fsize']
+	    file.md5sum         = vals['md5sum']
+            if options.useCommonHalo:
+                # integrated dataset
+                file.dataset        = beamGasDataset
+                file.prodDBlock     = beamGasDataset
+                file.dispatchDBlock = beamGasDataset
+            else:
+                # separate datasets
+                if tmpIndex < options.nBeamGasH:
+                    file.dataset        = beamGasHdataset
+                    file.prodDBlock     = beamGasHdataset
+                    file.dispatchDBlock = beamGasHdataset
+                elif tmpIndex < (options.nBeamGasH+options.nBeamGasC):
+                    file.dataset        = beamGasCdataset
+                    file.prodDBlock     = beamGasCdataset
+                    file.dispatchDBlock = beamGasCdataset
+                else:
+                    file.dataset        = beamGasOdataset
+                    file.prodDBlock     = beamGasOdataset
+                    file.dispatchDBlock = beamGasOdataset
+            file.type           = 'input'
+            file.status         = 'ready'
+            jobR.addFile(file)
+            bgasList.append(fileName)
+            tmpIndex += 1
+        #@
+        #@ important
+        #@ Done with an input files description of the job.
+        # Increment pointer (index) to a next block of files
+        #@ If split by events is requested Index file is incremented in a different place (above)
+
+        if options.nEventsPerJob < 0:
+          indexFiles += divF
+
+            
+    # output files
+    outMap = {}
+    if options.outNtuple != []:
+        indexNT += 1
+        for sName in options.outNtuple:
+            file = FileSpec()
+            file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexNT)
+            file.type = 'output'
+            file.dataset = jobR.destinationDBlock
+            file.destinationDBlock = jobR.destinationDBlock
+            if options.individualOutDS:
+                tmpSuffix = '_%s' % sName
+                file.dataset += tmpSuffix
+                file.destinationDBlock += tmpSuffix
+            file.destinationSE = jobR.destinationSE
+            jobR.addFile(file)
+            if not outMap.has_key('ntuple'):
+                outMap['ntuple'] = []
+            outMap['ntuple'].append((sName,file.lfn))
+    if options.outHist:
+        indexHIST += 1
+        file = FileSpec()
+        file.lfn  = '%s.hist._%05d.root' % (jobR.destinationDBlock,indexHIST)
+        file.type = 'output'
+        file.dataset = jobR.destinationDBlock        
+        file.destinationDBlock = jobR.destinationDBlock
+        if options.individualOutDS:
+            tmpSuffix = '_HIST'
+            file.dataset += tmpSuffix
+            file.destinationDBlock += tmpSuffix
+        file.destinationSE = jobR.destinationSE
+        jobR.addFile(file)
+        outMap['hist'] = file.lfn
+    if options.outRDO:
+        indexRDO += 1        
+        file = FileSpec()
+        file.lfn  = '%s.RDO._%05d.pool.root' % (jobR.destinationDBlock,indexRDO)        
+        file.type = 'output'
+        file.dataset = jobR.destinationDBlock        
+        file.destinationDBlock = jobR.destinationDBlock
+        if options.individualOutDS:
+            tmpSuffix = '_RDO'
+            file.dataset += tmpSuffix
+            file.destinationDBlock += tmpSuffix
+        file.destinationSE = jobR.destinationSE
+        jobR.addFile(file)
+        outMap['RDO'] = file.lfn
+    if options.outESD:
+        indexESD += 1        
+        file = FileSpec()
+        file.lfn  = '%s.ESD._%05d.pool.root' % (jobR.destinationDBlock,indexESD)        
+        file.type = 'output'
+        file.dataset = jobR.destinationDBlock        
+        file.destinationDBlock = jobR.destinationDBlock
+        if options.individualOutDS:
+            tmpSuffix = '_ESD'
+            file.dataset += tmpSuffix
+            file.destinationDBlock += tmpSuffix
+        file.destinationSE = jobR.destinationSE
+        jobR.addFile(file)
+        outMap['ESD'] = file.lfn
+    if options.outAOD:
+        indexAOD += 1                
+        file = FileSpec()
+        file.lfn  = '%s.AOD._%05d.pool.root' % (jobR.destinationDBlock,indexAOD)        
+        file.type = 'output'
+        file.dataset = jobR.destinationDBlock        
+        file.destinationDBlock = jobR.destinationDBlock
+        if options.individualOutDS:
+            tmpSuffix = '_AOD'
+            file.dataset += tmpSuffix
+            file.destinationDBlock += tmpSuffix
+        file.destinationSE = jobR.destinationSE
+        jobR.addFile(file)
+        outMap['AOD'] = file.lfn
+    if options.outTAG:
+        indexTAG += 1                        
+        file = FileSpec()
+        file.lfn  = '%s.TAG._%05d.coll.root' % (jobR.destinationDBlock,indexTAG)                
+        file.type = 'output'
+        file.dataset = jobR.destinationDBlock        
+        file.destinationDBlock = jobR.destinationDBlock
+        if options.individualOutDS:
+            tmpSuffix = '_TAG'
+            file.dataset += tmpSuffix
+            file.destinationDBlock += tmpSuffix
+        file.destinationSE = jobR.destinationSE
+        jobR.addFile(file)
+        outMap['TAG'] = file.lfn
+    if options.outAANT != []:
+        indexAANT += 1
+        sNameList = []
+        for aName,sName in options.outAANT:
+            file = FileSpec()
+            file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexAANT)       
+            file.type = 'output'
+            file.dataset = jobR.destinationDBlock        
+            file.destinationDBlock = jobR.destinationDBlock
+            if options.individualOutDS:
+                tmpSuffix = '_%s' % sName
+                file.dataset += tmpSuffix
+                file.destinationDBlock += tmpSuffix
+            file.destinationSE = jobR.destinationSE
+            if not sName in sNameList:
+                sNameList.append(sName)
+                jobR.addFile(file)
+            if not outMap.has_key('AANT'):
+                outMap['AANT'] = []
+            outMap['AANT'].append((aName,sName,file.lfn))
+    if options.outTHIST != []:
+        indexTHIST += 1
+        for sName in options.outTHIST:
+            file = FileSpec()
+            file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexTHIST)
+            file.type = 'output'
+            file.dataset = jobR.destinationDBlock
+            file.destinationDBlock = jobR.destinationDBlock
+            if options.individualOutDS:
+                tmpSuffix = '_%s' % sName
+                file.dataset += tmpSuffix
+                file.destinationDBlock += tmpSuffix
+            file.destinationSE = jobR.destinationSE
+            jobR.addFile(file)
+            if not outMap.has_key('THIST'):
+                outMap['THIST'] = []
+            outMap['THIST'].append((sName,file.lfn))
+    if options.outIROOT != []:
+        indexIROOT += 1
+        for sIndex,sName in enumerate(options.outIROOT):
+            file = FileSpec()
+            file.lfn  = '%s.iROOT%s._%05d.%s' % (jobR.destinationDBlock,sIndex,indexIROOT,sName)
+            file.type = 'output'
+            file.dataset = jobR.destinationDBlock
+            file.destinationDBlock = jobR.destinationDBlock
+            if options.individualOutDS:
+                tmpSuffix = '_iROOT%s' % sIndex
+                file.dataset += tmpSuffix
+                file.destinationDBlock += tmpSuffix
+            file.destinationSE = jobR.destinationSE
+            jobR.addFile(file)
+            if not outMap.has_key('IROOT'):
+                outMap['IROOT'] = []
+            outMap['IROOT'].append((sName,file.lfn))
+    if options.extOutFile != []:
+        indexEXT += 1
+        for sIndex,sName in enumerate(options.extOutFile):
+            # change * to X and add .tgz
+            origSName = sName
+            if sName.find('*') != -1:
+                sName = sName.replace('*','XYZ')
+                sName = '%s.tgz' % sName
+            file = FileSpec()
+            file.lfn  = '%s.EXT%s._%05d.%s' % (jobR.destinationDBlock,sIndex,indexEXT,sName)
+            file.type = 'output'
+            file.dataset = jobR.destinationDBlock
+            file.destinationDBlock = jobR.destinationDBlock
+            if options.individualOutDS:
+                tmpSuffix = '_EXT%s' % sIndex
+                file.dataset += tmpSuffix
+                file.destinationDBlock += tmpSuffix
+            file.destinationSE = jobR.destinationSE
+            jobR.addFile(file)
+            if not outMap.has_key('IROOT'):
+                outMap['IROOT'] = []
+            outMap['IROOT'].append((origSName,file.lfn))
+    if options.outStream1:
+        indexStream1 += 1                                        
+        file = FileSpec()
+        file.lfn  = '%s.Stream1._%05d.pool.root' % (jobR.destinationDBlock,indexStream1)
+        file.type = 'output'
+        file.dataset = jobR.destinationDBlock        
+        file.destinationDBlock = jobR.destinationDBlock
+        if options.individualOutDS:
+            tmpSuffix = '_Stream1'
+            file.dataset += tmpSuffix
+            file.destinationDBlock += tmpSuffix
+        file.destinationSE = jobR.destinationSE
+        jobR.addFile(file)
+        outMap['Stream1'] = file.lfn
+    if options.outStream2:
+        indexStream2 += 1                                        
+        file = FileSpec()
+        file.lfn  = '%s.Stream2._%05d.pool.root' % (jobR.destinationDBlock,indexStream2)
+        file.type = 'output'
+        file.dataset = jobR.destinationDBlock        
+        file.destinationDBlock = jobR.destinationDBlock
+        if options.individualOutDS:
+            tmpSuffix = '_Stream2'
+            file.dataset += tmpSuffix
+            file.destinationDBlock += tmpSuffix
+        file.destinationSE = jobR.destinationSE
+        jobR.addFile(file)
+        outMap['Stream2'] = file.lfn
+    if options.outBS:
+        indexBS += 1                                        
+        file = FileSpec()
+        file.lfn  = '%s.BS._%05d.data' % (jobR.destinationDBlock,indexBS)
+        file.type = 'output'
+        file.dataset = jobR.destinationDBlock        
+        file.destinationDBlock = jobR.destinationDBlock
+        if options.individualOutDS:
+            tmpSuffix = '_BS'
+            file.dataset += tmpSuffix
+            file.destinationDBlock += tmpSuffix
+        file.destinationSE = jobR.destinationSE
+        jobR.addFile(file)
+        outMap['BS'] = file.lfn
+    if options.outSelBS:
+        indexSelBS += 1                                        
+        file = FileSpec()
+        file.lfn  = '%s.%s._%05d.data' % (jobR.destinationDBlock,options.outSelBS,indexSelBS)
+        file.type = 'output'
+        file.dataset = jobR.destinationDBlock        
+        file.destinationDBlock = jobR.destinationDBlock
+        if options.individualOutDS:
+            tmpSuffix = '_SelBS'
+            file.dataset += tmpSuffix
+            file.destinationDBlock += tmpSuffix
+        file.destinationSE = jobR.destinationSE
+        jobR.addFile(file)
+        if not outMap.has_key('IROOT'):
+            outMap['IROOT'] = []
+        outMap['IROOT'].append(('%s.*.data' % options.outSelBS,file.lfn))
+    if options.outStreamG != []:
+        indexStreamG += 1
+        for sName in options.outStreamG:
+            file = FileSpec()
+            file.lfn  = '%s.%s._%05d.pool.root' % (jobR.destinationDBlock,sName,indexStreamG)
+            file.type = 'output'
+            file.dataset = jobR.destinationDBlock
+            file.destinationDBlock = jobR.destinationDBlock
+            if options.individualOutDS:
+                tmpSuffix = '_%s' % sName
+                file.dataset += tmpSuffix
+                file.destinationDBlock += tmpSuffix
+            file.destinationSE = jobR.destinationSE
+            jobR.addFile(file)
+            if not outMap.has_key('StreamG'):
+                outMap['StreamG'] = []
+            outMap['StreamG'].append((sName,file.lfn))
+    if options.outMeta != []:
+        iMeta = 0
+	indexMeta += 1
+        for sName,sAsso in options.outMeta:
+            foundLFN = ''
+            if sAsso == 'None':
+                # non-associated metadata
+                file = FileSpec()
+                file.lfn  = '%s.META%s._%05d.root' % (jobR.destinationDBlock,iMeta,indexMeta)
+                file.type = 'output'
+                file.dataset = jobR.destinationDBlock
+                file.destinationDBlock = jobR.destinationDBlock
+                if options.individualOutDS:
+                    tmpSuffix = '_META%s' % iMeta
+                    file.dataset += tmpSuffix
+                    file.destinationDBlock += tmpSuffix
+                file.destinationSE = jobR.destinationSE
+                jobR.addFile(file)
+                iMeta += 1
+                foundLFN = file.lfn
+            elif outMap.has_key(sAsso):
+                # Stream1,2
+                foundLFN = outMap[sAsso]
+            elif sAsso in ['StreamRDO','StreamESD','StreamAOD']:
+                # RDO,ESD,AOD
+                stKey = re.sub('^Stream','',sAsso)
+                if outMap.has_key(stKey):
+                    foundLFN = outMap[stKey]
+            else:
+                # general stream
+                if outMap.has_key('StreamG'):
+                    for tmpStName,tmpLFN in outMap['StreamG']:
+                        if tmpStName == sAsso:
+                            foundLFN = tmpLFN
+            if foundLFN != '':
+                if not outMap.has_key('Meta'):
+                    outMap['Meta'] = []
+                outMap['Meta'].append((sName,foundLFN))
+    if options.outMS != []:
+	indexMS += 1
+        for sName,sAsso in options.outMS:
+            file = FileSpec()
+            file.lfn  = '%s.%s._%05d.pool.root' % (jobR.destinationDBlock,sName,indexMS)
+            file.type = 'output'
+            file.dataset = jobR.destinationDBlock
+            file.destinationDBlock = jobR.destinationDBlock
+            if options.individualOutDS:
+                tmpSuffix = '_%s' % sName
+                file.dataset += tmpSuffix
+                file.destinationDBlock += tmpSuffix
+            file.destinationSE = jobR.destinationSE
+            jobR.addFile(file)
+            if not outMap.has_key('IROOT'):
+                outMap['IROOT'] = []
+            outMap['IROOT'].append((sAsso,file.lfn))
+                                            
+    # log
+    file = FileSpec()
+    file.lfn  = '%s._$PANDAID.log.tgz' % jobR.destinationDBlock
+    file.type = 'log'
+    file.dataset = jobR.destinationDBlock    
+    file.destinationDBlock = jobR.destinationDBlock
+    if options.individualOutDS:
+        tmpSuffix = '_log'
+        file.dataset += tmpSuffix
+        file.destinationDBlock += tmpSuffix
+    file.destinationSE = jobR.destinationSE
+    jobR.addFile(file)
+    # set space token
+    for file in jobR.Files:
+        if file.type in ['output','log']:
+            if options.spaceToken != '':
+                file.destinationDBlockToken = options.spaceToken
+            else:
+                defaulttoken = Client.PandaSites[options.site]['defaulttoken']
+                file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
+    # job parameters
+    param = ''
+    if not options.nobuild:
+        param  += '-l %s ' % fileS.lfn
+    param += '-r %s ' % runDir
+    if not options.trf:
+        # set jobO parameter
+        param += '-j "%s" ' % urllib.quote(jobO)
+        # DBRelease
+        if options.dbRelease != '':
+            tmpItems = options.dbRelease.split(':')
+            tmpDbrDS  = tmpItems[0]
+            tmpDbrLFN = tmpItems[1]
+            # instantiate  FileSpec
+            fileName = tmpDbrLFN
+            vals     = dbrFiles[tmpDbrLFN]
+            file = FileSpec()
+            file.lfn            = fileName
+            file.GUID           = vals['guid']
+            file.fsize          = vals['fsize']
+            file.md5sum         = vals['md5sum']
+            file.dataset        = tmpDbrDS
+            file.prodDBlock     = tmpDbrDS
+            file.dispatchDBlock = tmpDbrDS
+            file.type       = 'input'
+            file.status     = 'ready'
+            jobR.addFile(file)
+            # set DBRelease parameter
+            param += '--dbrFile %s ' % file.lfn
+    else:
+        # replace parameters for TRF
+        tmpJobO = jobO
+        # output : basenames are in outMap['IROOT'] trough extOutFile
+        tmpOutMap = []
+        for tmpName,tmpLFN in outMap['IROOT']:
+            tmpJobO = tmpJobO.replace('%OUT.' + tmpName,tmpLFN)
+            # set correct name in outMap
+            tmpOutMap.append((tmpLFN,tmpLFN))
+        # set output for normal TRF (not for ARA)
+        if not options.ara:
+            outMap['IROOT'] = tmpOutMap 
+        # input
+	inPattList = [('%IN',inList),('%MININ',minList),('%CAVIN',cavList),
+                      ('%BHIN',bhaloList),('%BGIN',bgasList)]    
+	for tmpPatt,tmpInList in inPattList:
+            if tmpJobO.find(tmpPatt) != -1 and len(tmpInList) > 0:
+                tmpJobO = AthenaUtils.replaceParam(tmpPatt,tmpInList,tmpJobO)
+        # DBRelease
+        for tmpItem in tmpJobO.split():
+            match = re.search('%DB=([^:]+):(.+)$',tmpItem)
+            if match:
+                tmpDbrDS  = match.group(1)
+                tmpDbrLFN = match.group(2)
+                # instantiate  FileSpec
+                fileName = tmpDbrLFN
+                vals     = dbrFiles[tmpDbrLFN]
+                file = FileSpec()
+                file.lfn            = fileName
+                file.GUID           = vals['guid']
+                file.fsize          = vals['fsize']
+                file.md5sum         = vals['md5sum']
+                file.dataset        = tmpDbrDS
+                file.prodDBlock     = tmpDbrDS
+                file.dispatchDBlock = tmpDbrDS
+                file.type       = 'input'
+                file.status     = 'ready'
+                jobR.addFile(file)
+                inList.append(fileName)
+                # replace parameters
+                tmpJobO = tmpJobO.replace(match.group(0),tmpDbrLFN)
+        # random seed
+        for tmpItem in tmpJobO.split():
+            match = re.search('%RNDM=(.+)$',tmpItem)
+            if match:
+                tmpRndmNum = int(match.group(1)) + iSubJob
+                # replace parameters
+                tmpJobO = tmpJobO.replace(match.group(0),'%s' % tmpRndmNum)
+        # skipEvent
+        if tmpJobO.find('%SKIPEVENTS') != -1:
+            tmpJobO = tmpJobO.replace('%SKIPEVENTS','%s' % nEventsToSkip)
+        # set jobO parameter
+        param += '-j "%s" ' % urllib.quote(tmpJobO)		
+    param += '-i "%s" ' % inList
+    param += '-m "%s" ' % minList
+    param += '-n "%s" ' % cavList
+    if bhaloList != []:
+        param += '--beamHalo "%s" ' % bhaloList
+    if bgasList != []:
+        param += '--beamGas "%s" ' % bgasList
+    param += '-o "%s" ' % outMap
+    if options.inColl:
+        param += '-c '
+    if options.inBS:
+        param += '-b '
+    if options.backNavi:
+        param += '-e '
+    if options.shipinput:
+        param += '--shipInput '
+        # GUID boundaries
+        if devidedByGUID:
+            param += '--guidBoundary "%s" ' % guidBoundary
+            param += '--collRefName %s ' % options.collRefName
+    pStr1 = ''    
+    if options.rndmStream != []:
+        pStr1 = "AtRndmGenSvc=Service('AtRndmGenSvc');AtRndmGenSvc.Seeds=["
+        for stream in options.rndmStream:
+            num = options.rndmNumbers[options.rndmStream.index(stream)]
+            pStr1 += "'%s %d %d'," % (stream,num[0]+iSubJob,num[1]+iSubJob)
+        pStr1 += "]"
+
+    # @ If split by event option was invoked
+    pStr2 = ''
+    if options.nEventsPerJob > 0 and (not options.trf):
+        # @ Number of events to be processed per job
+        param1 = "theApp.EvtMax=%s" % options.nEventsPerJob
+        # @ possibly skip events in a file
+        if options.noInput:
+            pStr2 = param1
+        else:
+            param2 = "EventSelector.SkipEvents=%s" % nEventsToSkip
+            # @ Form a string to add to job parameters
+            pStr2 = '%s;%s' % (param1,param2)
+    # parameter
+    if pStr1 != '' or pStr2 != '':
+	if pStr1 == '' or pStr2 == '':
+	    param += '-f "%s" ' % (pStr1+pStr2)
+	else:
+            param += '-f "%s;%s" ' % (pStr1,pStr2)
+    # libDS 
+    if options.libDS != "" or options.nobuild:
+        param += '-a %s ' % archiveName
+    # addPoolFC
+    if options.addPoolFC != "":
+        param += '--addPoolFC %s ' % options.addPoolFC
+    # use corruption checker
+    if options.corCheck:
+        param += '--corCheck '
+    # disable to skip missing files
+    if options.notSkipMissing:
+        param += '--notSkipMissing '
+    # given PFN 
+    if options.pfnList != '':
+        param += '--givenPFN '
+    # create symlink for MC data
+    if options.mcData != '':
+        param += '--mcData %s ' % options.mcData
+    # source URL
+    matchURL = re.search("(http.*://[^/]+)/",Client.baseURLSSL)
+    if matchURL != None:
+        param += " --sourceURL %s " % matchURL.group(1)
+    # run TRF
+    if options.trf:
+        param += '--trf '
+    # use ARA 
+    if options.ara:
+        param += '--ara '
+    # general input format
+    if options.generalInput:
+        param += '--generalInput '
+    # use theApp.nextEvent
+    if options.useNextEvent:
+        param += '--useNextEvent '
+    # assign    
+    jobR.jobParameters = param
+
+    if options.verbose:
+        print param
+
+    jobList.append(jobR)
+
+# no submit 
+if options.nosubmit:
+    sys.exit(0)
+
+# normal/burst submission
+if options.burstSubmit == '':
+    # normal submission
+    
+    # register output dataset
+    if not options.outputDSexist:
+        Client.addDataset(options.outDS,options.verbose)
+
+    # register shadow dataset
+    if not options.outputDSexist:
+        Client.addDataset("%s%s" % (options.outDS,suffixShadow),options.verbose)
+
+    # register libDS
+    if options.libDS == '' and (not options.nobuild):
+        Client.addDataset(jobB.destinationDBlock,options.verbose)
+
+    # submit
+    print "submit"
+    status,out = Client.submitJobs(jobList,options.verbose)
+else:
+    print "\n=========="
+    # burst submission
+    origLibDS = jobB.destinationDBlock
+    origOutDS = options.outDS
+    prevLibDS = jobB.destinationDBlock
+    prevOutDS = options.outDS
+    # loop over all sites
+    for tmpSite in options.burstSubmit.split(','):
+        # cloud
+        tmpCloud = Client.PandaSites[tmpSite]['cloud']
+        newJobList = []
+        newLibDS = '%s.%s' % (origLibDS,tmpSite)
+        newOutDS = '%s.%s' % (origOutDS,tmpSite)
+	repPatt  = {}
+        # use buildJob and one runAthena
+        for job in jobList[:2]:
+            # set cloud/site
+            job.cloud          = tmpCloud
+            job.computingSite  = tmpSite
+	    job.destinationSE  = job.computingSite
+            # set destDBlock
+            if job.prodSourceLabel == 'panda':
+                job.destinationDBlock = newLibDS
+                # pattern to modify LFN
+                subLibDSPatt = '^'+prevLibDS
+                prevLibDS = job.destinationDBlock
+            else:
+                job.destinationDBlock = newOutDS
+                # pattern to modify LFN
+                subOutDSPatt = '^'+prevOutDS
+                prevOutDS = job.destinationDBlock
+            # correct files
+            for file in job.Files:
+                # process output/log and lib.tgz
+                if file.type == 'input':
+                    # skip buildJob
+                    if job.prodSourceLabel == 'panda':
+                        continue
+                    # only lib.tgz
+                    if re.search(subLibDSPatt,file.dataset) == None:
+                        continue
+                    # set datasets 
+                    file.dataset           = newLibDS
+                    file.prodDBlock        = newLibDS
+                    file.dispatchDBlock    = newLibDS
+                else:
+                    # set datasets
+                    if job.prodSourceLabel == 'panda':
+                        file.dataset           = newLibDS
+                        file.prodDBlock        = newLibDS                    
+                        file.destinationDBlock = newLibDS
+                    else:
+                        file.dataset           = newOutDS
+                        file.prodDBlock        = newOutDS                    
+                        file.destinationDBlock = newOutDS
+		    file.destinationSE = job.destinationSE
+                # modify LFN
+                oldLFN = file.lfn
+                if job.prodSourceLabel == 'panda' or file.type == 'input':
+                    newLFN = re.sub(subLibDSPatt,file.dataset,oldLFN)
+                else:
+                    newLFN = re.sub(subOutDSPatt,file.dataset,oldLFN)
+                file.lfn = newLFN
+                # pattern for parameter replacement
+                repPatt[oldLFN] = newLFN
+            # modify jobParams
+            for oldLFN,newLFN in repPatt.iteritems():
+                job.jobParameters = re.sub(oldLFN,newLFN,job.jobParameters)
+	    # append
+            newJobList.append(job)
+        # submit
+        print "submit to %s" % tmpSite
+        status,out = Client.submitJobs(newJobList,options.verbose)
+        if status==0:
+            print " OK"
+        else:
+            print " NG : %s" % status
+        time.sleep(2)
+    # don't update DB
+    sys.exit(0)
+        
+
+print '==================='
+outstr   = ''
+buildStr = ''
+runStr   = ''
+for index,o in enumerate(out):
+    if o != None:
+        if index==0:
+            # set JobID
+            jobID = o[1]
+        if index==0 and options.libDS=='' and (not options.nobuild):
+            outstr += "  > build\n"
+            outstr += "    PandaID=%s\n" % o[0]
+            buildStr = '%s' % o[0]            
+        elif (index==1 and options.libDS=='') or \
+             (index==0 and (options.libDS!='' or options.nobuild)):
+            outstr += "  > run\n"
+            outstr += "    PandaID=%s" % o[0]
+            runStr = '%s' % o[0]                        
+        elif index+1==len(out):
+            outstr += "-%s" % o[0]
+            runStr += '-%s' % o[0]                                    
+print ' JobID  : %s' % jobID
+print ' Status : %d' % status
+print outstr
+
+# create job record
+jobRecord = {}
+jobRecord['time' ] = datetime.datetime.now()
+jobRecord['inDS' ] = options.inDS
+jobRecord['outDS'] = options.outDS
+if options.nobuild:
+    jobRecord['libDS'] = ''
+elif options.libDS=='':
+    jobRecord['libDS'] = jobB.destinationDBlock
+else:
+    jobRecord['libDS'] = options.libDS
+jobRecord['build'] = buildStr
+jobRecord['run'  ] = runStr
+jobRecord['jobO' ] = jobO
+jobRecord['site' ] = jobList[0].computingSite
+jobRecord['jobParams' ] = paramStr
+
+
+# record job into DB
+db['%s' % jobID] = jobRecord
+
+# remove old records
+timeNow   = datetime.datetime.now()
+timeLimit = datetime.timedelta(weeks=10)
+for indexID,tmpTmp in enumerate(_jobIDs):
+    id = _jobIDs[-1-indexID]
+    if (timeNow - db[id]['time']) > timeLimit:
+        del db[id]
+    else:
+        break
+
+# close DB
+db.close()
+
+# relseae DB
+if not options.nolock:
+    fcntl.flock(dbLock,fcntl.LOCK_UN)
+dbLock.close()
+
+# go back to current dir
+os.chdir(currentDir)
+
