@@ -15,7 +15,7 @@ except:
 
 
 # get PFN from LFC
-def _getPFNsLFC(guids,lfcHost,storages,verbose=False):
+def _getPFNsLFC(guids,lfcHost,storages,nFiles,verbose=False):
     # set LFC HOST
     os.environ['LFC_HOST'] = lfcHost
     # timeout
@@ -24,7 +24,7 @@ def _getPFNsLFC(guids,lfcHost,storages,verbose=False):
     os.environ['LFC_CONRETRYINT'] = '6'
                 
     if verbose:
-        print "get file info from %s" % lfcHost
+        print "Get file info from %s" % lfcHost
     # get PFN
     iGUID = 0
     nGUID = 100
@@ -60,6 +60,9 @@ def _getPFNsLFC(guids,lfcHost,storages,verbose=False):
                 sys.exit(EC_LFC)
             # reset                        
             listGUID = []
+            # break
+            if nFiles > 0 and len(pfnMap) >= nFiles:
+                break
     # return
     return pfnMap
     
@@ -84,7 +87,7 @@ def main():
     options.outfile   = ''    
     # get command-line parameters
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"s:i:vl:o:")
+        opts, args = getopt.getopt(sys.argv[1:],"s:i:vl:o:n:")
     except:
         _usage()
         print "ERROR : Invalid options"
@@ -101,6 +104,8 @@ def main():
             options.outfile = a
         if o in ("-l",):
             options.lfchost = a
+        if o in ("-n",):
+            options.nFiles = int(a)
     # read GUID/LFN
     ifile = open(options.infile)
     files = {}
@@ -113,7 +118,7 @@ def main():
         print "GUID/LFN"
         print files
     # get pfns
-    retFiles = _getPFNsLFC(files,options.lfchost,options.storages,options.verbose)
+    retFiles = _getPFNsLFC(files,options.lfchost,options.storages,options.nFiles,options.verbose)
     if options.verbose:    
         print "\nPFNs : %s" % retFiles
     # write

@@ -930,7 +930,7 @@ def getMissLFNsFromLRC(files,url,verbose=False):
                 
 
 # get PFN list from LFC
-def _getPFNsLFC(fileMap,site,explicitSE,verbose=False):
+def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
     pfnMap = {}
     for path in sys.path:
         # look for base package
@@ -951,7 +951,7 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False):
             ifile.close()
             # construct command
             gridSrc = _getGridSrc()
-            com = '%s python -Wignore %s -l %s -i %s -o %s' % (gridSrc,lfcClient,lfcHost,inFile,outFile)
+            com = '%s python -Wignore %s -l %s -i %s -o %s -n %s' % (gridSrc,lfcClient,lfcHost,inFile,outFile,nFiles)
             for index,stItem in enumerate(stList):
                 if index != 0:
                     com += ',%s' % stItem
