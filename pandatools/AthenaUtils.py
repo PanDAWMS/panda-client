@@ -1,6 +1,9 @@
 import os
 import re
+import sys
 import commands
+
+import PLogger
 
 # replace parameter with compact LFNs
 def replaceParam(patt,inList,tmpJobO):
@@ -211,3 +214,214 @@ def getAthenaVer():
            }
     # return
     return True,retVal
+
+
+# wrapper for attribute access
+class ConfigAttr(dict):
+    # override __getattribute__ for dot access
+    def __getattribute__(self,name):
+        if name in dict.__dict__.keys():
+            return dict.__getattribute__(self,name)
+        if name in dict.keys(self):
+            return dict.__getitem__(self,name)
+        return False
+
+    def __setattr__(self,name,value):
+        if name in dict.__dict__.keys():
+            dict.__setattr__(self,name,value)
+        else:
+            dict.__setitem__(self,name,value)
+                        
+
+# extract run configuration
+def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    outputConfig = ConfigAttr()
+    inputConfig  = ConfigAttr()
+    otherConfig  = ConfigAttr()
+    statsCode = True
+    if trf:
+        pass
+    else:
+        baseName = os.environ['PANDA_SYS'] + "/etc/panda/share"
+        com = 'athena.py %s/FakeAppMgr.py %s %s/ConfigExtractor.py' % \
+              (baseName,jobO,baseName)          
+        # run ConfigExtractor for normal jobO
+        out = commands.getoutput(com)
+        failExtractor = True
+        for line in out.split('\n'):
+            match = re.findall('^ConfigExtractor > (.+)',line)
+            if len(match):
+                # suppress some streams
+                if match[0].startswith("Output="):
+                    tmpSt = match[0].replace('=',' ').split()[-1]
+                    if tmpSt.upper() in supStream:
+                        tmpLog.info('%s is suppressed' % line)
+                        continue
+                failExtractor = False
+                # AIDA HIST
+                if match[0]=='Output=HIST':
+                    if useAIDA:
+                        tmpLog.info('%s is suppressed. Please use --useAIDA if needed' % line)
+                        continue
+                    else:
+                        outputConfig['outHist'] = True
+                # AIDA NTuple
+                if match[0].startswith('Output=NTUPLE'):
+                    if useAIDA:
+                        tmpLog.info('%s is suppressed. Please use --useAIDA if needed' % line)
+                        continue
+                    else:
+                        if not outputConfig.has_key('outNtuple'):
+                            outputConfig['outNtuple'] = []
+                        tmpItems = match[0].split()
+                        outputConfig['outNtuple'].append(tmpItems[1])
+                # RDO
+                if match[0]=='Output=RDO':
+                    outputConfig['outRDO'] = True
+                # ESD
+                if match[0]=='Output=ESD':
+                    outputConfig['outESD'] = True
+                # AOD
+                if match[0]=='Output=AOD':
+                    outputConfig['outAOD'] = True
+                # TAG output
+                if match[0]=='Output=TAG':            
+                    outputConfig['outTAG'] = True
+                # AANT
+                if match[0].startswith('Output=AANT'):
+                    if not outputConfig.has_key('outAANT'):
+                        outputConfig['outAANT'] = []
+                    tmpItems = match[0].split()
+                    outputConfig['outAANT'].append(tuple(tmpItems[1:]))
+                # THIST
+                if match[0].startswith('Output=THIST'):            
+                    if not outputConfig.has_key('outTHIST'):
+                        outputConfig['outTHIST'] = []
+                    tmpItems = match[0].split()
+                    outputConfig['outTHIST'].append(tmpItems[1])
+                # IROOT
+                if match[0].startswith('Output=IROOT'):            
+                    if not outputConfig.has_key('outIROOT'):
+                        outputConfig['outIROOT'] = []
+                    tmpItems = match[0].split()
+                    outputConfig['outIROOT'].append(tmpItems[1])
+                # Stream1
+                if match[0].startswith('Output=STREAM1'):
+                    outputConfig['outStream1'] = True
+                # Stream2
+                if match[0]=='Output=STREAM2':                        
+                    outputConfig['outStream2'] = True
+                # ByteStream output
+                if match[0]=='Output=BS':            
+                    outputConfig['outBS'] = True
+                # General Stream
+                if match[0].startswith('Output=STREAMG'):            
+                    tmpItems = match[0].split()
+                    outputConfig['outStreamG'] = tmpItems[1].split(',')
+                # Metadata
+                if match[0].startswith('Output=META'):            
+                    if not outputConfig.has_key('outMeta'):
+                        outputConfig['outMeta'] = []
+                    tmpItems = match[0].split()
+                    outputConfig['outMeta'].append(tuple(tmpItems[1:]))
+                # MultipleStream
+                if match[0].startswith('Output=MS'):
+                    if not outputConfig.has_key('outMS'):
+                        outputConfig['outMS'] = []
+                    tmpItems = match[0].split()            
+                    outputConfig['outMS'].append(tuple(tmpItems[1:]))
+                # No input
+                if match[0]=='No Input':
+                    inputConfig['noInput'] = True
+                # ByteStream input
+                if match[0]=='Input=BS':                        
+                    inputConfig['inBS'] = True
+                # selected ByteStream
+                if match[0].startswith('Output=SelBS'):            
+                    tmpItems = match[0].split()
+                    inputConfig['outSelBS'] = tmpItems[1]
+                # TAG input
+                if match[0]=='Input=COLL':                        
+                    inputConfig['inColl'] = True
+                # POOL references
+                if match[0].startswith('Input=COLLREF'):
+                    tmpRef = match[0].split()[-1]
+                    if tmpRef == 'Input=COLLREF':
+                        # use default token when ref is empty
+                        tmpRef = 'Token'
+                    elif tmpRef != 'Token' and (not tmpRef.endswith('_ref')):
+                        # append _ref
+                        tmpRef += '_ref'
+                    inputConfig['collRefName'] = tmpRef
+                # Minimum bias
+                if match[0]=='Input=MINBIAS':
+                    inputConfig['inMinBias'] = True
+                # Cavern input
+                if match[0]=='Input=CAVERN':
+                    inputConfig['inCavern'] = True
+                # Beam halo
+                if match[0]=='Input=BEAMHALO':
+                    inputConfig['inBeamHalo'] = True
+                # Beam gas
+                if match[0]=='Input=BEAMGAS':
+                    inputConfig['inBeamGas'] = True
+                # Back navigation
+                if match[0]=='BackNavigation=ON':                        
+                    inputConfig['backNavi'] = True
+                # Random stream
+                if match[0].startswith('RndmStream'):
+                    if not otherConfig.has_key('rndmStream'):
+                        otherConfig['rndmStream'] = []
+                    tmpItems = match[0].split()
+                    otherConfig['rndmStream'].append(tmpItems[1])
+                # Generator file
+                if match[0].startswith('RndmGenFile'):
+                    if not otherConfig.has_key('rndmGenFile'):
+                        otherConfig['rndmGenFile'] = []
+                    tmpItems = match[0].split()
+                    otherConfig['rndmGenFile'].append(tmpItems[-1])
+                # input files for direct input
+                if match[0].startswith('InputFiles'):
+                    if shipinput:
+                        tmpItems = match[0].split()
+                        otherConfig['inputFiles'] = tmpItems[1:]
+                    else:
+                        continue
+                # condition file
+                if match[0].startswith('CondInput'):
+                    if not otherConfig.has_key('condInput'):
+                        otherConfig['condInput'] = []
+                    tmpItems = match[0].split()
+                    otherConfig['condInput'].append(tmpItems[-1])
+                tmpLog.info(line)
+        # extractor failed
+        if failExtractor:
+            print out
+            tmpLog.error("Could not parse jobOptions")
+            statsCode = False
+    # return
+    retConfig = ConfigAttr()
+    retConfig['input']  = inputConfig
+    retConfig['other']  = otherConfig
+    retConfig['output'] = outputConfig
+    return statsCode,retConfig
+
+
+# extPoolRefs for old releases which don't contain CollectionTools
+athenaStuff = ['extPoolRefs.C']
+
+# copy some athena specific files
+def copyAthenaStuff(currentDir):
+    baseName = os.environ['PANDA_SYS'] + "/etc/panda/share"
+    for tmpFile in athenaStuff:
+        com = 'cp %s/%s %s' % (baseName,tmpFile,currentDir)
+        commands.getoutput(com)
+
+
+# delete some athena specific files
+def deleteAthenaStuff(currentDir):
+    for tmpFile in athenaStuff:
+        com = 'rm -f %s/%s' % (currentDir,tmpFile)
+        commands.getoutput(com)

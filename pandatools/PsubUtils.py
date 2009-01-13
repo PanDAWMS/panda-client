@@ -64,7 +64,7 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False):
             tmpLog.debug("Getting FQAN")
         status,out = commands.getstatusoutput(com)        
         if status != 0 or out.find('Error: VOMS extension not found') != -1:
-            tmpLog.debug("Could not get FQAN after voms-proxy-init")
+            tmpLog.error("Could not get FQAN after voms-proxy-init")
             sys.exit(EC_Config)
         vomsFQAN = out
     # return
@@ -74,6 +74,8 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False):
 
 # get cloud according to country FQAN
 def getCloudUsingFQAN(defaultCloud,verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
     # get FQAN
     vomsFQAN = ''
     gridSrc = Client._getGridSrc()
@@ -81,11 +83,11 @@ def getCloudUsingFQAN(defaultCloud,verbose=False):
         return ''
     com = '%s voms-proxy-info -fqan -exists' % gridSrc    
     if verbose:
-	print com
+	tmpLog.debug(com)
     status,out = commands.getstatusoutput(com)
     if verbose:
-	print status % 255
-	print out
+	tmpLog.debug(status % 255)
+	tmpLog.debug(out)
     if status == 0:
         vomsFQAN = out
     cloud = None
@@ -103,7 +105,7 @@ def getCloudUsingFQAN(defaultCloud,verbose=False):
                     # set cloud
                     cloud = tmpCloud
                     if verbose:
-                        print "  match %s %s %s" % (tmpCloud,tmpCountry,tmpFQAN)
+                        tmpLog.debug("  match %s %s %s" % (tmpCloud,tmpCountry,tmpFQAN))
                     break
             # escape
             if cloud != None:
@@ -115,9 +117,9 @@ def getCloudUsingFQAN(defaultCloud,verbose=False):
     if cloud == None:
         cloud = defaultCloud
         if verbose:
-            print "  use default %s" % cloud
+            tmpLog.debug("  use default %s" % cloud)
     if verbose:
-        print "set cloud=%s" % cloud
+        tmpLog.debug("set cloud=%s" % cloud)
     # return
     return cloud
 

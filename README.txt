@@ -13,6 +13,11 @@ prun -h
 
 ** Release Note
 
+current
+  * added pathena
+  * modified pathena to use pandatools modules
+  * removed dependence from pathena on Athena specific runtime-structure
+
 0.1.5 (12/17/2008)
   * escape $ in pass phrase
   * added _XROOTD to AUTO sites

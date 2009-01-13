@@ -108,17 +108,14 @@ def main():
             options.nFiles = int(a)
     # read GUID/LFN
     ifile = open(options.infile)
-    files = {}
+    guids = []
     for line in ifile:
         items = line.split()
         if len(items) == 2:
-            files[items[0]] = items[1]
+            guids.append(items[0])
     ifile.close()
-    if options.verbose:
-        print "GUID/LFN"
-        print files
     # get pfns
-    retFiles = _getPFNsLFC(files,options.lfchost,options.storages,options.nFiles,options.verbose)
+    retFiles = _getPFNsLFC(guids,options.lfchost,options.storages,options.nFiles,options.verbose)
     if options.verbose:    
         print "\nPFNs : %s" % retFiles
     # write

@@ -110,10 +110,12 @@ setup(
                 #'scripts/proot',
                 'scripts/psequencer',
                 'scripts/pbook',
+                'scripts/pathena',                
                 ],
     data_files = [ ('etc/panda', ['templates/panda_setup.sh.template',
                                   'templates/panda_setup.csh.template',
-                                  'glade/pbook.glade']
+                                  'glade/pbook.glade',
+                                  ]
                     ),
                    ('etc/panda/icons', ['icons/retry.png',
                                         'icons/update.png',
@@ -127,6 +129,11 @@ setup(
                                         'icons/red.png',
                                         'icons/green.png',
                                         'icons/yellow.png',
+                                        ]
+                    ),
+                   ('etc/panda/share', ['share/extPoolRefs.C',
+                                        'share/FakeAppMgr.py',
+                                        'share/ConfigExtractor.py',
                                         ]
                     ),
                                      

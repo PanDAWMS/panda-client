@@ -918,7 +918,7 @@ def _getPFNsLRC(lfns,dq2url,verbose):
 
 
 # get list of missing LFNs from LRC
-def getMissLFNsFromLRC(files,url,verbose=False):
+def getMissLFNsFromLRC(files,url,verbose=False,nFiles=0):
     # get PFNs
     pfnMap = _getPFNsLRC(files,url,verbose)
     # check Files
@@ -946,7 +946,10 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
             outFile   = '%s_out' % commands.getoutput('uuidgen')
             # write GUID/LFN
             ifile = open(inFile,'w')
-            for lfn,vals in fileMap.iteritems():
+            fileKeys = fileMap.keys()
+            fileKeys.sort()
+            for lfn in fileKeys:
+                vals = fileMap[lfn]
                 ifile.write('%s %s\n' % (vals['guid'],lfn))
             ifile.close()
             # construct command
@@ -984,10 +987,10 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
 
 
 # get list of missing LFNs from LFC
-def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False):
+def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
     missList = []
     # get PFNS
-    pfnMap = _getPFNsLFC(fileMap,site,explicitSE,verbose)
+    pfnMap = _getPFNsLFC(fileMap,site,explicitSE,verbose,nFiles)
     for lfn,vals in fileMap.iteritems():
         if not vals['guid'] in pfnMap.keys():
             missList.append(lfn)
