@@ -65,10 +65,12 @@ class PSequence:
         # define steps
         for name in self.steps.keys():
             self.pySequence += "%s = self.steps['%s']\n" % (name,name)
-        # append sequences
+        # import RssFeedReader to enable it in the sequence section
+        self.pySequence += "from %s.RssFeedReader import RssFeedReader\n" \
+                           % __name__.split('.')[-2]
+        # append sequence
         for line in self.sequence:
             self.pySequence += line
-
 
     # main
     def run(self,verbose=False):
