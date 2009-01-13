@@ -538,8 +538,6 @@ if options.inDS != '' and options.nFilesPerJob == None:
     if tmpMod != 0:
         tmpNSplit += 1
     tmpNFiles,tmpMod = divmod(len(inputFileList),tmpNSplit)
-    if tmpMod != 0:
-        tmpNFiles += 1
     # set upper limit
     upperLimitOnFiles = 20
     if tmpNFiles > upperLimitOnFiles:
