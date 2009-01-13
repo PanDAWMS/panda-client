@@ -917,27 +917,3 @@ if not os.path.exists(dbdir):
 tmpJobIdFile = open(jobid_file,'w')
 tmpJobIdFile.write(str(jobID))
 tmpJobIdFile.close()
-
-# open DB
-db = shelve.open('%s/job_record' % dbdir)
-
-# create job record
-jobRecord = {}
-jobRecord['time' ] = datetime.datetime.now()
-jobRecord['inDS' ] = options.inDS
-jobRecord['outDS'] = options.outDS
-if options.libDS=='':
-    jobRecord['libDS'] = jobB.destinationDBlock
-else:
-    jobRecord['libDS'] = options.libDS
-jobRecord['build'] = buildStr
-jobRecord['run'  ] = runStr
-jobRecord['jobO' ] = options.jobParams
-jobRecord['site' ] = jobList[0].computingSite
-jobRecord['jobParams' ] = PsubUtils.convSysArgv()
-
-# record job into DB
-db['%s' % jobID] = jobRecord
-
-# close DB
-db.close()
