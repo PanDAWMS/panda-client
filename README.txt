@@ -18,6 +18,7 @@ current
   * modified pathena to use pandatools modules
   * removed dependence from pathena on Athena runtime-structure
   * removed database stuff from pathena/prun
+  * added RSS feed reader
 
 0.1.5 (12/17/2008)
   * escape $ in pass phrase
