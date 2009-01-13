@@ -52,7 +52,7 @@ def replaceParam(patt,inList,tmpJobO):
 def getGUIDfromColl(athenaVer,inputColls,directory,refName='Token',verbose=False):
     allrefs = []
     refs = {}
-    # supported with 14.3.0 and onward
+    # supported with 14.4.0 and onward
     if athenaVer != 'dev' and athenaVer < '14.4.0':
         print "WARNING : getGUIDfromColl is not supported in %s" \
               % athenaVer
