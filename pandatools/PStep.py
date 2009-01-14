@@ -21,11 +21,24 @@ class PStep:
         self.fetFactory = fetFactory
         self.sn         = sn  
         self.verbose    = verbose
+        self.cloneSN    = 0
 
 
+    # copy constructor
+    def __call__(self):
+        # clone serial number
+        sn = '%s.%s' % (self.sn,self.cloneSN)
+        # increment SN
+        self.cloneSN += 1
+        # make clone
+        return PStep(self.name,self.command,self.fetFactory,sn,self.verbose)
+        
+        
     # execute command
-    def execute(self,wait=True):
+    def execute(self,wait=True,env=''):
         printStr = "=== %s start\n" % self.name
+        # append env variables
+        self.command = env + '\n' + self.command
         # crete tmp output
         tmpOFD,tmpOF = tempfile.mkstemp(suffix='.%s' % self.sn)
         # create tmp script
