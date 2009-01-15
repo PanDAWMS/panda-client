@@ -35,10 +35,14 @@ class PStep:
         
         
     # execute command
-    def execute(self,wait=True,env=''):
+    def execute(self,wait=True,env={}):
         printStr = "=== %s start\n" % self.name
         # append env variables
-        self.command = env + '\n' + self.command
+        if env != {}:
+            envStr = ''            
+            for envKey,envVal in env.iteritems():
+                envStr += 'export %s="%s"\n' % (envKey,envVal)
+            self.command = envStr + self.command
         # crete tmp output
         tmpOFD,tmpOF = tempfile.mkstemp(suffix='.%s' % self.sn)
         # create tmp script
