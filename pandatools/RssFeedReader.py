@@ -2,7 +2,7 @@ import sys
 import time
 import feedparser
 
-class RssFeedReader:
+class RssFeedReader(object):
 
     # constructor
     def __init__(self,query,verbose=False):
@@ -12,9 +12,19 @@ class RssFeedReader:
 
     # accessor
     def __getattribute__(self,name):
-        if name in self.rss.__dict__.keys():
-            return self.rss.__getattribute__(name)
-        raise AttributeError, "'%s' object has no attribute '%s'" % (__class__,name)
+        try:
+            # return class attributes
+            return object.__getattribute__(self,name)
+        except:
+            pass
+        rss = object.__getattribute__(self,'rss')
+        try:
+            # return RSS attribute
+            return rss.__getattr__(name)
+        except:
+            pass
+        raise AttributeError, "'%s' object has no attribute '%s'" % \
+              (self.__class__.__name__,name)
 
 
     # more functions coming once the page format is defined
