@@ -1,6 +1,6 @@
 ** How to install
 
-svn co https://svn.usatlas.bnl.gov/svn/panda/panda-client/current panda-client
+svn co http://svn.usatlas.bnl.gov/svn/panda/panda-client/current panda-client
 cd panda-client
 python setup.py install --prefix=/path/to/install/dir
 
@@ -13,7 +13,7 @@ prun -h
 
 ** Release Note
 
-current
+0.1.6 (1/23/2009)
   * added pathena
   * modified pathena to use pandatools modules
   * freed pathena from Athena runtime-structure
