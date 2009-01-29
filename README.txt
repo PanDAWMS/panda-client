@@ -13,6 +13,14 @@ prun -h
 
 ** Release Note
 
+0.1.8 (1/29/2009)
+  * fixed LFC looup 
+  * more diagnostic message for LFC failures
+  * added retry for LFC failures
+
+0.1.7 (1/29/2009)
+  * fixed error message when files are unavailable at the site
+
 0.1.6 (1/23/2009)
   * added pathena
   * modified pathena to use pandatools modules

@@ -294,6 +294,12 @@ def getLRC(site):
 # get LFC
 def getLFC(site):
     ret = None
+    # use explicit matching for sitename
+    if PandaSites.has_key(site):
+        val = PandaSites[site]
+        if not val['lfchost'] in [None,"","None"]:
+            ret = val['lfchost']
+            return ret
     # look for DQ2ID
     for id,val in PandaSites.iteritems():
         if id == site or val['ddm'] == site:
@@ -306,6 +312,15 @@ def getLFC(site):
 # get SEs
 def getSE(site):
     ret = []
+    # use explicit matching for sitename
+    if PandaSites.has_key(site):
+        val = PandaSites[site]
+        if not val['se'] in [None,"","None"]:
+            for tmpSE in val['se'].split(','):
+                match = re.search('.+://([^:/]+):*\d*/*',tmpSE)
+                if match != None:
+                    ret.append(match.group(1))
+            return ret        
     # look for DQ2ID
     for id,val in PandaSites.iteritems():
         if id == site or val['ddm'] == site:
@@ -979,7 +994,7 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
                 pass
             # failed
             if status != 0:
-                print "ERROR : failed to access LFC"
+                print "ERROR : failed to access LFC %s" % lfcHost
                 sys.exit(EC_Failed)
             break
     # return

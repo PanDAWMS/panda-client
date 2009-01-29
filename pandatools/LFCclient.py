@@ -1,6 +1,7 @@
 import re
 import os
 import sys
+import time
 
 # error codes
 EC_Main          = 70
@@ -38,7 +39,13 @@ def _getPFNsLFC(guids,lfcHost,storages,nFiles,verbose=False):
         listGUID.append(guid)
         if iGUID % nGUID == 0 or iGUID == len(guids):
             # get replica
-            ret,resList = lfc.lfc_getreplicas(listGUID,'')
+            nTry = 3
+            for iTry in range(nTry):
+                ret,resList = lfc.lfc_getreplicas(listGUID,'')
+                if ret != 0 and iTry+1<nTry:
+                    time.sleep(30)
+                else:
+                    break
             if ret == 0:
                 for fr in resList:
                     if fr != None and ((not hasattr(fr,'errcode')) or \

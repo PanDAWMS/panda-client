@@ -1093,13 +1093,17 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                      options.nfiles+options.nSkipFiles)
             elif Client.getLFC(dsLocation) != None:
                 # LFC
-                missList = Client.getMissLFNsFromLFC(inputFileMap,dsLocation,True,options.verbose,
+                missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
                                                      options.nfiles+options.nSkipFiles)
             else:
                 missList = []
             # choose min missList
             if options.verbose:
                 tmpLog.debug("%s holds %s files" % (dsLocation,len(inputFileMap)-len(missList)))
+        # No files available
+        if len(inputFileMap) == len(missList):
+            tmpLog.error("No files available at %s" % options.site)
+            sys.exit(EC_Dataset)
         # remove log, missing, and check matching
         for fileName in inputFileMap.keys():
             # ignore log file
@@ -1142,7 +1146,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     break
         # check with shadow
         if len(inputFileMap) == len(shadowList):
-            tmpStr  = "all input files had already been used in %s\n" % dataset
+            tmpStr  = "all input files had already been used in %s\n" % options.inDS
             tmpStr += "  pathena runs on files which were failed or were not used in\n"
             tmpStr += "  previous submissions if it runs with the same inDS and outDS"
             tmpLog.error(tmpStr)

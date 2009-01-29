@@ -97,6 +97,7 @@ from pandatools import Client
 from pandatools import PsubUtils
 from pandatools import AthenaUtils
 from pandatools import GlobalConfig
+from pandatools import PLogger
 
 # set dummy CMTSITE
 if not os.environ.has_key('CMTSITE'):
@@ -106,6 +107,9 @@ if not os.environ.has_key('CMTSITE'):
 globalConf = GlobalConfig.getConfig()
 if globalConf.grid_src != '' and not os.environ.has_key('PATHENA_GRID_SETUP_SH'):
     os.environ['PATHENA_GRID_SETUP_SH'] = globalConf.grid_src
+
+# get logger
+tmpLog = PLogger.getPandaLogger()
 
 # use dev server
 if options.devSrv:
@@ -347,7 +351,7 @@ if options.inDS != '':
         dsLocation = Client.PandaSites[options.site]['ddm']
         if Client.getLFC(dsLocation) != None:
             # LFC
-            tmpMissList = Client.getMissLFNsFromLFC(inputFileMap,dsLocation,True,options.verbose)
+            tmpMissList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose)
         elif Client.getLRC(dsLocation) != None:
             # LRC
             tmpMissList = Client.getMissLFNsFromLRC(inputFileMap,Client.getLRC(dsLocation),options.verbose)
@@ -355,6 +359,10 @@ if options.inDS != '':
             tmpMissList = []
         if options.verbose:
             print "%s holds %s files" % (options.site,len(inputFileList)-len(tmpMissList))
+        # No files available
+        if len(inputFileList) == len(tmpMissList):
+            tmpLog.error("No files available at %s" % options.site)
+            sys.exit(EC_Dataset)
         # remove missing files
         newInputFiles = []
         for inputFile in inputFileList:
