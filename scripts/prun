@@ -351,7 +351,7 @@ if options.inDS != '':
         dsLocation = Client.PandaSites[options.site]['ddm']
         if Client.getLFC(dsLocation) != None:
             # LFC
-            tmpMissList = Client.getMissLFNsFromLFC(inputFileMap,dsLocation,True,options.verbose)
+            tmpMissList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose)
         elif Client.getLRC(dsLocation) != None:
             # LRC
             tmpMissList = Client.getMissLFNsFromLRC(inputFileMap,Client.getLRC(dsLocation),options.verbose)

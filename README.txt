@@ -13,7 +13,8 @@ prun -h
 
 ** Release Note
 
-current
+0.1.8 (1/29/2009)
+  * fixed LFC looup 
   * more diagnostic message for LFC failures
   * added retry for LFC failures
 

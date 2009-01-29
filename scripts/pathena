@@ -1093,7 +1093,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                      options.nfiles+options.nSkipFiles)
             elif Client.getLFC(dsLocation) != None:
                 # LFC
-                missList = Client.getMissLFNsFromLFC(inputFileMap,dsLocation,True,options.verbose,
+                missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
                                                      options.nfiles+options.nSkipFiles)
             else:
                 missList = []
