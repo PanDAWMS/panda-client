@@ -979,7 +979,7 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
                 pass
             # failed
             if status != 0:
-                print "ERROR : failed to access LFC"
+                print "ERROR : failed to access LFC %s" % lfcHost
                 sys.exit(EC_Failed)
             break
     # return
