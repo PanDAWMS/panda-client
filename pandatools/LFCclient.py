@@ -43,6 +43,7 @@ def _getPFNsLFC(guids,lfcHost,storages,nFiles,verbose=False):
             for iTry in range(nTry):
                 ret,resList = lfc.lfc_getreplicas(listGUID,'')
                 if ret != 0 and iTry+1<nTry:
+                    print "retry to access %s %s/%s" % (lfcHost,iTry,nTry)
                     time.sleep(30)
                 else:
                     break
