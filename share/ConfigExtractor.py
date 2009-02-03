@@ -293,7 +293,8 @@ try:
         # check name
         fullName = genStream.getFullName()
         if fullName.split('/')[0] == 'AthenaOutputStream' and \
-               (not fullName.split('/')[-1] in ['Stream1','Stream2','StreamBS','StreamRDO','StreamESD','StreamAOD']):
+               (not fullName.split('/')[-1] in ['Stream1','Stream2','StreamBS','StreamRDO','StreamESD','StreamAOD',
+                                                'StreamBSFileOutput']):
             if hasattr(genStream,'OutputFile') and hasattr(genStream.OutputFile,'__len__') and len(genStream.OutputFile):
                 if (hasattr(genStream,'Enable') and genStream.Enable) or (not hasattr(genStream,'Enable')):
                     # keep meta data
@@ -336,8 +337,12 @@ for index in range(fList.GetSize()):
 
 # BS
 ByteStreamCnvSvc = _Service("ByteStreamCnvSvc")
-if hasattr(ByteStreamCnvSvc,'ByteStreamOutputSvc') and ByteStreamCnvSvc.ByteStreamOutputSvc=="ByteStreamEventStorageOutputSvc":
+if hasattr(ByteStreamCnvSvc,'ByteStreamOutputSvc') and \
+       ByteStreamCnvSvc.ByteStreamOutputSvc=="ByteStreamEventStorageOutputSvc":
     _printConfig('Output=BS')
+elif hasattr(ByteStreamCnvSvc,'ByteStreamOutputSvcList') and \
+         'ByteStreamEventStorageOutputSvc' in ByteStreamCnvSvc.ByteStreamOutputSvcList:
+    _printConfig('Output=BS')    
 
 # selected BS
 BSESOutputSvc = _Service("BSESOutputSvc")
