@@ -13,6 +13,15 @@ prun -h
 
 ** Release Note
 
+0.1.11 (2/4/2009)
+  * fixed http://savannah.cern.ch/bugs/?46617
+
+0.1.10 (2/3/2009)
+  * added --dbRunNumber to pathena to save disk usage of DBRelease
+
+0.1.9 (2/2/2009)
+  * fixed BS extraction when multiple streams exist
+
 0.1.8 (1/29/2009)
   * fixed LFC looup 
   * more diagnostic message for LFC failures
