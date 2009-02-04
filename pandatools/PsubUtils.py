@@ -188,16 +188,33 @@ def checkValidCloud(cloud):
 
 
 # check name of output dataset
-def checkOutDsName(outDS,distinguishedName):
+def checkOutDsName(outDS,distinguishedName,official):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # official dataset
+    if official:
+        allowedPrefix = ['group']
+        for tmpPrefix in allowedPrefix:
+            if outDS.startswith(tmpPrefix):
+                return True
+        # didn't match
+        errStr  = "End-users are allowed to produce official datasets\n"
+        errStr += "        with the following prefix\n"
+        for tmpPrefix in allowedPrefix:
+            errStr += "          %s%s\n" % (tmpPrefix,time.strftime('%y',time.gmtime()))
+        errStr += "If you need to use another prefix please request it to Panda Savannah"
+        tmpLog.error(errStr)
+        return False
     # check output dataset format
     matStr = '^user' + ('%s' % time.strftime('%y',time.gmtime())) + '\.' + distinguishedName + '\.'
     if re.match(matStr,outDS) == None:
-        print "ERROR : outDS must be 'user%s.%s.<user-controlled string...'" % \
-              (time.strftime('%y',time.gmtime()),distinguishedName)
-        print "        e.g., user%s.%s.test1234" % \
-              (time.strftime('%y',time.gmtime()),distinguishedName)
-        print "    Please use 'user%s.' instead of 'user.' to follow ATL-GEN-INT-2007-001" % \
-              time.strftime('%y',time.gmtime())
+        errStr  = "outDS must be 'user%s.%s.<user-controlled string...'\n" % \
+                 (time.strftime('%y',time.gmtime()),distinguishedName)
+        errStr += "        e.g., user%s.%s.test1234\n" % \
+                  (time.strftime('%y',time.gmtime()),distinguishedName)
+        errStr += "        Please use 'user%s.' instead of 'user.' to follow ATL-GEN-INT-2007-001" % \
+                  time.strftime('%y',time.gmtime())
+        tmpLog.error(errStr)
         return False
     return True
 

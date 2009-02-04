@@ -223,10 +223,9 @@ if distinguishedName == '':
     sys.exit(EC_Config)
 
 # check outDS format
-if not options.official:
-    if not PsubUtils.checkOutDsName(options.outDS,distinguishedName):
-        print "ERROR : invalid output datasetname:%s" % options.outDS
-        sys.exit(EC_Config)
+if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official):
+    print "ERROR : invalid output datasetname:%s" % options.outDS
+    sys.exit(EC_Config)
 
 # check if output dataset already exists
 outputDSexist = False

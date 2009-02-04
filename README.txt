@@ -13,6 +13,10 @@ prun -h
 
 ** Release Note
 
+0.1.12 (2/5/2009)
+  * fixed nFilesPerJob in pathena
+  * limited dataset names for the official option
+
 0.1.11 (2/4/2009)
   * fixed http://savannah.cern.ch/bugs/?46617
 
