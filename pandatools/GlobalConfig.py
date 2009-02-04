@@ -6,13 +6,17 @@ import ConfigParser
 sectionName = 'global'
 confFile = os.path.expanduser('%s/panda.cfg' % os.environ['PANDA_CONFIG_ROOT'])
 
-
 # create config or add section when missing
 parser=ConfigParser.ConfigParser()
 newFlag = False
 if not os.path.exists(confFile):
     # create new config
     newFlag = True
+    # make dir
+    try:
+        os.makedirs(os.environ['PANDA_CONFIG_ROOT'])
+    except:
+        pass
 else:
     # add section
     parser.read(confFile)

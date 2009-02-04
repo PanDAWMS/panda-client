@@ -160,6 +160,8 @@ optP.add_option('--myproxy', action='store', dest='myproxy', default='pandaprx.u
                 type='string', help='Name of the myproxy server')
 optP.add_option('--dbRelease', action='store', dest='dbRelease', default='',
                 type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz')
+optP.add_option('--dbRunNumber', action='store', dest='dbRunNumber', default='',
+                type='string', help='RunNumber for DBRelease or CDRelease. If this option is used some redundant files are removed to save disk usage when unpacking DBRelease tarball. e.g., 0091890')
 optP.add_option('--addPoolFC', action='store', dest='addPoolFC',  default='',
                 help="file names to be inserted into PoolFileCatalog.xml except input files. e.g., MyCalib1.root,MyGeom2.root") 
 optP.add_option('--skipScan', action='store_const', const=True, dest='skipScan', default=False,
@@ -404,10 +406,9 @@ if distinguishedName == '':
     sys.exit(EC_Config)
 
 # check outDS format
-if not options.official:
-    if not PsubUtils.checkOutDsName(options.outDS,distinguishedName):
-        tmpLog.error("invalid output datasetname:%s" % options.outDS)
-        sys.exit(EC_Config)
+if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official):
+    tmpLog.error("invalid output datasetname:%s" % options.outDS)
+    sys.exit(EC_Config)
 
 # save current dir
 currentDir = os.path.realpath(os.getcwd())
@@ -1964,7 +1965,10 @@ for iSubJob in range(options.split):
         (divF,modF) = divmod(len(inputFileList),options.split)
         if modF != 0:
             divF += 1
-        #If split by events was specified then
+        # if split by files was specified
+        if options.nFilesPerJob > 0:
+            divF = options.nFilesPerJob 
+        # if split by events was specified then
         if options.nEventsPerJob > 0:
            #@Calculate how many events to skip
            nEventsToSkip = nSkips*options.nEventsPerJob
@@ -2524,6 +2528,8 @@ for iSubJob in range(options.split):
             jobR.addFile(file)
             # set DBRelease parameter
             param += '--dbrFile %s ' % file.lfn
+            if options.dbRunNumber != '':
+                param += '--dbrRun %s ' % options.dbRunNumber
     else:
         # replace parameters for TRF
         tmpJobO = jobO
