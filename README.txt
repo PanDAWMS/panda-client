@@ -13,6 +13,9 @@ prun -h
 
 ** Release Note
 
+0.1.13 (2/11/2009)
+  * fixed index calcuration when reusing outDS
+
 0.1.12 (2/5/2009)
   * fixed nFilesPerJob in pathena
   * limited dataset names for the official option
