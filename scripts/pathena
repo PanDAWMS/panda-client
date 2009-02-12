@@ -1245,10 +1245,15 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     tmpNSplit += 1
                 # calculate N files
                 divF,modF = divmod(len(inputFileList),tmpNSplit)
+		# reset tmpNSplit
+                tmpNSplit,tmpMod = divmod(len(inputFileList),divF)
+                if tmpMod != 0:
+                    tmpNSplit += 1
                 # check again just in case
                 iDiv = 0
                 subTotal = 0
-                for fileName,vals in inputFileList:
+                for fileName in inputFileList:
+                    vals = inputFileMap[fileName]
                     try:
                         subTotal += long(vals['fsize'])
                     except:
