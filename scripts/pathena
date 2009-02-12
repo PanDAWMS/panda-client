@@ -1245,10 +1245,15 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     tmpNSplit += 1
                 # calculate N files
                 divF,modF = divmod(len(inputFileList),tmpNSplit)
+		# reset tmpNSplit
+                tmpNSplit,tmpMod = divmod(len(inputFileList),divF)
+                if tmpMod != 0:
+                    tmpNSplit += 1
                 # check again just in case
                 iDiv = 0
                 subTotal = 0
-                for fileName,vals in inputFileList:
+                for fileName in inputFileList:
+                    vals = inputFileMap[fileName]
                     try:
                         subTotal += long(vals['fsize'])
                     except:
@@ -1661,46 +1666,55 @@ if outputDSexist:
     indexStream1 = getIndex(tmpList,"%s\.Stream1\._(\d+)\.pool\.root" % options.outDS)
     indexStream2 = getIndex(tmpList,"%s\.Stream2\._(\d+)\.pool\.root" % options.outDS)
     indexBS      = getIndex(tmpList,"%s\.BS\._(\d+)\.data" % options.outDS)
-    indexSelBS   = getIndex(tmpList,"%s\.%s\._(\d+)\.data" % (options.outDS,options.outSelBS))        
-    for sName in options.outNtuple:
-        tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (options.outDS,sName))
-        if tmpIndex > indexNT:
-            indexNT  = tmpIndex
-    for sName in options.outTHIST:
-        tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (options.outDS,sName))
-        if tmpIndex > indexTHIST:
-            indexTHIST  = tmpIndex
-    for aName,sName in options.outAANT:
-        tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (options.outDS,sName))
-        if tmpIndex > indexAANT:
-            indexAANT  = tmpIndex
-    for sIndex,sName in enumerate(options.outIROOT):
-        tmpIndex = getIndex(tmpList,"%s\.iROOT%s\._(\d+)\.%s" % (options.outDS,sIndex,sName))
-        if tmpIndex > indexIROOT:
-            indexIROOT  = tmpIndex
-    for sIndex,sName in enumerate(options.extOutFile):
-        # change * to X and add .tgz
-        if sName.find('*') != -1:
-            sName = sName.replace('*','XYZ')
-            sName = '%s.tgz' % sName
-        tmpIndex = getIndex(tmpList,"%s\.EXT%s\._(\d+)\.%s" % (options.outDS,sIndex,sName))
-        if tmpIndex > indexEXT:
-            indexEXT  = tmpIndex
-    for sName in options.outStreamG:
-        tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (options.outDS,sName))
-        if tmpIndex > indexStreamG:
-            indexStreamG = tmpIndex
-    for sName,sAsso in options.outMeta:
-        iMeta = 0
-        if sAsso == 'None':
-            tmpIndex = getIndex(tmpList,"%s\.META%s\._(\d+)\.root" % (options.outDS,iMeta))
-            iMeta += 1
-            if tmpIndex > indexMeta:
-                indexMeta = tmpIndex
-    for sName,sAsso in options.outMS:
-        tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (options.outDS,sName))
-        if tmpIndex > indexMS:
-            indexMS = tmpIndex
+    if runConfig.output.outSelBS:
+        indexSelBS   = getIndex(tmpList,"%s\.%s\._(\d+)\.data" % (options.outDS,runConfig.output.outSelBS))
+    if runConfig.output.outNtuple:
+        for sName in runConfig.output.outNtuple:
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (options.outDS,sName))
+            if tmpIndex > indexNT:
+                indexNT  = tmpIndex
+    if runConfig.output.outTHIST:            
+        for sName in runConfig.output.outTHIST:
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (options.outDS,sName))
+            if tmpIndex > indexTHIST:
+                indexTHIST  = tmpIndex
+    if runConfig.output.outAANT:            
+        for aName,sName in runConfig.output.outAANT:
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (options.outDS,sName))
+            if tmpIndex > indexAANT:
+                indexAANT  = tmpIndex
+    if runConfig.output.outIROOT:            
+        for sIndex,sName in enumerate(runConfig.output.outIROOT):
+            tmpIndex = getIndex(tmpList,"%s\.iROOT%s\._(\d+)\.%s" % (options.outDS,sIndex,sName))
+            if tmpIndex > indexIROOT:
+                indexIROOT  = tmpIndex
+    if runConfig.output.extOutFile: 
+        for sIndex,sName in enumerate(runConfig.output.extOutFile):
+            # change * to X and add .tgz
+            if sName.find('*') != -1:
+                sName = sName.replace('*','XYZ')
+                sName = '%s.tgz' % sName
+            tmpIndex = getIndex(tmpList,"%s\.EXT%s\._(\d+)\.%s" % (options.outDS,sIndex,sName))
+            if tmpIndex > indexEXT:
+                indexEXT  = tmpIndex
+    if runConfig.output.outStreamG:            
+        for sName in runConfig.output.outStreamG:
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (options.outDS,sName))
+            if tmpIndex > indexStreamG:
+                indexStreamG = tmpIndex
+    if runConfig.output.outMeta:            
+        for sName,sAsso in runConfig.output.outMeta:
+            iMeta = 0
+            if sAsso == 'None':
+                tmpIndex = getIndex(tmpList,"%s\.META%s\._(\d+)\.root" % (options.outDS,iMeta))
+                iMeta += 1
+                if tmpIndex > indexMeta:
+                    indexMeta = tmpIndex
+    if runConfig.output.outMS:                
+        for sName,sAsso in runConfig.output.outMS:
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (options.outDS,sName))
+            if tmpIndex > indexMS:
+                indexMS = tmpIndex
 
 
 # choose site automatically when it is still AUTO
