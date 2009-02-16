@@ -174,8 +174,8 @@ optP.add_option('--corCheck', action='store_const', const=True, dest='corCheck',
                 help='Enable a checker to skip corrupted files')
 optP.add_option('--prestage', action='store_const', const=True, dest='prestage',  default=False,
                 help='EXPERIMENTAL : Enable prestager. Make sure that you are authorized')
-optP.add_option('--novoms', action='store_const', const=False, dest='voms',  default=True,
-                help="don't use VOMS extensions")
+optP.add_option('--voms', action='store', dest='vomsRoles',  default=None, type='string',
+                help="generate proxy with paticular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot")
 optP.add_option('--useNextEvent', action='store_const', const=True, dest='useNextEvent',  default=False,
                 help="Set this option if your jobO uses theApp.nextEvent() e.g. for G4")
 optP.add_option('--ara', action='store_const', const=True, dest='ara',  default=False,
@@ -359,7 +359,7 @@ if options.nFilesPerJob > 0 and options.nfiles == 0 and options.split > 0:
     options.nfiles = options.nFilesPerJob * options.split
 
 # check grid-proxy
-gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose)
+gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
 
 # set cloud according to country FQAN
 expCloudFlag = False

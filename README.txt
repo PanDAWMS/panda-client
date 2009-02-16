@@ -9,9 +9,13 @@ python setup.py install --prefix=/path/to/install/dir
 
 source /path/to/install/dir/etc/panda/panda_setup.[c]sh
 prun -h
+pathena -h
 
 
 ** Release Note
+
+0.1.15 (2/16/2009)
+  * added --voms to pathena/prun
 
 0.1.14 (2/12/2009)
   * fixed unpack failure in pathena
