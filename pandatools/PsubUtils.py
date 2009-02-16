@@ -13,7 +13,7 @@ EC_Config    = 10
 
 
 # check proxy
-def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False):
+def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=None):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # check grid-proxy
@@ -41,6 +41,17 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False):
             tmpLog.debug(out)
         if status == 0:
             vomsFQAN = out
+        # check roles
+        if vomsRoles != None:
+            hasAttr = True
+            for attrItem in vomsRoles.split(','):
+                vomsCommand = attrItem.split(':')[-1]
+                if not vomsCommand in out:
+                    hasAttr = False
+                    break
+            if not hasAttr:
+                # set status to regenerate proxy with roles
+                status = -1
     # generate proxy
     if status != 0 or out.find('Error: VOMS extension not found') != -1 or enforceEnter:
         # GRID pass phrase
@@ -50,8 +61,11 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False):
             print "Your identity: " + commands.getoutput('%s grid-cert-info -subject' % gridSrc)
             gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:')
             gridPassPhrase = gridPassPhrase.replace('$','\$')
-        # with VOMS extension 
+        # with VOMS extension
         com = '%s echo "%s" | voms-proxy-init -voms atlas -pwstdin' % (gridSrc,gridPassPhrase)
+        if vomsRoles != None:
+            for attrItem in vomsRoles.split(','):
+                com += ' -voms %s' % attrItem
         if verbose:
             tmpLog.debug(re.sub(gridPassPhrase,"*****",com))
         status = os.system(com)
