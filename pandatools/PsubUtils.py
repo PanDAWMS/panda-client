@@ -362,22 +362,34 @@ def updatePackage(verbose=False):
         commands.getoutput('rm -rf panda-client-%s' % latestVer)    
         return False
     # delete tarball
-    commands.getoutput('rm panda-client-%s.tar.gz' % latestVer)    
+    commands.getoutput('rm panda-client-%s.tar.gz' % latestVer)
+    # installation type
+    print "\nPlease specify installation type"
+    print " 1 : Clean install : all files under %s will be erased first (recommended)" % os.environ['PANDA_SYS']
+    print " 2 : Overwrite : existing files under %s will be replaced with new ones" % os.environ['PANDA_SYS']
+    while True:
+        str = raw_input("Enter 1 or 2 : ")
+        if str == '1':
+            cleanInstall = True
+            break
+        if str== '2':
+            cleanInstall = False
+            break
     # save current dir
     currentDir = os.path.realpath(os.getcwd())
     # keep old release
-    status,output = commands.getstatusoutput('mv %s %s.back' % \
-                                             (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))
-    if status != 0:
-        tmpLog.error(output)
-        tmpLog.error('failed to keep old version')
-        # delete dirs
-        commands.getoutput('rm -rf panda-client-%s' % latestVer)    
-        return False
+    if cleanInstall:
+        status,output = commands.getstatusoutput('mv %s %s.back' % \
+                                                 (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))
+        if status != 0:
+            tmpLog.error(output)
+            tmpLog.error('failed to keep old version')
+            # delete dirs
+            commands.getoutput('rm -rf panda-client-%s' % latestVer)    
+            return False
     # install
     result = True
     os.chdir('panda-client-%s' % latestVer)
-
     status,output = commands.getstatusoutput('python setup.py install --prefix=%s' % os.environ['PANDA_SYS'])
     if verbose:
         tmpLog.debug(output)
@@ -392,6 +404,8 @@ def updatePackage(verbose=False):
         result = False
     # cleanup
     commands.getoutput('rm -rf panda-client-%s' % latestVer)
+    if cleanInstall:
+        commands.getoutput('rm -rf %s.back' % os.environ['PANDA_SYS'])
     # return
     if result:
         tmpLog.info('completed')
