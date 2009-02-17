@@ -14,6 +14,11 @@ pathena -h
 
 ** Release Note
 
+0.1.17 (2/17/2009)
+  * added --update to pathena/prun
+  * fixed renaming error for --trf : http://savannah.cern.ch/bugs/?47042
+  * fixed --libDS=LAST  
+
 0.1.16 (2/16/2009)
   * fixed the order of voms arguments in voms-proxy-init
 

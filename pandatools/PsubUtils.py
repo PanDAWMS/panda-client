@@ -308,3 +308,92 @@ def convSysArgv():
             paramStr += '"%s" ' % item
     # return
     return paramStr[:-1]
+
+
+# update package
+def updatePackage(verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # get the latest version number
+    tmpLog.info('start update check')
+    com = 'curl -m 120 --silent https://twiki.cern.ch/twiki/bin/view/Atlas/PandaTools'
+    if verbose:
+        tmpLog.debug(com)
+    status,output = commands.getstatusoutput(com)
+    status %= 255
+    if verbose:
+        tmpLog.debug(status)
+        tmpLog.debug(output)
+    if status != 0:
+        tmpLog.error('failed to get the latest version number : %s' % status)
+        return False
+    # extract version
+    match = re.search('Current version of panda-client : (\d+\.\d+\.\d+) ',output)
+    if match == None:
+        tmpLog.error('failed to extract the latest version number')
+        return False
+    latestVer = match.group(1)
+    # check version
+    import PandaToolsPkgInfo
+    if latestVer == PandaToolsPkgInfo.release_version:
+        tmpLog.info('you are already using the latest version')
+        return True
+    # get tarball
+    tmpLog.info('get panda-client-%s' % latestVer)
+    com = 'wget --timeout 120 https://twiki.cern.ch/twiki/pub/Atlas/PandaTools/panda-client-%s.tar.gz' \
+          % latestVer
+    status = os.system(com)
+    status %= 255    
+    if status != 0:
+        tmpLog.error('failed to download tarball : %s' % status)
+        # delete tarball just in case
+        commands.getoutput('rm panda-client-%s.tar.gz' % latestVer)    
+        return False
+    tmpLog.info('update to %s from %s' % (latestVer,PandaToolsPkgInfo.release_version))
+    # expand
+    status,output = commands.getstatusoutput('tar xvfz panda-client-%s.tar.gz' % latestVer)
+    status %= 255    
+    if verbose:
+        tmpLog.debug(status)
+        tmpLog.debug(output)
+    if status != 0:
+        tmpLog.error('failed to expand tarball : %s' % status)        
+        # delete dirs just in case
+        commands.getoutput('rm -rf panda-client-%s' % latestVer)    
+        return False
+    # delete tarball
+    commands.getoutput('rm panda-client-%s.tar.gz' % latestVer)    
+    # save current dir
+    currentDir = os.path.realpath(os.getcwd())
+    # keep old release
+    status,output = commands.getstatusoutput('mv %s %s.back' % \
+                                             (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))
+    if status != 0:
+        tmpLog.error(output)
+        tmpLog.error('failed to keep old version')
+        # delete dirs
+        commands.getoutput('rm -rf panda-client-%s' % latestVer)    
+        return False
+    # install
+    result = True
+    os.chdir('panda-client-%s' % latestVer)
+
+    status,output = commands.getstatusoutput('python setup.py install --prefix=%s' % os.environ['PANDA_SYS'])
+    if verbose:
+        tmpLog.debug(output)
+        tmpLog.debug(status)
+    os.chdir(currentDir)
+    status %= 255
+    if status != 0:
+        tmpLog.error('failed to install panda-client : %s' % status)
+        # recover old one
+        commands.getoutput('rm -rf %s' % os.environ['PANDA_SYS'])
+        commands.getoutput('mv %s.back %s' % (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))        
+        result = False
+    # cleanup
+    commands.getoutput('rm -rf panda-client-%s' % latestVer)
+    # return
+    if result:
+        tmpLog.info('completed')
+        tmpLog.info("please do 'source %s/etc/panda/panda_setup.[c]sh'" % os.environ['PANDA_SYS'])
+    return result
