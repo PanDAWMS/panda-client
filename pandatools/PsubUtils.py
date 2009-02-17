@@ -44,11 +44,21 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
         # check roles
         if vomsRoles != None:
             hasAttr = True
-            for attrItem in vomsRoles.split(','):
+            for indexAttr,attrItem in enumerate(vomsRoles.split(',')):
                 vomsCommand = attrItem.split(':')[-1]
+                if not '/Role' in vomsCommand:
+                    vomsCommand += '/Role'
                 if not vomsCommand in out:
                     hasAttr = False
                     break
+                # check order
+                try:
+                    if not vomsCommand in out.split('\n')[indexAttr]:
+                        hasAttr = False
+                        break
+                except:
+                        hasAttr = False
+                        break
             if not hasAttr:
                 # set status to regenerate proxy with roles
                 status = -1
