@@ -69,6 +69,8 @@ optP.add_option('--noSubmit',action='store_const',const=True,dest='nosubmit',def
                 help="Don't submit jobs")
 optP.add_option('--tmpDir',action='store',dest='tmpDir',default='',type='string',
                 help='Temporary directory where an archive file is created')
+optP.add_option('--voms', action='store', dest='vomsRoles',  default=None, type='string',
+                help="generate proxy with paticular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot")
 optP.add_option('--spaceToken',action='store',dest='spaceToken',default='',type='string',
                 help='spacetoken for outputs. e.g., ATLASLOCALGROUPDISK')
 optP.add_option('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
@@ -116,7 +118,7 @@ if options.devSrv:
     Client.useDevServer()
     
 # check grid-proxy
-gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose)
+gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
 
 # save current dir
 curDir = os.path.realpath(os.getcwd())
