@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.16 (2/16/2009)
+  * fixed the order of voms arguments in voms-proxy-init
+
 0.1.15 (2/16/2009)
   * added --voms to pathena/prun
 

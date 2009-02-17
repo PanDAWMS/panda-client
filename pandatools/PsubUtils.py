@@ -62,10 +62,12 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
             gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:')
             gridPassPhrase = gridPassPhrase.replace('$','\$')
         # with VOMS extension
-        com = '%s echo "%s" | voms-proxy-init -voms atlas -pwstdin' % (gridSrc,gridPassPhrase)
         if vomsRoles != None:
+            com = '%s echo "%s" | voms-proxy-init -pwstdin' % (gridSrc,gridPassPhrase)
             for attrItem in vomsRoles.split(','):
                 com += ' -voms %s' % attrItem
+        else:
+            com = '%s echo "%s" | voms-proxy-init -voms atlas -pwstdin' % (gridSrc,gridPassPhrase)            
         if verbose:
             tmpLog.debug(re.sub(gridPassPhrase,"*****",com))
         status = os.system(com)
