@@ -17,7 +17,7 @@ import fcntl
 import types
 import traceback
 
-####################################################################3
+####################################################################
 
 # error code
 EC_Config    = 10
@@ -122,6 +122,8 @@ optP.add_option('-l', '--long', action='store_const', const=True, dest='long',  
                 help='Send job to a long queue')
 optP.add_option('--blong', action='store_const', const=True, dest='blong',  default=False,
                 help='Send build job to a long queue')
+optP.add_option('--update', action='store_const', const=True, dest='update',  default=False,
+                help='Update panda-client to the latest version')
 optP.add_option('--cloud',action='store', dest='cloud',default=None,
                 type='string', help='cloud where jobs are submitted. default is set according to your VOMS country group')
 optP.add_option('--noBuild', action='store_const', const=True, dest='nobuild',  default=False,
@@ -227,6 +229,14 @@ from pandatools import AthenaUtils
 from pandatools import GlobalConfig
 from pandatools import PLogger
 
+# update panda-client
+if options.update:
+    res = PsubUtils.updatePackage(options.verbose)
+    if res:
+	sys.exit(0)
+    else:
+	sys.exit(1)
+
 # set grid source file
 globalConf = GlobalConfig.getConfig()
 if globalConf.grid_src != '' and not os.environ.has_key('PATHENA_GRID_SETUP_SH'):
@@ -249,6 +259,21 @@ if options.split < -1 :
 if options.shipinput and options.inDS != '' and options.pfnList != '':
     tmpLog.error("--shipInput, --pfnList and --inDS cannot be used at the same time")
     sys.exit(EC_Config)
+
+# libDS
+libds_file = '%s/libds_pathena.dat' % os.environ['PANDA_CONFIG_ROOT']
+if options.libDS == 'LAST':
+    if not os.path.exists(libds_file):
+        tmpLog.error("LAST cannot be used until you submit at least one job without --libDS")
+        sys.exit(EC_Config)
+    # read line
+    tmpFile = open(libds_file)
+    tmpLibDS = tmpFile.readline()
+    tmpFile.close()
+    # remove \n
+    tmpLibDS = tmpLibDS.replace('\n','')
+    # set
+    options.libDS = tmpLibDS
 
 # absolute path for PFN list
 if options.pfnList != '':
@@ -1872,39 +1897,19 @@ else:
         tmpGUIDmap[fileName] = tmpList[fileName]['guid'] 
     # incomplete libDS
     if tmpFileList == []:
+        # query files in dataset from Panda
+	status,tmpMap = Client.queryLastFilesInDataset([options.libDS],options.verbose)
         # look for lib.tgz
-        for indexID,tmpTmp in enumerate(_jobIDs):
-            tmpID = _jobIDs[-1-indexID]
-            jobRec = db[tmpID]
-            if jobRec['libDS'] == options.libDS:
-                if options.verbose:
-                    tmpLog.debug("query job:%s" % jobRec['build'])
-                # query job status
-                s,o = Client.getJobStatus([jobRec['build']])
-                if s == 0:
-                    try:
-                        tmpJob = o[0]
-                        # check job status
-                        if options.verbose:
-                            tmpLog.debug(" job status -> %s" % tmpJob.jobStatus)
-                        # buildJob failed    
-                        if tmpJob.jobStatus == 'failed':
-                            tmpLog.error("buildJob %s failed to produce %s" % \
-                                         (jobRec['build'],options.libDS))
-                            sys.exit(EC_Dataset)
-                        for tmpFile in tmpJob.Files:
-                            # append lib.tgz
-                            if tmpFile.type=='output':
-                                tmpFileList.append(tmpFile.lfn)
-                                if tmpFile.GUID == 'NULL':
-                                    tmpGUIDmap[tmpFile.lfn] = None
-                                else:
-                                    tmpGUIDmap[tmpFile.lfn] = tmpFile.GUID
-                                break
-                    except:
-                        pass
-                # escape from DB loop    
-                break
+	for fileName in tmpMap[options.libDS]:
+            # ignore log file
+            if len(re.findall('.log.tgz.\d+$',fileName)) or len(re.findall('.log.tgz$',fileName)):
+                continue
+            tmpFileList.append(fileName)
+            tmpGUIDmap[fileName] = None
+    # incomplete libDS
+    if tmpFileList == []:
+        tmpLog.error("lib dataset %s is empty" % options.libDS)
+        sys.exit(EC_Dataset)
     # check file list                
     if len(tmpFileList) != 1:
         tmpLog.error("dataset %s contains multiple lib.tgz files : %s" % (options.libDS,tmpFileList))
@@ -2550,9 +2555,9 @@ for iSubJob in range(options.split):
         # output : basenames are in outMap['IROOT'] trough extOutFile
         tmpOutMap = []
         for tmpName,tmpLFN in outMap['IROOT']:
-            tmpJobO = tmpJobO.replace('%OUT.' + tmpName,tmpLFN)
+            tmpJobO = tmpJobO.replace('%OUT.' + tmpName,tmpName)
             # set correct name in outMap
-            tmpOutMap.append((tmpLFN,tmpLFN))
+            tmpOutMap.append((tmpName,tmpLFN))
         # set output for normal TRF (not for ARA)
         if not options.ara:
             outMap['IROOT'] = tmpOutMap 
@@ -2833,6 +2838,12 @@ if not os.path.exists(dbdir):
 tmpJobIdFile = open(jobid_file,'w')
 tmpJobIdFile.write(str(jobID))
 tmpJobIdFile.close()
+
+# record libDS
+if options.libDS == '':
+    tmpFile = open(libds_file,'w')
+    tmpFile.write(jobB.destinationDBlock)
+    tmpFile.close()
 
 # go back to current dir
 os.chdir(currentDir)
