@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.18 (2/19/2009)
+  * allowed downstream job to use upstream output as input in --trf
+
 0.1.17 (2/17/2009)
   * added --update to pathena/prun
   * fixed renaming error for --trf : http://savannah.cern.ch/bugs/?47042

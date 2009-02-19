@@ -543,12 +543,17 @@ if not options.trf:
 else:
     # parse parameters for trf
     oneOut = False
-    for tmpItem in jobO.split():
+    # replace ; for job sequence
+    tmpString = re.sub(';',' ',jobO)
+    # look for %OUT
+    for tmpItem in tmpString.split():
         match = re.search('\%OUT\.(.+)',tmpItem)
         if match:
             # append basenames to extOutFile
-            options.extOutFile.append(match.group(1))
-            oneOut = True
+            tmpOutName = match.group(1)
+            if not tmpOutName in options.extOutFile:
+                options.extOutFile.append(tmpOutName)
+                oneOut = True
     # warning if no output
     if not oneOut:
         if not options.ara:
