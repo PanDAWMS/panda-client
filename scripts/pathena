@@ -1127,7 +1127,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         elif outputContExist:
             shadowList = Client.getFilesInShadowDataset(options.outDS,suffixShadow,options.verbose)
         # query files in dataset
-        tmpLog.info("query files in dataset:%s" % options.inDS)
+        tmpLog.info("query files in %s" % options.inDS)
         inputFileMap  = Client.queryFilesInDataset(options.inDS,options.verbose)
         # remove files
         for tmpKey in inputFileMap.keys():
@@ -2982,7 +2982,7 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
 
         # run pathena
         if anotherTry:
-            tmpLog.info("Trying other sites for the missing files")
+            tmpLog.info("trying other sites for the missing files")
             com = 'pathena ' + fullExecString
             status = os.system(com)
             # delete tmp files
