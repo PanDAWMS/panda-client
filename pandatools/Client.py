@@ -596,6 +596,26 @@ def getDatasets(name,verbose=False):
     return datasets
 
 
+# query files in shadow datasets associated to container
+def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
+    fileList = []
+    # get elements in container
+    elements = getElementsFromContainer(contName,verbose)
+    for tmpEle in elements:
+        shadowDsName = "%s%s" % (tmpEle,suffixShadow)
+        # check existence
+        tmpDatasets = getDatasets(shadowDsName,verbose)
+        if len(tmpDatasets) == 0:
+            continue
+        # get files in shadow dataset
+        tmpList = queryFilesInDataset(shadowDsName,verbose)
+        for tmpItem in tmpList:
+            if not tmpItem in fileList:
+                # append
+                fileList.append(tmpItem)
+    return fileList
+    
+
 # register dataset
 def addDataset(name,verbose=False):
     # generate DUID/VUID
@@ -623,6 +643,60 @@ def addDataset(name,verbose=False):
         else:
             print "ERROR : invalid DQ2 response"
         sys.exit(EC_Failed)
+
+
+# create dataset container
+def createContainer(name,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    try:
+        errStr = ''
+        # add
+        url = baseURLDQ2SSL + '/ws_dq2/rpc'        
+        data = {'operation':'container_create','name': name,
+                'API':'030','tuid':commands.getoutput('uuidgen')}
+        status,out = curl.post(url,data)
+        if status != 0 or (out != None and re.search('Exception',out) != None):
+            errStr = "ERROR : could not create container in DQ2"
+            sys.exit(EC_Failed)
+    except:
+        print status,out
+        if errStr != '':
+            print errStr
+        else:
+            print "ERROR : invalid DQ2 response"
+        sys.exit(EC_Failed)
+
+
+# add datasets to container
+def addDatasetsToContainer(name,datasets,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    try:
+        errStr = ''
+        # add
+        url = baseURLDQ2SSL + '/ws_dq2/rpc'        
+        data = {'operation':'container_register','name': name,
+                'datasets':datasets,'API':'030',
+                'tuid':commands.getoutput('uuidgen')}
+        status,out = curl.post(url,data)
+        if status != 0 or (out != None and re.search('Exception',out) != None):
+            errStr = "ERROR : could not add datasets to container"
+            sys.exit(EC_Failed)
+    except:
+        print status,out
+        if errStr != '':
+            print errStr
+        else:
+            print "ERROR : invalid DQ2 response"
+        sys.exit(EC_Failed)
+
 
 # get container elements
 def getElementsFromContainer(name,verbose=False):
@@ -1233,6 +1307,14 @@ def useDevServer():
     baseURL = 'http://pandadev02.usatlas.bnl.gov:26080/server/panda'
     global baseURLSSL
     baseURLSSL = 'https://pandadev02.usatlas.bnl.gov:26443/server/panda'    
+
+
+# set server
+def setServer(urls):
+    global baseURL
+    baseURL = urls.split(',')[0]
+    global baseURLSSL
+    baseURLSSL = urls.split(',')[-1]
     
 
 # register proxy key
@@ -1345,3 +1427,20 @@ def getFullJobStatus(ids,verbose):
 def setGlobalTmpDir(tmpDir):
     global globalTmpDir
     globalTmpDir = tmpDir
+
+
+# exclude site
+def excludeSite(excludedSite):
+    if excludedSite == '':
+        return
+    # remove sites
+    global PandaSites
+    for tmpPatt in excludedSite.split(','):
+        sites = PandaSites.keys()
+        for site in sites:
+            # look for pattern
+            if tmpPatt in site:
+                try:
+                    del PandaSites[site]
+                except:
+                    pass
