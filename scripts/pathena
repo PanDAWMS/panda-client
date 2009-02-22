@@ -1156,10 +1156,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 for pattern in options.filelist:
                     if re.search('\*',pattern) != None:
                         # wildcard matching
-                        for tmpFile in collFileNames:
-                            if re.search(pattern,tmpFile) != None:
-                                matchFlag = True
-                                break
+			if re.search(pattern,fileName) != None:
+			    matchFlag = True
+			    break
                     else:
                         # normal matching
                         if pattern == fileName:
@@ -1381,7 +1380,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         else:
             minbiasDataset = options.minDS
         # query files in dataset
-        tmpLog.info("query files in dataset:%s" % minbiasDataset)
+        tmpLog.info("query files in %s" % minbiasDataset)
         tmpList = Client.queryFilesInDataset(minbiasDataset,options.verbose)
         for item in tmpList.keys():
             # remove log
@@ -1419,7 +1418,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         else:
             cavernDataset = options.cavDS
         # query files in dataset
-        tmpLog.info("query files in dataset:%s" % cavernDataset)
+        tmpLog.info("query files in %s" % cavernDataset)
         tmpList = Client.queryFilesInDataset(cavernDataset,options.verbose)
         for item in tmpList.keys():
             # remove log
@@ -1456,7 +1455,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     if beamHaloDataset != "":
                         break
             # query files in dataset
-            tmpLog.info("query files in dataset:%s" % beamHaloDataset)
+            tmpLog.info("query files in %s" % beamHaloDataset)
             tmpList = Client.queryFilesInDataset(beamHaloDataset,options.verbose)
             for item in tmpList.keys():
                 # remove log
@@ -1499,14 +1498,14 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     if beamHaloCdataset != "":
                         break
             # query files in dataset
-            tmpLog.info("query files in dataset:%s" % beamHaloAdataset)
+            tmpLog.info("query files in %s" % beamHaloAdataset)
             tmpList = Client.queryFilesInDataset(beamHaloAdataset,options.verbose)
             for item in tmpList.keys():
                 # remove log
                 if re.search('log\.tgz(\.\d+)*',item) != None:
                     continue
                 beamHaloAList.append((item,tmpList[item]))
-            tmpLog.info("query files in dataset:%s" % beamHaloCdataset)
+            tmpLog.info("query files in %s" % beamHaloCdataset)
             tmpList = Client.queryFilesInDataset(beamHaloCdataset,options.verbose)
             for item in tmpList.keys():
                 # remove log
@@ -1552,7 +1551,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     if beamGasDataset != "":
                         break
             # query files in dataset
-            tmpLog.error("query files in dataset:%s" % beamGasDataset)
+            tmpLog.error("query files in %s" % beamGasDataset)
             tmpList = Client.queryFilesInDataset(beamGasDataset,options.verbose)
             for item in tmpList.keys():
                 # remove log
@@ -1603,21 +1602,21 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     if beamGasOdataset != "":
                         break
             # query files in dataset
-            tmpLog.info("query files in dataset:%s" % beamGasHdataset)
+            tmpLog.info("query files in %s" % beamGasHdataset)
             tmpList = Client.queryFilesInDataset(beamGasHdataset,options.verbose)
             for item in tmpList.keys():
                 # remove log
                 if re.search('log\.tgz(\.\d+)*',item) != None:
                     continue
                 beamGasHList.append((item,tmpList[item]))
-            tmpLog.info("query files in dataset:%s" % beamGasCdataset)
+            tmpLog.info("query files in %s" % beamGasCdataset)
             tmpList = Client.queryFilesInDataset(beamGasCdataset,options.verbose)
             for item in tmpList.keys():
                 # remove log
                 if re.search('log\.tgz(\.\d+)*',item) != None:
                     continue
                 beamGasCList.append((item,tmpList[item]))
-            tmpLog.info("query files in dataset:%s" % beamGasOdataset)
+            tmpLog.info("query files in %s" % beamGasOdataset)
             tmpList = Client.queryFilesInDataset(beamGasOdataset,options.verbose)
             for item in tmpList.keys():
                 # remove log
@@ -1678,7 +1677,7 @@ if options.trf or options.dbRelease != '':
             tmpDbrLFN = match.group(2)
             # get files in the dataset
             if not tmpDbrDS in dbrDsList:
-                tmpLog.info("query files in dataset:%s" % tmpDbrDS)
+                tmpLog.info("query files in %s" % tmpDbrDS)
                 tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
                 # append
                 for tmpLFN,tmpVal in tmpList.iteritems():
@@ -1772,7 +1771,7 @@ def getIndex(list,pattern):
 # increase index
 if outputDSexist:
     # query files in dataset from DDM
-    tmpLog.info("query files in dataset:%s" % options.outDS)
+    tmpLog.info("query files in %s" % options.outDS)
     tmpList = Client.queryFilesInDataset(options.outDS,options.verbose)
     # query files in dataset from Panda
     status,tmpMap = Client.queryLastFilesInDataset([options.outDS],options.verbose)
@@ -1953,7 +1952,7 @@ elif options.libDS == '':
     jobList.append(jobB)
 else:
     # query files in lib dataset to reuse libraries
-    tmpLog.info("query files in lib-dataset:%s" % options.libDS)
+    tmpLog.info("query files in %s" % options.libDS)
     tmpList = Client.queryFilesInDataset(options.libDS,options.verbose)
     tmpFileList = []
     tmpGUIDmap = {}
@@ -2941,6 +2940,9 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                                         fullExecString)
             else:
                 anotherTry = False
+ 	# decrement crossSite counter
+        fullExecString = re.sub(' --crossSite\s*=*\d+','',fullExecString)
+        fullExecString += ' --crossSite=%s' % options.crossSite
         # don't reuse site
         match = re.search('--excludedSite\s*=*\S+',fullExecString)
         if match != None:
@@ -2952,19 +2954,13 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
         # remove --fileList
         fullExecString = re.sub('--fileList\s*=*\S+','',fullExecString)
         # set list of input files
-        inputTmpfile = 'intmp.%s' % commands.getoutput('uuidgen')
+        inputTmpfile = '%s/intmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
         iFile = open(inputTmpfile,'w')
         for tmpMiss in missList:
             iFile.write(tmpMiss+'\n')
         iFile.close()
-        match = re.search('--inputFileList\s*=*\S+',fullExecString)
-        optStr = ' --inputFileList=%s' % inputTmpfile
-        if match != None:
-            # replace
-            fullExecString = re.sub(match.group(0),optStr,fullExecString)
-        else:
-            # add option
-            fullExecString += optStr
+        fullExecString = re.sub(' --inputFileList\s*=*\S+','',fullExecString)
+        fullExecString += ' --inputFileList=%s' % inputTmpfile
         # source name
         if not '--panda_srcName' in fullExecString:
             fullExecString += ' --panda_srcName=%s' % archiveName
@@ -2974,7 +2970,7 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
         # run config
         confTmpfile = ''
         if not '--panda_runConfig' in fullExecString:
-            conTmpfile = 'conftmp.%s' % commands.getoutput('uuidgen')
+            conTmpfile = '%s/conftmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
             cFile = open(conTmpfile,'w')
             pickle.dump(runConfig,cFile)
             cFile.close()
@@ -2984,6 +2980,8 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
         if anotherTry:
             tmpLog.info("trying other sites for the missing files")
             com = 'pathena ' + fullExecString
+            if options.verbose:
+                tmpLog.debug(com)
             status = os.system(com)
             # delete tmp files
             commands.getoutput('\rm -f %s' % inputTmpfile)

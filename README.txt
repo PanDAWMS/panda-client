@@ -15,7 +15,7 @@ pathena -h
 ** Release Note
 
 current 
-  * added crossSite	
+  * added crossSite to pathena/prun	
 
 0.1.18 (2/19/2009)
   * allowed downstream job to use upstream output as input in --trf
