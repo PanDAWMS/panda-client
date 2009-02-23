@@ -2919,7 +2919,7 @@ if not options.nosubmit:
     tmpJobIdFile.close()
 
     # record libDS
-    if options.libDS == '':
+    if options.libDS == '' and not options.nobuild:
         tmpFile = open(libds_file,'w')
         tmpFile.write(jobB.destinationDBlock)
         tmpFile.close()
