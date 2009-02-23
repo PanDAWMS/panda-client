@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.1.19 (2/23/2009)
+  * fixed --noBuild in pathena
+  * added crossSite to pathena/prun	
+
 0.1.18 (2/19/2009)
   * allowed downstream job to use upstream output as input in --trf
 

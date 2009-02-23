@@ -222,6 +222,8 @@ class ConfigAttr(dict):
     def __getattribute__(self,name):
         if name in dict.__dict__.keys():
             return dict.__getattribute__(self,name)
+        if name.startswith('__'):
+            return dict.__getattribute__(self,name)
         if name in dict.keys(self):
             return dict.__getitem__(self,name)
         return False
