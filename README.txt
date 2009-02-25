@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.20 (2/25/2009)
+  * fixed http://savannah.cern.ch/bugs/?47396
+
 0.1.19 (2/23/2009)
   * fixed --noBuild in pathena
   * added crossSite to pathena/prun	

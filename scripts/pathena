@@ -2707,7 +2707,7 @@ for iSubJob in range(options.split):
         # @ Number of events to be processed per job
         param1 = "theApp.EvtMax=%s" % options.nEventsPerJob
         # @ possibly skip events in a file
-        if options.noInput:
+        if runConfig.input.noInput:
             pStr2 = param1
         else:
             param2 = "EventSelector.SkipEvents=%s" % nEventsToSkip
