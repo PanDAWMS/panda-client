@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.21 (2/26/2009)
+  * protection against rc loading messages in pbook
+
 0.1.20 (2/25/2009)
   * fixed http://savannah.cern.ch/bugs/?47396
 

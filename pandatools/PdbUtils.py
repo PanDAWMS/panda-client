@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import types
 import datetime
@@ -61,6 +62,22 @@ class PdbProxy:
                 outList.remove('')
             except:
                 pass
+            # remove junk messages
+            ngStrings = ['Loading resources from']
+            for tmpStr in tuple(outList):
+                # look for NG strings
+                flagNG = False
+                for ngStr in ngStrings:
+                    match = re.search(ngStr,tmpStr,re.I)
+                    if match != None:
+                        flagNG = True
+                        break
+                # remove
+                if flagNG:
+                    try:
+                        outList.remove(tmpStr)
+                    except:
+                        pass
             return True,outList
 
 
