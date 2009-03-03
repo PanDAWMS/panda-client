@@ -23,11 +23,13 @@ void extPoolRefs()
   Char_t StreamAOD_ref[153];
   Char_t StreamESD_ref[153];
   Char_t StreamRDO_ref[153];
+  Char_t StreamRAW_ref[153];
   Char_t Stream1_ref[153];
   m_tree->SetBranchAddress("Token",Token);
   m_tree->SetBranchAddress("StreamAOD_ref",StreamAOD_ref);
   m_tree->SetBranchAddress("StreamESD_ref",StreamESD_ref);
   m_tree->SetBranchAddress("StreamRDO_ref",StreamRDO_ref);
+  m_tree->SetBranchAddress("StreamRAW_ref",StreamRAW_ref);
   m_tree->SetBranchAddress("Stream1_ref",  Stream1_ref);
 
   // loop over all entries
@@ -35,6 +37,7 @@ void extPoolRefs()
   std::string previousAOD;
   std::string previousESD;
   std::string previousRDO;
+  std::string previousRAW;
   std::string previous1;
   Long64_t nentries = m_tree->GetEntries();
   std::cout << "=============" << std::endl;
@@ -77,6 +80,15 @@ void extPoolRefs()
 	{
 	  std::cout << "RDO Ref: " << currentRDO << "]" << std::endl;
 	  previousRDO = currentRDO;
+	}
+      // extract DB for RAW
+      std::string currentRAW = StreamRAW_ref;
+      currentRAW = currentRAW.substr(0,currentRAW.find(']'));
+      // print if new one
+      if (currentRAW != previousRAW)
+	{
+	  std::cout << "RAW Ref: " << currentRAW << "]" << std::endl;
+	  previousRAW = currentRAW;
 	}
       // extract DB for Stream1
       std::string current1 = Stream1_ref;

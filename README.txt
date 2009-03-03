@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.22 (3/3/2009)
+  * read RAW via TAG
+
 0.1.21 (2/26/2009)
   * protection against rc loading messages in pbook
 
