@@ -1253,7 +1253,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         # extract GUIDs
         guidCollMap,guidCollList = AthenaUtils.getGUIDfromColl(athenaVer,runConfig.input.shipFiles,
                                                                currentDir,
-                                                               options.collRefName,
+                                                               runConfig.input.collRefName,
                                                                options.verbose)
         # if works
         if guidCollList != []:
