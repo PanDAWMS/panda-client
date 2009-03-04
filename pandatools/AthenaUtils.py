@@ -65,10 +65,10 @@ def getGUIDfromColl(athenaVer,inputColls,directory,refName='Token',verbose=False
         if verbose:
             print com
         status,out = commands.getstatusoutput(com)
-        if verbose:
+        if verbose or status != 0:
             print status,out
-        if status != 0:
-            raise RuntimeError,"ERROR : failed to run %s" % com
+            if status != 0:
+                raise RuntimeError,"ERROR : failed to run %s" % com
         # get GUIDs
         for line in out.split('\n'):
             items = line.split()
