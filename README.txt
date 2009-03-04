@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.23 (3/4/2009)
+  * fixed collRefName 
+
 0.1.22 (3/3/2009)
   * read RAW via TAG
 
