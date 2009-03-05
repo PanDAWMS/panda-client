@@ -722,7 +722,12 @@ else:
                 else:
                     if os.path.islink(fullName):
                         if readLink:
-                            appFileName = os.readlink(fullName)
+                            tmpLink = os.readlink(fullName)
+                            # put base dir when relative path
+                            if not tmpLink.startswith('/'):
+                                tmpLink = dir+'/'+tmpLink
+                                tmpLink = os.path.abspath(tmpLink)
+                            appFileName = tmpLink
                         else:
                             appFileName = os.path.abspath(fullName)                        
                     else:
