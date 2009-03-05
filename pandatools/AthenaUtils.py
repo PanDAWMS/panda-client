@@ -200,7 +200,10 @@ def getAthenaVer():
                 break
             elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT']:
                 # production cache
-                cacheVer = '-%s_%s' % (items[0],os.path.basename(res.group(1)))
+                cacheTag = os.path.basename(res.group(1))
+                # doesn't use when it is a base release since it is not installed in EGEE
+                if re.search('^\d+\.\d+\.\d+$',cacheTag) == None:
+                    cacheVer = '-%s_%s' % (items[0],cacheTag)
             else:
                 # group area
                 groupArea = os.path.realpath(res.group(1))
