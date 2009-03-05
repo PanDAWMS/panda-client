@@ -14,6 +14,12 @@ pathena -h
 
 ** Release Note
 
+0.1.25 (3/5/2009)
+  * ignore cache when it is a base release
+
+0.1.24 (3/4/2009)
+  * fixed for CollListFileGUID.exe
+
 0.1.23 (3/4/2009)
   * fixed collRefName 
 

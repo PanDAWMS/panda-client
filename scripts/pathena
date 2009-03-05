@@ -577,6 +577,9 @@ if not options.trf:
                 options.addPoolFC = fileName
             else:
                 options.addPoolFC += ",%s" % fileName
+    # set default ref name
+    if not runConfig.input.collRefName:
+        runConfig.input.collRefName = 'Token'
 else:
     # parse parameters for trf
     oneOut = False
@@ -1303,8 +1306,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         # count total size for inputs
         totalSize = 0 
         for fileName in inputFileList:
-            vals = inputFileMap[fileName]
             try:
+                vals = inputFileMap[fileName]
                 totalSize += long(vals['fsize'])
             except:
                 pass
