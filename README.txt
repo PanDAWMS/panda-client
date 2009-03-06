@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed psequencer for CERN relocation
+
 0.1.26 (3/5/2009)
   * resolve relative path in InstallArea
 
