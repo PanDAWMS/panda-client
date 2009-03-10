@@ -1,13 +1,17 @@
 import re
 
-fromStr = 'From: panda@bnl.gov'
+fromStrs = ['From: panda@bnl.gov','From: <atlpan@cern.ch>']
 
 # get argiments of panda header
 def getHeaderArgs():
     args = []
-    for strVal in [fromStr]:
+    if len(fromStrs) > 1:
+        # use OR
+        args.append('OR')
+    for strVal in fromStrs:
         # extract name and value
         strVal = re.sub('\s*:\s*',' ',strVal)
+        strVal = re.sub('<|>','',strVal)
         items = strVal.split()
         # append
         args.append(items[0])
@@ -19,8 +23,9 @@ def getHeaderArgs():
 def checkHeader(res):
     # check From
     for line in res[1]:
-        if line.startswith(fromStr):
-            return True
+        for strVal in fromStrs:
+            if line.startswith(strVal):
+                return True
     # non panda mail
     return False
 

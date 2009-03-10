@@ -14,6 +14,13 @@ pathena -h
 
 ** Release Note
 
+0.1.27 (3/10/2009)
+  * fixed psequencer for CERN relocation
+  * introduced archiveXYZ in AthenaUtils
+
+0.1.26 (3/5/2009)
+  * resolve relative path in InstallArea
+
 0.1.25 (3/5/2009)
   * ignore cache when it is a base release
 
