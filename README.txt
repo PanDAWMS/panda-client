@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.28 (3/11/2009)
+  * warning messages for site status
+
 0.1.27 (3/10/2009)
   * fixed psequencer for CERN relocation
   * introduced archiveXYZ in AthenaUtils
