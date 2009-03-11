@@ -2482,6 +2482,9 @@ if not options.nosubmit:
 
         # submit
         tmpLog.info("submit to %s" % options.site)
+        if not Client.PandaSites[options.site]['status'] in ['online','brokeroff']:
+            tmpLog.warning("%s is %s. Your jobs will wait until it becomes online" % \
+                           (options.site,Client.PandaSites[options.site]['status']))
         status,out = Client.submitJobs(jobList,options.verbose)
     else:
         print "\n=========="
