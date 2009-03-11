@@ -428,7 +428,7 @@ elif options.cloud != None:
     expCloudFlag = True
 
 # correct site
-if options.site != 'AUTO':
+if options.site != 'AUTO' and options.burstSubmit == '':
     origSite = options.site
     # patch for BNL
     if options.site in ['BNL',"ANALY_BNL"]:
@@ -448,14 +448,15 @@ if options.site != 'AUTO':
     options.cloud = Client.PandaSites[options.site]['cloud']
 
 # check cloud
-foundCloud = False
-for tmpID,spec in Client.PandaSites.iteritems():
-    if options.cloud == spec['cloud']:
-        foundCloud = True
-        break
-if not foundCloud:
-    tmpLog.error("unsupported cloud:%s" % options.cloud)
-    sys.exit(EC_Config)
+if options.burstSubmit == '':
+    foundCloud = False
+    for tmpID,spec in Client.PandaSites.iteritems():
+        if options.cloud == spec['cloud']:
+            foundCloud = True
+            break
+    if not foundCloud:
+        tmpLog.error("unsupported cloud:%s" % options.cloud)
+        sys.exit(EC_Config)
 
 
 # get DN
@@ -1598,7 +1599,8 @@ elif options.libDS == '':
         jobB.processingType = 'prod_test'
     jobB.assignedPriority  = 2000
     jobB.computingSite = options.site
-    jobB.cloud = Client.PandaSites[options.site]['cloud']
+    if options.burstSubmit == '':
+        jobB.cloud = Client.PandaSites[options.site]['cloud']
     jobB.metadata = fullExecString
     fileBO = FileSpec()
     fileBO.lfn = '%s.lib.tgz' % jobB.destinationDBlock
@@ -1629,8 +1631,9 @@ elif options.libDS == '':
             if options.spaceToken != '':
                 file.destinationDBlockToken = options.spaceToken
             else:
-                defaulttoken = Client.PandaSites[options.site]['defaulttoken']
-                file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
+                if options.burstSubmit == '':
+                    defaulttoken = Client.PandaSites[options.site]['defaulttoken']
+                    file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
     # append
     jobList.append(jobB)
 else:
@@ -1706,7 +1709,6 @@ for iSubJob in range(options.split):
     if options.testMode:    
         jobR.processingType = 'prod_test'
     jobR.assignedPriority  = 1000
-    jobR.cloud             = Client.PandaSites[options.site]['cloud']
     jobR.metadata          = fullExecString    
     # memory
     if options.memory != -1:
@@ -1715,7 +1717,8 @@ for iSubJob in range(options.split):
     if options.maxCpuCount != -1:
         jobR.maxCpuCount = options.maxCpuCount
     jobR.computingSite = options.site
-    jobR.cloud = Client.PandaSites[options.site]['cloud']
+    if options.burstSubmit == '':
+        jobR.cloud = Client.PandaSites[options.site]['cloud']
     # source files
     if not options.nobuild:
         fileS = FileSpec()
@@ -2270,8 +2273,9 @@ for iSubJob in range(options.split):
             if options.spaceToken != '':
                 file.destinationDBlockToken = options.spaceToken
             else:
-                defaulttoken = Client.PandaSites[options.site]['defaulttoken']
-                file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
+                if options.burstSubmit == '':                
+                    defaulttoken = Client.PandaSites[options.site]['defaulttoken']
+                    file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
     # job parameters
     param = ''
     if not options.nobuild:

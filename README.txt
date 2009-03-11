@@ -14,8 +14,11 @@ pathena -h
 
 ** Release Note
 
+0.1.29 (3/12/2009)
+  * fixed --burstSubmit in pathena
+
 0.1.28 (3/11/2009)
-  * warning messages for site status
+  * warning messages for site status in pathena/prun
 
 0.1.27 (3/10/2009)
   * fixed psequencer for CERN relocation
@@ -28,7 +31,7 @@ pathena -h
   * ignore cache when it is a base release
 
 0.1.24 (3/4/2009)
-  * fixed for CollListFileGUID.exe
+  * fixed pathena for CollListFileGUID.exe
 
 0.1.23 (3/4/2009)
   * fixed collRefName 
