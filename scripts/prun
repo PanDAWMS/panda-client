@@ -429,12 +429,13 @@ if options.inDS != '':
             options.site  = out
             options.cloud = Client.PandaSites[options.site]['cloud']
         # scan local replica catalog
-        tmpLog.info("scanning LFC for %s" % options.site)        
         dsLocation = Client.PandaSites[options.site]['ddm']
         if Client.getLFC(dsLocation) != None:
+	    tmpLog.info("scanning LFC %s for %s" % (Client.getLFC(dsLocation),options.site))
             # LFC
             missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose)
         elif Client.getLRC(dsLocation) != None:
+	    tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
             # LRC
             missList = Client.getMissLFNsFromLRC(inputFileMap,Client.getLRC(dsLocation),options.verbose)
         else:

@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.30 (3/12/2009)
+  * disabled location lookup for --burstSubmit in pathena
+
 0.1.29 (3/12/2009)
   * fixed --burstSubmit in pathena
 

@@ -881,17 +881,18 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             if options.verbose:
                 tmpLog.debug("chosen site=%s destSE=%s" % (options.site,options.destSE))
         # scan local replica catalog
-        dsLocation = Client.PandaSites[options.site]['ddm']
         if options.skipScan:
             # skip remote scan
             missList = []
         else:
-	    tmpLog.info("scanning LFC for %s" % options.site)
+            dsLocation = Client.PandaSites[options.site]['ddm']
             if Client.getLRC(dsLocation) != None:
+		tmpLog.info("scanning LFC %s for %s" % (Client.getLRC(dsLocation),options.site))
                 # LRC
                 missList = Client.getMissLFNsFromLRC(inputFileMap,Client.getLRC(dsLocation),options.verbose,
                                                      options.nfiles+options.nSkipFiles)
             elif Client.getLFC(dsLocation) != None:
+		tmpLog.info("scanning LFC %s for %s" % (Client.getLFC(dsLocation),options.site))
                 # LFC
                 missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
                                                      options.nfiles+options.nSkipFiles)
@@ -1678,7 +1679,7 @@ else:
     
 # run athena            
 
-if options.inDS != '':
+if options.inDS != '' and options.burstSubmit == '':
     tmpLog.info("%s files are missing at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
     
