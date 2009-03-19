@@ -639,6 +639,29 @@ if len(runConfig.other.rndmStream) != 0:
             runConfig.other.rndmNumbers.append([random.randint(1,5000000),random.randint(1,5000000)])
     if options.norandom:
         print
+if runConfig.other.G4RandomSeeds:
+    if options.norandom:
+        print
+        print "Initial G4 random seeds need to be defined."
+        print "Enter one positive number."
+        print
+        # enter manually
+        while True:
+            num = raw_input("SimFlags.SeedsG4=")
+            try:
+                num = int(num)
+                if num > 0:
+                    runConfig.other.G4RandomSeeds = num
+                    break
+            except:
+                pass
+        print    
+    else:
+        # automatic
+        runConfig.other.G4RandomSeeds = random.randint(1,10000)
+else:
+    # set -1 to disable G4 Random Seeds
+    runConfig.other.G4RandomSeeds = -1
     
 # create tmp dir
 if options.tmpDir == '':
@@ -2283,8 +2306,19 @@ for iSubJob in range(options.split):
         param  += '-l %s ' % fileS.lfn
     param += '-r %s ' % runDir
     if not options.trf:
+        tmpJobO = jobO        
+        # modify one-liner for G4 random seeds
+        if runConfig.other.G4RandomSeeds > 0:
+            if options.singleLine != '':
+                tmpJobO = re.sub('-c "%s" ' % options.singleLine,
+                                 '-c "%s;from G4AtlasApps.SimFlags import SimFlags;SimFlags.SeedsG4=%s" ' \
+                                 % (options.singleLine,runConfig.other.G4RandomSeeds+iSubJob),
+                                 jobO)
+            else:
+                tmpJobO = ('-c "from G4AtlasApps.SimFlags import SimFlags;SimFlags.SeedsG4=%s" ' \
+                           % (runConfig.other.G4RandomSeeds+iSubJob)) + jobO
         # set jobO parameter
-        param += '-j "%s" ' % urllib.quote(jobO)
+        param += '-j "%s" ' % urllib.quote(tmpJobO)
         # DBRelease
         if options.dbRelease != '':
             tmpItems = options.dbRelease.split(':')

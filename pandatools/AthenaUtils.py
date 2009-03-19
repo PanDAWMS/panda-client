@@ -387,6 +387,9 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
                         otherConfig['rndmGenFile'] = []
                     tmpItems = match[0].split()
                     otherConfig['rndmGenFile'].append(tmpItems[-1])
+                # G4 Random seeds
+                if match[0].startswith('G4RandomSeeds'):
+                    otherConfig['G4RandomSeeds'] = True
                 # input files for direct input
                 if match[0].startswith('InputFiles'):
                     if shipinput:

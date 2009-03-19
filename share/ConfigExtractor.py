@@ -137,35 +137,60 @@ if hasattr(CondProxyProvider,'InputCollections') and hasattr(CondProxyProvider.I
 # configurable
 
 _configs = []
+seqList = []
 try:
     # get all Configurable names
     from AthenaCommon.AlgSequence import AlgSequence
     tmpKeys = AlgSequence().allConfigurables.keys()
-    for key in tmpKeys:
-        # check if it is available via AlgSequence
-        if not hasattr(AlgSequence(),key.split('/')[-1]):
-            continue
-        # get fullname
-        if key.find('/') == -1:
-            if hasattr(AlgSequence(),key):
-                tmpAlg = getattr(AlgSequence(),key)
-                if hasattr(tmpAlg,'getFullName'):
-                    _configs.append(getattr(AlgSequence(),key).getFullName())
-                elif hasattr(tmpAlg,'getName') and hasattr(tmpAlg,'getType'):
-                    # ServiceHandle
-                    _configs.append('%s/%s' % (tmpAlg.getType(),tmpAlg.getName()))
-                else:
-                    # use short name if it doesn't have getFullName
-                    _configs.append(key)
-        else:
-            _configs.append(key)
+    # get AlgSequences
+    seqList = [AlgSequence()]
+    try:
+        for key in tmpKeys:
+            # check if it is available via AlgSequence
+            if not hasattr(AlgSequence(),key.split('/')[-1]):
+                continue
+            # get full name
+            tmpConf = getattr(AlgSequence(),key.split('/')[-1])
+            if hasattr(tmpConf,'getFullName'):
+                tmpFullName = tmpConf.getFullName()
+                # append AthSequencer
+                if tmpFullName.startswith('AthSequencer/'):
+                    seqList.append(tmpConf)
+    except:
+        pass
+    # loop over all sequences
+    for tmpAlgSequence in seqList:
+        # loop over keys
+        for key in tmpKeys:
+            # check if it is available via AlgSequence
+            if not hasattr(tmpAlgSequence,key.split('/')[-1]):
+                continue
+            # get fullname
+            if key.find('/') == -1:
+                if hasattr(tmpAlgSequence,key):
+                    tmpAlg = getattr(tmpAlgSequence,key)
+                    if hasattr(tmpAlg,'getFullName'):
+                        _configs.append(getattr(tmpAlgSequence,key).getFullName())
+                    elif hasattr(tmpAlg,'getName') and hasattr(tmpAlg,'getType'):
+                        # ServiceHandle
+                        _configs.append('%s/%s' % (tmpAlg.getType(),tmpAlg.getName()))
+                    else:
+                        # use short name if it doesn't have getFullName
+                        _configs.append(key)
+            else:
+                _configs.append(key)
 except:
     pass
 
 
 def _getConfig(key):
-    from AthenaCommon.AlgSequence import AlgSequence
-    return getattr(AlgSequence(),key.split('/')[-1])
+    if seqList == []: 
+        from AthenaCommon.AlgSequence import AlgSequence
+        return getattr(AlgSequence(),key.split('/')[-1])
+    else:
+        for tmpAlgSequence in seqList:
+            if hasattr(tmpAlgSequence,key.split('/')[-1]):
+                return getattr(tmpAlgSequence,key.split('/')[-1])            
 
     
 
@@ -376,4 +401,10 @@ if hasattr(AtRndmGenSvc,'ReadFromFile') and isinstance(AtRndmGenSvc.ReadFromFile
     if hasattr(AtRndmGenSvc.FileToRead,'__len__') and len(AtRndmGenSvc.FileToRead):
         rndFileName = AtRndmGenSvc.FileToRead
     _printConfig('RndmGenFile %s' % rndFileName)
-        
+
+# G4 random seed        
+try:
+    if hasattr(SimFlags,'SeedsG4'):
+        _printConfig('G4RandomSeeds')
+except:
+    pass
