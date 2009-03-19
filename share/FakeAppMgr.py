@@ -50,6 +50,10 @@ class fakeAppMgr(fakeProperty):
 
     def setup(self,var):
         pass
+
+    def exit(self):
+        import sys
+        sys.exit(0)
         
     def serviceMgr(self):
         try:
@@ -67,7 +71,7 @@ class fakeAppMgr(fakeProperty):
          self._streams += stream
 
     def initialize(self):
-        include ('PandaTools/ConfigExtractor.py')
+        include ('%s/etc/panda/share/ConfigExtractor.py' % os.environ['PANDA_SYS'])
         import sys
         sys.exit(0)
     

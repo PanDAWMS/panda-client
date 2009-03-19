@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.1.31 (3/19/2009)
+  * randomize G4RandomSeeds
+  * AthSequence support 
+
 0.1.30 (3/12/2009)
   * disabled location lookup for --burstSubmit in pathena
 
