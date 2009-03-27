@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added puserinfo
+
 0.1.31 (3/19/2009)
   * randomize G4RandomSeeds
   * AthSequence support 

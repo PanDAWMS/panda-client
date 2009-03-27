@@ -1354,6 +1354,52 @@ def getProxyKey(verbose=False):
         return EC_Failed,None
 
 
+# add site access
+def addSiteAccess(siteID,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/addSiteAccess'
+    data = {'siteID': siteID}
+    status,output = curl.post(url,data)
+    if status!=0:
+        print output
+        return status,None
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR listSiteAccess : %s %s" % (type,value)
+        return EC_Failed,None
+
+
+# list site access
+def listSiteAccess(siteID,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/listSiteAccess'
+    data = {}
+    if siteID != None:
+        data['siteID'] = siteID
+    status,output = curl.post(url,data)
+    if status!=0:
+        print output
+        return status,None
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR listSiteAccess : %s %s" % (type,value)
+        return EC_Failed,None
+
+
 # get JobIDs in a time range
 def getJobIDsInTimeRange(timeRange,dn=None,verbose=False):
     # instantiate curl
