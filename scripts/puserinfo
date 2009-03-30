@@ -43,13 +43,13 @@ class PUserInfoCore:
         print getattr(self,args[0]).__doc__
 
 
-    # add
-    def add(self,args=[]):
+    # request
+    def request(self,args=[]):
         """
         Submit access request at the site. The site is available once the
         request is approved 
 
-        usage: puserinfo add <site>"""
+        usage: puserinfo request <site>"""
         # check argument
         if args == []:
             self.tmpLog.error('Site must be given')
