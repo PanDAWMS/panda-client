@@ -31,7 +31,7 @@ baseURLDQ2     = 'http://atlascc.cern.ch/dq2'
 baseURLDQ2SSL  = 'https://atlascc.cern.ch:443/dq2'
 baseURLSUBHome = "http://www.usatlas.bnl.gov/svn/panda/pathena"
 baseURLSUB     = baseURLSUBHome+'/trf'
-baseURLMON     = "http://pandamon.usatlas.bnl.gov:25880/server/pandamon/query"
+baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
 
 # exit code
 EC_Failed = 255

@@ -14,7 +14,8 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.32 (3/31/2009)
+  * use panda.cern.ch:25980 for now	
   * added puserinfo
 
 0.1.31 (3/19/2009)
