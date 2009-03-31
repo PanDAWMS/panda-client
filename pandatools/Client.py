@@ -31,7 +31,7 @@ baseURLDQ2     = 'http://atlascc.cern.ch/dq2'
 baseURLDQ2SSL  = 'https://atlascc.cern.ch:443/dq2'
 baseURLSUBHome = "http://www.usatlas.bnl.gov/svn/panda/pathena"
 baseURLSUB     = baseURLSUBHome+'/trf'
-baseURLMON     = "http://pandamon.usatlas.bnl.gov:25880/server/pandamon/query"
+baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
 
 # exit code
 EC_Failed = 255
@@ -1351,6 +1351,52 @@ def getProxyKey(verbose=False):
     except:
         type, value, traceBack = sys.exc_info()
         print "ERROR getProxyKey : %s %s" % (type,value)
+        return EC_Failed,None
+
+
+# add site access
+def addSiteAccess(siteID,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/addSiteAccess'
+    data = {'siteID': siteID}
+    status,output = curl.post(url,data)
+    if status!=0:
+        print output
+        return status,None
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR listSiteAccess : %s %s" % (type,value)
+        return EC_Failed,None
+
+
+# list site access
+def listSiteAccess(siteID,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/listSiteAccess'
+    data = {}
+    if siteID != None:
+        data['siteID'] = siteID
+    status,output = curl.post(url,data)
+    if status!=0:
+        print output
+        return status,None
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR listSiteAccess : %s %s" % (type,value)
         return EC_Failed,None
 
 
