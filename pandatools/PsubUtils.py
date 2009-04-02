@@ -63,7 +63,8 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
                 # set status to regenerate proxy with roles
                 status = -1
     # generate proxy
-    if status != 0 or out.find('Error: VOMS extension not found') != -1 or enforceEnter:
+    if (status != 0 and out.find('Error: Cannot verify AC signature') == -1) or \
+           out.find('Error: VOMS extension not found') != -1 or enforceEnter:
         # GRID pass phrase
         if gridPassPhrase == '':
             import getpass
@@ -89,7 +90,8 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
         if verbose:
             tmpLog.debug("Getting FQAN")
         status,out = commands.getstatusoutput(com)        
-        if status != 0 or out.find('Error: VOMS extension not found') != -1:
+        if (status != 0 and out.find('Error: Cannot verify AC signature') == -1) \
+               or out.find('Error: VOMS extension not found') != -1:
             tmpLog.error("Could not get FQAN after voms-proxy-init")
             sys.exit(EC_Config)
         vomsFQAN = out

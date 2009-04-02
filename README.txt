@@ -14,7 +14,10 @@ pathena -h
 
 ** Release Note
 
-0.1.32 (3/31/2009)
+0.1.33 (4/2/2009)
+  * protection against VOMS cert expiration
+
+1.32 (3/31/2009)
   * use panda.cern.ch:25980 for now	
   * added puserinfo
 
