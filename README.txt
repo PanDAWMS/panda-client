@@ -14,7 +14,7 @@ pathena -h
 
 ** Release Note
 
-0.1.35 (4/2/2009)
+0.1.35 (4/3/2009)
   * fixed --individualOutDS in pathena
 
 0.1.34 (4/2/2009)
