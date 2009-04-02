@@ -689,6 +689,15 @@ if options.panda_srcName != '':
     # go to tmp dir
     os.chdir(tmpDir)
 else:
+    # extract jobOs with full pathnames
+    for tmpItem in jobO.split():
+        if re.search('^/.*\.py$',tmpItem) != None:
+            # set random name to avoid overwriting
+            tmpName = tmpItem.split('/')[-1]
+            tmpName = '%s_%s' % (commands.getoutput('uuidgen'),tmpName)
+            # set
+            AthenaUtils.fullPathJobOs[tmpItem] = tmpName
+            
     # copy some athena specific files
     AthenaUtils.copyAthenaStuff(currentDir)
 
@@ -2317,6 +2326,9 @@ for iSubJob in range(options.split):
             else:
                 tmpJobO = ('-c "from G4AtlasApps.SimFlags import SimFlags;SimFlags.SeedsG4=%s" ' \
                            % (runConfig.other.G4RandomSeeds+iSubJob)) + jobO
+        # replace full-path jobOs
+        for tmpFullName,tmpLocalName in AthenaUtils.fullPathJobOs.iteritems():
+            tmpJobO = re.sub(tmpFullName,tmpLocalName,tmpJobO)
         # set jobO parameter
         param += '-j "%s" ' % urllib.quote(tmpJobO)
         # DBRelease

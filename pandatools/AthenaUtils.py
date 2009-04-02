@@ -420,20 +420,28 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
 # extPoolRefs for old releases which don't contain CollectionTools
 athenaStuff = ['extPoolRefs.C']
 
-# copy some athena specific files
+# jobO files with full path names
+fullPathJobOs = {}
+
+# copy some athena specific files and full-path jobOs
 def copyAthenaStuff(currentDir):
     baseName = os.environ['PANDA_SYS'] + "/etc/panda/share"
     for tmpFile in athenaStuff:
         com = 'cp %s/%s %s' % (baseName,tmpFile,currentDir)
         commands.getoutput(com)
+    for fullJobO,localName in fullPathJobOs.iteritems():
+        com = 'cp %s %s/%s' % (fullJobO,currentDir,localName)
+        commands.getoutput(com)
 
 
-# delete some athena specific files
+# delete some athena specific files and copied jobOs
 def deleteAthenaStuff(currentDir):
     for tmpFile in athenaStuff:
         com = 'rm -f %s/%s' % (currentDir,tmpFile)
         commands.getoutput(com)
-
+    for tmpFile in fullPathJobOs.values():
+        com = 'rm -f %s/%s' % (currentDir,tmpFile)
+        commands.getoutput(com)
 
 
 # set extFile
