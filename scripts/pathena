@@ -357,11 +357,6 @@ for tmpName in options.araOutFile.split(','):
     if tmpName != '':
         options.extOutFile.append(tmpName)
 
-# shadow DS for individualOutDS
-if options.individualOutDS:
-    # use log DS as shadow DS
-    suffixShadow = "_log" + suffixShadow
-
 # file list
 tmpList = options.filelist.split(',')
 options.filelist = []
@@ -2295,9 +2290,8 @@ for iSubJob in range(options.split):
     file.dataset = jobR.destinationDBlock    
     file.destinationDBlock = jobR.destinationDBlock
     if options.individualOutDS:
-        tmpSuffix = '_log'
-        file.dataset += tmpSuffix
-        file.destinationDBlock += tmpSuffix
+        # use original outDS for log, which guarantees location registration and shadow tracing
+        pass
     file.destinationSE = jobR.destinationSE
     jobR.addFile(file)
     # set space token
@@ -2511,9 +2505,19 @@ if not options.nosubmit:
         # normal submission
 
         # register output dataset
+	tmpIdvOutDsList = []
         if not outputDSexist:
-            Client.addDataset(options.outDS,options.verbose)
-
+            if not options.individualOutDS:
+                Client.addDataset(options.outDS,options.verbose)
+                tmpIdvOutDsList.append(options.outDS)
+            else:
+                # register individual datasets
+                for tmpFile in jobList[-1].Files:
+                    if tmpFile.type in ['output','log']:
+                        if not tmpFile.dataset in tmpIdvOutDsList:
+                            Client.addDataset(tmpFile.dataset,options.verbose)
+                            tmpIdvOutDsList.append(tmpFile.dataset)
+                            
         # register output dataset container
         if original_outDS_Name.endswith('/'):
             # create
@@ -2521,7 +2525,8 @@ if not options.nosubmit:
                 Client.createContainer(original_outDS_Name,options.verbose)
             # add dataset
             if not outputDSexist:
-                Client.addDatasetsToContainer(original_outDS_Name,[options.outDS],options.verbose)
+                for tmpIdvOutDS in tmpIdvOutDsList:
+                    Client.addDatasetsToContainer(original_outDS_Name,[tmpIdvOutDS],options.verbose)
 
         # register shadow dataset
         if not outputDSexist:
