@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.1.37 (4/8/2009)
+  * added --removeBurstLimit to pathena
+  * fixed prun to contain empty directories in tar archive
+
 0.1.36 (4/7/2009)
   * set sites online when they are allowed in siteaccess
   * cache jobID for --burstSubmit 

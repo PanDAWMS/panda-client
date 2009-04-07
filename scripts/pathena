@@ -200,6 +200,8 @@ optP.add_option('--notSkipMissing', action='store_const', const=True, dest='notS
                 help='If input files are not read from SE, they will be skipped by default. This option disables the functionality')
 optP.add_option('--burstSubmit', action='store', dest='burstSubmit', default='',
                 type='string', help="Please don't use this option. Only for site validation by experts")
+optP.add_option('--removeBurstLimit', action='store_const', const=True, dest='removeBurstLimit', default=False,
+                help="Please don't use this option. Only for site validation by experts")
 optP.add_option('--devSrv', action='store_const', const=True, dest='devSrv',  default=False,
                 help="Please don't use this option. Only for developers to use the dev panda server")
 optP.add_option('--useAIDA', action='store_const', const=True, dest='useAIDA',  default=False,
@@ -2567,8 +2569,13 @@ if not options.nosubmit:
             newLibDS = '%s.%s' % (origLibDS,tmpSite)
             newOutDS = '%s.%s' % (origOutDS,tmpSite)
             repPatt  = {}
-            # use buildJob and one runAthena
-            for job in jobList[:2]:
+            if options.removeBurstLimit:
+                # use all jobs
+                limitedJobList = jobList
+            else:
+                # use buildJob and one runAthena by default
+                limitedJobList = jobList[:2]
+            for job in limitedJobList:
                 # set cloud/site
                 job.cloud          = tmpCloud
                 job.computingSite  = tmpSite

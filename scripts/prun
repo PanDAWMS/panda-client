@@ -527,6 +527,7 @@ else:
         skippedFlag  = False
         workDirFiles = []
         for tmpRoot,tmpDirs,tmpFiles in os.walk('.'):
+            emptyFlag    = True
             for tmpFile in tmpFiles:
                 tmpPath = '%s/%s' % (tmpRoot,tmpFile)
                 # get size
@@ -576,9 +577,17 @@ else:
                 tmpPath = re.sub('^\./','',tmpPath)
                 # append
                 workDirFiles.append(tmpPath)
+		emptyFlag = False
+            # add empty directory		
+	    if emptyFlag and tmpDirs==[]:
+		tmpPath = re.sub('^\./','',tmpRoot)
+                # skip tmpDir
+                if tmpPath.split('/')[-1] == tmpDir.split('/')[-1]:
+                    continue
+                # append
+                workDirFiles.append(tmpPath)
         if skippedFlag:
             tmpLog.info("please use --maxFileSize or --extFile if you need to send the skipped files to WNs")
-
 
     # create archive
     if options.libDS == '':
@@ -613,7 +622,6 @@ else:
         if status != 0:
             tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'") 
             sys.exit(EC_Archive)
-
 
 # look for pandatools package
 for path in sys.path:
