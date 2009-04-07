@@ -151,11 +151,6 @@ if options.excludedSite != '':
 siteSpecified = True
 if options.site == 'AUTO':
     siteSpecified = False
-    # add allowed sites
-    tmpSt = Client.addAllowedSites(options.verbose)
-    if not tmpSt:
-        tmpLog.error("Failed to get allowed site list")
-        sys.exit(EC_Config)
 
 # keep original outDS
 original_outDS_Name = options.outDS
@@ -181,6 +176,13 @@ if options.libDS == 'LAST':
     
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
+
+# add allowed sites
+if not siteSpecified:
+    tmpSt = Client.addAllowedSites(options.verbose)
+    if not tmpSt:
+        tmpLog.error("Failed to get allowed site list")
+        sys.exit(EC_Config)
 
 # save current dir
 curDir = os.path.realpath(os.getcwd())

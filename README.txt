@@ -14,8 +14,11 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.36 (4/7/2009)
   * set sites online when they are allowed in siteaccess
+  * cache jobID for --burstSubmit 
+  * use UTC timestamp in libDS to avoid duplication
+  * removed unicode from puserinfo
 	
 0.1.35 (4/3/2009)
   * fixed --individualOutDS in pathena

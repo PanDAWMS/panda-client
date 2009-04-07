@@ -275,11 +275,6 @@ if options.excludedSite != '':
 siteSpecified = True
 if options.site == 'AUTO':
     siteSpecified = False
-    # add allowed sites
-    tmpSt = Client.addAllowedSites(options.verbose)
-    if not tmpSt:
-        tmpLog.error("Failed to get allowed site list")
-        sys.exit(EC_Config)
 
 # keep original outDS
 original_outDS_Name = options.outDS
@@ -419,6 +414,13 @@ if options.nFilesPerJob > 0 and options.nfiles == 0 and options.split > 0:
 
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
+
+# add allowed sites# 
+if (not siteSpecified) and options.burstSubmit == '':
+    tmpSt = Client.addAllowedSites(options.verbose)
+    if not tmpSt:
+        tmpLog.error("Failed to get allowed site list")
+        sys.exit(EC_Config)
 
 # set cloud according to country FQAN
 expCloudFlag = False
@@ -1621,8 +1623,10 @@ elif options.libDS == '':
     jobB.homepackage       = 'AnalysisTransforms'+cacheVer+nightVer
     jobB.transformation    = '%s/buildJob-00-00-03' % Client.baseURLSUB
     hostName = commands.getoutput('hostname').split('.')[0]
-    jobB.destinationDBlock = 'user%s.%s.%s_%s.lib._%06d' % (time.strftime('%y',time.gmtime()),distinguishedName,
-                                                            hostName,random.randint(0,100),jobDefinitionID)
+    jobB.destinationDBlock = 'user%s.%s.%s.%s.lib._%06d' % (time.strftime('%y',time.gmtime()),distinguishedName,
+                                                               time.strftime('%m%d%H%M%S',time.gmtime()),
+                                                               datetime.datetime.utcnow().microsecond,
+                                                               jobDefinitionID)
     if options.useExperimental and options.destSE != '':
         # write outputs to destSE
         jobB.destinationSE     = options.destSE
@@ -2624,6 +2628,11 @@ if not options.nosubmit:
             status,out = Client.submitJobs(newJobList,options.verbose)
             if status==0:
                 tmpLog.info(" OK")
+		jobID = out[0][1]
+                # record jobID
+		tmpJobIdFile = open(jobid_file,'w')
+                tmpJobIdFile.write(str(jobID))
+                tmpJobIdFile.close()
             else:
                 tmpLog.info(" NG : %s" % status)
             time.sleep(2)
