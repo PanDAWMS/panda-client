@@ -27,6 +27,7 @@ EC_Post      = 50
 EC_Archive   = 60
 EC_Split     = 70
 EC_MyProxy   = 80
+EC_Submit    = 90
 
 usage = """%prog [options]"""
 
@@ -175,6 +176,13 @@ if options.libDS == 'LAST':
     
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
+
+# add allowed sites
+if not siteSpecified:
+    tmpSt = Client.addAllowedSites(options.verbose)
+    if not tmpSt:
+        tmpLog.error("Failed to get allowed site list")
+        sys.exit(EC_Config)
 
 # save current dir
 curDir = os.path.realpath(os.getcwd())
@@ -1017,6 +1025,9 @@ if not options.nosubmit:
 
     # result
     print '==================='
+    if out == []:
+        tmpLog.error("Job submission was denied")
+        sys.exit(EC_Submit)
     outstr   = ''
     buildStr = ''
     runStr   = ''

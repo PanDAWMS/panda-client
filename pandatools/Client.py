@@ -17,6 +17,8 @@ import socket
 import random
 import tempfile
 
+import PLogger
+
 # configuration
 try:
     baseURL = os.environ['PANDA_URL']
@@ -1398,6 +1400,27 @@ def listSiteAccess(siteID,verbose=False):
         type, value, traceBack = sys.exc_info()
         print "ERROR listSiteAccess : %s %s" % (type,value)
         return EC_Failed,None
+
+
+# add allowed sites
+def addAllowedSites(verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    if verbose:
+        tmpLog.debug('check site access to add allowed sites')
+    # get access list
+    tmpStatus,tmpOut = listSiteAccess(None,verbose)
+    if tmpStatus != 0:
+        return False
+    # set online if the site is allowed 
+    global PandaSites
+    for tmpID,tmpVal in tmpOut:
+        if tmpVal=='approved':
+           if PandaSites.has_key(tmpID):
+               PandaSites[tmpID]['status'] = 'online'
+               if verbose:
+                   tmpLog.debug('set %s online' % tmpID)
+    return True
 
 
 # get JobIDs in a time range
