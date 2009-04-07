@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * set sites online when they are allowed in siteaccess
+	
 0.1.35 (4/3/2009)
   * fixed --individualOutDS in pathena
 
