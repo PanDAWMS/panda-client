@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added bulkReadJobDB for pbook
+
 0.1.37 (4/8/2009)
   * added --removeBurstLimit to pathena
   * fixed prun to contain empty directories in tar archive
