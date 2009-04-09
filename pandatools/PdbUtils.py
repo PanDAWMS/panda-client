@@ -334,6 +334,35 @@ def readJobDB(JobID,verbose=False):
     return job
 
 
+# bulk read job info from DB
+def bulkReadJobDB(verbose=False):
+    # make sql
+    sql1 = "SELECT %s FROM %s " % (LocalJobSpec.columnNames(),pdbProxy.tablename)
+    # execute
+    status,out = pdbProxy.execute(sql1)
+    if not status:
+        raise RuntimeError,"failed to get jobs"
+    if len(out) == 0:
+        return []
+    # instantiate LocalJobSpec
+    retMap = {}
+    for tmpStr in out:
+        values = tmpStr.split('|')
+        job = LocalJobSpec()
+        job.pack(values)
+        # use frozen job if exists
+        if (not retMap.has_key(job.JobID)) or job.dbStatus == 'frozen':
+            retMap[job.JobID] = job
+    # sort
+    ids = retMap.keys()
+    ids.sort()
+    retVal = []
+    for id in ids:
+        retVal.append(retMap[id])
+    # return    
+    return retVal
+
+
 # get list of JobID
 def getListOfJobIDs(nonFrozen=False,verbose=False):
     # make sql
