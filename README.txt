@@ -14,8 +14,9 @@ pathena -h
 
 ** Release Note
 
-current
-  * added bulkReadJobDB for pbook
+0.1.38 (4/9/2009)
+  * improved performance of show() in pbook
+  * fixed location lookup for _PHYS_XYZ
 
 0.1.37 (4/8/2009)
   * added --removeBurstLimit to pathena

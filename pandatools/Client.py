@@ -734,12 +734,14 @@ def convSrmV2ID(tmpSite):
     # doesn't convert FR/IT/UK sites 
     for tmpPrefix in ['IN2P3-','INFN-','UKI-','GRIF-']:
         if tmpSite.startswith(tmpPrefix):
-            tmpSite = re.sub('_[A-Z,0-9]+DISK$','DISK',tmpSite)
-            tmpSite = re.sub('_[A-Z,0-9]+TAPE$','DISK',tmpSite)
+            tmpSite = re.sub('_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
+            tmpSite = re.sub('_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
+            tmpSite = re.sub('_PHYS-[A-Z,0-9]+$','DISK',tmpSite)            
             return tmpSite
     # patch for SRM v2
-    tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$','DISK',tmpSite)
-    tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$','DISK',tmpSite)    
+    tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
+    tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
+    tmpSite = re.sub('-[^-_]+_PHYS-[A-Z,0-9]+$','DISK',tmpSite)                
     # SHOULD BE REMOVED Once all sites and DQ2 migrate to srmv2
     # patch for BNL
     if tmpSite in ['BNLDISK','BNLTAPE']:
