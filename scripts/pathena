@@ -29,6 +29,7 @@ EC_Post      = 50
 EC_Archive   = 60
 EC_Split     = 70
 EC_MyProxy   = 80
+EC_Submit    = 90
 
 #@ Number of events to skip in the file
 nEventsToSkip=0
@@ -199,6 +200,8 @@ optP.add_option('--notSkipMissing', action='store_const', const=True, dest='notS
                 help='If input files are not read from SE, they will be skipped by default. This option disables the functionality')
 optP.add_option('--burstSubmit', action='store', dest='burstSubmit', default='',
                 type='string', help="Please don't use this option. Only for site validation by experts")
+optP.add_option('--removeBurstLimit', action='store_const', const=True, dest='removeBurstLimit', default=False,
+                help="Please don't use this option. Only for site validation by experts")
 optP.add_option('--devSrv', action='store_const', const=True, dest='devSrv',  default=False,
                 help="Please don't use this option. Only for developers to use the dev panda server")
 optP.add_option('--useAIDA', action='store_const', const=True, dest='useAIDA',  default=False,
@@ -357,11 +360,6 @@ for tmpName in options.araOutFile.split(','):
     if tmpName != '':
         options.extOutFile.append(tmpName)
 
-# shadow DS for individualOutDS
-if options.individualOutDS:
-    # use log DS as shadow DS
-    suffixShadow = "_log" + suffixShadow
-
 # file list
 tmpList = options.filelist.split(',')
 options.filelist = []
@@ -418,6 +416,13 @@ if options.nFilesPerJob > 0 and options.nfiles == 0 and options.split > 0:
 
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
+
+# add allowed sites# 
+if (not siteSpecified) and options.burstSubmit == '':
+    tmpSt = Client.addAllowedSites(options.verbose)
+    if not tmpSt:
+        tmpLog.error("Failed to get allowed site list")
+        sys.exit(EC_Config)
 
 # set cloud according to country FQAN
 expCloudFlag = False
@@ -1620,8 +1625,10 @@ elif options.libDS == '':
     jobB.homepackage       = 'AnalysisTransforms'+cacheVer+nightVer
     jobB.transformation    = '%s/buildJob-00-00-03' % Client.baseURLSUB
     hostName = commands.getoutput('hostname').split('.')[0]
-    jobB.destinationDBlock = 'user%s.%s.%s_%s.lib._%06d' % (time.strftime('%y',time.gmtime()),distinguishedName,
-                                                            hostName,random.randint(0,100),jobDefinitionID)
+    jobB.destinationDBlock = 'user%s.%s.%s.%s.lib._%06d' % (time.strftime('%y',time.gmtime()),distinguishedName,
+                                                               time.strftime('%m%d%H%M%S',time.gmtime()),
+                                                               datetime.datetime.utcnow().microsecond,
+                                                               jobDefinitionID)
     if options.useExperimental and options.destSE != '':
         # write outputs to destSE
         jobB.destinationSE     = options.destSE
@@ -2295,9 +2302,8 @@ for iSubJob in range(options.split):
     file.dataset = jobR.destinationDBlock    
     file.destinationDBlock = jobR.destinationDBlock
     if options.individualOutDS:
-        tmpSuffix = '_log'
-        file.dataset += tmpSuffix
-        file.destinationDBlock += tmpSuffix
+        # use original outDS for log, which guarantees location registration and shadow tracing
+        pass
     file.destinationSE = jobR.destinationSE
     jobR.addFile(file)
     # set space token
@@ -2511,9 +2517,19 @@ if not options.nosubmit:
         # normal submission
 
         # register output dataset
+	tmpIdvOutDsList = []
         if not outputDSexist:
-            Client.addDataset(options.outDS,options.verbose)
-
+            if not options.individualOutDS:
+                Client.addDataset(options.outDS,options.verbose)
+                tmpIdvOutDsList.append(options.outDS)
+            else:
+                # register individual datasets
+                for tmpFile in jobList[-1].Files:
+                    if tmpFile.type in ['output','log']:
+                        if not tmpFile.dataset in tmpIdvOutDsList:
+                            Client.addDataset(tmpFile.dataset,options.verbose)
+                            tmpIdvOutDsList.append(tmpFile.dataset)
+                            
         # register output dataset container
         if original_outDS_Name.endswith('/'):
             # create
@@ -2521,7 +2537,8 @@ if not options.nosubmit:
                 Client.createContainer(original_outDS_Name,options.verbose)
             # add dataset
             if not outputDSexist:
-                Client.addDatasetsToContainer(original_outDS_Name,[options.outDS],options.verbose)
+                for tmpIdvOutDS in tmpIdvOutDsList:
+                    Client.addDatasetsToContainer(original_outDS_Name,[tmpIdvOutDS],options.verbose)
 
         # register shadow dataset
         if not outputDSexist:
@@ -2552,8 +2569,13 @@ if not options.nosubmit:
             newLibDS = '%s.%s' % (origLibDS,tmpSite)
             newOutDS = '%s.%s' % (origOutDS,tmpSite)
             repPatt  = {}
-            # use buildJob and one runAthena
-            for job in jobList[:2]:
+            if options.removeBurstLimit:
+                # use all jobs
+                limitedJobList = jobList
+            else:
+                # use buildJob and one runAthena by default
+                limitedJobList = jobList[:2]
+            for job in limitedJobList:
                 # set cloud/site
                 job.cloud          = tmpCloud
                 job.computingSite  = tmpSite
@@ -2613,6 +2635,11 @@ if not options.nosubmit:
             status,out = Client.submitJobs(newJobList,options.verbose)
             if status==0:
                 tmpLog.info(" OK")
+		jobID = out[0][1]
+                # record jobID
+		tmpJobIdFile = open(jobid_file,'w')
+                tmpJobIdFile.write(str(jobID))
+                tmpJobIdFile.close()
             else:
                 tmpLog.info(" NG : %s" % status)
             time.sleep(2)
@@ -2621,6 +2648,9 @@ if not options.nosubmit:
 
 
     print '==================='
+    if out == []:
+        tmpLog.error("Job submission was denied")
+        sys.exit(EC_Submit)
     outstr   = ''
     buildStr = ''
     runStr   = ''

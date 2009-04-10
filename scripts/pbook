@@ -185,14 +185,8 @@ class PBookCore:
 
     # get local job list
     def getLocalJobList(self):
-        # get JobIDs in local repository
-        localJobIDs = PdbUtils.getListOfJobIDs()
         # get jobs
-        localJobs = []
-        for JobID in localJobIDs:
-            job = PdbUtils.readJobDB(JobID,self.verbose)
-            # append
-            localJobs.append(job)
+        localJobs = PdbUtils.bulkReadJobDB(self.verbose)
         # return
         return localJobs
     
