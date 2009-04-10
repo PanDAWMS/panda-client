@@ -212,7 +212,9 @@ if options.athenaTag != '':
         if match != None:
             athenaVer = 'Atlas-%s' % match.group(1)
             # cache
-            cacheVer += '_%s' % match
+	    cmatch = re.search('^(\d+\.\d+\.\d+\.\d+)$',item)
+	    if cmatch != None:
+		cacheVer += '_%s' % cmatch.group(1)
         # project
         if item.startswith('Atlas'):
             # ignore AtlasOffline
@@ -711,6 +713,15 @@ if os.path.exists(jobid_file):
         jobDefinitionID = long(tmpID) + 1
     except:
         pass
+
+if options.verbose:
+    print "== parameters =="
+    print "Site       : %s" % options.site
+    print "Athena     : %s" % athenaVer
+    if cacheVer != '':
+        print "Cache      : %s" % cacheVer[1:]
+    print "RunDir     : %s" % runDir
+    print "exec       : %s" % options.jobParams
 
 
 # full execution string

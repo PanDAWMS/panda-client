@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.39 (4/10/2009)
+  * fixed extraction of cache ver in prun
+
 0.1.38 (4/9/2009)
   * improved performance of show() in pbook
   * fixed location lookup for _PHYS_XYZ
@@ -88,7 +91,7 @@ pathena -h
 
 0.1.17 (2/17/2009)
   * added --update to pathena/prun
-  * fixed renaming error for --trf : http://savannah.cern.ch/bugs/?47042
+  * fixed renaming error for --trf
   * fixed --libDS=LAST  
 
 0.1.16 (2/16/2009)
