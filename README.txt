@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.40 (4/13/2009)
+  * added -processingType
+
 0.1.39 (4/10/2009)
   * fixed extraction of cache ver in prun
 

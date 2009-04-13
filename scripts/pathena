@@ -150,8 +150,8 @@ optP.add_option('--excludedSite', action='store', dest='excludedSite',  default=
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
 optP.add_option('--noSubmit', action='store_const', const=True, dest='nosubmit',  default=False,
                 help="Don't submit jobs")
-optP.add_option('--test', action='store_const', const=True, dest='testMode',  default=False,
-                help="Submit test jobs")
+optP.add_option('--processingType', action='store', dest='processingType',  default='',
+                help="set processingType")
 optP.add_option('--generalInput', action='store_const', const=True, dest='generalInput',  default=False,
                 help='Read input files with general format except POOL,ROOT,ByteStream')
 optP.add_option('--crossSite',action='store',dest='crossSite',default=3,
@@ -1635,8 +1635,8 @@ elif options.libDS == '':
     else:
         jobB.destinationSE     = options.site
     jobB.prodSourceLabel   = 'panda'        
-    if options.testMode:    
-        jobB.processingType = 'prod_test'
+    if options.processingType != '':    
+        jobB.processingType = options.processingType
     jobB.assignedPriority  = 2000
     jobB.computingSite = options.site
     if options.burstSubmit == '':
@@ -1746,8 +1746,8 @@ for iSubJob in range(options.split):
     else:
         jobR.destinationSE     = options.site
     jobR.prodSourceLabel   = 'user'        
-    if options.testMode:    
-        jobR.processingType = 'prod_test'
+    if options.processingType != '':
+        jobR.processingType = options.processingType
     jobR.assignedPriority  = 1000
     jobR.metadata          = fullExecString    
     # memory
