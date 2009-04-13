@@ -152,6 +152,8 @@ optP.add_option('--noSubmit', action='store_const', const=True, dest='nosubmit',
                 help="Don't submit jobs")
 optP.add_option('--processingType', action='store', dest='processingType',  default='',
                 help="set processingType")
+optP.add_option('--seriesLabel', action='store', dest='seriesLabel',  default='',
+                help="set seriesLabel")
 optP.add_option('--generalInput', action='store_const', const=True, dest='generalInput',  default=False,
                 help='Read input files with general format except POOL,ROOT,ByteStream')
 optP.add_option('--crossSite',action='store',dest='crossSite',default=3,
@@ -1637,6 +1639,8 @@ elif options.libDS == '':
     jobB.prodSourceLabel   = 'panda'        
     if options.processingType != '':    
         jobB.processingType = options.processingType
+    if options.seriesLabel != '':    
+        jobB.prodSeriesLabel = options.seriesLabel
     jobB.assignedPriority  = 2000
     jobB.computingSite = options.site
     if options.burstSubmit == '':
@@ -1748,6 +1752,8 @@ for iSubJob in range(options.split):
     jobR.prodSourceLabel   = 'user'        
     if options.processingType != '':
         jobR.processingType = options.processingType
+    if options.seriesLabel != '':    
+        jobR.prodSeriesLabel = options.seriesLabel
     jobR.assignedPriority  = 1000
     jobR.metadata          = fullExecString    
     # memory

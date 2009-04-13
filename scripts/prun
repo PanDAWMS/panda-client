@@ -76,6 +76,8 @@ optP.add_option('--noSubmit',action='store_const',const=True,dest='nosubmit',def
                 help="Don't submit jobs")
 optP.add_option('--processingType', action='store', dest='processingType',  default='',
                 help="set processingType")
+optP.add_option('--seriesLabel', action='store', dest='seriesLabel',  default='',
+                help="set seriesLabel")
 optP.add_option('--tmpDir',action='store',dest='tmpDir',default='',type='string',
                 help='Temporary directory where an archive file is created')
 optP.add_option('--voms', action='store', dest='vomsRoles',  default=None, type='string',
@@ -751,6 +753,8 @@ if options.libDS == '':
     jobB.prodSourceLabel   = 'panda'
     if options.processingType != '':    
         jobB.processingType = options.processingType
+    if options.seriesLabel != '':    
+        jobB.prodSeriesLabel = options.seriesLabel
     jobB.assignedPriority  = 2000
     jobB.computingSite     = options.site
     jobB.cloud             = Client.PandaSites[options.site]['cloud']
@@ -873,6 +877,8 @@ for iJob in range(options.nJobs):
     jobR.prodSourceLabel   = 'user'
     if options.processingType != '':
         jobR.processingType = options.processingType
+    if options.seriesLabel != '':    
+        jobR.prodSeriesLabel = options.seriesLabel
     jobR.assignedPriority  = 1000
     jobR.computingSite     = options.site
     jobR.cloud             = Client.PandaSites[options.site]['cloud']
