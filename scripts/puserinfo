@@ -12,7 +12,7 @@ import commands
 # usage
 usage = """%prog [options] subcommand [args]
 
-Run‘'%prog help' to see all available subcommands"""
+run '%prog help' to see all available subcommands"""
 
 # core class
 class PUserInfoCore:
@@ -38,7 +38,7 @@ class PUserInfoCore:
             print "\nAvailable subcommands:"
             for tmpCom in self.subCommandList:
                 print "  %s" % tmpCom
-            print "\nTry‘'puserinfo help <subcommand>' for help on a specific subcommand"
+            print "\nTry 'puserinfo help <subcommand>' for help on a specific subcommand"
             return
         print getattr(self,args[0]).__doc__
 

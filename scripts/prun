@@ -27,6 +27,7 @@ EC_Post      = 50
 EC_Archive   = 60
 EC_Split     = 70
 EC_MyProxy   = 80
+EC_Submit    = 90
 
 usage = """%prog [options]"""
 
@@ -73,6 +74,8 @@ optP.add_option('--excludedSite', action='store', dest='excludedSite',  default=
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
 optP.add_option('--noSubmit',action='store_const',const=True,dest='nosubmit',default=False,
                 help="Don't submit jobs")
+optP.add_option('--processingType', action='store', dest='processingType',  default='',
+                help="set processingType")
 optP.add_option('--tmpDir',action='store',dest='tmpDir',default='',type='string',
                 help='Temporary directory where an archive file is created')
 optP.add_option('--voms', action='store', dest='vomsRoles',  default=None, type='string',
@@ -176,6 +179,13 @@ if options.libDS == 'LAST':
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
 
+# add allowed sites
+if not siteSpecified:
+    tmpSt = Client.addAllowedSites(options.verbose)
+    if not tmpSt:
+        tmpLog.error("Failed to get allowed site list")
+        sys.exit(EC_Config)
+
 # save current dir
 curDir = os.path.realpath(os.getcwd())
 
@@ -204,7 +214,9 @@ if options.athenaTag != '':
         if match != None:
             athenaVer = 'Atlas-%s' % match.group(1)
             # cache
-            cacheVer += '_%s' % match
+	    cmatch = re.search('^(\d+\.\d+\.\d+\.\d+)$',item)
+	    if cmatch != None:
+		cacheVer += '_%s' % cmatch.group(1)
         # project
         if item.startswith('Atlas'):
             # ignore AtlasOffline
@@ -519,6 +531,7 @@ else:
         skippedFlag  = False
         workDirFiles = []
         for tmpRoot,tmpDirs,tmpFiles in os.walk('.'):
+            emptyFlag    = True
             for tmpFile in tmpFiles:
                 tmpPath = '%s/%s' % (tmpRoot,tmpFile)
                 # get size
@@ -568,9 +581,17 @@ else:
                 tmpPath = re.sub('^\./','',tmpPath)
                 # append
                 workDirFiles.append(tmpPath)
+		emptyFlag = False
+            # add empty directory		
+	    if emptyFlag and tmpDirs==[]:
+		tmpPath = re.sub('^\./','',tmpRoot)
+                # skip tmpDir
+                if tmpPath.split('/')[-1] == tmpDir.split('/')[-1]:
+                    continue
+                # append
+                workDirFiles.append(tmpPath)
         if skippedFlag:
             tmpLog.info("please use --maxFileSize or --extFile if you need to send the skipped files to WNs")
-
 
     # create archive
     if options.libDS == '':
@@ -605,7 +626,6 @@ else:
         if status != 0:
             tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'") 
             sys.exit(EC_Archive)
-
 
 # look for pandatools package
 for path in sys.path:
@@ -696,6 +716,15 @@ if os.path.exists(jobid_file):
     except:
         pass
 
+if options.verbose:
+    print "== parameters =="
+    print "Site       : %s" % options.site
+    print "Athena     : %s" % athenaVer
+    if cacheVer != '':
+        print "Cache      : %s" % cacheVer[1:]
+    print "RunDir     : %s" % runDir
+    print "exec       : %s" % options.jobParams
+
 
 # full execution string
 fullExecString = PsubUtils.convSysArgv()
@@ -720,6 +749,8 @@ if options.libDS == '':
                                                     time.time())
     jobB.destinationSE     = options.site
     jobB.prodSourceLabel   = 'panda'
+    if options.processingType != '':    
+        jobB.processingType = options.processingType
     jobB.assignedPriority  = 2000
     jobB.computingSite     = options.site
     jobB.cloud             = Client.PandaSites[options.site]['cloud']
@@ -840,6 +871,8 @@ for iJob in range(options.nJobs):
     jobR.destinationDBlock = options.outDS
     jobR.destinationSE     = options.site
     jobR.prodSourceLabel   = 'user'
+    if options.processingType != '':
+        jobR.processingType = options.processingType
     jobR.assignedPriority  = 1000
     jobR.computingSite     = options.site
     jobR.cloud             = Client.PandaSites[options.site]['cloud']
@@ -1017,6 +1050,9 @@ if not options.nosubmit:
 
     # result
     print '==================='
+    if out == []:
+        tmpLog.error("Job submission was denied")
+        sys.exit(EC_Submit)
     outstr   = ''
     buildStr = ''
     runStr   = ''

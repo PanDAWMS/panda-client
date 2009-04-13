@@ -14,6 +14,29 @@ pathena -h
 
 ** Release Note
 
+0.1.40 (4/13/2009)
+  * added --processingType
+
+0.1.39 (4/10/2009)
+  * fixed extraction of cache ver in prun
+
+0.1.38 (4/9/2009)
+  * improved performance of show() in pbook
+  * fixed location lookup for _PHYS_XYZ
+
+0.1.37 (4/8/2009)
+  * added --removeBurstLimit to pathena
+  * fixed prun to contain empty directories in tar archive
+
+0.1.36 (4/7/2009)
+  * set sites online when they are allowed in siteaccess
+  * cache jobID for --burstSubmit 
+  * use UTC timestamp in libDS to avoid duplication
+  * removed unicode from puserinfo
+	
+0.1.35 (4/3/2009)
+  * fixed --individualOutDS in pathena
+
 0.1.34 (4/2/2009)
   * fixed pathena to allow a full pathname for jobO
 
@@ -71,7 +94,7 @@ pathena -h
 
 0.1.17 (2/17/2009)
   * added --update to pathena/prun
-  * fixed renaming error for --trf : http://savannah.cern.ch/bugs/?47042
+  * fixed renaming error for --trf
   * fixed --libDS=LAST  
 
 0.1.16 (2/16/2009)
