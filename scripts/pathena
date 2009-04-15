@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import time
+import copy
 import atexit
 import commands
 import optparse
@@ -2581,7 +2582,8 @@ if not options.nosubmit:
             else:
                 # use buildJob and one runAthena by default
                 limitedJobList = jobList[:2]
-            for job in limitedJobList:
+            for tmpJob in limitedJobList:
+                job = copy.deepcopy(tmpJob)
                 # set cloud/site
                 job.cloud          = tmpCloud
                 job.computingSite  = tmpSite
@@ -2591,12 +2593,10 @@ if not options.nosubmit:
                     job.destinationDBlock = newLibDS
                     # pattern to modify LFN
                     subLibDSPatt = '^'+prevLibDS
-                    prevLibDS = job.destinationDBlock
                 else:
                     job.destinationDBlock = newOutDS
                     # pattern to modify LFN
                     subOutDSPatt = '^'+prevOutDS
-                    prevOutDS = job.destinationDBlock
                 # correct files
                 for file in job.Files:
                     # process output/log and lib.tgz

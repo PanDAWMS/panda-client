@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.41 (4/13/2009)
+  * fixed --removeBurstLimit in pathena
+
 0.1.40 (4/13/2009)
   * added --processingType and --seriesLabel
 
