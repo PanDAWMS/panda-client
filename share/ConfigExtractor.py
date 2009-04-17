@@ -202,7 +202,8 @@ HistogramPersistencySvc=_Service("HistogramPersistencySvc")
 if hasattr(HistogramPersistencySvc,'OutputFile') and hasattr(HistogramPersistencySvc.OutputFile,'__len__') \
        and len(HistogramPersistencySvc.OutputFile):
     _printConfig('Output=HIST')
-
+    _printConfig(' Name: %s' % HistogramPersistencySvc.OutputFile) 
+    
 # ntuple
 NTupleSvc = _Service( "NTupleSvc" )
 if hasattr(NTupleSvc,'Output') and hasattr(NTupleSvc.Output,'__len__') and len(NTupleSvc.Output):
@@ -212,6 +213,13 @@ if hasattr(NTupleSvc,'Output') and hasattr(NTupleSvc.Output,'__len__') and len(N
         if match != None:
             sName = item.split()[0]
             _printConfig('Output=NTUPLE %s' % sName)
+            # extract name
+            fmatch = re.search("DATAFILE=(\S+)\s",item)
+            if fmatch != None:
+                fName = fmatch.group(1)
+                fName = re.sub('[\"\']','',fName)
+                fName = fName.split('/')[-1]
+                _printConfig(' Name: %s'% fName)
 
 streamOutputFiles = {}
 
@@ -224,7 +232,8 @@ else:
 if hasattr(StreamRDO,'OutputFile') and hasattr(StreamRDO.OutputFile,'__len__') and len(StreamRDO.OutputFile):
     streamOutputFiles[key.split('/')[-1]] = StreamRDO.OutputFile
     _printConfig('Output=RDO')
-
+    _printConfig(' Name: %s'% StreamRDO.OutputFile)
+                
 # ESD
 key = "AthenaOutputStream/StreamESD"
 if key in _configs:
@@ -234,6 +243,7 @@ else:
 if hasattr(StreamESD,'OutputFile') and hasattr(StreamESD.OutputFile,'__len__') and len(StreamESD.OutputFile):
     streamOutputFiles[key.split('/')[-1]] = StreamESD.OutputFile
     _printConfig('Output=ESD')
+    _printConfig(' Name: %s'% StreamESD.OutputFile)
 
 # AOD    
 key = "AthenaOutputStream/StreamAOD"
@@ -244,6 +254,7 @@ else:
 if hasattr(StreamAOD,'OutputFile') and hasattr(StreamAOD.OutputFile,'__len__') and len(StreamAOD.OutputFile):
     streamOutputFiles[key.split('/')[-1]] = StreamAOD.OutputFile
     _printConfig('Output=AOD')
+    _printConfig(' Name: %s'% StreamAOD.OutputFile)
 
 # TAG    
 keys = ["AthenaOutputStream/StreamTAG","RegistrationStream/StreamTAG"]
@@ -258,6 +269,7 @@ if not foundKey:
 if hasattr(StreamTAG,'OutputCollection') and hasattr(StreamTAG.OutputCollection,'__len__') and \
        len(StreamTAG.OutputCollection):
     _printConfig('Output=TAG')
+    _printConfig(' Name: %s'% StreamTAG.OutputCollection)
 
 # AANT
 aantStream = []
@@ -280,6 +292,7 @@ for alg in theApp.TopAlg+_configs:
                         aantStream.append(sName)
                         if not (aName,sName) in appStList:
                             _printConfig('Output=AANT %s %s' % (aName,sName))
+                            _printConfig(' Name: %s'% fName)
                             appStList.append((aName,sName))
                         break
 
@@ -295,6 +308,7 @@ if hasattr(Stream1,'OutputFile') and hasattr(Stream1.OutputFile,'__len__') and l
     if (hasattr(Stream1,'Enable') and Stream1.Enable) or (not hasattr(Stream1,'Enable')):
         streamOutputFiles[key.split('/')[-1]] = Stream1.OutputFile        
         _printConfig('Output=STREAM1 %s' % Stream1.OutputFile)
+        _printConfig(' Name: %s'% Stream1.OutputFile)
 
 # Stream2
 key = "AthenaOutputStream/Stream2"
@@ -308,8 +322,10 @@ if hasattr(Stream2,'OutputFile') and hasattr(Stream2.OutputFile,'__len__') and l
     if (hasattr(Stream2,'Enable') and Stream2.Enable) or (not hasattr(Stream2,'Enable')):    
         streamOutputFiles[key.split('/')[-1]] = Stream2.OutputFile
         _printConfig('Output=STREAM2')
+        _printConfig(' Name: %s'% Stream2.OutputFile)        
 
 # General Stream
+strGenFName = ''
 strGenStream  = ''
 strMetaStream = ''
 try:
@@ -328,7 +344,8 @@ try:
                         metaStreams.append(genStream)
                     else:
                         strGenStream += '%s,' % fullName.split('/')[-1]
-                        streamOutputFiles[fullName.split('/')[-1]] = genStream.OutputFile                        
+                        streamOutputFiles[fullName.split('/')[-1]] = genStream.OutputFile
+                        strGenFName = genStream.OutputFile
     # associate meta stream
     for mStream in metaStreams:
         metaOutName = mStream.OutputFile.split(':')[-1]
@@ -339,11 +356,13 @@ try:
                 assStream = stName
                 break
         _printConfig('Output=META %s %s' % (mStream.getFullName().split('/')[1],assStream))
+        _printConfig(' Name: %s'% metaOutName)
 except:
     pass
 if strGenStream != '':
     strGenStream = strGenStream[:-1]
     _printConfig('Output=STREAMG %s' % strGenStream)
+    _printConfig(' Name: %s'% strGenFName)
 
 # THIST
 THistSvc = _Service( "THistSvc" )
@@ -352,6 +371,13 @@ if hasattr(THistSvc.Output,'__len__') and len(THistSvc.Output):
         sName = item.split()[0]
         if not sName in aantStream:
             _printConfig('Output=THIST %s' % sName)
+            # extract name
+            fmatch = re.search("DATAFILE=(\S+)\s",item)
+            if fmatch != None:
+                fName = fmatch.group(1)
+                fName = re.sub('[\"\']','',fName)
+                fName = fName.split('/')[-1]
+                _printConfig(' Name: %s'% fName)
 
 # ROOT outputs for interactive Athena
 import ROOT
@@ -359,6 +385,7 @@ fList = ROOT.gROOT.GetListOfFiles()
 for index in range(fList.GetSize()):
     if fList[index].GetOption() == 'CREATE':
         _printConfig('Output=IROOT %s' % fList[index].GetName())
+        _printConfig(' Name: %s'% fList[index].GetName())
 
 # BS
 ByteStreamCnvSvc = _Service("ByteStreamCnvSvc")
@@ -373,6 +400,7 @@ elif hasattr(ByteStreamCnvSvc,'ByteStreamOutputSvcList') and \
 BSESOutputSvc = _Service("BSESOutputSvc")
 if hasattr(BSESOutputSvc,'SimpleFileName'):
     _printConfig('Output=SelBS %s' % BSESOutputSvc.SimpleFileName)
+    _printConfig(' Name: %s'% BSESOutputSvc.SimpleFileName)
 
 # MultipleStream
 try:
@@ -383,6 +411,7 @@ try:
             # remove prefix
             tmpFileBaseName = tmpStream.Stream.OutputFile.split(':')[-1]
             _printConfig('Output=MS %s %s' % (tmpStream.Name,tmpFileBaseName))
+            _printConfig(' Name: %s'% tmpFileBaseName)
 except:
     pass
 

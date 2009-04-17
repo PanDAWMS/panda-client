@@ -17,6 +17,8 @@ import socket
 import random
 import tempfile
 
+import PLogger
+
 # configuration
 try:
     baseURL = os.environ['PANDA_URL']
@@ -732,12 +734,14 @@ def convSrmV2ID(tmpSite):
     # doesn't convert FR/IT/UK sites 
     for tmpPrefix in ['IN2P3-','INFN-','UKI-','GRIF-']:
         if tmpSite.startswith(tmpPrefix):
-            tmpSite = re.sub('_[A-Z,0-9]+DISK$','DISK',tmpSite)
-            tmpSite = re.sub('_[A-Z,0-9]+TAPE$','DISK',tmpSite)
+            tmpSite = re.sub('_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
+            tmpSite = re.sub('_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
+            tmpSite = re.sub('_PHYS-[A-Z,0-9]+$','DISK',tmpSite)            
             return tmpSite
     # patch for SRM v2
-    tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$','DISK',tmpSite)
-    tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$','DISK',tmpSite)    
+    tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
+    tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
+    tmpSite = re.sub('-[^-_]+_PHYS-[A-Z,0-9]+$','DISK',tmpSite)                
     # SHOULD BE REMOVED Once all sites and DQ2 migrate to srmv2
     # patch for BNL
     if tmpSite in ['BNLDISK','BNLTAPE']:
@@ -1398,6 +1402,27 @@ def listSiteAccess(siteID,verbose=False):
         type, value, traceBack = sys.exc_info()
         print "ERROR listSiteAccess : %s %s" % (type,value)
         return EC_Failed,None
+
+
+# add allowed sites
+def addAllowedSites(verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    if verbose:
+        tmpLog.debug('check site access to add allowed sites')
+    # get access list
+    tmpStatus,tmpOut = listSiteAccess(None,verbose)
+    if tmpStatus != 0:
+        return False
+    # set online if the site is allowed 
+    global PandaSites
+    for tmpID,tmpVal in tmpOut:
+        if tmpVal=='approved':
+           if PandaSites.has_key(tmpID):
+               PandaSites[tmpID]['status'] = 'online'
+               if verbose:
+                   tmpLog.debug('set %s online' % tmpID)
+    return True
 
 
 # get JobIDs in a time range

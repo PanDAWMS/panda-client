@@ -255,6 +255,7 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
         # run ConfigExtractor for normal jobO
         out = commands.getoutput(com)
         failExtractor = True
+        outputConfig['alloutputs'] = []
         for line in out.split('\n'):
             match = re.findall('^ConfigExtractor > (.+)',line)
             if len(match):
@@ -266,7 +267,7 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
                         continue
                 failExtractor = False
                 # AIDA HIST
-                if match[0]=='Output=HIST':
+                if match[0].startswith('Output=HIST'):
                     if useAIDA:
                         tmpLog.info('%s is suppressed. Please use --useAIDA if needed' % line)
                         continue
@@ -403,6 +404,10 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
                         otherConfig['condInput'] = []
                     tmpItems = match[0].split()
                     otherConfig['condInput'].append(tmpItems[-1])
+                # collect all outputs
+                if match[0].startswith(' Name:'):
+                    outputConfig['alloutputs'].append(match[0].split()[-1])
+                    continue
                 tmpLog.info(line)
         # extractor failed
         if failExtractor:
