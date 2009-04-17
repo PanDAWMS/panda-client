@@ -589,6 +589,15 @@ if not options.trf:
     # set default ref name
     if not runConfig.input.collRefName:
         runConfig.input.collRefName = 'Token'
+    # check dupication in extOutFile
+    if runConfig.output.alloutputs != False:
+        if options.verbose:
+            tmpLog.debug("output files : %s" % str(runConfig.output.alloutputs)) 
+        for tmpExtOutFile in tuple(options.extOutFile):
+            if tmpExtOutFile in runConfig.output.alloutputs:
+                tmpLog.warning("removed %s from extOutFile since it is automatically extracted from Athena. You don't need to specify it in extOutFile"
+                            % tmpExtOutFile)
+                options.extOutFile.remove(tmpExtOutFile)
 else:
     # parse parameters for trf
     oneOut = False
