@@ -15,9 +15,9 @@ pathena -h
 ** Release Note
 
 0.1.42 (4/17/2009)
-  * protection against duplicated filename in extOutFile 
+  * protection against redundant filename in --extOutFile 
 
-0.1.41 (4/13/2009)
+0.1.41 (4/15/2009)
   * fixed --removeBurstLimit in pathena
 
 0.1.40 (4/13/2009)
