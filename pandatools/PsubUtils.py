@@ -260,7 +260,7 @@ def getMaxIndex(list,pattern):
 
 
 # upload proxy
-def uploadProxy(site,myproxy,gridPassPhrase,verbose=False):
+def uploadProxy(site,myproxy,gridPassPhrase,pilotownerDN,verbose=False):
     # non-proxy delegation
     if not Client.PandaSites[site]['glexec'] in ['uid']:
         return True
@@ -275,7 +275,7 @@ def uploadProxy(site,myproxy,gridPassPhrase,verbose=False):
         gridSrc = Client._getGridSrc()
         # check if the proxy is valid in MyProxy
         mypIF = MyproxyUtils.MyProxyInterface()
-        mypIF.pilotownerDN = commands.getoutput('%s grid-proxy-info -identity' % gridSrc).split('\n')[-1]
+        mypIF.pilotownerDN = pilotownerDN
         mypIF.servername = myproxy
         proxyValid = False
         # check existing key
