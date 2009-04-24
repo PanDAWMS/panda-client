@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.43 (4/24/2009)
+  * set the list of DNs for proxy delegation
+
 0.1.42 (4/17/2009)
   * protection against redundant filename in --extOutFile 
 
