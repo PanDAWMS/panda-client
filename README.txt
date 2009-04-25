@@ -16,6 +16,7 @@ pathena -h
 
 0.1.44 (4/25/2009)
   * fixed pathena to increment file index for --trf
+  * added show('running') to pbook
 
 0.1.43 (4/24/2009)
   * set the list of DNs for proxy delegation
