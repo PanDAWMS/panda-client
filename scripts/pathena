@@ -622,6 +622,10 @@ if runConfig.output == {} and options.extOutFile == []:
     tmpLog.error("No output is defined in jobOs or --trf or --extOutFile")
     sys.exit(EC_Extractor)
 
+# set extOutFile to runConfig
+if options.extOutFile != []:
+    runConfig.output['extOutFile'] = options.extOutFile
+
 # check ship files in the current dir
 if not runConfig.input.shipFiles:
     runConfig.input.shipFiles = []
@@ -2523,7 +2527,9 @@ if not options.nosubmit:
     # upload proxy for glexec
     if Client.PandaSites.has_key(options.site):
         # delegation
-        delResult = PsubUtils.uploadProxy(options.site,options.myproxy,gridPassPhrase,options.verbose)
+        delResult = PsubUtils.uploadProxy(options.site,options.myproxy,gridPassPhrase,
+                                          Client.PandaClouds[options.cloud]['pilotowners'],
+                                          options.verbose)
         if not delResult:
             tmpLog.error("failed to upload proxy")
             sys.exit(EC_MyProxy)

@@ -221,8 +221,7 @@ class MyProxyInterface(object):
 
     # methods to write/read the DN of the pilot owner 
     def setPilotOwnerDN(self,value):
-        #self.__pilotownerDN = value
-        self.__pilotownerDN = self.__processDN(value)
+        self.__pilotownerDN = value
     def getPilotOwnerDN(self):
         return self.__pilotownerDN
     pilotownerDN = property( getPilotOwnerDN, setPilotOwnerDN )
@@ -334,11 +333,11 @@ class MyProxyInterface(object):
 
         print "=== upload proxy for glexec"
         # command options
-        cmd += ' -s %s'     % self.servername     # myproxy sever name
-        cmd += ' -x -Z %s'  % self.pilotownerDN   # only user with this DN 
-                                                  # is allowed to retrieve it
-        cmd += ' --voms %s' % self.vomsattributes # voms attributes
-        cmd += ' -d'                              # uses DN as username
+        cmd += ' -s %s'       % self.servername     # myproxy sever name
+        cmd += " -x -Z '%s'"  % self.pilotownerDN   # only user with this DN 
+                                                    # is allowed to retrieve it
+        cmd += ' --voms %s'   % self.vomsattributes # voms attributes
+        cmd += ' -d'                                # uses DN as username
         cmd += ' --credname %s' % credname
         if gridPassPhrase != '':
             cmd = 'echo "%s" | %s -S' % (gridPassPhrase,cmd)
