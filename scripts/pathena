@@ -622,6 +622,10 @@ if runConfig.output == {} and options.extOutFile == []:
     tmpLog.error("No output is defined in jobOs or --trf or --extOutFile")
     sys.exit(EC_Extractor)
 
+# set extOutFile to runConfig
+if options.extOutFile != []:
+    runConfig.output['extOutFile'] = options.extOutFile
+
 # check ship files in the current dir
 if not runConfig.input.shipFiles:
     runConfig.input.shipFiles = []
