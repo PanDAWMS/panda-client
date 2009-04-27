@@ -788,7 +788,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
         # loop over all names
         retSites      = []
         retSiteMap    = {}
-        resRetSiteMap = {}        
+        resRetSiteMap = {}
+        resBadStSites = {}
         countSite  = {}
         for tmpName in names:
             # get VUID
@@ -874,6 +875,11 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                                 appendMap[tmpSite] = []
                             if not tmpID in appendMap[tmpSite]:
                                 appendMap[tmpSite].append(tmpID)
+                        else:
+                            # keep bad status sites for info
+                            if not resBadStSites.has_key(tmpSpec['status']):
+                                resBadStSites[tmpSpec['status']] = []
+                            resBadStSites[tmpSpec['status']].append(tmpID)
                 tmpFirstDump = False
         # return list when file check is not required
         if woFileCheck:
@@ -883,7 +889,12 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
             retSiteMap = resRetSiteMap
         # return map
         if verbose:
-            print "getLocations -> %s" % retSiteMap
+            tmpLog.debug("getLocations -> %s" % retSiteMap)
+        # print bad status sites for info    
+        if retSiteMap == {} and resBadStSites != {}:
+            tmpLog.warning("the following sites hold %s but they are not online" % name)
+            for tmpStatus,tmpSites in resBadStSites.iteritems():
+                print "   status=%s : %s" % (tmpStatus,tmpSites)
         return retSiteMap
     except:
         print status,out

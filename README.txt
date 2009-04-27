@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.1.46 (4/28/2009)
+  * improved messages when site is skipped due to bad status
+  * fixed error message when input files are unavailable
+
 0.1.45 (4/27/2009)
   * fixed location lookup for _PERF
 
