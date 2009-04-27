@@ -424,9 +424,9 @@ if options.inDS != '':
             # no location
             if dsLocationMap == {}:
                 if expCloudFlag:
-                    tmpLog.error("could not find supported locations in the %s cloud for %s" % (options.cloud,options.inDS))
+                    tmpLog.error("could not find supported/online locations in the %s cloud for %s" % (options.cloud,options.inDS))
                 else:
-                    tmpLog.error("could not find supported locations for %s" % options.inDS)
+                    tmpLog.error("could not find supported/online locations for %s" % options.inDS)
                 sys.exit(EC_Dataset)
             # run brokerage
             tmpSites = []
@@ -1012,7 +1012,9 @@ if not options.nosubmit:
     # upload proxy for glexec
     if Client.PandaSites.has_key(options.site):
         # delegation
-        delResult = PsubUtils.uploadProxy(options.site,options.myproxy,gridPassPhrase,options.verbose)
+        delResult = PsubUtils.uploadProxy(options.site,options.myproxy,gridPassPhrase,
+                                          Client.PandaClouds[options.cloud]['pilotowners'],
+                                          options.verbose)
         if not delResult:
             tmpLog.error("failed to upload proxy")
             sys.exit(EC_MyProxy)

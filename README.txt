@@ -14,6 +14,20 @@ pathena -h
 
 ** Release Note
 
+0.1.46 (4/28/2009)
+  * improved messages when site is skipped due to bad status
+  * fixed error message when input files are unavailable
+
+0.1.45 (4/27/2009)
+  * fixed location lookup for _PERF
+
+0.1.44 (4/25/2009)
+  * fixed pathena to increment file index for --trf
+  * added show('running') to pbook
+
+0.1.43 (4/24/2009)
+  * set the list of DNs for proxy delegation
+
 0.1.42 (4/17/2009)
   * protection against redundant filename in --extOutFile 
 
