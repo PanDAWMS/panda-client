@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.45 (4/27/2009)
+  * fixed location lookup for _PERF
+
 0.1.44 (4/25/2009)
   * fixed pathena to increment file index for --trf
   * added show('running') to pbook
