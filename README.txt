@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.1.47 (4/30/2009)
+  * fixed pathena for pileup
+  * added message to prun when site is redirected
+
 0.1.46 (4/28/2009)
   * improved messages when site is skipped due to bad status
   * fixed error message when input files are unavailable
