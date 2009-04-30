@@ -736,12 +736,14 @@ def convSrmV2ID(tmpSite):
         if tmpSite.startswith(tmpPrefix):
             tmpSite = re.sub('_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
             tmpSite = re.sub('_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
-            tmpSite = re.sub('_PHYS-[A-Z,0-9]+$','DISK',tmpSite)            
+            tmpSite = re.sub('_PHYS-[A-Z,0-9]+$','DISK',tmpSite)
+            tmpSite = re.sub('_PERF-[A-Z,0-9]+$','DISK',tmpSite)
             return tmpSite
     # patch for SRM v2
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
-    tmpSite = re.sub('-[^-_]+_PHYS-[A-Z,0-9]+$','DISK',tmpSite)                
+    tmpSite = re.sub('-[^-_]+_PHYS-[A-Z,0-9]+$','DISK',tmpSite)
+    tmpSite = re.sub('-[^-_]+_PERF-[A-Z,0-9]+$','DISK',tmpSite)
     # SHOULD BE REMOVED Once all sites and DQ2 migrate to srmv2
     # patch for BNL
     if tmpSite in ['BNLDISK','BNLTAPE']:
@@ -757,8 +759,10 @@ def convSrmV2ID(tmpSite):
         tmpSite = 'VICTORIA'
     # US T2s
     if origSite == tmpSite:
-        tmpSite = re.sub('_[A-Z,0-9]+DISK$','',tmpSite)
-        tmpSite = re.sub('_[A-Z,0-9]+TAPE$','',tmpSite)
+        tmpSite = re.sub('_[A-Z,0-9]+DISK$', '',tmpSite)
+        tmpSite = re.sub('_[A-Z,0-9]+TAPE$', '',tmpSite)
+        tmpSite = re.sub('_PHYS-[A-Z,0-9]+$','',tmpSite)
+        tmpSite = re.sub('_PERF-[A-Z,0-9]+$','',tmpSite)                
     if tmpSite == 'NET2':
         tmpSite = 'BU'
     # return
@@ -772,6 +776,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
     curl.sslCert = _x509()
     curl.sslKey  = _x509()
     curl.verbose = verbose
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
     try:
         errStr = ''
         containerFlag = False
@@ -782,7 +788,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
         # loop over all names
         retSites      = []
         retSiteMap    = {}
-        resRetSiteMap = {}        
+        resRetSiteMap = {}
+        resBadStSites = {}
         countSite  = {}
         for tmpName in names:
             # get VUID
@@ -834,6 +841,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                 countSite[origTmpSite] += origTmpInfo[0]['found']
                 # patch for SRM v2
                 tmpSite = convSrmV2ID(origTmpSite)
+                if verbose:
+                    tmpLog.debug('%s : %s->%s' % (tmpName,origTmpSite,tmpSite))
                 # check cloud, DQ2 ID and status
                 for tmpID,tmpSpec in PandaSites.iteritems():
                     # get list of DQ2 IDs
@@ -866,6 +875,11 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                                 appendMap[tmpSite] = []
                             if not tmpID in appendMap[tmpSite]:
                                 appendMap[tmpSite].append(tmpID)
+                        else:
+                            # keep bad status sites for info
+                            if not resBadStSites.has_key(tmpSpec['status']):
+                                resBadStSites[tmpSpec['status']] = []
+                            resBadStSites[tmpSpec['status']].append(tmpID)
                 tmpFirstDump = False
         # return list when file check is not required
         if woFileCheck:
@@ -875,7 +889,12 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
             retSiteMap = resRetSiteMap
         # return map
         if verbose:
-            print "getLocations -> %s" % retSiteMap
+            tmpLog.debug("getLocations -> %s" % retSiteMap)
+        # print bad status sites for info    
+        if retSiteMap == {} and resBadStSites != {}:
+            tmpLog.warning("the following sites hold %s but they are not online" % name)
+            for tmpStatus,tmpSites in resBadStSites.iteritems():
+                print "   status=%s : %s" % (tmpStatus,tmpSites)
         return retSiteMap
     except:
         print status,out
