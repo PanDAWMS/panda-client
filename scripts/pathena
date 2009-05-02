@@ -1133,9 +1133,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         # number of files per one signal
         if options.nMin < 0:
             while True:
-                str = raw_input("Enter the number of Minimum-Bias files per one signal file : ")
+                tmpStr = raw_input("Enter the number of Minimum-Bias files per one signal file : ")
                 try:
-                    options.nMin = int(str)
+                    options.nMin = int(tmpStr)
                     break
                 except:
                     pass
@@ -1174,9 +1174,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         # number of files per one signal
         if options.nCav < 0:
             while True:
-                str = raw_input("Enter the number of Cavern files per one signal file : ")
+                tmpStr = raw_input("Enter the number of Cavern files per one signal file : ")
                 try:
-                    options.nCav = int(str)
+                    options.nCav = int(tmpStr)
                     break
                 except:
                     pass
@@ -1216,9 +1216,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # number of files per one sub job
             if options.nBeamHalo < 0:
                 while True:
-                    str = raw_input("Enter the number of BeamHalo files per one sub job : ")
+                    tmpStr = raw_input("Enter the number of BeamHalo files per one sub job : ")
                     try:
-                        options.nBeamHalo = int(str)
+                        options.nBeamHalo = int(tmpStr)
                         break
                     except:
                         pass
@@ -1273,9 +1273,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # number of files per one sub job
             if options.nBeamHaloA < 0:
                 while True:
-                    str = raw_input("Enter the number of BeamHalo files for A-side per one sub job : ")
+                    tmpStr = raw_input("Enter the number of BeamHalo files for A-side per one sub job : ")
                     try:
-                        options.nBeamHaloA = int(str)
+                        options.nBeamHaloA = int(tmpStr)
                         break
                     except:
                         pass
@@ -1310,7 +1310,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             else:
                 beamGasDataset = options.beamGasDS
             # query files in dataset
-            tmpLog.error("query files in %s" % beamGasDataset)
+            tmpLog.info("query files in %s" % beamGasDataset)
             tmpList = Client.queryFilesInDataset(beamGasDataset,options.verbose)
 	    beamGasList = []
             for item in tmpList.keys():
@@ -1323,9 +1323,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # number of files per one sub job
             if options.nBeamGas < 0:
                 while True:
-                    str = raw_input("Enter the number of BeamGas files per one sub job : ")
+                    tmpStr = raw_input("Enter the number of BeamGas files per one sub job : ")
                     try:
-                        options.nBeamGas = int(str)
+                        options.nBeamGas = int(tmpStr)
                         break
                     except:
                         pass
@@ -1399,9 +1399,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # number of files per one sub job
             if options.nBeamGasH < 0:
                 while True:
-                    str = raw_input("Enter the number of BeamGas files for Hydrogen per one sub job : ")
+                    tmpStr = raw_input("Enter the number of BeamGas files for Hydrogen per one sub job : ")
                     try:
-                        options.nBeamGasH = int(str)
+                        options.nBeamGasH = int(tmpStr)
                         break
                     except:
                         pass

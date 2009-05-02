@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.48 (5/2/2009)
+  * fixed pollution of built-in function in pathena
+
 0.1.47 (4/30/2009)
   * fixed pathena for pileup
   * added message to prun when site is redirected
