@@ -297,7 +297,7 @@ class PBookCore:
             jobList.append(pandaIDs[idx])
         # no failed job
         if jobList == []:
-            tmpLog.info('No failed jobs to be retried')
+            tmpLog.info('No failed jobs to be retried for %s' % JobID)
             return
         # get full job spec
         tmpLog.info("Retrying JobID=%s ..." % JobID)
@@ -480,13 +480,24 @@ For more info, do help(show) for example."""
 
 
     # retry
-    def retry(JobID):
-        """Retry failed subJobs in JobID
+    def retry(JobID,upperJobID=None):
+        """Retry failed subJobs in JobID. Jobs between JobID and UpperJobID will be retried if upperJobID is given
 
          example:
            >>> retry(15)
+           >>> retry(15,20)
         """
-        pbookCore.retry(JobID)
+        if upperJobID != None:
+            # check range
+            if JobID > upperJobID:
+                tmpLog = PLogger.getPandaLogger()
+                tmpLog.error("upper JobID must be larger than %s" % JobID)
+            else:
+                # retry jobs between the range
+                for tmpJobID in range(JobID,upperJobID+1):
+                    pbookCore.retry(tmpJobID)
+        else:            
+            pbookCore.retry(JobID)
 
 
     # synchronize local repository

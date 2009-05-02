@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.49 (5/3/2009)
+  * added retry(X,Y) to pbook
+
 0.1.48 (5/2/2009)
   * fixed pollution of built-in function in pathena
 
