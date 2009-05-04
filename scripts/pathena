@@ -1537,6 +1537,17 @@ def getIndex(list,pattern):
                 maxIndex = tmpIndex
     return maxIndex
 
+
+# get files for individualOutDS
+def getFilesWithSuffix(fileMap,suffix):
+    tmpDsName = "%s_%s" % (options.outDS,suffix)
+    tmpLog.info("query files in %s" % tmpDsName)
+    tmpList = Client.queryFilesInDataset(tmpDsName,options.verbose)
+    for tmpLFN,tmpVal in tmpList.iteritems():
+        if not tmpLFN in fileMap:
+            fileMap[tmpLFN] = tmpVal
+        
+
 # increase index
 if outputDSexist:
     # query files in dataset from DDM
@@ -1547,6 +1558,52 @@ if outputDSexist:
     for tmpLFN in tmpMap[options.outDS]:
         if not tmpLFN in tmpList:
             tmpList[tmpLFN] = None
+    # query files for individualOutDS:
+    if options.individualOutDS:
+        if runConfig.output.outHist:
+            getFilesWithSuffix(tmpList,'HIST')
+        if runConfig.output.outRDO:
+            getFilesWithSuffix(tmpList,'RDO')
+        if runConfig.output.outEDS:
+            getFilesWithSuffix(tmpList,'ESD')
+        if runConfig.output.outAOD:
+            getFilesWithSuffix(tmpList,'AOD')
+        if runConfig.output.outTAG:
+            getFilesWithSuffix(tmpList,'TAG')
+        if runConfig.output.outStream1:
+            getFilesWithSuffix(tmpList,'Stream1')
+        if runConfig.output.outStream2:
+            getFilesWithSuffix(tmpList,'Stream2')
+        if runConfig.output.outBS:
+            getFilesWithSuffix(tmpList,'BS')
+        if runConfig.output.outSelBS:    
+            getFilesWithSuffix(tmpList,'SelBS')
+        if runConfig.output.outNtuple:    
+            for sName in runConfig.output.outNtuple:
+                getFilesWithSuffix(tmpList,sName)
+        if runConfig.output.outTHIST:
+            for sName in runConfig.output.outTHIST:
+                getFilesWithSuffix(tmpList,sName)
+        if runConfig.output.outAANT:
+            for sName in runConfig.output.outAANT:
+                getFilesWithSuffix(tmpList,sName)
+        if runConfig.output.outIROOT:
+            for sIndex,sName in enumerate(runConfig.output.outIROOT):
+                getFilesWithSuffix(tmpList,'iROOT%s' % sIndex)
+        if runConfig.output.extOutFile:
+            for sIndex,sName in enumerate(options.extOutFile):
+                getFilesWithSuffix(tmpList,'EXT%s' % sIndex)
+        if runConfig.output.outStreamG:
+            for sName in runConfig.output.outStreamG:
+                getFilesWithSuffix(tmpList,sName)                
+        if runConfig.output.outMeta:
+            iMeta = 0
+            for sName,sAsso in runConfig.output.outMeta:
+                getFilesWithSuffix(tmpList,'META%s' % iMeta)
+                iMeta += 1
+        if runConfig.output.outMS:
+            for sName,sAsso in runConfig.output.outMS:
+                getFilesWithSuffix(tmpList,sName)                                
     # index
     indexHIST    = getIndex(tmpList,"%s\.hist\._(\d+)\.root" % options.outDS)
     indexRDO     = getIndex(tmpList,"%s\.RDO\._(\d+)\.pool\.root" % options.outDS)    
