@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.50 (5/4/2009)
+  * fixed file indexing for --individualOutDS
+
 0.1.49 (5/3/2009)
   * added retry(X,Y) to pbook
 
