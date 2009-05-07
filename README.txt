@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.51 (5/6/2009)
+  * try cmt in a sub dir when it is executed in top dir
+
 0.1.50 (5/4/2009)
   * fixed file indexing for --individualOutDS
 
