@@ -152,9 +152,13 @@ def convToCompact(fList):
     return retStr
 
 
-# get Athena version
-def getAthenaVer():
-    # get project parameters
+# get CMT projects
+def getCmtProjects(dir='.'):
+    # keep current dir
+    curdir = os.getcwd()
+    # change dir
+    os.chdir(dir)
+    # get projects
     out = commands.getoutput('cmt show projects')
     lines = out.split('\n')
     # remove CMT warnings
@@ -163,10 +167,28 @@ def getAthenaVer():
     for line in tupLines:
         if not line.startswith('#'):
             lines.append(line)
+    # back to the current dir
+    os.chdir(curdir)
+    # return
+    return lines,out         
+    
+    
+# get Athena version
+def getAthenaVer():
+    # get project parameters
+    lines,out = getCmtProjects()
     if len(lines)<2:
-        print out
-        print "ERROR : cmt show projects"
-        return False,{}
+        # make a tmp dir to execute cmt
+        tmpDir = 'cmttmp.%s' % commands.getoutput('uuidgen')
+        os.mkdir(tmpDir)
+        # try cmt under a subdir since it doesn't work in top dir
+        lines,tmpOut = getCmtProjects(tmpDir)
+        # delete the tmp dir
+        commands.getoutput('rm -rf %s' % tmpDir)
+        if len(lines)<2:
+            print out
+            print "ERROR : cmt show projects"
+            return False,{}
 
     # private work area
     res = re.search('\(in ([^\)]+)\)',lines[0])
