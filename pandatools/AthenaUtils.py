@@ -152,9 +152,13 @@ def convToCompact(fList):
     return retStr
 
 
-# get Athena version
-def getAthenaVer():
-    # get project parameters
+# get CMT projects
+def getCmtProjects(dir='.'):
+    # keep current dir
+    curdir = os.getcwd()
+    # change dir
+    os.chdir(dir)
+    # get projects
     out = commands.getoutput('cmt show projects')
     lines = out.split('\n')
     # remove CMT warnings
@@ -163,16 +167,36 @@ def getAthenaVer():
     for line in tupLines:
         if not line.startswith('#'):
             lines.append(line)
+    # back to the current dir
+    os.chdir(curdir)
+    # return
+    return lines,out         
+    
+    
+# get Athena version
+def getAthenaVer():
+    # get logger
+    tmpLog = PLogger.getPandaLogger()            
+    # get project parameters
+    lines,out = getCmtProjects()
     if len(lines)<2:
-        print out
-        print "ERROR : cmt show projects"
-        return False,{}
+        # make a tmp dir to execute cmt
+        tmpDir = 'cmttmp.%s' % commands.getoutput('uuidgen')
+        os.mkdir(tmpDir)
+        # try cmt under a subdir since it doesn't work in top dir
+        lines,tmpOut = getCmtProjects(tmpDir)
+        # delete the tmp dir
+        commands.getoutput('rm -rf %s' % tmpDir)
+        if len(lines)<2:
+            print out
+            tmpLog.error("cmt gave wrong info")
+            return False,{}
 
     # private work area
     res = re.search('\(in ([^\)]+)\)',lines[0])
     if res==None:
         print lines[0]
-        print "ERROR : could not get path to private work area"
+        tmpLog.error("could not get path to private work area")
         return False,{}
     workArea = os.path.realpath(res.group(1))
 
@@ -195,7 +219,7 @@ def getAthenaVer():
                    elif re.search('/dev',line) != None:
                       nightVer  = '/dev'
                    else:
-                      print "ERROR : unsupported nightly %s" % line
+                      tmpLog.error("unsupported nightly %s" % line)
                       return False,{}
                 break
             elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT']:
@@ -215,6 +239,14 @@ def getAthenaVer():
         'cacheVer' : cacheVer,
         'nightVer' : nightVer,
            }
+    # check error
+    if athenaVer == '':
+        tmpStr = ''
+        for line in lines:
+            tmpStr += (line+'\n')
+        tmpLog.info('cmt showed\n'+tmpStr)
+        tmpLog.error("could not get Athena version. perhaps your requirements file doesn't have ATLAS_TEST_AREA")
+        return False,retVal
     # return
     return True,retVal
 
