@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.53 (5/8/2009)
+  * changed default server to CERN
+
 0.1.52 (5/8/2009)
   * fixed Athena version check in pathena
 

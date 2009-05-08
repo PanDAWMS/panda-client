@@ -23,11 +23,11 @@ import PLogger
 try:
     baseURL = os.environ['PANDA_URL']
 except:
-    baseURL = 'http://pandasrv.usatlas.bnl.gov:25080/server/panda'
+    baseURL = 'http://pandaserver.cern.ch:25080/server/panda'
 try:
     baseURLSSL = os.environ['PANDA_URL_SSL']
 except:
-    baseURLSSL = 'https://pandasrv.usatlas.bnl.gov:25443/server/panda'
+    baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
 
 baseURLDQ2     = 'http://atlascc.cern.ch/dq2'
 baseURLDQ2SSL  = 'https://atlascc.cern.ch:443/dq2'
