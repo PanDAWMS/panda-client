@@ -175,6 +175,8 @@ def getCmtProjects(dir='.'):
     
 # get Athena version
 def getAthenaVer():
+    # get logger
+    tmpLog = PLogger.getPandaLogger()            
     # get project parameters
     lines,out = getCmtProjects()
     if len(lines)<2:
@@ -187,14 +189,14 @@ def getAthenaVer():
         commands.getoutput('rm -rf %s' % tmpDir)
         if len(lines)<2:
             print out
-            print "ERROR : cmt show projects"
+            tmpLog.error("cmt gave wrong info")
             return False,{}
 
     # private work area
     res = re.search('\(in ([^\)]+)\)',lines[0])
     if res==None:
         print lines[0]
-        print "ERROR : could not get path to private work area"
+        tmpLog.error("could not get path to private work area")
         return False,{}
     workArea = os.path.realpath(res.group(1))
 
@@ -217,7 +219,7 @@ def getAthenaVer():
                    elif re.search('/dev',line) != None:
                       nightVer  = '/dev'
                    else:
-                      print "ERROR : unsupported nightly %s" % line
+                      tmpLog.error("unsupported nightly %s" % line)
                       return False,{}
                 break
             elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT']:
@@ -237,6 +239,14 @@ def getAthenaVer():
         'cacheVer' : cacheVer,
         'nightVer' : nightVer,
            }
+    # check error
+    if athenaVer == '':
+        tmpStr = ''
+        for line in lines:
+            tmpStr += (line+'\n')
+        tmpLog.info('cmt showed\n'+tmpStr)
+        tmpLog.error("could not get Athena version. perhaps your requirements file doesn't have ATLAS_TEST_AREA")
+        return False,retVal
     # return
     return True,retVal
 

@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.52 (5/8/2009)
+  * fixed Athena version check in pathena
+
 0.1.51 (5/6/2009)
   * try cmt in a sub dir when it is executed in top dir
 
