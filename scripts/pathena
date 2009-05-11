@@ -491,14 +491,6 @@ groupArea = retA['groupArea']
 cacheVer  = retA['cacheVer'] 
 nightVer  = retA['nightVer']
 
-# error    
-if athenaVer == '':
-    tmpStr = ''
-    for line in lines:
-        tmpStr += ('\n'+line)
-    tmpLog.error("could not get Athena version from "+tmpStr)
-    sys.exit(EC_CMT)
-        
 # get run directory
 # remove special characters                    
 sString=re.sub('[\+]','.',workArea)

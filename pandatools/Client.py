@@ -23,11 +23,11 @@ import PLogger
 try:
     baseURL = os.environ['PANDA_URL']
 except:
-    baseURL = 'http://pandasrv.usatlas.bnl.gov:25080/server/panda'
+    baseURL = 'http://pandaserver.cern.ch:25080/server/panda'
 try:
     baseURLSSL = os.environ['PANDA_URL_SSL']
 except:
-    baseURLSSL = 'https://pandasrv.usatlas.bnl.gov:25443/server/panda'
+    baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
 
 baseURLDQ2     = 'http://atlascc.cern.ch/dq2'
 baseURLDQ2SSL  = 'https://atlascc.cern.ch:443/dq2'
@@ -1327,9 +1327,9 @@ def getDefaultSpaceToken(fqans,defaulttoken):
 # use dev server
 def useDevServer():
     global baseURL
-    baseURL = 'http://pandadev02.usatlas.bnl.gov:26080/server/panda'
+    baseURL = 'http://voatlas19.cern.ch:26080/server/panda'
     global baseURLSSL
-    baseURLSSL = 'https://pandadev02.usatlas.bnl.gov:26443/server/panda'    
+    baseURLSSL = 'https://voatlas19.cern.ch:26443/server/panda'    
 
 
 # set server
