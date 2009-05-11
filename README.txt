@@ -14,7 +14,11 @@ pathena -h
 
 ** Release Note
 
-0.1.53 (5/8/2009)
+0.1.54 (5/11/2009)
+  * fixed Athena ver extraction for non-AtlastOffline env
+  * changed URLs of dev server
+
+0.1.53 (5/11/2009)
   * changed default server to CERN
 
 0.1.52 (5/8/2009)

@@ -209,7 +209,8 @@ def getAthenaVer():
         res = re.search('\(in ([^\)]+)\)',line)
         if res != None:
             items = line.split()
-            if items[0] in ('dist','AtlasRelease','AtlasOffline'):
+            if items[0] in ('dist','AtlasRelease','AtlasOffline','AtlasAnalysis','AtlasTrigger',
+                            'AtlasReconstruction'):
                 # Atlas release
                 athenaVer = os.path.basename(res.group(1))
                 # nightly

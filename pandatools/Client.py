@@ -1327,9 +1327,9 @@ def getDefaultSpaceToken(fqans,defaulttoken):
 # use dev server
 def useDevServer():
     global baseURL
-    baseURL = 'http://pandadev02.usatlas.bnl.gov:26080/server/panda'
+    baseURL = 'http://voatlas19.cern.ch:26080/server/panda'
     global baseURLSSL
-    baseURLSSL = 'https://pandadev02.usatlas.bnl.gov:26443/server/panda'    
+    baseURLSSL = 'https://voatlas19.cern.ch:26443/server/panda'    
 
 
 # set server
