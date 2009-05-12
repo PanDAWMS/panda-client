@@ -491,14 +491,6 @@ groupArea = retA['groupArea']
 cacheVer  = retA['cacheVer'] 
 nightVer  = retA['nightVer']
 
-# error    
-if athenaVer == '':
-    tmpStr = ''
-    for line in lines:
-        tmpStr += ('\n'+line)
-    tmpLog.error("could not get Athena version from "+tmpStr)
-    sys.exit(EC_CMT)
-        
 # get run directory
 # remove special characters                    
 sString=re.sub('[\+]','.',workArea)
@@ -2402,6 +2394,28 @@ for iSubJob in range(options.split):
             if not outMap.has_key('IROOT'):
                 outMap['IROOT'] = []
             outMap['IROOT'].append((sAsso,file.lfn))
+    if runConfig.output.outUserData:
+        for sAsso in runConfig.output.outUserData:
+            # look for associated LFN
+            foundLFN = ''            
+            if outMap.has_key(sAsso):
+                # Stream1,2
+                foundLFN = outMap[sAsso]
+            elif sAsso in ['StreamRDO','StreamESD','StreamAOD']:
+                # RDO,ESD,AOD
+                stKey = re.sub('^Stream','',sAsso)
+                if outMap.has_key(stKey):
+                    foundLFN = outMap[stKey]
+            else:
+                # general stream
+                if outMap.has_key('StreamG'):
+                    for tmpStName,tmpLFN in outMap['StreamG']:
+                        if tmpStName == sAsso:
+                            foundLFN = tmpLFN
+            if foundLFN != '':
+                if not outMap.has_key('UserData'):
+                    outMap['UserData'] = []
+                outMap['UserData'].append(foundLFN)
                                             
     # log
     file = FileSpec()
