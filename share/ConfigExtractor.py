@@ -365,18 +365,25 @@ if strGenStream != '':
     _printConfig(' Name: %s'% strGenFName)
 
 # THIST
+userDataSvcStream = {}
 THistSvc = _Service( "THistSvc" )
 if hasattr(THistSvc.Output,'__len__') and len(THistSvc.Output):
     for item in THistSvc.Output:
         sName = item.split()[0]
         if not sName in aantStream:
-            _printConfig('Output=THIST %s' % sName)
             # extract name
             fmatch = re.search("DATAFILE=(\S+)\s",item)
+            fName = None
             if fmatch != None:
                 fName = fmatch.group(1)
                 fName = re.sub('[\"\']','',fName)
                 fName = fName.split('/')[-1]
+            # keep output of UserDataSvc
+            if sName in ['userdataoutputstream']:
+                userDataSvcStream[sName] = fName
+                continue
+            _printConfig('Output=THIST %s' % sName)
+            if fmatch != None:
                 _printConfig(' Name: %s'% fName)
 
 # ROOT outputs for interactive Athena
@@ -414,6 +421,23 @@ try:
             _printConfig(' Name: %s'% tmpFileBaseName)
 except:
     pass
+
+# UserDataSvc
+if userDataSvcStream != {}:
+    for userStName,userFileName in userDataSvcStream.iteritems():
+        findStream = False
+        # look for associated stream
+        for stName,stOut in streamOutputFiles.iteritems():
+            if userFileName == stOut:
+                _printConfig('Output=USERDATA %s' % stName)
+                findStream = True
+                break
+        # use THIST if not found
+        if not findStream:
+            _printConfig('Output=THIST %s' % userStName)
+            _printConfig(' Name: %s'% userFileName)
+        
+        
 
 ######################
 # random number

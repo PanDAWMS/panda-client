@@ -365,6 +365,12 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
                         outputConfig['outMeta'] = []
                     tmpItems = match[0].split()
                     outputConfig['outMeta'].append(tuple(tmpItems[1:]))
+                # UserDataSvc
+                if match[0].startswith('Output=USERDATA'):            
+                    if not outputConfig.has_key('outUserData'):
+                        outputConfig['outUserData'] = []
+                    tmpItems = match[0].split()
+                    outputConfig['outUserData'].append(tmpItems[-1])
                 # MultipleStream
                 if match[0].startswith('Output=MS'):
                     if not outputConfig.has_key('outMS'):
