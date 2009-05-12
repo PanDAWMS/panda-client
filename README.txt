@@ -18,7 +18,7 @@ pathena -h
   * fixed pathena for UserDataSvc
 
 0.1.54 (5/11/2009)
-  * fixed Athena ver extraction for non-AtlastOffline env
+  * fixed Athena ver extraction for non-AtlasOffline env
   * changed URLs of dev server
 
 0.1.53 (5/11/2009)
