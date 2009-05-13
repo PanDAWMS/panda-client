@@ -649,7 +649,7 @@ from taskbuffer.FileSpec import FileSpec
 
 
 # max total filesize on each WN
-maxTotalSize = long(5*1024*1024*1024)
+maxTotalSize = long(10*1024*1024*1024)
 
 # set number of files per job
 if options.inDS != '' and options.nFilesPerJob == None:

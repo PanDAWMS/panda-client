@@ -14,6 +14,25 @@ pathena -h
 
 ** Release Note
 
+0.1.56 (5/13/2009)
+  * fixed zero divide in pathena
+
+0.1.55 (5/12/2009)
+  * fixed pathena for UserDataSvc
+
+0.1.54 (5/11/2009)
+  * fixed Athena ver extraction for non-AtlasOffline env
+  * changed URLs of dev server
+
+0.1.53 (5/11/2009)
+  * changed default server to CERN
+
+0.1.52 (5/8/2009)
+  * fixed Athena version check in pathena
+
+0.1.51 (5/6/2009)
+  * try cmt in a sub dir when it is executed in top dir
+
 0.1.50 (5/4/2009)
   * fixed file indexing for --individualOutDS
 
