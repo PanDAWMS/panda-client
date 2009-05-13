@@ -2625,6 +2625,19 @@ for iSubJob in range(options.split):
 
     jobList.append(jobR)
 
+
+# check output dataset length for individualOutDS
+tmpIdvOutDsList = []
+if options.individualOutDS:
+    for tmpFile in jobList[-1].Files:
+        if tmpFile.type in ['output','log']:
+            if not tmpFile.dataset in tmpIdvOutDsList:
+                if not PsubUtils.checkOutDsName(tmpFile.dataset,distinguishedName,options.official):
+                    tmpLog.info("a suffix is added to datasetname for each output stream when --individualOutDS is used. e.g. outDS_suffix:%s. Please use shorter name for --outDS" % tmpFile.dataset)
+                    sys.exit(EC_Config)
+                tmpIdvOutDsList.append(tmpFile.dataset)
+
+
 # no submit 
 if not options.nosubmit:
 
