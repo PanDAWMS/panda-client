@@ -45,7 +45,7 @@ suffixShadow = "_shadow"
 
 
 # max size per job
-maxTotalSize = long(5*1024*1024*1024)
+maxTotalSize = long(10*1024*1024*1024)
         
 
 usage = """%prog [options] <jobOption1.py> [<jobOption2.py> [...]]
@@ -1056,6 +1056,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     tmpNSplit += 1
                 # calculate N files
                 divF,modF = divmod(len(inputFileList),tmpNSplit)
+		if divF == 0:
+		    divF = 1
 		# reset tmpNSplit
                 tmpNSplit,tmpMod = divmod(len(inputFileList),divF)
                 if tmpMod != 0:

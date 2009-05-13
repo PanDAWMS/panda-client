@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.56 (5/13/2009)
+  * fixed zero divide in pathena
+
 0.1.55 (5/12/2009)
   * fixed pathena for UserDataSvc
 
