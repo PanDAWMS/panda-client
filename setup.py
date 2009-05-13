@@ -9,8 +9,15 @@ release_version = PandaToolsPkgInfo.release_version
 import os
 import re
 from distutils.core import setup
+from distutils.command.install import install as install_org
 from distutils.command.install_data import install_data as install_data_org
 
+# set overall prefix for bdist_rpm
+class install_panda(install_org):
+    def initialize_options (self):
+        install_org.initialize_options(self)
+        self.prefix = '/opt/panda'
+                        
 # generates files using templates and install them
 class install_data_panda (install_data_org):
     def initialize_options (self):
@@ -32,11 +39,13 @@ class install_data_panda (install_data_org):
                                    ('install_scripts','install_scripts'))
                                             
     def run (self):
+        rpmInstall = False
         # set install_dir
         if self.install_dir == None:
             if self.root != None:
                 # rpm
                 self.install_dir = self.root
+                rpmInstall = True
             else:
                 # sdist
                 self.install_dir = self.prefix
@@ -79,7 +88,10 @@ class install_data_panda (install_data_org):
                     # remove build/*/dump for bdist
                     patt = re.sub('build/[^/]+/dumb','',patt)
                     # remove /var/tmp/*-buildroot for bdist_rpm
-                    patt = re.sub('/var/tmp/.*-buildroot','',patt)                    
+                    patt = re.sub('/var/tmp/.*-buildroot','',patt)
+                    # patch for bdist_rpm
+                    if rpmInstall and item in ['install_dir'] and patt=='':
+                        patt = self.prefix
                     # replace
                     filedata = filedata.replace('@@%s@@' % item, patt)
                 # write to dest
@@ -139,5 +151,6 @@ setup(
                     ),
                                      
                    ],
-    cmdclass={'install_data': install_data_panda}
+    cmdclass={'install': install_panda,
+              'install_data': install_data_panda}
 )

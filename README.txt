@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * use /opt/panda for rpm to avoid mixture of site-packages
+
 0.1.56 (5/13/2009)
   * fixed zero divide in pathena
 
