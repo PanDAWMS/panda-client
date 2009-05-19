@@ -607,11 +607,22 @@ else:
     # warning if no output
     if not oneOut:
         if not options.ara:
-            tmpLog.warning("argument for --trf doesn't contain any %OUT")
+            tmpLog.warning("argument of --trf doesn't contain any %OUT")
 
 # no output jobs
-if runConfig.output == {} and options.extOutFile == []:
-    tmpLog.error("No output is defined in jobOs or --trf or --extOutFile")
+tmpOutKeys = runConfig.output.keys()
+for tmpIgnorKey in ['outUserData','alloutputs']:
+    try:
+        tmpOutKeys.remove(tmpIgnorKey)
+    except:
+        pass
+if tmpOutKeys == [] and options.extOutFile == []:
+    errStr  = "No output stream was extracted from jobOs or --trf. "
+    if not options.trf:
+	errStr += "If your job defines an output without Athena framework "
+	errStr += "(e.g., using ROOT.TFile.Open instead of THistSvc) "
+	errStr += "please specify the output filename by using --extOutFile"
+    tmpLog.error(errStr)  
     sys.exit(EC_Extractor)
 
 # set extOutFile to runConfig

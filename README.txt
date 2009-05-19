@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.58 (5/19/2009)
+  * fixed no-output checking in pathena
+
 0.1.57 (5/13/2009)
   * use /opt/panda for rpm to avoid mixture of site-packages
   * protection against too long output datasetname
