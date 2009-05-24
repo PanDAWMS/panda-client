@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.59 (5/24/2009)
+  * fixed Panda SiteID lookup with DQ2 SiteID to skip long/test sites
+
 0.1.58 (5/19/2009)
   * fixed no-output checking in pathena
 

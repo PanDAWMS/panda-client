@@ -621,7 +621,9 @@ if tmpOutKeys == [] and options.extOutFile == []:
     if not options.trf:
 	errStr += "If your job defines an output without Athena framework "
 	errStr += "(e.g., using ROOT.TFile.Open instead of THistSvc) "
-	errStr += "please specify the output filename by using --extOutFile"
+	errStr += "please specify the output filename by using --extOutFile. "
+	errStr += "Or if you define the output with a relatively new mechanism "
+	errStr += "please report it to Savannah to update the automatic extractor" 
     tmpLog.error(errStr)  
     sys.exit(EC_Extractor)
 
