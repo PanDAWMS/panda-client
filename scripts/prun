@@ -377,9 +377,15 @@ if not PsubUtils.checkValidCloud(options.cloud):
 # get files in input dataset
 if options.inDS != '':
     # query files in shadow dataset
-    shadowList = {}
+    shadowList = []
     if shadowDSexist:
-	shadowList = Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose)
+	for tmpItem in Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose):
+            shadowList.append(tmpItem)
+        # query files in PandaDB
+        tmpShadowList = Client.getFilesInUseForAnal(options.outDS,options.verbose)
+        for tmpItem in tmpShadowList:
+            if not tmpItem in shadowList:
+                shadowList.append(tmpItem)
     elif outputContExist:
 	shadowList = Client.getFilesInShadowDataset(options.outDS,suffixShadow,options.verbose)
     # query files in dataset
@@ -402,8 +408,9 @@ if options.inDS != '':
                 del inputFileMap[tmpLFN]
                 continue
         # files in shadow
-        if tmpLFN in shadowList.keys():
-            del inputFileMap[tmpLFN]            
+        if tmpLFN in shadowList:
+            if inputFileMap.has_key(tmpLFN):
+                del inputFileMap[tmpLFN]            
             continue
         # files to be used
         if filesToBeUsed != []:
