@@ -1298,7 +1298,7 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False):
 def isExcudedSite(tmpID):
     excludedSite = False
     for exWord in ['ANALY_LONG_','_LOCAL','_test']:
-        if re.search(exWord,tmpID) != None:
+        if re.search(exWord,tmpID,re.I) != None:
             excludedSite = True
             break
     return excludedSite
