@@ -615,6 +615,12 @@ def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
             if not tmpItem in fileList:
                 # append
                 fileList.append(tmpItem)
+        # query files in PandaDB
+        tmpList = getFilesInUseForAnal(tmpEle,verbose)
+        for tmpItem in tmpList:
+            if not tmpItem in fileList:
+                # append
+                fileList.append(tmpItem)
     return fileList
     
 
@@ -1511,6 +1517,25 @@ def getFullJobStatus(ids,verbose):
         type, value, traceBack = sys.exc_info()
         print "ERROR getFullJobStatus : %s %s" % (type,value)
         return EC_Failed,None
+
+
+# get input files currently in used for analysis
+def getFilesInUseForAnal(outDataset,verbose):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/getFilesInUseForAnal'
+    data = {'outDataset':outDataset}
+    status,output = curl.post(url,data)
+    try:
+        return pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR getFilesInUseForAnal : %s %s" % (type,value)
+        sys.exit(EC_Failed)
 
 
 # set tmp dir
