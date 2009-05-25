@@ -156,6 +156,9 @@ def getCloudUsingFQAN(defaultCloud,verbose=False):
 def convertDQ2toPandaID(site):
     keptSite = ''
     for tmpID,tmpSpec in Client.PandaSites.iteritems():
+        # # exclude long,xrootd,local queues
+        if Client.isExcudedSite(tmpID):
+            continue
         # get list of DQ2 IDs
         srmv2ddmList = []
         for tmpDdmID in tmpSpec['setokens'].values():

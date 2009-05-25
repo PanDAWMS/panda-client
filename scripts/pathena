@@ -621,7 +621,9 @@ if tmpOutKeys == [] and options.extOutFile == []:
     if not options.trf:
 	errStr += "If your job defines an output without Athena framework "
 	errStr += "(e.g., using ROOT.TFile.Open instead of THistSvc) "
-	errStr += "please specify the output filename by using --extOutFile"
+	errStr += "please specify the output filename by using --extOutFile. "
+	errStr += "Or if you define the output with a relatively new mechanism "
+	errStr += "please report it to Savannah to update the automatic extractor" 
     tmpLog.error(errStr)  
     sys.exit(EC_Extractor)
 
@@ -863,7 +865,13 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         # query files in shadow dataset
         shadowList = []
         if shadowDSexist:
-            shadowList = Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose)
+            for tmpItem in Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose):
+                shadowList.append(tmpItem)
+            # query files in PandaDB
+            tmpShadowList = Client.getFilesInUseForAnal(options.outDS,options.verbose)
+            for tmpItem in tmpShadowList:
+                if not tmpItem in shadowList:
+                    shadowList.append(tmpItem)
         elif outputContExist:
             shadowList = Client.getFilesInShadowDataset(options.outDS,suffixShadow,options.verbose)
         # query files in dataset
@@ -967,16 +975,17 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             if fileName in missList:
                 del inputFileMap[fileName]                    
                 continue
-        # check with shadow
-        if len(inputFileMap) == len(shadowList):
+        # remove shadow
+        for fileName in shadowList:
+            if inputFileMap.has_key(fileName):
+                del inputFileMap[fileName]
+        # no input
+        if len(inputFileMap) == 0:
             tmpStr  = "all input files had already been used in %s\n" % options.inDS
             tmpStr += "  pathena runs on files which were failed or were not used in\n"
             tmpStr += "  previous submissions if it runs with the same inDS and outDS"
             tmpLog.error(tmpStr)
             sys.exit(EC_Dataset)
-        # remove shadow
-        for fileName in shadowList:
-            del inputFileMap[fileName]
         # make list
         inputFileList = inputFileMap.keys()
         inputFileList.sort()
@@ -1832,7 +1841,10 @@ else:
 if options.inDS != '' and options.burstSubmit == '':
     tmpLog.info("%s files are missing or skipped at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
-    
+
+# disp datasetname to identify inputs
+commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
+
 # split job
 #@ Loop for jobs here
 for iSubJob in range(options.split):
@@ -1924,7 +1936,7 @@ for iSubJob in range(options.split):
 		file.md5sum         = vals['md5sum']
                 file.dataset        = options.inDS
                 file.prodDBlock     = options.inDS
-                file.dispatchDBlock = options.inDS
+                file.dispatchDBlock = commonDispName
                 file.type           = 'input'
                 file.status         = 'ready'
                 jobR.addFile(file)
@@ -1970,7 +1982,7 @@ for iSubJob in range(options.split):
                 file.md5sum         = vals['md5sum']
                 file.dataset        = minbiasDataset
                 file.prodDBlock     = minbiasDataset
-                file.dispatchDBlock = minbiasDataset
+                file.dispatchDBlock = commonDispName
                 file.type       = 'input'
                 file.status     = 'ready'
                 jobR.addFile(file)
@@ -1990,7 +2002,7 @@ for iSubJob in range(options.split):
                 file.md5sum         = vals['md5sum']
                 file.dataset        = cavernDataset
                 file.prodDBlock     = cavernDataset
-                file.dispatchDBlock = cavernDataset
+                file.dispatchDBlock = commonDispName
                 file.type           = 'input'
                 file.status         = 'ready'
                 jobR.addFile(file)
@@ -2028,17 +2040,17 @@ for iSubJob in range(options.split):
                     # integrated dataset
                     file.dataset        = beamHaloDataset
                     file.prodDBlock     = beamHaloDataset
-                    file.dispatchDBlock = beamHaloDataset
+                    file.dispatchDBlock = commonDispName
                 else:
                     # separate datasets
                     if tmpIndex < options.nBeamHaloA:
                         file.dataset        = beamHaloAdataset
                         file.prodDBlock     = beamHaloAdataset
-                        file.dispatchDBlock = beamHaloAdataset
+                        file.dispatchDBlock = commonDispName
                     else:
                         file.dataset        = beamHaloCdataset
                         file.prodDBlock     = beamHaloCdataset
-                        file.dispatchDBlock = beamHaloCdataset
+                        file.dispatchDBlock = commonDispName
                 file.type           = 'input'
                 file.status         = 'ready'
                 jobR.addFile(file)
@@ -2082,21 +2094,21 @@ for iSubJob in range(options.split):
                     # integrated dataset
                     file.dataset        = beamGasDataset
                     file.prodDBlock     = beamGasDataset
-                    file.dispatchDBlock = beamGasDataset
+                    file.dispatchDBlock = commonDispName
                 else:
                     # separate datasets
                     if tmpIndex < options.nBeamGasH:
                         file.dataset        = beamGasHdataset
                         file.prodDBlock     = beamGasHdataset
-                        file.dispatchDBlock = beamGasHdataset
+                        file.dispatchDBlock = commonDispName
                     elif tmpIndex < (options.nBeamGasH+options.nBeamGasC):
                         file.dataset        = beamGasCdataset
                         file.prodDBlock     = beamGasCdataset
-                        file.dispatchDBlock = beamGasCdataset
+                        file.dispatchDBlock = commonDispName
                     else:
                         file.dataset        = beamGasOdataset
                         file.prodDBlock     = beamGasOdataset
-                        file.dispatchDBlock = beamGasOdataset
+                        file.dispatchDBlock = commonDispName
                 file.type           = 'input'
                 file.status         = 'ready'
                 jobR.addFile(file)
