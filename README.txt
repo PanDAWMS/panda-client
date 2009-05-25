@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.61 (5/25/2009)
+  * fixed AthenaUtils.archiveInstallArea for --noBuild
+
 0.1.60 (5/24/2009)
   * fixed resubmission of pathena/prun to skip input files which are being used by active jobs
 
