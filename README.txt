@@ -14,6 +14,18 @@ pathena -h
 
 ** Release Note
 
+0.1.62 (5/28/2009)
+  * fixed convSrmV2ID for DESY-*
+
+0.1.61 (5/25/2009)
+  * fixed AthenaUtils.archiveInstallArea for --noBuild
+
+0.1.60 (5/24/2009)
+  * fixed resubmission of pathena/prun to skip input files which are being used by active jobs
+
+0.1.59 (5/24/2009)
+  * fixed Panda SiteID lookup with DQ2 SiteID to skip long/test sites
+
 0.1.58 (5/19/2009)
   * fixed no-output checking in pathena
 

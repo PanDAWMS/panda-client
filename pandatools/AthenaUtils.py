@@ -839,7 +839,7 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
                         if out != '':    
                             print out
     # append groupArea to sources
-    if groupArea != '':
+    if groupArea != '' and (not nobuild):
         os.chdir(tmpDir)
         if os.path.exists(groupFileName):
             out = commands.getoutput('tar -rh %s -f %s' % (groupFileName,archiveFullName))
