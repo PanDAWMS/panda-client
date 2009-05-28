@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * set default processingType
+
 0.1.63 (5/28/2009)
   * fixed variable pollution for --noRandom in pathena
 
