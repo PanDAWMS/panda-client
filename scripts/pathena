@@ -654,8 +654,8 @@ if len(runConfig.other.rndmStream) != 0:
         if options.norandom:
             # enter manually
             while True:
-                str = raw_input("%s : " % stream)
-                num = str.split()
+                randStr = raw_input("%s : " % stream)
+                num = randStr.split()
                 if len(num) == 2:
                     break
                 print " Two numbers are needed"

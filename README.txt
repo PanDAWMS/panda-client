@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.63 (5/28/2009)
+  * fixed variable pollution for --noRandom in pathena
+
 0.1.62 (5/28/2009)
   * fixed convSrmV2ID for DESY-*
 
