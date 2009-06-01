@@ -7,6 +7,7 @@ import os
 import re
 import sys
 import time
+import stat
 import types
 import urllib
 import urllib2
@@ -462,6 +463,18 @@ def queryLastFilesInDataset(datasets,verbose=False):
 
 # put file
 def putFile(file,verbose=False):
+    # size check for noBuild
+    sizeLimit = 10*1024*1024
+    if not file.startswith('sources.'):
+        fileSize = os.stat(file)[stat.ST_SIZE]
+        if fileSize > sizeLimit:
+            errStr  = 'Exceeded size limit (%sB >%sB). ' % (fileSize,sizeLimit)
+            errStr += 'Your working directory contains too large files which cannot be put on cache area. '
+            errStr += 'Please submit job without --noBuild/--libDS so that your files will be uploaded to SE'
+            # get logger
+            tmpLog = PLogger.getPandaLogger()
+            tmpLog.error(errStr)
+            return EC_Failed,'False'
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1333,9 +1346,9 @@ def getDefaultSpaceToken(fqans,defaulttoken):
 # use dev server
 def useDevServer():
     global baseURL
-    baseURL = 'http://voatlas19.cern.ch:26080/server/panda'
+    baseURL = 'http://voatlas48.cern.ch:25080/server/panda'
     global baseURLSSL
-    baseURLSSL = 'https://voatlas19.cern.ch:26443/server/panda'    
+    baseURLSSL = 'https://voatlas48.cern.ch:25443/server/panda'    
 
 
 # set server
