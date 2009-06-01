@@ -14,8 +14,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.64 (6/1/2009)
   * set default processingType
+  * changed dev URLs
+  * put size limit for file uploading with --libDS/--noBuild
 
 0.1.63 (5/28/2009)
   * fixed variable pollution for --noRandom in pathena
