@@ -655,7 +655,7 @@ def addDataset(name,verbose=False):
                 'API':'0_3_0','tuid':commands.getoutput('uuidgen'),'update':'yes'}
         status,out = curl.post(url,data)
         if status != 0 or (out != None and re.search('Exception',out) != None):
-            errStr = "ERROR : could not add dataset to repository"
+            errStr = "ERROR : could not add dataset to DQ2 repository"
             sys.exit(EC_Failed)
     except:
         print status,out
@@ -708,7 +708,7 @@ def addDatasetsToContainer(name,datasets,verbose=False):
                 'tuid':commands.getoutput('uuidgen')}
         status,out = curl.post(url,data)
         if status != 0 or (out != None and re.search('Exception',out) != None):
-            errStr = "ERROR : could not add datasets to container"
+            errStr = "ERROR : could not add DQ2 datasets to container"
             sys.exit(EC_Failed)
     except:
         print status,out

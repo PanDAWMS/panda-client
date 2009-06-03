@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added --workingGroup option to pathena/prun
+ 
 0.1.64 (6/1/2009)
   * set default processingType
   * changed dev URLs

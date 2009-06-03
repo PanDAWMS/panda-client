@@ -155,6 +155,8 @@ optP.add_option('--processingType', action='store', dest='processingType',  defa
                 help="set processingType")
 optP.add_option('--seriesLabel', action='store', dest='seriesLabel',  default='',
                 help="set seriesLabel")
+optP.add_option('--workingGroup', action='store', dest='workingGroup',  default=None,
+                help="set workingGroup")
 optP.add_option('--generalInput', action='store_const', const=True, dest='generalInput',  default=False,
                 help='Read input files with general format except POOL,ROOT,ByteStream')
 optP.add_option('--crossSite',action='store',dest='crossSite',default=3,
@@ -1757,8 +1759,9 @@ elif options.libDS == '':
         jobB.processingType = options.processingType
     if options.seriesLabel != '':    
         jobB.prodSeriesLabel = options.seriesLabel
+    jobB.workingGroup      = options.workingGroup    
     jobB.assignedPriority  = 2000
-    jobB.computingSite = options.site
+    jobB.computingSite     = options.site
     if options.burstSubmit == '':
         jobB.cloud = Client.PandaSites[options.site]['cloud']
     jobB.metadata = fullExecString
@@ -1873,6 +1876,7 @@ for iSubJob in range(options.split):
         jobR.processingType = options.processingType
     if options.seriesLabel != '':    
         jobR.prodSeriesLabel = options.seriesLabel
+    jobR.workingGroup      = options.workingGroup            
     jobR.assignedPriority  = 1000
     jobR.metadata          = fullExecString    
     # memory
