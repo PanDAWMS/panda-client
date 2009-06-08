@@ -15,6 +15,7 @@ pathena -h
 ** Release Note
 
 current
+  * fixed prun for direct input
   * added --workingGroup option to pathena/prun
   * added a warning message for some special XMLs
  
