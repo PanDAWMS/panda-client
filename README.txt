@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added methods to puserinfo for privileged users
+
 0.1.65 (6/8/2009)
   * fixed prun for direct input
   * added --workingGroup option to pathena/prun
