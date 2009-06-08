@@ -516,6 +516,9 @@ def matchExtFile(fileName):
     return False
 
 
+# special files to be treated carefully
+specialFilesForAthena = ['dblookup.xml']
+
 # archive source files
 def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
     # archive sources
@@ -681,6 +684,14 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
         # ignore InstallArea
         if relPath.startswith('InstallArea'):
             continue
+        # check special files
+        spBaseName = relPath
+        if re.search('/',spBaseName) != None:
+            spBaseName = spBaseName.split('/')[-1]
+        if spBaseName in specialFilesForAthena:
+            warStr  = '%s in the current dir is sent to remote WNs, which may cause a database problem. ' % spBaseName
+            warStr += 'If this is intentional please ignore this WARNING'
+            tmpLog.warning(warStr)
         # check if already archived
         alreadyFlag = False
         for pack in packages:
