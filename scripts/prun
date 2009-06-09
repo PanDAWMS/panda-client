@@ -885,7 +885,7 @@ for iJob in range(options.nJobs):
     if athenaVer != '':
         jobR.AtlasRelease  = athenaVer
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
-    jobR.transformation    = '%s/runGen-00-00-01' % Client.baseURLSUB
+    jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
     jobR.destinationDBlock = options.outDS
     jobR.destinationSE     = options.site
     jobR.prodSourceLabel   = 'user'
@@ -956,7 +956,7 @@ for iJob in range(options.nJobs):
             tmpLog.error(errStr)            
             sys.exit(EC_Split)
         # set parameter
-        jobR.jobParameters += '-i %s ' % AthenaUtils.convToCompact(inList)
+        jobR.jobParameters += '-i "%s" ' % inList
     # output files
     outMap = {}
     if options.outputs != '':
