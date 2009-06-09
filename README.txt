@@ -14,8 +14,14 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.66 (6/9/2009)
+  * fixed location lookup for UNI-,RU-,LIP-,RO-
+  * added methods to puserinfo for privileged users
+
+0.1.65 (6/8/2009)
+  * fixed prun for direct input
   * added --workingGroup option to pathena/prun
+  * added a warning message for some special XMLs
  
 0.1.64 (6/1/2009)
   * set default processingType

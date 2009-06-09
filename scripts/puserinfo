@@ -105,13 +105,121 @@ class PUserInfoCore:
             self.tmpLog.error('Failed to get the list from Panda server')
             return -1
         # print
-        for tmpTup in out:
-            print " %20s : %s" % tmpTup
+        print
+        if out == []:
+            print " No access requests in siteAccess"
+        else:
+            for tmpTup in out:
+                print " %20s : %s" % tmpTup
         print    
         self.tmpLog.info('Done')                
         # return
         return 0
             
+
+    # approve
+    def approve(self,args=[]):
+        """
+        Approve access request at the site. A special privilege is required in cloudconfig
+
+        usage: puserinfo approve <site> <userName>"""
+        # check argument
+        if len(args) != 2:
+            self.tmpLog.error('<site> and <userName> must be given')
+            return -1
+        # main
+        from pandatools import Client
+        from pandatools import PsubUtils
+        # check grid-proxy
+        gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,self.verbose)
+        # site ID and userName
+        siteID   = args[0]
+	userName = args[1]
+        # check siteid
+        if not Client.PandaSites.has_key(siteID):
+            self.tmpLog.error('Unknown site : %s' % siteID)
+            return -1
+        # execute    
+        status,out = Client.updateSiteAccess('approve',siteID,userName,self.verbose)
+        if status != 0:
+            self.tmpLog.error('Failed to approve access request')
+            return -1
+        # return
+        if out in ['True',True]:
+            self.tmpLog.info('Succeeded')
+        else:    
+            self.tmpLog.error('Failed with %s' % out)
+        return 0
+
+
+    # reject
+    def reject(self,args=[]):
+        """
+        Reject access request at the site. A special privilege is required in cloudconfig
+
+        usage: puserinfo reject <site> <userName>"""
+        # check argument
+        if len(args) != 2:
+            self.tmpLog.error('<site> and <userName> must be given')
+            return -1
+        # main
+        from pandatools import Client
+        from pandatools import PsubUtils
+        # check grid-proxy
+        gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,self.verbose)
+        # site ID and userName
+        siteID   = args[0]
+	userName = args[1]
+        # check siteid
+        if not Client.PandaSites.has_key(siteID):
+            self.tmpLog.error('Unknown site : %s' % siteID)
+            return -1
+        # execute    
+        status,out = Client.updateSiteAccess('reject',siteID,userName,self.verbose)
+        if status != 0:
+            self.tmpLog.error('Failed to reject access request')
+            return -1
+        # return
+        if out in ['True',True]:
+            self.tmpLog.info('Succeeded')
+        else:    
+            self.tmpLog.error('Failed with %s' % out)
+        return 0
+
+
+    # delete
+    def delete(self,args=[]):
+        """
+        Delete an user from the site. A special privilege is required in cloudconfig
+
+        usage: puserinfo delete <site> <userName>"""
+        # check argument
+        if len(args) != 2:
+            self.tmpLog.error('<site> and <userName> must be given')
+            return -1
+        # main
+        from pandatools import Client
+        from pandatools import PsubUtils
+        # check grid-proxy
+        gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,self.verbose)
+        # site ID and userName
+        siteID   = args[0]
+	userName = args[1]
+        # check siteid
+        if not Client.PandaSites.has_key(siteID):
+            self.tmpLog.error('Unknown site : %s' % siteID)
+            return -1
+        # execute    
+        status,out = Client.updateSiteAccess('delete',siteID,userName,self.verbose)
+        if status != 0:
+            self.tmpLog.error('Failed to delete the user')
+            return -1
+        # return
+        if out in ['True',True]:
+            self.tmpLog.info('Succeeded')
+        else:    
+            self.tmpLog.error('Failed with %s' % out)
+        return 0
         
 
 # main

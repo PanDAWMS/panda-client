@@ -751,7 +751,8 @@ def convSrmV2ID(tmpSite):
     # keep original name to avoid double conversion
     origSite = tmpSite
     # doesn't convert FR/IT/UK sites 
-    for tmpPrefix in ['IN2P3-','INFN-','UKI-','GRIF-','DESY-']:
+    for tmpPrefix in ['IN2P3-','INFN-','UKI-','GRIF-','DESY-','UNI-','RU-',
+                      'LIP-','RO-']:
         if tmpSite.startswith(tmpPrefix):
             tmpSite = re.sub('_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
             tmpSite = re.sub('_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
@@ -1442,6 +1443,28 @@ def listSiteAccess(siteID,verbose=False):
         return EC_Failed,None
 
 
+# update site access
+def updateSiteAccess(method,siteid,userName,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/updateSiteAccess'
+    data = {'method':method,'siteid':siteid,'userName':userName}
+    status,output = curl.post(url,data)
+    if status!=0:
+        print output
+        return status,None
+    try:
+        return status,output
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR updateSiteAccess : %s %s" % (type,value)
+        return EC_Failed,None
+
+    
 # add allowed sites
 def addAllowedSites(verbose=False):
     # get logger
