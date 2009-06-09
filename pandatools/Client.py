@@ -751,7 +751,8 @@ def convSrmV2ID(tmpSite):
     # keep original name to avoid double conversion
     origSite = tmpSite
     # doesn't convert FR/IT/UK sites 
-    for tmpPrefix in ['IN2P3-','INFN-','UKI-','GRIF-','DESY-']:
+    for tmpPrefix in ['IN2P3-','INFN-','UKI-','GRIF-','DESY-','UNI-','RU-',
+                      'LIP-','RO-']:
         if tmpSite.startswith(tmpPrefix):
             tmpSite = re.sub('_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
             tmpSite = re.sub('_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
