@@ -1457,7 +1457,7 @@ def addSiteAccess(siteID,verbose=False):
 
 
 # list site access
-def listSiteAccess(siteID,verbose=False):
+def listSiteAccess(siteID,verbose=False,longFormat=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1468,6 +1468,8 @@ def listSiteAccess(siteID,verbose=False):
     data = {}
     if siteID != None:
         data['siteID'] = siteID
+    if longFormat:
+        data['longFormat'] = True
     status,output = curl.post(url,data)
     if status!=0:
         print output
@@ -1481,7 +1483,7 @@ def listSiteAccess(siteID,verbose=False):
 
 
 # update site access
-def updateSiteAccess(method,siteid,userName,verbose=False):
+def updateSiteAccess(method,siteid,userName,verbose=False,value=''):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1490,6 +1492,8 @@ def updateSiteAccess(method,siteid,userName,verbose=False):
     # execute
     url = baseURLSSL + '/updateSiteAccess'
     data = {'method':method,'siteid':siteid,'userName':userName}
+    if value != '':
+        data['attrValue'] = value
     status,output = curl.post(url,data)
     if status!=0:
         print output

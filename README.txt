@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+current
+  * added set to puserinfo
+  * added the longFormat option to puserinfo
+
 0.1.68 (6/10/2009)
   * fixed site selection algorithm in pathena/prun
 
