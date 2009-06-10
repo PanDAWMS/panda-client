@@ -337,6 +337,26 @@ def getSE(site):
     return ret
 
 
+# convert DQ2 ID to Panda siteid 
+def convertDQ2toPandaID(site):
+    keptSite = ''
+    for tmpID,tmpSpec in PandaSites.iteritems():
+        # # exclude long,xrootd,local queues
+        if isExcudedSite(tmpID):
+            continue
+        # get list of DQ2 IDs
+        srmv2ddmList = []
+        for tmpDdmID in tmpSpec['setokens'].values():
+            srmv2ddmList.append(convSrmV2ID(tmpDdmID))
+        # use Panda sitename
+        if convSrmV2ID(site) in srmv2ddmList:
+            keptSite = tmpID
+            # keep non-online site just in case
+            if tmpSpec['status']=='online':
+                return keptSite
+    return keptSite
+
+
 # submit jobs
 def submitJobs(jobs,verbose=False):
     # set hostname
@@ -850,6 +870,23 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                             outTmp[tmpEleLoc][0]['found'] += 1
                 # replace
                 out = outTmp
+                if verbose:
+                    print out
+            # choose sites where most files are available
+            if not woFileCheck:
+                tmpMaxFiles = -1
+                for origTmpSite,origTmpInfo in out.iteritems():
+                    # get PandaID
+                    tmpPandaSite = convertDQ2toPandaID(origTmpSite)
+                    # check status
+                    if PandaSites.has_key(tmpPandaSite) and PandaSites[tmpPandaSite]['status'] == 'online':
+                        # check the number of available files
+                        if tmpMaxFiles < origTmpInfo[0]['found']:
+                            tmpMaxFiles = origTmpInfo[0]['found']
+                # remove sites
+                for origTmpSite in out.keys():
+                    if out[origTmpSite][0]['found'] < tmpMaxFiles:
+                        del out[origTmpSite]
                 if verbose:
                     print out
             tmpFirstDump = True

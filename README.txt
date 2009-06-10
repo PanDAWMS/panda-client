@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.68 (6/10/2009)
+  * fixed site selection algorithm in pathena/prun
+
 0.1.67 (6/10/2009)
   * fixed pbook.show() to show jobs in numeric order
 
