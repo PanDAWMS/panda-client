@@ -337,6 +337,26 @@ def getSE(site):
     return ret
 
 
+# convert DQ2 ID to Panda siteid 
+def convertDQ2toPandaID(site):
+    keptSite = ''
+    for tmpID,tmpSpec in PandaSites.iteritems():
+        # # exclude long,xrootd,local queues
+        if isExcudedSite(tmpID):
+            continue
+        # get list of DQ2 IDs
+        srmv2ddmList = []
+        for tmpDdmID in tmpSpec['setokens'].values():
+            srmv2ddmList.append(convSrmV2ID(tmpDdmID))
+        # use Panda sitename
+        if convSrmV2ID(site) in srmv2ddmList:
+            keptSite = tmpID
+            # keep non-online site just in case
+            if tmpSpec['status']=='online':
+                return keptSite
+    return keptSite
+
+
 # submit jobs
 def submitJobs(jobs,verbose=False):
     # set hostname
@@ -751,7 +771,8 @@ def convSrmV2ID(tmpSite):
     # keep original name to avoid double conversion
     origSite = tmpSite
     # doesn't convert FR/IT/UK sites 
-    for tmpPrefix in ['IN2P3-','INFN-','UKI-','GRIF-','DESY-']:
+    for tmpPrefix in ['IN2P3-','INFN-','UKI-','GRIF-','DESY-','UNI-','RU-',
+                      'LIP-','RO-']:
         if tmpSite.startswith(tmpPrefix):
             tmpSite = re.sub('_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
             tmpSite = re.sub('_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
@@ -849,6 +870,23 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                             outTmp[tmpEleLoc][0]['found'] += 1
                 # replace
                 out = outTmp
+                if verbose:
+                    print out
+            # choose sites where most files are available
+            if not woFileCheck:
+                tmpMaxFiles = -1
+                for origTmpSite,origTmpInfo in out.iteritems():
+                    # get PandaID
+                    tmpPandaSite = convertDQ2toPandaID(origTmpSite)
+                    # check status
+                    if PandaSites.has_key(tmpPandaSite) and PandaSites[tmpPandaSite]['status'] == 'online':
+                        # check the number of available files
+                        if tmpMaxFiles < origTmpInfo[0]['found']:
+                            tmpMaxFiles = origTmpInfo[0]['found']
+                # remove sites
+                for origTmpSite in out.keys():
+                    if out[origTmpSite][0]['found'] < tmpMaxFiles:
+                        del out[origTmpSite]
                 if verbose:
                     print out
             tmpFirstDump = True
@@ -1442,6 +1480,28 @@ def listSiteAccess(siteID,verbose=False):
         return EC_Failed,None
 
 
+# update site access
+def updateSiteAccess(method,siteid,userName,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/updateSiteAccess'
+    data = {'method':method,'siteid':siteid,'userName':userName}
+    status,output = curl.post(url,data)
+    if status!=0:
+        print output
+        return status,None
+    try:
+        return status,output
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR updateSiteAccess : %s %s" % (type,value)
+        return EC_Failed,None
+
+    
 # add allowed sites
 def addAllowedSites(verbose=False):
     # get logger
