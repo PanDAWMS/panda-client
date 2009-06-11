@@ -14,7 +14,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.69 (6/11/2009)
   * added set to puserinfo
   * added the longFormat option to puserinfo
 
