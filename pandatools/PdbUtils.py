@@ -352,7 +352,7 @@ def bulkReadJobDB(verbose=False):
         job.pack(values)
         # use frozen job if exists
         if (not retMap.has_key(job.JobID)) or job.dbStatus == 'frozen':
-            retMap[job.JobID] = job
+            retMap[long(job.JobID)] = job
     # sort
     ids = retMap.keys()
     ids.sort()
