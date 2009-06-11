@@ -14,8 +14,24 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.69 (6/11/2009)
+  * added set to puserinfo
+  * added the longFormat option to puserinfo
+
+0.1.68 (6/10/2009)
+  * fixed site selection algorithm in pathena/prun
+
+0.1.67 (6/10/2009)
+  * fixed pbook.show() to show jobs in numeric order
+
+0.1.66 (6/9/2009)
+  * fixed location lookup for UNI-,RU-,LIP-,RO-
+  * added methods to puserinfo for privileged users
+
+0.1.65 (6/8/2009)
+  * fixed prun for direct input
   * added --workingGroup option to pathena/prun
+  * added a warning message for some special XMLs
  
 0.1.64 (6/1/2009)
   * set default processingType
