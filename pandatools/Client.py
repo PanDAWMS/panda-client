@@ -926,13 +926,16 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                             if tmpSpec['cloud'] == cloud:
                                 appendMap = retSiteMap
                             else:
-                                appendMap = resRetSiteMap                                
+                                appendMap = resRetSiteMap
                             # mapping between location and Panda siteID
                             if not appendMap.has_key(tmpSite):
                                 appendMap[tmpSite] = []
                             if not tmpID in appendMap[tmpSite]:
                                 appendMap[tmpSite].append(tmpID)
                         else:
+                            # not interested in another cloud
+                            if tmpSpec['cloud'] != cloud and expCloud:
+                                continue
                             # keep bad status sites for info
                             if not resBadStSites.has_key(tmpSpec['status']):
                                 resBadStSites[tmpSpec['status']] = []
@@ -1334,7 +1337,7 @@ def getJobStatusFromMon(id,verbose=False):
 
 
 # run brokerage
-def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False):
+def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False):
     # serialize
     strSites = pickle.dumps(sites)
     # instantiate curl
@@ -1348,6 +1351,8 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False):
             'atlasRelease':atlasRelease}
     if cmtConfig != None:
         data['cmtConfig'] = cmtConfig
+    if trustIS:
+        data['trustIS'] = True
     return curl.get(url,data)
    
 

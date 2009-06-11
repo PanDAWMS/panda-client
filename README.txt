@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.70 (6/11/2009)
+  * added trustIS to runBrokerage
+
 0.1.69 (6/11/2009)
   * added set to puserinfo
   * added the longFormat option to puserinfo
