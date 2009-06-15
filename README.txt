@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.71 (6/15/2009)
+  * changed the maximum length of the output datasetname to 200
+
 0.1.70 (6/11/2009)
   * added trustIS to runBrokerage
 

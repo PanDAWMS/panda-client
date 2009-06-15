@@ -232,8 +232,8 @@ def checkOutDsName(outDS,distinguishedName,official):
                   time.strftime('%y',time.gmtime())
         tmpLog.error(errStr)
         return False
-    # check length
-    maxLength = 128
+    # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
+    maxLength = 200
     if len(outDS) > maxLength:
         tmpLog.error("output datasetname is too long (%s). The length must be less than %s" % \
                      (len(outDS),maxLength))
