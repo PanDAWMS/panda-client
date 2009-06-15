@@ -445,10 +445,14 @@ if options.inDS != '':
             tmpSites = []
             for tmpItem in dsLocationMap.values():
                 tmpSites += tmpItem
-            status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose)
+            status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)
             if status != 0:
                 tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
                 sys.exit(EC_Config)
+            if out.startswith('ERROR :'):
+		tmpLog.error('brokerage failed')
+		print out
+		sys.exit(EC_Config)                
             if not Client.PandaSites.has_key(out):
                 tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
                 sys.exit(EC_Config)
@@ -500,10 +504,14 @@ else:
                 if Client.isExcudedSite(tmpID):
                     continue
                 tmpSites.append(tmpID)
-        status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose)    
+        status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)    
         if status != 0:
             tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
             sys.exit(EC_Config)
+	if out.startswith('ERROR :'):
+	    tmpLog.error('brokerage failed')
+	    print out
+	    sys.exit(EC_Config)                
         if not Client.PandaSites.has_key(out):
             tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
             sys.exit(EC_Config)
@@ -885,7 +893,7 @@ for iJob in range(options.nJobs):
     if athenaVer != '':
         jobR.AtlasRelease  = athenaVer
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
-    jobR.transformation    = '%s/runGen-00-00-01' % Client.baseURLSUB
+    jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
     jobR.destinationDBlock = options.outDS
     jobR.destinationSE     = options.site
     jobR.prodSourceLabel   = 'user'
@@ -956,7 +964,7 @@ for iJob in range(options.nJobs):
             tmpLog.error(errStr)            
             sys.exit(EC_Split)
         # set parameter
-        jobR.jobParameters += '-i %s ' % AthenaUtils.convToCompact(inList)
+        jobR.jobParameters += '-i "%s" ' % inList
     # output files
     outMap = {}
     if options.outputs != '':
