@@ -154,22 +154,7 @@ def getCloudUsingFQAN(defaultCloud,verbose=False):
 
 # convert DQ2 ID to Panda siteid 
 def convertDQ2toPandaID(site):
-    keptSite = ''
-    for tmpID,tmpSpec in Client.PandaSites.iteritems():
-        # # exclude long,xrootd,local queues
-        if Client.isExcudedSite(tmpID):
-            continue
-        # get list of DQ2 IDs
-        srmv2ddmList = []
-        for tmpDdmID in tmpSpec['setokens'].values():
-            srmv2ddmList.append(Client.convSrmV2ID(tmpDdmID))
-        # use Panda sitename
-        if Client.convSrmV2ID(site) in srmv2ddmList:
-            keptSite = tmpID
-            # keep non-online site just in case
-            if tmpSpec['status']=='online':
-                return keptSite
-    return keptSite
+    return Client.convertDQ2toPandaID(site)
 
 
 # get DN
@@ -247,8 +232,8 @@ def checkOutDsName(outDS,distinguishedName,official):
                   time.strftime('%y',time.gmtime())
         tmpLog.error(errStr)
         return False
-    # check length
-    maxLength = 128
+    # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
+    maxLength = 200
     if len(outDS) > maxLength:
         tmpLog.error("output datasetname is too long (%s). The length must be less than %s" % \
                      (len(outDS),maxLength))

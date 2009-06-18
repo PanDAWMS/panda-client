@@ -114,7 +114,7 @@ class PBookCore:
         if status != 0:
             tmpLog.error("Failed to get JobIDs from panda server")
             return
-        tmpLog.info("Gotton %s jobs to be updated" % len(remoteJobIDs))
+        tmpLog.info("Got %s jobs to be updated" % len(remoteJobIDs))
         # insert if missing
         for remoteJobID in remoteJobIDs:
             # check local status
