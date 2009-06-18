@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.72 (6/18/2009)
+  * added --nSkipFiles to prun
+
 0.1.71 (6/15/2009)
   * changed the maximum length of the output datasetname to 200
 

@@ -52,6 +52,8 @@ optP.add_option('--official',action='store_const',const=True,dest='official',def
                 help='Produce official dataset')
 optP.add_option('--nFiles',action='store',dest='nFiles',default=0,type='int',
                 help='Use a limited number of files in the input dataset')
+optP.add_option('--nSkipFiles',action='store',dest='nSkipFiles',default=0,type='int',
+                help='Skip N files in the input dataset')
 optP.add_option('--nFilesPerJob',action='store',dest='nFilesPerJob',default=None,type='int',
                 help='Number of files on which each sub-job runs (default 20)')
 optP.add_option('--nJobs',action='store',dest='nJobs',default=-1,type='int',
@@ -464,7 +466,11 @@ if options.inDS != '':
         if Client.getLFC(dsLocation) != None:
 	    tmpLog.info("scanning LFC %s for %s" % (Client.getLFC(dsLocation),options.site))
             # LFC
-            missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose)
+            if options.nFiles == 0 and options.nSkipFiles != 0:
+                missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose)
+            else:
+                missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
+                                                     options.nFiles+options.nSkipFiles)                
         elif Client.getLRC(dsLocation) != None:
 	    tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
             # LRC
@@ -483,6 +489,8 @@ if options.inDS != '':
             if not inputFile in missList:
                 newInputFiles.append(inputFile)
         inputFileList = newInputFiles
+    # skip files
+    inputFileList = inputFileList[options.nSkipFiles:]
     # no available input files
     if inputFileList == []:
         tmpStr  = "all input files had already been used in %s\n" % options.inDS
