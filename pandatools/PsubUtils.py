@@ -306,32 +306,80 @@ def convSysArgv():
     return paramStr[:-1]
 
 
+# check panda-client version
+def checkPandaClientVer(verbose):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # get latest version number
+    vStatus,latestVer = Client.getPandaClientVer(verbose)
+    if vStatus == 0:
+        # check version
+        import PandaToolsPkgInfo
+        if latestVer > PandaToolsPkgInfo.release_version:
+            warStr = "A newer version of panda-client is available at https://twiki.cern.ch/twiki/bin/view/Atlas/PandaTools."
+            if os.environ['PANDA_SYS'].startswith('/afs/cern.ch/atlas/offline/external/GRID/DA/panda-client'):
+                # if the user uses CERN AFS
+                warStr += " Please execute 'source /afs/cern.ch/atlas/offline/external/GRID/DA/panda-client/latest/etc/panda/panda_setup.[c]sh"
+            else:
+                warStr += " Please execute '%s --update' or 'rpm -Uvh' if you installed the package locally" % sys.argv[0].split('/')[-1]
+            print
+            tmpLog.warning(warStr+'\n')
+
+
+# function for path completion 
+def completePathFunc(text, status):
+    # remove white spaces
+    text = text.strip()
+    # convert ~
+    useTilde = False
+    if text.startswith('~'):
+        useTilde = True
+        # keep original
+        origText = text
+        # convert
+        text = os.path.expanduser(text)
+    # put / to directories    
+    if (not text.endswith('/')) and os.path.isdir(text):
+        text += '/'
+    # list dirs/files
+    lsStat,output = commands.getstatusoutput('ls -d %s*' % text)
+    results = []
+    if lsStat == 0:
+        for tmpItem in output.split('\n'):
+            # ignore current and parent dirs
+            if tmpItem in ['.','..']:
+                continue
+            # put /
+            if os.path.isdir(tmpItem) and not tmpItem.endswith('/'):
+                tmpItem += '/'
+            # recover ~
+            if useTilde:
+                tmpItem = re.sub('^%s' % os.path.expanduser(origText),
+                                 origText,tmpItem)
+            # append    
+            results.append(tmpItem)
+        # sort    
+        results.sort()
+    # return
+    return results[status]
+                                                                                                                                            
+
 # update package
 def updatePackage(verbose=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # get the latest version number
-    tmpLog.info('start update check')
-    com = 'curl -m 120 --silent https://twiki.cern.ch/twiki/bin/view/Atlas/PandaTools'
-    if verbose:
-        tmpLog.debug(com)
-    status,output = commands.getstatusoutput(com)
-    status %= 255
-    if verbose:
-        tmpLog.debug(status)
-        tmpLog.debug(output)
+    tmpLog.info('start version check')
+    status,output = Client.getPandaClientVer(verbose)
     if status != 0:
+        tmpLog.error(output)
         tmpLog.error('failed to get the latest version number : %s' % status)
         return False
     # extract version
-    match = re.search('Current version of panda-client : (\d+\.\d+\.\d+) ',output)
-    if match == None:
-        tmpLog.error('failed to extract the latest version number')
-        return False
-    latestVer = match.group(1)
+    latestVer = output
     # check version
     import PandaToolsPkgInfo
-    if latestVer == PandaToolsPkgInfo.release_version:
+    if latestVer <= PandaToolsPkgInfo.release_version:
         tmpLog.info('you are already using the latest version')
         return True
     # get tarball
@@ -359,22 +407,65 @@ def updatePackage(verbose=False):
         return False
     # delete tarball
     commands.getoutput('rm panda-client-%s.tar.gz' % latestVer)
+    # set readline for auto-complete
+    import readline
+    readline.parse_and_bind("tab: complete")
+    readline.set_completer(completePathFunc)
+    readline.parse_and_bind('set show-all-if-ambiguous On')
+    # remove +/~ from delimiters
+    curDelimter = readline.get_completer_delims()
+    curDelimter = re.sub('\+|/|~','',curDelimter)
+    readline.set_completer_delims(curDelimter)
     # installation type
-    print "\nPlease specify installation type"
-    print " 1 : Clean install : all files under %s will be erased first (recommended)" % os.environ['PANDA_SYS']
-    print " 2 : Overwrite : existing files under %s will be replaced with new ones" % os.environ['PANDA_SYS']
+    newPrefix = os.environ['PANDA_SYS']
+    print
+    print "Please specify type of installation"
+    print "   PANDA_SYS=%s" % os.environ['PANDA_SYS']
+    print " 1. Install to the same dir"
+    print "      all files in $PANDA_SYS will be erased first and new ones will"
+    print "      be installed to the same dir"
+    print " 2. Install to a new dir"
+    print "      new files will be installed to somewhere else than $PANDA_SYS"
+    print " 3. Patch (worst recommended)"
+    print "      existing files in $PANDA_SYS will be patched with new ones"
+    print
     while True:
-        str = raw_input("Enter 1 or 2 : ")
+        str = raw_input("Enter 1-3 : ")
         if str == '1':
             cleanInstall = True
             break
         if str== '2':
+            cleanInstall = False
+            # set default
+            def startupHookPath():
+                defPath = os.environ['PANDA_SYS']
+                # remove /
+                defPath = re.sub('/+$','',defPath)
+                # use one dir up
+                defPath = re.sub('/[^/]+$','',defPath)
+                # add /
+                if not defPath.endswith('/'):
+                    defPath += '/'
+                # set
+                readline.insert_text(defPath)
+            # set hook
+            readline.set_startup_hook(startupHookPath)
+            # get location
+            while True:
+                newPrefix = raw_input("Enter new location (TAB for autocomplete): ")
+                if newPrefix != '':
+                    break
+            # unset hook
+            readline.set_startup_hook(None) 
+            break
+        if str== '3':
             cleanInstall = False
             break
     # save current dir
     currentDir = os.path.realpath(os.getcwd())
     # keep old release
     if cleanInstall:
+        tmpLog.info('keep old version in %s.back' % os.environ['PANDA_SYS'])
         status,output = commands.getstatusoutput('mv %s %s.back' % \
                                                  (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))
         if status != 0:
@@ -386,7 +477,7 @@ def updatePackage(verbose=False):
     # install
     result = True
     os.chdir('panda-client-%s' % latestVer)
-    status,output = commands.getstatusoutput('python setup.py install --prefix=%s' % os.environ['PANDA_SYS'])
+    status,output = commands.getstatusoutput('python setup.py install --prefix=%s' % newPrefix)
     if verbose:
         tmpLog.debug(output)
         tmpLog.debug(status)
@@ -400,10 +491,8 @@ def updatePackage(verbose=False):
         result = False
     # cleanup
     commands.getoutput('rm -rf panda-client-%s' % latestVer)
-    if cleanInstall:
-        commands.getoutput('rm -rf %s.back' % os.environ['PANDA_SYS'])
     # return
     if result:
         tmpLog.info('completed')
-        tmpLog.info("please do 'source %s/etc/panda/panda_setup.[c]sh'" % os.environ['PANDA_SYS'])
+        tmpLog.info("please do 'source %s/etc/panda/panda_setup.[c]sh'" % newPrefix)
     return result

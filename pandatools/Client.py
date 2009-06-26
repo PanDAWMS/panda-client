@@ -1641,3 +1641,21 @@ def excludeSite(excludedSite):
                     del PandaSites[site]
                 except:
                     pass
+
+
+# get client version
+def getPandaClientVer(verbose):
+    # instantiate curl
+    curl = _Curl()
+    curl.verbose = verbose
+    # execute
+    url = baseURL + '/getPandaClientVer'
+    status,output = curl.get(url,{})
+    # failed
+    if status != 0:
+        return status,output
+    # check format
+    if re.search('^\d+\.\d+\.\d+$',output) == None:
+        return EC_Failed,"invalid version '%s'" % output
+    # return
+    return status,output

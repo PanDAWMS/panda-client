@@ -274,6 +274,9 @@ if options.devSrv:
 if options.panda_srvURL != '':
     Client.setServer(options.panda_srvURL)
 
+# version check
+PsubUtils.checkPandaClientVer(options.verbose)
+
 # exclude sites
 if options.excludedSite != '':
     Client.excludeSite(options.excludedSite)
