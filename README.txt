@@ -15,7 +15,7 @@ pathena -h
 ** Release Note
 
 current
-  * impreved --update in pathena/prun
+  * improved --update in pathena/prun
   * added version check to pathena/prun 
 
 0.1.72 (6/18/2009)
