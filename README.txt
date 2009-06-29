@@ -14,7 +14,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.73 (6/29/2009)
   * improved --update in pathena/prun
   * added version check to pathena/prun 
   * added site permission check to pathena/prun
