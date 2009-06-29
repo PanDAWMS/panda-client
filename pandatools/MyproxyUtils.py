@@ -2,7 +2,6 @@
 
 import os
 import re
-import md5
 import commands
 import Client
 
@@ -327,9 +326,7 @@ class MyProxyInterface(object):
         cmd  = 'myproxy-init'
 
         # credname
-        md = md5.new()
-        md.update(commands.getoutput('uuidgen'))
-        credname = md.hexdigest()
+        credname = re.sub('-','',commands.getoutput('uuidgen'))
 
         print "=== upload proxy for glexec"
         # command options

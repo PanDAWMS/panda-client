@@ -10,7 +10,6 @@ import time
 import stat
 import types
 import urllib
-import urllib2
 import commands
 import cPickle as pickle
 import xml.dom.minidom
@@ -51,8 +50,7 @@ except:
 # get panda server's name
 try:
     getServerURL = baseURL + '/getServer'
-    req = urllib2.Request(getServerURL)
-    res = urllib2.urlopen(req)
+    res = urllib.urlopen(getServerURL)
     # overwrite URL
     baseURLSSL = "https://%s/server/panda" % res.read()
 except:
