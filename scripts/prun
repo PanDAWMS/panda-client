@@ -52,6 +52,8 @@ optP.add_option('--official',action='store_const',const=True,dest='official',def
                 help='Produce official dataset')
 optP.add_option('--nFiles',action='store',dest='nFiles',default=0,type='int',
                 help='Use a limited number of files in the input dataset')
+optP.add_option('--nSkipFiles',action='store',dest='nSkipFiles',default=0,type='int',
+                help='Skip N files in the input dataset')
 optP.add_option('--nFilesPerJob',action='store',dest='nFilesPerJob',default=None,type='int',
                 help='Number of files on which each sub-job runs (default 20)')
 optP.add_option('--nJobs',action='store',dest='nJobs',default=-1,type='int',
@@ -148,6 +150,9 @@ if options.devSrv:
 # set server
 if options.panda_srvURL != '':
     Client.setServer(options.panda_srvURL)
+
+# version check
+PsubUtils.checkPandaClientVer(options.verbose)
 
 # exclude sites
 if options.excludedSite != '':
@@ -445,10 +450,14 @@ if options.inDS != '':
             tmpSites = []
             for tmpItem in dsLocationMap.values():
                 tmpSites += tmpItem
-            status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose)
+            status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)
             if status != 0:
                 tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
                 sys.exit(EC_Config)
+            if out.startswith('ERROR :'):
+		tmpLog.error('brokerage failed')
+		print out
+		sys.exit(EC_Config)                
             if not Client.PandaSites.has_key(out):
                 tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
                 sys.exit(EC_Config)
@@ -460,7 +469,11 @@ if options.inDS != '':
         if Client.getLFC(dsLocation) != None:
 	    tmpLog.info("scanning LFC %s for %s" % (Client.getLFC(dsLocation),options.site))
             # LFC
-            missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose)
+            if options.nFiles == 0 and options.nSkipFiles != 0:
+                missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose)
+            else:
+                missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
+                                                     options.nFiles+options.nSkipFiles)                
         elif Client.getLRC(dsLocation) != None:
 	    tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
             # LRC
@@ -479,6 +492,8 @@ if options.inDS != '':
             if not inputFile in missList:
                 newInputFiles.append(inputFile)
         inputFileList = newInputFiles
+    # skip files
+    inputFileList = inputFileList[options.nSkipFiles:]
     # no available input files
     if inputFileList == []:
         tmpStr  = "all input files had already been used in %s\n" % options.inDS
@@ -500,10 +515,14 @@ else:
                 if Client.isExcudedSite(tmpID):
                     continue
                 tmpSites.append(tmpID)
-        status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose)    
+        status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)    
         if status != 0:
             tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
             sys.exit(EC_Config)
+	if out.startswith('ERROR :'):
+	    tmpLog.error('brokerage failed')
+	    print out
+	    sys.exit(EC_Config)                
         if not Client.PandaSites.has_key(out):
             tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
             sys.exit(EC_Config)
@@ -731,6 +750,10 @@ if os.path.exists(jobid_file):
     except:
         pass
 
+# check permission
+if not Client.checkSiteAccessPermission(options.site,options.workingGroup,options.verbose):
+    sys.exit(EC_Config)
+
 if options.verbose:
     print "== parameters =="
     print "Site       : %s" % options.site
@@ -885,7 +908,7 @@ for iJob in range(options.nJobs):
     if athenaVer != '':
         jobR.AtlasRelease  = athenaVer
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
-    jobR.transformation    = '%s/runGen-00-00-01' % Client.baseURLSUB
+    jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
     jobR.destinationDBlock = options.outDS
     jobR.destinationSE     = options.site
     jobR.prodSourceLabel   = 'user'
@@ -956,7 +979,7 @@ for iJob in range(options.nJobs):
             tmpLog.error(errStr)            
             sys.exit(EC_Split)
         # set parameter
-        jobR.jobParameters += '-i %s ' % AthenaUtils.convToCompact(inList)
+        jobR.jobParameters += '-i "%s" ' % inList
     # output files
     outMap = {}
     if options.outputs != '':

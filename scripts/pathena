@@ -274,6 +274,9 @@ if options.devSrv:
 if options.panda_srvURL != '':
     Client.setServer(options.panda_srvURL)
 
+# version check
+PsubUtils.checkPandaClientVer(options.verbose)
+
 # exclude sites
 if options.excludedSite != '':
     Client.excludeSite(options.excludedSite)
@@ -931,10 +934,14 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             tmpSites = []
             for tmpItem in dsLocationMap.values():
                 tmpSites += tmpItem
-            status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose)
+            status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True)
             if status != 0:
                 tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
                 sys.exit(EC_Config)
+	    if out.startswith('ERROR :'):
+                tmpLog.error('brokerage failed')
+                print out
+                sys.exit(EC_Config)                
 	    if not Client.PandaSites.has_key(out):
                 tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
                 sys.exit(EC_Config)
@@ -960,8 +967,11 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             elif Client.getLFC(dsLocation) != None:
 		tmpLog.info("scanning LFC %s for %s" % (Client.getLFC(dsLocation),options.site))
                 # LFC
-                missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
-                                                     options.nfiles+options.nSkipFiles)
+                if options.nfiles == 0 and options.nSkipFiles != 0:
+                    missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose)
+                else:
+                    missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
+                                                         options.nfiles+options.nSkipFiles)
             else:
                 missList = []
             # choose min missList
@@ -1486,10 +1496,14 @@ if options.site == "AUTO":
             if Client.isExcudedSite(tmpID):
                 continue
             tmpSites.append(tmpID)
-    status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose)    
+    status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True)    
     if status != 0:
         tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
         sys.exit(EC_Config)
+    if out.startswith('ERROR :'):
+        tmpLog.error('brokerage failed')
+        print out
+        sys.exit(EC_Config)                
     if not Client.PandaSites.has_key(out):
 	tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
 	sys.exit(EC_Config)
@@ -1678,6 +1692,10 @@ if outputDSexist:
             tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (options.outDS,sName))
             if tmpIndex > indexMS:
                 indexMS = tmpIndex
+
+# check permission
+if not Client.checkSiteAccessPermission(options.site,options.workingGroup,options.verbose):
+    sys.exit(EC_Config)
 
 if options.verbose:
     print "== parameters =="

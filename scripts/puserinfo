@@ -18,11 +18,13 @@ run '%prog help' to see all available subcommands"""
 class PUserInfoCore:
 
     # constructor
-    def __init__(self,tmpLog,verbose):
+    def __init__(self,tmpLog,verbose,longFormat):
         # logger
         self.tmpLog = tmpLog
         # verbose
         self.verbose = verbose
+	# long format
+	self.longFormat = longFormat
         # get list of commands
         self.subCommandList = []
         for attrName,attrVal in PUserInfoCore.__dict__.iteritems():
@@ -46,7 +48,7 @@ class PUserInfoCore:
     # request
     def request(self,args=[]):
         """
-        Submit access request at the site. The site is available once the
+        Submit access request at a site. The site is available once the
         request is approved 
 
         usage: puserinfo request <site>"""
@@ -86,10 +88,11 @@ class PUserInfoCore:
     def list(self,args=[]):
         """
         Print list of sites where access is limited and the user is allowed
-        to submit jobs. Or print list of permitted users at the site if the
+        to submit jobs. Or print list of permitted users at a site if the 
         site is given as an argument
 
-        usage: puserinfo list [site]"""
+        usage: puserinfo list
+               puserinfo list [site]"""
         from pandatools import Client
         from pandatools import PsubUtils
         # check grid-proxy
@@ -99,19 +102,174 @@ class PUserInfoCore:
         if args != []:
             siteID = args[0]
         # execute    
-        status,out = Client.listSiteAccess(siteID,self.verbose)
+        status,out = Client.listSiteAccess(siteID,self.verbose,self.longFormat)
         if status != 0:
             print out
             self.tmpLog.error('Failed to get the list from Panda server')
             return -1
         # print
-        for tmpTup in out:
-            print " %20s : %s" % tmpTup
+        print
+        if out == []:
+            print " No access requests in siteAccess"
+        else:
+            for tmpTup in out:
+                # short format
+                if not self.longFormat:
+                    print " %20s : %s" % tmpTup
+                else:
+                    outStr = " %20s : %s\n" % (tmpTup['primKey'],tmpTup['status'])
+                    tmpKeys = tmpTup.keys()
+                    tmpKeys.sort()
+                    for tmpKey in tmpKeys: 
+                        if tmpKey in ['primKey','status']:
+                            continue
+                        outStr += " %25s : %s\n" % (tmpKey,tmpTup[tmpKey])
+                    print outStr    
         print    
         self.tmpLog.info('Done')                
         # return
         return 0
             
+
+    # approve
+    def approve(self,args=[]):
+        """
+        Approve access request at a site. A special privilege is required in cloudconfig
+
+        usage: puserinfo approve <site> <userName>"""
+        # check argument
+        if len(args) != 2:
+            self.tmpLog.error('<site> and <userName> must be given')
+            return -1
+        # main
+        from pandatools import Client
+        from pandatools import PsubUtils
+        # check grid-proxy
+        gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,self.verbose)
+        # site ID and userName
+        siteID   = args[0]
+	userName = args[1]
+        # check siteid
+        if not Client.PandaSites.has_key(siteID):
+            self.tmpLog.error('Unknown site : %s' % siteID)
+            return -1
+        # execute    
+        status,out = Client.updateSiteAccess('approve',siteID,userName,self.verbose)
+        if status != 0:
+            self.tmpLog.error('Failed to approve access request')
+            return -1
+        # return
+        if out in ['True',True]:
+            self.tmpLog.info('Succeeded')
+        else:    
+            self.tmpLog.error('Failed with %s' % out)
+        return 0
+
+
+    # reject
+    def reject(self,args=[]):
+        """
+        Reject access request at a site. A special privilege is required in cloudconfig
+
+        usage: puserinfo reject <site> <userName>"""
+        # check argument
+        if len(args) != 2:
+            self.tmpLog.error('<site> and <userName> must be given')
+            return -1
+        # main
+        from pandatools import Client
+        from pandatools import PsubUtils
+        # check grid-proxy
+        gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,self.verbose)
+        # site ID and userName
+        siteID   = args[0]
+	userName = args[1]
+        # check siteid
+        if not Client.PandaSites.has_key(siteID):
+            self.tmpLog.error('Unknown site : %s' % siteID)
+            return -1
+        # execute    
+        status,out = Client.updateSiteAccess('reject',siteID,userName,self.verbose)
+        if status != 0:
+            self.tmpLog.error('Failed to reject access request')
+            return -1
+        # return
+        if out in ['True',True]:
+            self.tmpLog.info('Succeeded')
+        else:    
+            self.tmpLog.error('Failed with %s' % out)
+        return 0
+
+
+    # delete
+    def delete(self,args=[]):
+        """
+        Delete an user from a site. A special privilege is required in cloudconfig
+
+        usage: puserinfo delete <site> <userName>"""
+        # check argument
+        if len(args) != 2:
+            self.tmpLog.error('<site> and <userName> must be given')
+            return -1
+        # main
+        from pandatools import Client
+        from pandatools import PsubUtils
+        # check grid-proxy
+        gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,self.verbose)
+        # site ID and userName
+        siteID   = args[0]
+	userName = args[1]
+        # check siteid
+        if not Client.PandaSites.has_key(siteID):
+            self.tmpLog.error('Unknown site : %s' % siteID)
+            return -1
+        # execute    
+        status,out = Client.updateSiteAccess('delete',siteID,userName,self.verbose)
+        if status != 0:
+            self.tmpLog.error('Failed to delete the user')
+            return -1
+        # return
+        if out in ['True',True]:
+            self.tmpLog.info('Succeeded')
+        else:    
+            self.tmpLog.error('Failed with %s' % out)
+        return 0
+
+
+    # set
+    def set(self,args=[]):
+        """
+        Set a user's attribute at the site. A special privilege is required in cloudconfig
+
+        usage: puserinfo set <site> <userName> <key:value>"""
+        # check argument
+        if len(args) != 3:
+            self.tmpLog.error('<site>, <userName> and <key:value> must be given')
+            return -1
+        # main
+        from pandatools import Client
+        from pandatools import PsubUtils
+        # check grid-proxy
+        gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,self.verbose)
+        # site ID and userName
+        siteID   = args[0]
+	userName = args[1]
+	attrVal  = args[2]
+        # check siteid
+        if not Client.PandaSites.has_key(siteID):
+            self.tmpLog.error('Unknown site : %s' % siteID)
+            return -1
+        # execute    
+        status,out = Client.updateSiteAccess('set',siteID,userName,self.verbose,value=attrVal)
+        if status != 0:
+            self.tmpLog.error('Failed to set attribute for the user')
+            return -1
+        # return
+        if out in ['True',True]:
+            self.tmpLog.info('Succeeded')
+        else:    
+            self.tmpLog.error('Failed with %s' % out)
+        return 0
         
 
 # main
@@ -121,6 +279,8 @@ if __name__ == "__main__":
     parser = optparse.OptionParser(usage=usage,conflict_handler="resolve")
     parser.add_option('--devSrv', action='store_const', const=True, dest='devSrv',  default=False,
                       help="Please don't use this option. Only for developers to use the dev panda server")
+    parser.add_option("-l",action="store_true",dest="longFormat",default=False,
+                      help="long format for the list command")
     parser.add_option("-v",action="store_true",dest="verbose",default=False,
                       help="verbose")
     parser.add_option('--version',action='store_const',const=True,dest='version',default=False,
@@ -139,7 +299,7 @@ if __name__ == "__main__":
     tmpLog = PLogger.getPandaLogger()
 
     # instantiate core
-    pUserInfoCore = PUserInfoCore(tmpLog,options.verbose)
+    pUserInfoCore = PUserInfoCore(tmpLog,options.verbose,options.longFormat)
 
     # check subcommand
     if len(args) == 0:

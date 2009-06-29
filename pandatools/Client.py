@@ -337,6 +337,26 @@ def getSE(site):
     return ret
 
 
+# convert DQ2 ID to Panda siteid 
+def convertDQ2toPandaID(site):
+    keptSite = ''
+    for tmpID,tmpSpec in PandaSites.iteritems():
+        # # exclude long,xrootd,local queues
+        if isExcudedSite(tmpID):
+            continue
+        # get list of DQ2 IDs
+        srmv2ddmList = []
+        for tmpDdmID in tmpSpec['setokens'].values():
+            srmv2ddmList.append(convSrmV2ID(tmpDdmID))
+        # use Panda sitename
+        if convSrmV2ID(site) in srmv2ddmList:
+            keptSite = tmpID
+            # keep non-online site just in case
+            if tmpSpec['status']=='online':
+                return keptSite
+    return keptSite
+
+
 # submit jobs
 def submitJobs(jobs,verbose=False):
     # set hostname
@@ -751,7 +771,8 @@ def convSrmV2ID(tmpSite):
     # keep original name to avoid double conversion
     origSite = tmpSite
     # doesn't convert FR/IT/UK sites 
-    for tmpPrefix in ['IN2P3-','INFN-','UKI-','GRIF-','DESY-']:
+    for tmpPrefix in ['IN2P3-','INFN-','UKI-','GRIF-','DESY-','UNI-','RU-',
+                      'LIP-','RO-']:
         if tmpSite.startswith(tmpPrefix):
             tmpSite = re.sub('_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
             tmpSite = re.sub('_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
@@ -851,6 +872,23 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                 out = outTmp
                 if verbose:
                     print out
+            # choose sites where most files are available
+            if not woFileCheck:
+                tmpMaxFiles = -1
+                for origTmpSite,origTmpInfo in out.iteritems():
+                    # get PandaID
+                    tmpPandaSite = convertDQ2toPandaID(origTmpSite)
+                    # check status
+                    if PandaSites.has_key(tmpPandaSite) and PandaSites[tmpPandaSite]['status'] == 'online':
+                        # check the number of available files
+                        if tmpMaxFiles < origTmpInfo[0]['found']:
+                            tmpMaxFiles = origTmpInfo[0]['found']
+                # remove sites
+                for origTmpSite in out.keys():
+                    if out[origTmpSite][0]['found'] < tmpMaxFiles:
+                        del out[origTmpSite]
+                if verbose:
+                    print out
             tmpFirstDump = True
             time.sleep(1)
             for origTmpSite,origTmpInfo in out.iteritems():
@@ -888,13 +926,16 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                             if tmpSpec['cloud'] == cloud:
                                 appendMap = retSiteMap
                             else:
-                                appendMap = resRetSiteMap                                
+                                appendMap = resRetSiteMap
                             # mapping between location and Panda siteID
                             if not appendMap.has_key(tmpSite):
                                 appendMap[tmpSite] = []
                             if not tmpID in appendMap[tmpSite]:
                                 appendMap[tmpSite].append(tmpID)
                         else:
+                            # not interested in another cloud
+                            if tmpSpec['cloud'] != cloud and expCloud:
+                                continue
                             # keep bad status sites for info
                             if not resBadStSites.has_key(tmpSpec['status']):
                                 resBadStSites[tmpSpec['status']] = []
@@ -1296,7 +1337,7 @@ def getJobStatusFromMon(id,verbose=False):
 
 
 # run brokerage
-def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False):
+def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False):
     # serialize
     strSites = pickle.dumps(sites)
     # instantiate curl
@@ -1310,6 +1351,8 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False):
             'atlasRelease':atlasRelease}
     if cmtConfig != None:
         data['cmtConfig'] = cmtConfig
+    if trustIS:
+        data['trustIS'] = True
     return curl.get(url,data)
    
 
@@ -1419,7 +1462,7 @@ def addSiteAccess(siteID,verbose=False):
 
 
 # list site access
-def listSiteAccess(siteID,verbose=False):
+def listSiteAccess(siteID,verbose=False,longFormat=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1430,6 +1473,8 @@ def listSiteAccess(siteID,verbose=False):
     data = {}
     if siteID != None:
         data['siteID'] = siteID
+    if longFormat:
+        data['longFormat'] = True
     status,output = curl.post(url,data)
     if status!=0:
         print output
@@ -1442,20 +1487,52 @@ def listSiteAccess(siteID,verbose=False):
         return EC_Failed,None
 
 
+# update site access
+def updateSiteAccess(method,siteid,userName,verbose=False,value=''):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/updateSiteAccess'
+    data = {'method':method,'siteid':siteid,'userName':userName}
+    if value != '':
+        data['attrValue'] = value
+    status,output = curl.post(url,data)
+    if status!=0:
+        print output
+        return status,None
+    try:
+        return status,output
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR updateSiteAccess : %s %s" % (type,value)
+        return EC_Failed,None
+
+
+# site access map
+SiteAcessMapForWG = None
+    
 # add allowed sites
 def addAllowedSites(verbose=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     if verbose:
-        tmpLog.debug('check site access to add allowed sites')
+        tmpLog.debug('check site access')
     # get access list
-    tmpStatus,tmpOut = listSiteAccess(None,verbose)
+    tmpStatus,tmpOut = listSiteAccess(None,verbose,True)
     if tmpStatus != 0:
         return False
-    # set online if the site is allowed 
+    global SiteAcessMapForWG
+    SiteAcessMapForWG = {}
     global PandaSites
-    for tmpID,tmpVal in tmpOut:
-        if tmpVal=='approved':
+    for tmpVal in tmpOut:
+        tmpID = tmpVal['primKey']
+        # keep info to map 
+        SiteAcessMapForWG[tmpID] = tmpVal
+        # set online if the site is allowed
+        if tmpVal['status']=='approved':
            if PandaSites.has_key(tmpID):
                PandaSites[tmpID]['status'] = 'online'
                if verbose:
@@ -1463,6 +1540,43 @@ def addAllowedSites(verbose=False):
     return True
 
 
+# check permission
+def checkSiteAccessPermission(siteName,workingGroup,verbose):
+    # get site access if needed
+    if SiteAcessMapForWG == None:
+        ret = addAllowedSites(verbose)
+        if not ret:
+            return True
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    if verbose:
+        tmpLog.debug('checking site access permission')
+        tmpLog.debug('site=%s workingGroup=%s map=%s' % (siteName,workingGroup,str(SiteAcessMapForWG)))
+    # check
+    if (not SiteAcessMapForWG.has_key(siteName)) or SiteAcessMapForWG[siteName]['status'] != 'approved':
+        errStr = "You don't have permission to send jobs to %s with workingGroup=%s. " % (siteName,workingGroup)
+        # allowed member only
+        if PandaSites[siteName]['accesscontrol'] == 'grouplist':
+            tmpLog.error(errStr)
+            return False
+        else:
+            # reset workingGroup
+            if not workingGroup in ['',None]:
+                errStr += 'Resetting workingGroup to None'
+                tmpLog.warning(errStr)
+            return True
+    elif not workingGroup in ['',None]:
+        # check workingGroup
+        wgList = SiteAcessMapForWG[siteName]['workingGroups'].split(',')
+        if not workingGroup in wgList:
+            errStr  = "Invalid workingGroup=%s. Must be one of %s. " % (workingGroup,str(wgList))
+            errStr += 'Resetting workingGroup to None'
+            tmpLog.warning(errStr)
+            return True
+    # no problems
+    return True
+
+        
 # get JobIDs in a time range
 def getJobIDsInTimeRange(timeRange,dn=None,verbose=False):
     # instantiate curl
@@ -1572,3 +1686,21 @@ def excludeSite(excludedSite):
                     del PandaSites[site]
                 except:
                     pass
+
+
+# get client version
+def getPandaClientVer(verbose):
+    # instantiate curl
+    curl = _Curl()
+    curl.verbose = verbose
+    # execute
+    url = baseURL + '/getPandaClientVer'
+    status,output = curl.get(url,{})
+    # failed
+    if status != 0:
+        return status,output
+    # check format
+    if re.search('^\d+\.\d+\.\d+$',output) == None:
+        return EC_Failed,"invalid version '%s'" % output
+    # return
+    return status,output
