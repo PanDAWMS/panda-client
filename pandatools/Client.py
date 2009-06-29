@@ -1510,21 +1510,29 @@ def updateSiteAccess(method,siteid,userName,verbose=False,value=''):
         print "ERROR updateSiteAccess : %s %s" % (type,value)
         return EC_Failed,None
 
+
+# site access map
+SiteAcessMapForWG = None
     
 # add allowed sites
 def addAllowedSites(verbose=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     if verbose:
-        tmpLog.debug('check site access to add allowed sites')
+        tmpLog.debug('check site access')
     # get access list
-    tmpStatus,tmpOut = listSiteAccess(None,verbose)
+    tmpStatus,tmpOut = listSiteAccess(None,verbose,True)
     if tmpStatus != 0:
         return False
-    # set online if the site is allowed 
+    global SiteAcessMapForWG
+    SiteAcessMapForWG = {}
     global PandaSites
-    for tmpID,tmpVal in tmpOut:
-        if tmpVal=='approved':
+    for tmpVal in tmpOut:
+        tmpID = tmpVal['primKey']
+        # keep info to map 
+        SiteAcessMapForWG[tmpID] = tmpVal
+        # set online if the site is allowed
+        if tmpVal['status']=='approved':
            if PandaSites.has_key(tmpID):
                PandaSites[tmpID]['status'] = 'online'
                if verbose:
@@ -1532,6 +1540,43 @@ def addAllowedSites(verbose=False):
     return True
 
 
+# check permission
+def checkSiteAccessPermission(siteName,workingGroup,verbose):
+    # get site access if needed
+    if SiteAcessMapForWG == None:
+        ret = addAllowedSites(verbose)
+        if not ret:
+            return True
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    if verbose:
+        tmpLog.debug('checking site access permission')
+        tmpLog.debug('site=%s workingGroup=%s map=%s' % (siteName,workingGroup,str(SiteAcessMapForWG)))
+    # check
+    if (not SiteAcessMapForWG.has_key(siteName)) or SiteAcessMapForWG[siteName]['status'] != 'approved':
+        errStr = "You don't have permission to send jobs to %s with workingGroup=%s. " % (siteName,workingGroup)
+        # allowed member only
+        if PandaSites[siteName]['accesscontrol'] == 'grouplist':
+            tmpLog.error(errStr)
+            return False
+        else:
+            # reset workingGroup
+            if not workingGroup in ['',None]:
+                errStr += 'Resetting workingGroup to None'
+                tmpLog.warning(errStr)
+            return True
+    elif not workingGroup in ['',None]:
+        # check workingGroup
+        wgList = SiteAcessMapForWG[siteName]['workingGroups'].split(',')
+        if not workingGroup in wgList:
+            errStr  = "Invalid workingGroup=%s. Must be one of %s. " % (workingGroup,str(wgList))
+            errStr += 'Resetting workingGroup to None'
+            tmpLog.warning(errStr)
+            return True
+    # no problems
+    return True
+
+        
 # get JobIDs in a time range
 def getJobIDsInTimeRange(timeRange,dn=None,verbose=False):
     # instantiate curl

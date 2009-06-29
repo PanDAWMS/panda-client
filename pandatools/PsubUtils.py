@@ -421,7 +421,7 @@ def updatePackage(verbose=False):
     print
     print "Please specify type of installation"
     print "   PANDA_SYS=%s" % os.environ['PANDA_SYS']
-    print " 1. Install to the same dir"
+    print " 1. Install to $PANDA_SYS"
     print "      all files in $PANDA_SYS will be erased first and new ones will"
     print "      be installed to the same dir"
     print " 2. Install to a new dir"

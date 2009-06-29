@@ -17,6 +17,7 @@ pathena -h
 current
   * improved --update in pathena/prun
   * added version check to pathena/prun 
+  * added site access check to pathena/prun
 
 0.1.72 (6/18/2009)
   * added --nSkipFiles to prun

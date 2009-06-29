@@ -1693,6 +1693,10 @@ if outputDSexist:
             if tmpIndex > indexMS:
                 indexMS = tmpIndex
 
+# check permission
+if not Client.checkSiteAccessPermission(options.site,options.workingGroup,options.verbose):
+    sys.exit(EC_Config)
+
 if options.verbose:
     print "== parameters =="
     print "Site       : %s" % options.site
