@@ -1519,11 +1519,11 @@ def addAllowedSites(verbose=False):
     if verbose:
         tmpLog.debug('check site access')
     # get access list
+    global SiteAcessMapForWG
+    SiteAcessMapForWG = {}
     tmpStatus,tmpOut = listSiteAccess(None,verbose,True)
     if tmpStatus != 0:
         return False
-    global SiteAcessMapForWG
-    SiteAcessMapForWG = {}
     global PandaSites
     for tmpVal in tmpOut:
         tmpID = tmpVal['primKey']
