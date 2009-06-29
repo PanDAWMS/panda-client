@@ -1192,7 +1192,7 @@ def _getGridSrc():
             if os.environ['CMTSITE'] == 'CERN':
 		gridSrc = '/afs/cern.ch/project/gd/LCG-share/current/etc/profile.d/grid_env.sh'
             elif os.environ['CMTSITE'] == 'BNL':
-                gridSrc = '/afs/usatlas.bnl.gov/lcg/current/etc/profile.d/grid_env.sh'
+                gridSrc = '/afs/usatlas.bnl.gov/osg/client/@sys/current/setup.sh'
             else:
                 # try to determin site using path to athena
                 status,athenaPath = commands.getstatusoutput('which athena.py')
@@ -1203,7 +1203,7 @@ def _getGridSrc():
                     print "ERROR : PATHENA_GRID_SETUP_SH is not defined in envvars"
                     print "  for CERN : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current/etc/profile.d/grid_env.sh"                
                     print "  for LYON : export PATHENA_GRID_SETUP_SH=/afs/in2p3.fr/grid/profiles/lcg_env.sh"
-                    print "  for BNL  : export PATHENA_GRID_SETUP_SH=/afs/usatlas.bnl.gov/lcg/current/etc/profile.d/grid_env.sh"                
+                    print "  for BNL  : export PATHENA_GRID_SETUP_SH=/afs/usatlas.bnl.gov/osg/client/@sys/current/setup.sh"
                     return False
     # check grid-proxy
     if gridSrc != '':

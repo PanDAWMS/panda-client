@@ -16,6 +16,7 @@ pathena -h
 
 current 
   * removed urllib2 and md5 to avoid the hashlib problem in Athena on SL5
+  * changed UI at BNL for SL5
 
 0.1.73 (6/29/2009)
   * improved --update in pathena/prun
