@@ -419,7 +419,7 @@ _orgHelp = help
 
 
 # main for interactive session
-def intmain(pbookCore):
+def intmain(pbookCore,comString):
 
     # help
     def help(*arg):
@@ -512,6 +512,22 @@ For more info, do help(show) for example."""
 
     # run sync
     pbookCore.sync()
+    # execut command in the batch mode
+    if comString != '':
+        # decompose to function name and argument
+        match = re.search('^([^\(]+)\((\d*)\)$',comString)
+        comName = match.group(1)
+        comArg  = match.group(2)
+        if comArg != '':
+            # convert to int
+            comArg = (long(comArg),)
+        else:
+            # for functions without arguments
+            comArg = ()
+        # exec : exec cannot be used due to unqualified exec with nested functions
+        apply(locals()[comName],comArg)
+        # exit
+        sys.exit(0)
     # go to interactive prompt
     code.interact(banner="\nStart pBook %s" % PandaToolsPkgInfo.release_version,
                   local=locals())
@@ -546,6 +562,8 @@ if __name__ == "__main__":
                       help="verbose")
     parser.add_option("--gui",action="store_true",dest="gui",default=False,
                       help="use GUI")
+    parser.add_option('-c',action='store',dest='comString',default='',type='string',
+                      help='execute a command in the batch mode')
     parser.add_option("--noPass",action="store_true",dest="noPass",default=False,
                       help="disable to enter pass phrase for GUI")
     parser.add_option('--version',action='store_const',const=True,dest='version',default=False,
@@ -583,7 +601,7 @@ if __name__ == "__main__":
             # instantiate core
             pbookCore = PBookCore(False,options.verbose)
             # CUI
-            intmain(pbookCore)
+            intmain(pbookCore,options.comString)
     else:
         # set handler
         signal.signal(signal.SIGINT, catch_sig)
