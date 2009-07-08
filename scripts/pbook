@@ -2,6 +2,7 @@
 
 "exec" "/usr/bin/python" "-u" "-Wignore" "$0" "$@"
 
+# using /usr/bin/python for pyGTK 
 
 import re
 import os
@@ -510,24 +511,27 @@ For more info, do help(show) for example."""
         pbookCore.sync()
 
 
-    # run sync
-    pbookCore.sync()
     # execut command in the batch mode
     if comString != '':
-        # decompose to function name and argument
-        match = re.search('^([^\(]+)\((\d*)\)$',comString)
-        comName = match.group(1)
-        comArg  = match.group(2)
-        if comArg != '':
-            # convert to int
-            comArg = (long(comArg),)
-        else:
-            # for functions without arguments
-            comArg = ()
-        # exec : exec cannot be used due to unqualified exec with nested functions
-        apply(locals()[comName],comArg)
+        try:
+            # decompose to function name and argument
+            match = re.search('^([^\(]+)\((\d*)\)$',comString)
+            comName = match.group(1)
+            comArg  = match.group(2)
+            if comArg != '':
+                # convert to int
+                comArg = (long(comArg),)
+            else:
+                # for functions without arguments
+                comArg = ()
+            # exec : exec cannot be used due to unqualified exec with nested functions
+            apply(locals()[comName],comArg)
+        except:
+            pass
         # exit
         sys.exit(0)
+    # run sync
+    pbookCore.sync()
     # go to interactive prompt
     code.interact(banner="\nStart pBook %s" % PandaToolsPkgInfo.release_version,
                   local=locals())

@@ -569,6 +569,9 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
 
     # get package list
     def getPackages(_workArea):
+        # special packages
+        specialPackages = {'External/Lhapdf':'external/MCGenerators/lhapdf'}
+        # get file list
         installFiles = []
         getFileList(_workArea+'/InstallArea',installFiles,True)
         # get list of packages
@@ -595,6 +598,26 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
                         if os.path.isdir(_workArea+'/'+pName):
                             _packages.append(pName)
                     break
+            # check special packages just in case
+            for pName,pPath in specialPackages.iteritems():
+                if not pName in _packages:
+                    # look for path pattern
+                    if re.search(pPath,file) != None:
+                        if os.path.isdir(_workArea+'/'+pName):
+                            # check structured style
+                            tmpDirList = os.listdir(_workArea+'/'+pName)
+                            useSS = False
+                            for tmpDir in tmpDirList:
+                                if re.search('-\d+-\d+-\d+$',tmpDir) != None:
+                                    _packages.append(pName+'/'+tmpDir)
+                                    useSS = True
+                                    break
+                            # normal structure
+                            if not useSS:
+                                _packages.append(pName)
+                            # delete since no needs anymore
+                            del specialPackages[pName]
+                            break            
         return _packages
 
 
