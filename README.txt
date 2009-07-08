@@ -14,7 +14,7 @@ pathena -h
 
 ** Release Note
 
-0.1.73 (7/9/2009)
+0.1.74 (7/9/2009)
   * removed urllib2 and md5 to avoid the hashlib problem in Athena on SL5
   * added -c to pbook	
   * added getPandaJob and getRunningPandaJobs to psequencer
