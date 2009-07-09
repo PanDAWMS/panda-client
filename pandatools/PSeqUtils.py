@@ -26,7 +26,7 @@ class PandaJobFactory:
         # instantiate PStep
         pStep = PStep.PStep(stepName,'',self.fetFactory,self.sn,self.verbose)
         # set JobID and Panda mark
-        pStep.JobID   = jobID
+        pStep.JobID   = long(jobID)
         pStep.isPanda = True
         # return
         return pStep

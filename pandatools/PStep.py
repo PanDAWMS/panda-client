@@ -7,6 +7,7 @@ import traceback
 
 import SeqConfig
 import PdbUtils
+import PLogger
 
 seqConf = SeqConfig.getConfig()
 
@@ -27,7 +28,7 @@ class PStep:
         self.env        = None
         self.status     = 0
         self.output     = ''
-
+        self.tmpLog     = PLogger.getPandaLogger()
 
     # copy constructor
     def __call__(self):
@@ -122,7 +123,7 @@ class PStep:
             pResult = self.waitResult(blocking)
             # return None when result is unavailable in non-blocking mode
             if (not blocking) and pResult == None:
-                return Nonw
+                return None
             # set values of Notification
             for key,val in pResult.iteritems():
                 if not hasattr(res,key):
@@ -139,6 +140,7 @@ class PStep:
         # instantiate fetcher
         fetcher = self.fetFactory.getFetcher()
         # wait notification
+        self.tmpLog.info('waiting result of JobID=%s' % self.JobID) 
         while True:
             sys.stdout.write('.')
             sys.stdout.flush()
