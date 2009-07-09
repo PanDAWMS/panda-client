@@ -1545,6 +1545,9 @@ def checkSiteAccessPermission(siteName,workingGroup,verbose):
         ret = addAllowedSites(verbose)
         if not ret:
             return True
+    # don't check if site name is undefined
+    if siteName == None:
+        return True
     # get logger
     tmpLog = PLogger.getPandaLogger()
     if verbose:

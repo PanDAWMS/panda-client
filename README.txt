@@ -14,7 +14,8 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.75 (7/10/2009)
+  * fixed checkSiteAccessPermission for --burstSubmit
   * fixed result() of PStep in non-blocking mode
   * fixed getRunningPandaJobs in psequencer
 
