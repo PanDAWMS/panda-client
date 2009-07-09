@@ -426,7 +426,7 @@ def updatePackage(verbose=False):
     print "      be installed to the same dir"
     print " 2. Install to a new dir"
     print "      new files will be installed to somewhere else than $PANDA_SYS"
-    print " 3. Patch (worst recommended)"
+    print " 3. Patch (not recommended)"
     print "      existing files in $PANDA_SYS will be patched with new ones"
     print
     while True:
