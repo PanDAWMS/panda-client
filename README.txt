@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.76 (7/10/2009)
+  * added --gluePackages to pathena
+
 0.1.75 (7/10/2009)
   * fixed checkSiteAccessPermission for --burstSubmit
   * fixed result() of PStep in non-blocking mode

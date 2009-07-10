@@ -520,11 +520,11 @@ def matchExtFile(fileName):
 specialFilesForAthena = ['dblookup.xml']
 
 # archive source files
-def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
+def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]):
     # archive sources
     tmpLog = PLogger.getPandaLogger()
     tmpLog.info('archiving source files')
-        
+
     #####################################################################
     # subroutines
 
@@ -568,7 +568,9 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
                 files.append(appFileName)
 
     # get package list
-    def getPackages(_workArea):
+    def getPackages(_workArea,gluePackages=[]):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
         # special packages
         specialPackages = {'External/Lhapdf':'external/MCGenerators/lhapdf'}
         # get file list
@@ -617,7 +619,27 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
                                 _packages.append(pName)
                             # delete since no needs anymore
                             del specialPackages[pName]
-                            break            
+                            break
+        # check glue packages
+        for pName in gluePackages:
+            if not pName in _packages:
+                if os.path.isdir(_workArea+'/'+pName):
+                    # check structured style
+                    tmpDirList = os.listdir(_workArea+'/'+pName)
+                    useSS = False
+                    for tmpDir in tmpDirList:
+                        if re.search('-\d+-\d+-\d+$',tmpDir) != None:
+                            fullPName = pName+'/'+tmpDir
+                            if not fullPName in _packages:
+                                _packages.append(fullPName)
+                            useSS = True
+                            break
+                    # normal structure
+                    if not useSS:
+                        _packages.append(pName)
+                else:
+                    tmpLog.warning('glue package %s not found under %s' % (pName,_workArea))
+        # return 
         return _packages
 
 
@@ -672,7 +694,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
     # execute
 
     # get packages in private area 
-    packages = getPackages(workArea)
+    packages = getPackages(workArea,gluePackages)
     # check TestRelease since it doesn't create any links in InstallArea
     if os.path.exists('%s/TestRelease' % workArea):
         # the TestRelease could be created by hand
