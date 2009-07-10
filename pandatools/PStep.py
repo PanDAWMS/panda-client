@@ -6,6 +6,8 @@ import time
 import traceback
 
 import SeqConfig
+import PdbUtils
+import PLogger
 
 seqConf = SeqConfig.getConfig()
 
@@ -22,7 +24,11 @@ class PStep:
         self.sn         = sn  
         self.verbose    = verbose
         self.cloneSN    = 0
-
+        self.wait       = None
+        self.env        = None
+        self.status     = 0
+        self.output     = ''
+        self.tmpLog     = PLogger.getPandaLogger()
 
     # copy constructor
     def __call__(self):
@@ -35,12 +41,17 @@ class PStep:
         
         
     # execute command
-    def execute(self,wait=True,env={}):
+    def execute(self,wait=False,env={}):
+        # set wait and env
+        if self.wait == None:
+            self.wait = wait
+        if self.env == None:    
+            self.env = env
         printStr = "=== %s start\n" % self.name
         # append env variables
-        if env != {}:
+        if self.env != {}:
             envStr = ''            
-            for envKey,envVal in env.iteritems():
+            for envKey,envVal in self.env.iteritems():
                 envStr += 'export %s="%s"\n' % (envKey,envVal)
             self.command = envStr + self.command
         # crete tmp output
@@ -93,12 +104,12 @@ class PStep:
                     self.isPanda = True
                     self.JobID   = int(match.group(1))
         # wait result for pathena/prun
-        if self.isPanda and wait:
+        if self.isPanda and self.wait:
             self.waitResult()
             
 
     # get result
-    def result(self):
+    def result(self,blocking=True):
         # tmp class for result
         class tmpResult:
             pass
@@ -109,7 +120,10 @@ class PStep:
         res.output = self.output
         # wait result for pathena/prun
         if self.isPanda:
-            pResult = self.waitResult()
+            pResult = self.waitResult(blocking)
+            # return None when result is unavailable in non-blocking mode
+            if (not blocking) and pResult == None:
+                return None
             # set values of Notification
             for key,val in pResult.iteritems():
                 if not hasattr(res,key):
@@ -119,13 +133,14 @@ class PStep:
 
 
     # wait result
-    def waitResult(self):
+    def waitResult(self,blocking=True):
         # non pathena jobs
         if not self.isPanda:
             return {}
         # instantiate fetcher
         fetcher = self.fetFactory.getFetcher()
         # wait notification
+        self.tmpLog.info('waiting result of JobID=%s' % self.JobID) 
         while True:
             sys.stdout.write('.')
             sys.stdout.flush()
@@ -142,5 +157,55 @@ class PStep:
                 if self.verbose:
                     traceback.print_tb(traceBack)
                 print '\nINFO: ignored %s %s' % (type,value)
+            # escape if non-blocking mode
+            if not blocking:
+                return None
             # sleep    
             time.sleep(60*seqConf.mail_interval)
+
+
+    # retry
+    def retry(self):
+        # execute again for non-Panda
+        if not self.isPanda:
+            execute()
+            return
+        # synchronize local database
+        os.system('pbook -c "sync()"')
+        # get job
+        nTry = 3
+        for iTry in range(nTry):
+            job = PdbUtils.readJobDB(self.JobID,self.verbose)
+            if job == None:
+                self.status = 255
+                self.output = "ERROR : cannot find JobID=%s in local DB" % self.JobID
+                return
+            # not yet retried
+            if job.retryID in [0,'0']:
+                break
+            # check number of attempts
+            if iTry+1 >= nTry:
+                self.status = 255
+                self.output = "ERROR : already retried %s times" % nTry
+                return
+            # set JobID to get job from DB
+            self.JobID = long(job.retryID)
+        # retry
+        os.system('pbook -c "retry(%s)"' % self.JobID)
+        # get new job
+        job = PdbUtils.readJobDB(self.JobID,self.verbose)
+        if job == None:
+            self.status = 255
+            self.output = "ERROR : cannot find JobID=%s in local DB after retry" % self.JobID
+            return
+        # check new JobID
+        if job.retryID in [0,'0']:
+            self.status = 255
+            self.output = "ERROR : failed to retry JobID=%s" % self.JobID
+            return
+        # set jobID
+        self.JobID = long(job.retryID)
+        # set status and output
+        self.status = 0
+        self.output = ''
+        return

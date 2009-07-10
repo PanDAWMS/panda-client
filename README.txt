@@ -14,9 +14,19 @@ pathena -h
 
 ** Release Note
 
-current 
+0.1.76 (7/10/2009)
+  * added --gluePackages to pathena
+
+0.1.75 (7/10/2009)
+  * fixed checkSiteAccessPermission for --burstSubmit
+  * fixed result() of PStep in non-blocking mode
+  * fixed getRunningPandaJobs in psequencer
+
+0.1.74 (7/9/2009)
   * removed urllib2 and md5 to avoid the hashlib problem in Athena on SL5
-  * changed UI at BNL for SL5
+  * added -c to pbook	
+  * added getPandaJob and getRunningPandaJobs to psequencer
+  * fixed AthenaUtils for Lhapdf
 
 0.1.73 (6/29/2009)
   * improved --update in pathena/prun

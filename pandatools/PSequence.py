@@ -5,6 +5,7 @@ import tempfile
 import commands 
 
 import PStep
+import PSeqUtils
 
 
 class PSequence:
@@ -17,10 +18,15 @@ class PSequence:
         self.pySequence = ''
         self.fetFactory = fetFactory
         self.sn         = sn
+        self.functions  = {}
 
     
     # parse script
     def parse(self,verbose=False):
+        # add method objects
+        self.functions['getPandaJob'] = PSeqUtils.PandaJobFactory(self.fetFactory,self.sn,verbose)        
+        self.functions['getRunningPandaJobs'] = PSeqUtils.RunningPandaFactory(self.fetFactory,
+                                                                              self.sn,verbose)
         # get step sections
         scFH = open(self.scriptName)
         stepName     = None
@@ -68,15 +74,20 @@ class PSequence:
         # import RssFeedReader to enable it in the sequence section
         self.pySequence += "from %s.RssFeedReader import RssFeedReader\n" \
                            % __name__.split('.')[-2]
+        # expand method objects
+        for name in self.functions.keys():
+            self.pySequence += "%s = self.functions['%s']\n" % (name,name)
         # append sequence
         for line in self.sequence:
             self.pySequence += line
 
+        
     # main
     def run(self,verbose=False):
         # setup
         self.convert(verbose)
         # execute
         exec self.pySequence
+        # return
         return True
             
