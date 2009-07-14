@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.77 (7/14/2009)
+  * added --secondaryDSs to prun
+
 0.1.76 (7/10/2009)
   * added --gluePackages to pathena
 
