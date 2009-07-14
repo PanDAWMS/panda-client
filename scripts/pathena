@@ -147,6 +147,8 @@ optP.add_option('--extOutFile', action='store', dest='extOutFile',  default='',
                 help='define extra output files, e.g., output1.txt,output2.dat')
 optP.add_option('--supStream', action='store', dest='supStream',  default='',
                 help='suppress some output streams. e.g., ESD,TAG ')
+optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
+                help='list of glue packages which pathena cannot fine due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf')
 optP.add_option('--excludedSite', action='store', dest='excludedSite',  default='',
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
 optP.add_option('--noSubmit', action='store_const', const=True, dest='nosubmit',  default=False,
@@ -353,6 +355,13 @@ options.extFile = options.extFile.split(',')
 options.extOutFile = options.extOutFile.split(',')
 try:
     options.extOutFile.remove('')
+except:
+    pass
+
+# glue packages
+options.gluePackages = options.gluePackages.split(',')
+try:
+    options.gluePackages.remove('')
 except:
     pass
 
@@ -739,7 +748,7 @@ else:
     if options.libDS == '' and not options.nobuild:
         # archive sources
 	archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,currentDir,tmpDir,
-                                                                     options.verbose) 
+                                                                     options.verbose,options.gluePackages) 
     else:
         # archive jobO
 	archiveName,archiveFullName = AthenaUtils.archiveJobOFiles(workArea,runDir,currentDir,

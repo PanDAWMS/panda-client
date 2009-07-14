@@ -1545,6 +1545,9 @@ def checkSiteAccessPermission(siteName,workingGroup,verbose):
         ret = addAllowedSites(verbose)
         if not ret:
             return True
+    # don't check if site name is undefined
+    if siteName == None:
+        return True
     # get logger
     tmpLog = PLogger.getPandaLogger()
     if verbose:
@@ -1702,3 +1705,47 @@ def getPandaClientVer(verbose):
         return EC_Failed,"invalid version '%s'" % output
     # return
     return status,output
+
+
+# get files in dataset with filte
+def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # query files in dataset
+    tmpLog.info("query files in %s" % inDS)
+    inputFileMap = queryFilesInDataset(inDS,verbose)
+    # read list of files to be used
+    filesToBeUsed = []
+    if inputFileListName != '':
+        rFile = open(inputFileListName)
+        for line in rFile:
+            line = re.sub('\n','',line)
+            filesToBeUsed.append(line)
+        rFile.close()
+    # remove redundant files
+    tmpKeys = inputFileMap.keys()
+    for tmpLFN in tmpKeys:
+        # filename matching
+        if filter != '':
+            if re.search(filter,tmpLFN) == None:
+                del inputFileMap[tmpLFN]
+                continue
+        # files in shadow
+        if tmpLFN in shadowList:
+            if inputFileMap.has_key(tmpLFN):
+                del inputFileMap[tmpLFN]            
+            continue
+        # files to be used
+        if filesToBeUsed != []:
+            # check matching    
+            matchFlag = False
+            for pattern in filesToBeUsed:
+                # normal matching
+                if pattern == tmpLFN:
+                    matchFlag =True
+                    break
+            # doesn't match
+            if not matchFlag:
+                del inputFileMap[tmpLFN]
+    # get logger
+    return inputFileMap

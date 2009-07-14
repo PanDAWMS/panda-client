@@ -12,6 +12,7 @@ import optparse
 import commands
 import urllib
 import shelve
+import copy
 
 # default cloud/site
 defaultCloud = 'US'
@@ -42,6 +43,8 @@ optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
                 help='Name of an output dataset. OUTDS will contain all output files')
 optP.add_option('--libDS',action='store',dest='libDS',default='',type='string',
                 help='Name of a library dataset')
+optP.add_option('--secondaryDSs',action='store',dest='secondaryDSs',default='',type='string',
+                help='List of secondary datasets when the job requires multiple inputs. See PandaRun wiki page for detail')
 optP.add_option('--site',action='store',dest='site',default=defaultSite,type='string',
                 help='Site name where jobs are sent (default:%s' % defaultSite)
 optP.add_option('--cloud',action='store',dest='cloud',default=None,type='string',
@@ -274,6 +277,36 @@ if options.outDS == '':
     tmpLog.error("no outDS is given\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
     sys.exit(EC_Config)
 
+# secondary datasets
+if options.secondaryDSs != '':
+    if options.inDS == '':
+        tmpLog.error("Primary input dataset is not defined using --inDS although --secondaryDSs is set")
+        sys.exit(EC_Config)
+    # parse
+    tmpMap = {}
+    for tmpItem in options.secondaryDSs.split(','):
+        tmpItems = tmpItem.split(':')
+        if len(tmpItems) in [3,4,5]:
+            tmpMap[tmpItems[2]] = {'nFiles'     : int(tmpItems[1]),
+                                   'streamName' : tmpItems[0],
+                                   'pattern'    : '',
+                                   'nSkip'      : 0,
+                                   'files'      : []}
+            # using filtering pattern
+            if len(tmpItems) >= 4:
+                tmpMap[tmpItems[2]]['pattern'] = tmpItems[3]
+            # nSkip
+            if len(tmpItems) >= 5:
+                tmpMap[tmpItems[2]]['nSkip'] = int(tmpItems[4])
+        else:         
+            tmpLog.error("Wrong format %s in --secondaryDSs. Must be StreamName:nFilesPerJob:DatasetName[:Pattern[:nSkipFiles]]" \
+                         % tmpItem)
+            sys.exit(EC_Config)
+    # set
+    options.secondaryDSs = tmpMap
+else:
+    options.secondaryDSs = {}
+
 # correct site
 if options.site != 'AUTO':
     origSite = options.site
@@ -396,44 +429,22 @@ if options.inDS != '':
     elif outputContExist:
 	shadowList = Client.getFilesInShadowDataset(options.outDS,suffixShadow,options.verbose)
     # query files in dataset
-    tmpLog.info("query files in %s" % options.inDS)
-    inputFileMap = Client.queryFilesInDataset(options.inDS,options.verbose)
-    # read list of files to be used
-    filesToBeUsed = []
-    if options.inputFileListName != '':
-        rFile = open(options.inputFileListName)
-        for line in rFile:
-            line = re.sub('\n','',line)
-            filesToBeUsed.append(line)
-        rFile.close()
-    # remove redundant files
-    tmpKeys = inputFileMap.keys()
-    for tmpLFN in tmpKeys:
-        # filename matching
-        if options.match != '':
-            if re.search(options.match,tmpLFN) == None:
-                del inputFileMap[tmpLFN]
-                continue
-        # files in shadow
-        if tmpLFN in shadowList:
-            if inputFileMap.has_key(tmpLFN):
-                del inputFileMap[tmpLFN]            
-            continue
-        # files to be used
-        if filesToBeUsed != []:
-            # check matching    
-            matchFlag = False
-            for pattern in filesToBeUsed:
-                # normal matching
-                if pattern == tmpLFN:
-                    matchFlag =True
-                    break
-            # doesn't match
-            if not matchFlag:
-                del inputFileMap[tmpLFN]
-    # append
+    inputFileMap = Client.getFilesInDatasetWithFilter(options.inDS,options.match,shadowList,options.inputFileListName,options.verbose)
+    # sort
     inputFileList = inputFileMap.keys()
     inputFileList.sort()
+    # query files in secondary datasets
+    for tmpDsName,tmpValMap in options.secondaryDSs.iteritems():
+        tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose)
+        # sort
+        tmpSecFileList = tmpSecFileMap.keys()
+        tmpSecFileList.sort()
+        # append
+        for tmpSecFile in tmpSecFileList:
+            tmpSecFileMap[tmpSecFile]['LFN'] = tmpSecFile
+            options.secondaryDSs[tmpDsName]['files'].append(tmpSecFileMap[tmpSecFile])
+        # skip files    
+        options.secondaryDSs[tmpDsName]['files'] = options.secondaryDSs[tmpDsName]['files'][options.secondaryDSs[tmpDsName]['nSkip']:]
     # get locations
     if inputFileList != []:
         if options.site == "AUTO":
@@ -898,6 +909,9 @@ if options.inDS != '':
     tmpLog.info("%s files are missing or skipped at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
 
+# disp datasetname to identify inputs
+commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
+
 # runJobs
 indexOffsetMap = {}
 for iJob in range(options.nJobs):
@@ -963,12 +977,47 @@ for iJob in range(options.nJobs):
             fileI.prodDBlock = options.inDS
             fileI.type       = 'input'
             fileI.status     = 'ready'
-            fileI.dispatchDBlock = options.inDS
+            fileI.dispatchDBlock = commonDispName
             jobR.addFile(fileI)
             try:
                 totalSize += long(fileI.fsize)
             except:
                 pass
+        tmpInputMap = {'IN': copy.deepcopy(inList)}  
+        # secondary datasets
+        secMap = {}
+        for tmpSecDS,tmpSecVal in options.secondaryDSs.iteritems():
+            tmpIndexSec = iJob*tmpSecVal['nFiles']
+            tmpSecList  = tmpSecVal['files'][tmpIndexSec:tmpIndexSec+tmpSecVal['nFiles']]
+            # check length
+            if len(tmpSecList) < tmpSecVal['nFiles']:
+                errStr  = "%s contains %s files which is insufficient for splitting. " % (tmpSecDS,len(tmpSecVal['files']))
+                errStr += "nJobs*nFilesPerJob=%s*%s=%s files are required" % (options.nJobs,tmpSecVal['nFiles'],
+                                                                              options.nJobs*tmpSecVal['nFiles'])
+                tmpLog.error(errStr)            
+                sys.exit(EC_Split)
+            # add FileSpec
+            tmpSecLfnList = []
+            for vals in tmpSecList:
+                fileI = FileSpec()
+                fileI.lfn        = vals['LFN']
+                fileI.GUID       = vals['guid']
+                fileI.fsize      = vals['fsize']
+                fileI.md5sum     = vals['md5sum']
+                fileI.dataset    = tmpSecDS
+                fileI.prodDBlock = tmpSecDS
+                fileI.type       = 'input'
+                fileI.status     = 'ready'
+                fileI.dispatchDBlock = commonDispName
+                jobR.addFile(fileI)
+                inList.append(fileI.lfn)
+                tmpSecLfnList.append(fileI.lfn)
+                try:
+                    totalSize += long(fileI.fsize)
+                except:
+                    pass
+            # append to map    
+            tmpInputMap[tmpSecVal['streamName']] = tmpSecLfnList
         # size check    
         if totalSize > maxTotalSize:
             errStr  = "A subjob has %s input files and requires %sMB of disk space." \
@@ -980,6 +1029,8 @@ for iJob in range(options.nJobs):
             sys.exit(EC_Split)
         # set parameter
         jobR.jobParameters += '-i "%s" ' % inList
+	if options.secondaryDSs != {}:
+	    jobR.jobParameters += '--inMap "%s" ' % tmpInputMap
     # output files
     outMap = {}
     if options.outputs != '':
