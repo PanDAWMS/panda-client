@@ -535,8 +535,8 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
         except:
             return
         for item in list:
-            # skip if doc
-            if item == 'doc':
+            # skip if doc or .svn
+            if item in ['doc','.svn']:
                 continue
             fullName=dir+'/'+item
             if os.path.isdir(fullName):

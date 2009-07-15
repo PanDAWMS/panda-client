@@ -14,6 +14,12 @@ pathena -h
 
 ** Release Note
 
+0.1.78 (7/15/2009)
+  * added error message when common location is not found for --secondaryDSs in prun  
+  * added --useAthenaPackages to prun
+  * ignore log.tgz in prun
+  * ignore .svn in AthenaUtils.getPackages
+
 0.1.77 (7/14/2009)
   * added --secondaryDSs to prun
 

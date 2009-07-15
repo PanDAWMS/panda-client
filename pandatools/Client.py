@@ -907,7 +907,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                     # dump                        
                     if tmpFirstDump:
                         if verbose:
-                            print tmpID,tmpSpec['status'],tmpSpec['ddm'],str(srmv2ddmList)
+                            #print tmpID,tmpSpec['status'],tmpSpec['ddm'],str(srmv2ddmList)
+                            pass
                     if tmpSite in srmv2ddmList or convSrmV2ID(tmpSpec['ddm']).startswith(tmpSite):
                         # overwrite tmpSite for srmv1
                         tmpSite = convSrmV2ID(tmpSpec['ddm'])
@@ -1725,6 +1726,10 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
     # remove redundant files
     tmpKeys = inputFileMap.keys()
     for tmpLFN in tmpKeys:
+        # remove log
+        if re.search('log\.tgz(\.\d+)*',tmpLFN) != None:
+            del inputFileMap[tmpLFN]            
+            continue
         # filename matching
         if filter != '':
             if re.search(filter,tmpLFN) == None:
