@@ -16,7 +16,7 @@ pathena -h
 
 0.1.78 (7/15/2009)
   * added error message when common location is not found for --secondaryDSs in prun  
-  * added --useAthenaPackages to prun
+  * added --useAthenaPackages to compile Athena packages in build step of prun
   * ignore log.tgz in prun
   * ignore .svn in AthenaUtils.getPackages
 
