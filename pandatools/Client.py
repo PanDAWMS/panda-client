@@ -9,6 +9,7 @@ import sys
 import time
 import stat
 import types
+import random
 import urllib
 import commands
 import cPickle as pickle
@@ -1346,6 +1347,9 @@ def getJobStatusFromMon(id,verbose=False):
 
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False):
+    # choose at most 20 sites randomly to avoid too many lookup
+    random.shuffle(sites)
+    sites = sites[:20]
     # serialize
     strSites = pickle.dumps(sites)
     # instantiate curl
