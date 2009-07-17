@@ -15,7 +15,7 @@ import shelve
 import copy
 
 # default cloud/site
-defaultCloud = 'US'
+defaultCloud = None
 defaultSite  = 'AUTO'
 
 # suffix for shadow dataset
@@ -30,8 +30,9 @@ EC_Split     = 70
 EC_MyProxy   = 80
 EC_Submit    = 90
 
-usage = """%prog [options]"""
+usage = """%prog [options]
 
+  HowTo is available at https://twiki.cern.ch/twiki/bin/view/Atlas/PandaRun"""
 
 # command-line parameters
 optP = optparse.OptionParser(usage=usage,conflict_handler="resolve")
@@ -46,9 +47,9 @@ optP.add_option('--libDS',action='store',dest='libDS',default='',type='string',
 optP.add_option('--secondaryDSs',action='store',dest='secondaryDSs',default='',type='string',
                 help='List of secondary datasets when the job requires multiple inputs. See PandaRun wiki page for detail')
 optP.add_option('--site',action='store',dest='site',default=defaultSite,type='string',
-                help='Site name where jobs are sent (default:%s' % defaultSite)
+                help='Site name where jobs are sent (default:%s)' % defaultSite)
 optP.add_option('--cloud',action='store',dest='cloud',default=None,type='string',
-                help='Cloud where jobs are submitted (default:%s)' % defaultCloud)
+                help='Cloud where jobs are submitted. default is set according to your VOMS country group')
 optP.add_option('--match',action='store',dest='match',default='',type='string',
                 help='Use only files matching with given pattern')
 optP.add_option('--official',action='store_const',const=True,dest='official',default=False,
@@ -485,55 +486,89 @@ if options.inDS != '':
 	    tmpDsForLookUpList = [options.inDS] + options.secondaryDSs.keys()
             tmpDsLocationForTest = {}
             dsLocationMap = None
+            dsLocationMapBack = None
             for tmpDsForLookUp in tmpDsForLookUpList:
-                tmpDsLocationMap = Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
-                                                       options.verbose,expCloud=expCloudFlag)
+                tmpDsLocationMap,tmpDsLocationMapBack = Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
+                                                                            options.verbose,expCloud=expCloudFlag,
+                                                                            getReserved=True)
                 # no location
-                if tmpDsLocationMap == {}:
+                if tmpDsLocationMap == {} and tmpDsLocationMapBack == {}:
                     if expCloudFlag:
-                        tmpLog.error("could not find supported/online locations in the %s cloud for %s" % (options.cloud,tmpDsForLookUp))
+                        tmpLog.error("could not find supported/online sites in the %s cloud for %s" % (options.cloud,tmpDsForLookUp))
                     else:
-                        tmpLog.error("could not find supported/online locations for %s" % tmpDsForLookUp)
+                        tmpLog.error("could not find supported/online sites for %s" % tmpDsForLookUp)
                     sys.exit(EC_Dataset)
                 # append
-                tmpDsLocationForTest[tmpDsForLookUp] = tmpDsLocationMap
+                tmpDsLocationForTest[tmpDsForLookUp] = {'pri':tmpDsLocationMap,
+                                                        'sec':tmpDsLocationMapBack}
                 # set initial value
                 if dsLocationMap == None:
                     dsLocationMap = copy.deepcopy(tmpDsLocationMap)
+                    dsLocationMapBack = copy.deepcopy(tmpDsLocationMapBack)
             # choose common locations
             if len(tmpDsLocationForTest) > 1:
-                for tmpDsForLookUp,tmpDsLocationMap in tmpDsLocationForTest.iteritems():
+                # primary sites
+                for tmpDsForLookUp,tmpVal in tmpDsLocationForTest.iteritems():
+                    tmpDsLocationMap = tmpVal['pri'] 
                     tmpDsLocationList = dsLocationMap.keys()
                     for tmpDsLocation in tmpDsLocationList:
                         if not tmpDsLocationMap.has_key(tmpDsLocation):
                             del dsLocationMap[tmpDsLocation]
+                # secondary sites
+                for tmpDsForLookUp,tmpVal in tmpDsLocationForTest.iteritems():
+                    tmpDsLocationMap = tmpVal['sec'] 
+                    tmpDsLocationList = dsLocationMapBack.keys()
+                    for tmpDsLocation in tmpDsLocationList:
+                        if not tmpDsLocationMap.has_key(tmpDsLocation):
+                            del dsLocationMapBack[tmpDsLocation]
                 # check
-                if dsLocationMap == {}:
-                    errStr = "Could not find common locations for input datasets\n\n"
-                    for tmpDsForLookUp,tmpDsLocationMap in tmpDsLocationForTest.iteritems():
+                if dsLocationMap == {} and dsLocationMapBack == {}:
+                    errStr = "Could not find common sites for input datasets\n\n"
+                    for tmpDsForLookUp,tmpVal in tmpDsLocationForTest.iteritems():
                         tmpSiteStr = ''
-                        for tmpSiteList in tmpDsLocationMap.values():
-                            tmpSiteStr += "%s," % tmpSiteList[0]
+                        for tmpDsLocationMap in [tmpVal['pri'],tmpVal['sec']]:
+                            for tmpSiteList in tmpDsLocationMap.values():
+                                tmpSiteStr += "%s," % tmpSiteList[0]
                         tmpSiteStr = tmpSiteStr[:-1]   
                         errStr += "   %s\n      exists at %s\n" % (tmpDsForLookUp,tmpSiteStr)
                     errStr += "\nYou need to request DDM subscription to aggregate them to a site"    
                     tmpLog.error(errStr)
                     sys.exit(EC_Dataset)
             # run brokerage
-            tmpSites = []
-            for tmpItem in dsLocationMap.values():
-                tmpSites += tmpItem
-            status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)
-            if status != 0:
-                tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
-                sys.exit(EC_Config)
-            if out.startswith('ERROR :'):
-		tmpLog.error('brokerage failed')
-		print out
-		sys.exit(EC_Config)                
-            if not Client.PandaSites.has_key(out):
-                tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
-                sys.exit(EC_Config)
+            tmpDsLocationMapList = [dsLocationMap]
+            if dsLocationMapBack != {}:
+                tmpDsLocationMapList.append(dsLocationMapBack)
+            tmpBrokerErr = ''   
+            for idxDsLocationMap,tmpDsLocationMap in enumerate(tmpDsLocationMapList):    
+                tmpSites = []
+                for tmpItem in tmpDsLocationMap.values():
+                    tmpSites += tmpItem
+		if tmpSites == []:
+                    continue
+                status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)
+                if status != 0:
+                    tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
+                    sys.exit(EC_Config)
+                if out.startswith('ERROR :'):
+		    if idxDsLocationMap == 0:
+			tmpBrokerErr += out
+			tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+		    else:
+			if tmpBrokerErr != '':
+			    tmpBrokerErr += out
+			    tmpBrokerErr += " Could not find sites in other clouds.\n"
+			else:
+			    tmpBrokerErr += out
+			    tmpBrokerErr += " Could not find sites.\n"
+                    if idxDsLocationMap+1 >= len(tmpDsLocationMapList):
+                        tmpLog.error('brokerage failed')
+                        print tmpBrokerErr[:-1]
+                        sys.exit(EC_Config)
+                    continue
+                if not Client.PandaSites.has_key(out):
+                    tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
+                    sys.exit(EC_Config)
+                break    
             # set site/cloud
             options.site  = out
             options.cloud = Client.PandaSites[options.site]['cloud']
@@ -580,25 +615,43 @@ if options.inDS != '':
 else:
     # set cloud for no input dataset
     if options.site == "AUTO":
-        # get sites belonging to a cloud
-        tmpSites = []
-        for tmpID,spec in Client.PandaSites.iteritems():
-            if spec['cloud']==options.cloud and spec['status']=='online':
-                # exclude long,xrootd,local queues
-                if Client.isExcudedSite(tmpID):
-                    continue
-                tmpSites.append(tmpID)
-        status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)    
-        if status != 0:
-            tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
-            sys.exit(EC_Config)
-	if out.startswith('ERROR :'):
-	    tmpLog.error('brokerage failed')
-	    print out
-	    sys.exit(EC_Config)                
-        if not Client.PandaSites.has_key(out):
-            tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
-            sys.exit(EC_Config)
+	# get sites belonging to a cloud and others
+	tmpPriSites = []
+	tmpSecSites = []
+	for tmpID,spec in Client.PandaSites.iteritems():
+	    if spec['status']=='online':
+		# exclude long,xrootd,local queues
+		if Client.isExcudedSite(tmpID):
+		    continue
+		if spec['cloud']==options.cloud:
+		    tmpPriSites.append(tmpID)
+		elif not expCloudFlag:
+		    tmpSecSites.append(tmpID)
+	tmpSitesList = [tmpPriSites]
+	if not expCloudFlag:
+	    tmpSitesList.append(tmpSecSites)
+        # run brokerage
+        tmpBrokerErr = ''
+        for idxTmpSites,tmpSites in enumerate(tmpSitesList):
+            status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)    
+            if status != 0:
+                tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
+                sys.exit(EC_Config)
+            if out.startswith('ERROR :'):
+                tmpBrokerErr += out
+                if idxTmpSites == 0:
+                    tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+                else:
+                    tmpBrokerErr += " Could not find sites in other clouds.\n"
+                if idxTmpSites+1 >= len(tmpSitesList):
+                    tmpLog.error('brokerage failed')
+                    print tmpBrokerErr[:-1]
+                    sys.exit(EC_Config)
+                continue    
+            if not Client.PandaSites.has_key(out):
+                tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
+                sys.exit(EC_Config)
+            break    
         # set site
         options.site = out
 

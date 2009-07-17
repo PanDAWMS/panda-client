@@ -2,6 +2,7 @@ import re
 import os
 import sys
 import time
+import random
 import commands
 
 import Client
@@ -119,6 +120,7 @@ def getCloudUsingFQAN(defaultCloud,verbose=False):
     if status == 0:
         vomsFQAN = out
     cloud = None
+    countryAttStr = ''
     # check countries
     for tmpCloud,spec in Client.PandaClouds.iteritems():
         # loop over all FQANs
@@ -132,6 +134,7 @@ def getCloudUsingFQAN(defaultCloud,verbose=False):
                 if re.search('^/atlas/%s/' % tmpCountry, tmpFQAN) != None:
                     # set cloud
                     cloud = tmpCloud
+                    countryAttStr = re.sub('/Capability=NULL','',tmpFQAN)
                     if verbose:
                         tmpLog.debug("  match %s %s %s" % (tmpCloud,tmpCountry,tmpFQAN))
                     break
@@ -143,11 +146,11 @@ def getCloudUsingFQAN(defaultCloud,verbose=False):
             break
     # set default
     if cloud == None:
-        cloud = defaultCloud
-        if verbose:
-            tmpLog.debug("  use default %s" % cloud)
-    if verbose:
-        tmpLog.debug("set cloud=%s" % cloud)
+        # use a cloud randomly
+        cloud = random.choice(Client.PandaClouds.keys())
+        tmpLog.info("use %s as default cloud" % cloud)
+    else:
+        tmpLog.info("use %s as default cloud due to VOMS:%s" % (cloud,countryAttStr))
     # return
     return cloud
 

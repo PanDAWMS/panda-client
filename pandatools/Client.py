@@ -808,7 +808,7 @@ def convSrmV2ID(tmpSite):
 
 
 # get locations
-def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
+def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -944,17 +944,27 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
         if woFileCheck:
             return retSites
         # use reserved map when the cloud doesn't hold the dataset
-        if retSiteMap == {} and not expCloud:
+        if retSiteMap == {} and (not expCloud) and (not getReserved):
             retSiteMap = resRetSiteMap
+        # reset reserved map for expCloud
+        if getReserved and expCloud:
+            resRetSiteMap = {}
         # return map
         if verbose:
-            tmpLog.debug("getLocations -> %s" % retSiteMap)
+            if not getReserved:
+                tmpLog.debug("getLocations -> %s" % retSiteMap)
+            else:
+                tmpLog.debug("getLocations pri -> %s" % retSiteMap)
+                tmpLog.debug("getLocations sec -> %s" % resRetSiteMap)
         # print bad status sites for info    
-        if retSiteMap == {} and resBadStSites != {}:
+        if retSiteMap == {} and resRetSiteMap == {} and resBadStSites != {}:
             tmpLog.warning("the following sites hold %s but they are not online" % name)
             for tmpStatus,tmpSites in resBadStSites.iteritems():
                 print "   status=%s : %s" % (tmpStatus,tmpSites)
-        return retSiteMap
+        if not getReserved:        
+            return retSiteMap
+        else:
+            return retSiteMap,resRetSiteMap
     except:
         print status,out
         if errStr != '':
