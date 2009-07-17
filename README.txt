@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * support rpm installation in --update of pathena/prun
+
 0.1.79 (7/17/2009)
   * dropped the default to use US cloud
 
