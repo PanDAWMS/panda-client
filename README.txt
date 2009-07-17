@@ -14,7 +14,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.79 (7/17/2009)
   * dropped the default to use US cloud
 
 0.1.78 (7/15/2009)

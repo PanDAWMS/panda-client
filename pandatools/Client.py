@@ -14,7 +14,6 @@ import commands
 import cPickle as pickle
 import xml.dom.minidom
 import socket
-import random
 import tempfile
 
 import PLogger
