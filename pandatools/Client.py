@@ -14,7 +14,6 @@ import commands
 import cPickle as pickle
 import xml.dom.minidom
 import socket
-import random
 import tempfile
 
 import PLogger
@@ -808,7 +807,7 @@ def convSrmV2ID(tmpSite):
 
 
 # get locations
-def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
+def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -907,7 +906,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                     # dump                        
                     if tmpFirstDump:
                         if verbose:
-                            print tmpID,tmpSpec['status'],tmpSpec['ddm'],str(srmv2ddmList)
+                            #print tmpID,tmpSpec['status'],tmpSpec['ddm'],str(srmv2ddmList)
+                            pass
                     if tmpSite in srmv2ddmList or convSrmV2ID(tmpSpec['ddm']).startswith(tmpSite):
                         # overwrite tmpSite for srmv1
                         tmpSite = convSrmV2ID(tmpSpec['ddm'])
@@ -943,17 +943,27 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
         if woFileCheck:
             return retSites
         # use reserved map when the cloud doesn't hold the dataset
-        if retSiteMap == {} and not expCloud:
+        if retSiteMap == {} and (not expCloud) and (not getReserved):
             retSiteMap = resRetSiteMap
+        # reset reserved map for expCloud
+        if getReserved and expCloud:
+            resRetSiteMap = {}
         # return map
         if verbose:
-            tmpLog.debug("getLocations -> %s" % retSiteMap)
+            if not getReserved:
+                tmpLog.debug("getLocations -> %s" % retSiteMap)
+            else:
+                tmpLog.debug("getLocations pri -> %s" % retSiteMap)
+                tmpLog.debug("getLocations sec -> %s" % resRetSiteMap)
         # print bad status sites for info    
-        if retSiteMap == {} and resBadStSites != {}:
+        if retSiteMap == {} and resRetSiteMap == {} and resBadStSites != {}:
             tmpLog.warning("the following sites hold %s but they are not online" % name)
             for tmpStatus,tmpSites in resBadStSites.iteritems():
                 print "   status=%s : %s" % (tmpStatus,tmpSites)
-        return retSiteMap
+        if not getReserved:        
+            return retSiteMap
+        else:
+            return retSiteMap,resRetSiteMap
     except:
         print status,out
         if errStr != '':
@@ -1545,6 +1555,9 @@ def checkSiteAccessPermission(siteName,workingGroup,verbose):
         ret = addAllowedSites(verbose)
         if not ret:
             return True
+    # don't check if site name is undefined
+    if siteName == None:
+        return True
     # get logger
     tmpLog = PLogger.getPandaLogger()
     if verbose:
@@ -1702,3 +1715,51 @@ def getPandaClientVer(verbose):
         return EC_Failed,"invalid version '%s'" % output
     # return
     return status,output
+
+
+# get files in dataset with filte
+def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # query files in dataset
+    tmpLog.info("query files in %s" % inDS)
+    inputFileMap = queryFilesInDataset(inDS,verbose)
+    # read list of files to be used
+    filesToBeUsed = []
+    if inputFileListName != '':
+        rFile = open(inputFileListName)
+        for line in rFile:
+            line = re.sub('\n','',line)
+            filesToBeUsed.append(line)
+        rFile.close()
+    # remove redundant files
+    tmpKeys = inputFileMap.keys()
+    for tmpLFN in tmpKeys:
+        # remove log
+        if re.search('log\.tgz(\.\d+)*',tmpLFN) != None:
+            del inputFileMap[tmpLFN]            
+            continue
+        # filename matching
+        if filter != '':
+            if re.search(filter,tmpLFN) == None:
+                del inputFileMap[tmpLFN]
+                continue
+        # files in shadow
+        if tmpLFN in shadowList:
+            if inputFileMap.has_key(tmpLFN):
+                del inputFileMap[tmpLFN]            
+            continue
+        # files to be used
+        if filesToBeUsed != []:
+            # check matching    
+            matchFlag = False
+            for pattern in filesToBeUsed:
+                # normal matching
+                if pattern == tmpLFN:
+                    matchFlag =True
+                    break
+            # doesn't match
+            if not matchFlag:
+                del inputFileMap[tmpLFN]
+    # get logger
+    return inputFileMap
