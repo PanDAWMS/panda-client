@@ -309,6 +309,34 @@ def convSysArgv():
     return paramStr[:-1]
 
 
+# compare version
+def isLatestVersion(latestVer):
+    # extract local version numbers
+    import PandaToolsPkgInfo
+    match = re.search('^(\d+)\.(\d+)\.(\d+)$',PandaToolsPkgInfo.release_version)
+    if match == None:
+        return True
+    localMajorVer  = int(match.group(1))
+    localMinorVer  = int(match.group(2))
+    localBugfixVer = int(match.group(3))
+    # extract local version numbers
+    match = re.search('^(\d+)\.(\d+)\.(\d+)$',latestVer)
+    if match == None:
+        return True
+    latestMajorVer  = int(match.group(1))
+    latestMinorVer  = int(match.group(2))
+    latestBugfixVer = int(match.group(3))
+    # compare
+    if latestMajorVer > localMajorVer:
+        return False
+    if latestMinorVer > localMinorVer:
+        return False
+    if latestBugfixVer > localBugfixVer:
+        return False
+    # latest or higher
+    return True
+
+
 # check panda-client version
 def checkPandaClientVer(verbose):
     # get logger
@@ -317,8 +345,7 @@ def checkPandaClientVer(verbose):
     vStatus,latestVer = Client.getPandaClientVer(verbose)
     if vStatus == 0:
         # check version
-        import PandaToolsPkgInfo
-        if latestVer > PandaToolsPkgInfo.release_version:
+        if not isLatestVersion(latestVer):
             warStr = "A newer version of panda-client is available at https://twiki.cern.ch/twiki/bin/view/Atlas/PandaTools."
             if os.environ['PANDA_SYS'].startswith('/afs/cern.ch/atlas/offline/external/GRID/DA/panda-client'):
                 # if the user uses CERN AFS
@@ -381,8 +408,7 @@ def updatePackage(verbose=False):
     # extract version
     latestVer = output
     # check version
-    import PandaToolsPkgInfo
-    if latestVer <= PandaToolsPkgInfo.release_version:
+    if isLatestVersion(latestVer):
         tmpLog.info('you are already using the latest version')
         return True
     tmpLog.info('update to %s from %s' % (latestVer,PandaToolsPkgInfo.release_version))

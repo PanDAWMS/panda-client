@@ -16,6 +16,7 @@ pathena -h
 
 current
   * fixed --trf of pathena for AMI=tag
+  * fixed version check
 
 0.1.80 (7/21/2009)
   * fixed POOL-ref extraction for old Athena to work with new CollectionTree name
