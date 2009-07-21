@@ -2646,6 +2646,9 @@ for iSubJob in range(options.split):
             if match:
                 tmpDbrDS  = match.group(1)
                 tmpDbrLFN = match.group(2)
+                # skip if it is already extracted
+                if tmpDbrLFN in inList:
+                    continue
                 # instantiate  FileSpec
                 fileName = tmpDbrLFN
                 vals     = dbrFiles[tmpDbrLFN]

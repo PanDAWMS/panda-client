@@ -15,6 +15,7 @@ pathena -h
 ** Release Note
 
 current
+  * fixed --trf of pathena for duplicated DBRelease 
   * fixed --trf of pathena for AMI=tag
   * fixed version check
 
