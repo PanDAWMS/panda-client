@@ -14,10 +14,11 @@ pathena -h
 
 ** Release Note
 
-current
-  * support rpm installation in --update of pathena/prun
+0.1.80 (7/21/2009)
   * fixed POOL-ref extraction for old Athena to work with new CollectionTree name
   * added protection to runBrokerage to avoid too many lookup
+  * support rpm installation in --update of pathena/prun
+  * fixed proxy delegation for expiring certificate
 
 0.1.79 (7/17/2009)
   * dropped the default to use US cloud
