@@ -146,7 +146,7 @@ optP.add_option('--official', action='store_const', const=True, dest='official',
 optP.add_option('--extFile', action='store', dest='extFile',  default='',
                 help='pathena exports files with some special extensions (.C, .dat, .py .xml) in the current directory. If you want to add other files, specify their names, e.g., data1,root,data2.doc')
 optP.add_option('--extOutFile', action='store', dest='extOutFile',  default='',
-                help='define extra output files, e.g., output1.txt,output2.dat')
+                help='define extra output files, \ or "" is required when a wildcard is used. e.g., output1.txt,output2.dat,JiveXML_\*.xml')
 optP.add_option('--supStream', action='store', dest='supStream',  default='',
                 help='suppress some output streams. e.g., ESD,TAG ')
 optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
@@ -608,6 +608,49 @@ if not options.trf:
                 options.extOutFile.remove(tmpExtOutFile)
 else:
     # parse parameters for trf
+    # AMI tag
+    newJobO = ''
+    for tmpString in jobO.split(';'):
+        match = re.search(' AMI=',tmpString)
+        if match == None:
+            # use original command
+            newJobO += (tmpString + ';')
+        else:
+            tmpLog.info('getting configration from AMI')
+            # get configration using GetCommand.py
+            com = 'GetCommand.py ' + re.sub('^[^ ]+ ','',tmpString.strip())
+            if options.verbose:
+                tmpLog.debug(com)
+            amiSt,amiOut = commands.getstatusoutput(com)
+            amiSt %= 255
+            if amiSt != 0:
+                tmpLog.error(amiOut)
+                errSt =  'Failed to get configuration from AMI. '
+                errSt += 'Using AMI=tag in --trf is disallowed since it may overload the AMI server. '
+                errSt += 'Please use explicit configuration parameters in --trf'
+                tmpLog.error(errSt)
+                sys.exit(EC_Config)
+            # get full command string
+            fullCommand = ''
+            for amiStr in amiOut.split('\n'):
+                if amiStr != '':
+                    fullCommand = amiStr
+            # failed to extract configration        
+            if fullCommand == '':
+                tmpLog.error(amiOut)
+                errSt =  "Failed to extract configuration from AMI's output"
+                tmpLog.error(errSt)
+                sys.exit(EC_Config)
+            # replace
+            newJobO += (fullCommand + ';')
+    # remove redundant ;
+    newJobO = newJobO[:-1]
+    # replace
+    if newJobO != '':
+        jobO = newJobO
+        if options.verbose:
+            tmpLog.debug('new jobO : '+jobO)
+    # output                
     oneOut = False
     # replace ; for job sequence
     tmpString = re.sub(';',' ',jobO)
