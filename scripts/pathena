@@ -38,7 +38,7 @@ nEventsToSkip=0
 nSkips =0
 
 # default cloud/site
-defaultCloud = 'US'
+defaultCloud = None
 
 # suffix for shadow dataset
 suffixShadow = "_shadow"
@@ -50,7 +50,9 @@ maxTotalSize = long(10*1024*1024*1024)
 
 usage = """%prog [options] <jobOption1.py> [<jobOption2.py> [...]]
 
-'%prog --help' prints a summary of the options"""
+'%prog --help' prints a summary of the options
+
+  HowTo is available at https://twiki.cern.ch/twiki/bin/view/Atlas/PandaAthena"""
 
 
 # command-line parameters
@@ -147,6 +149,8 @@ optP.add_option('--extOutFile', action='store', dest='extOutFile',  default='',
                 help='define extra output files, e.g., output1.txt,output2.dat')
 optP.add_option('--supStream', action='store', dest='supStream',  default='',
                 help='suppress some output streams. e.g., ESD,TAG ')
+optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
+                help='list of glue packages which pathena cannot fine due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf')
 optP.add_option('--excludedSite', action='store', dest='excludedSite',  default='',
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
 optP.add_option('--noSubmit', action='store_const', const=True, dest='nosubmit',  default=False,
@@ -192,9 +196,9 @@ optP.add_option('--voms', action='store', dest='vomsRoles',  default=None, type=
 optP.add_option('--useNextEvent', action='store_const', const=True, dest='useNextEvent',  default=False,
                 help="Set this option if your jobO uses theApp.nextEvent() e.g. for G4")
 optP.add_option('--ara', action='store_const', const=True, dest='ara',  default=False,
-                help='use Athena ROOT Access')
+                help='obsolete. Please use prun instead')
 optP.add_option('--ares', action='store_const', const=True, dest='ares',  default=False,
-                help='use Athena ROOT Access + PyAthena, i.e., use athena.py instead of python on WNs')
+                help='obsolete. Please use prun instead')
 optP.add_option('--araOutFile', action='store', dest='araOutFile',  default='',
                 help='define output files for ARA, e.g., output1.root,output2.root')
 optP.add_option('--trf', action='store', dest='trf',  default=False,
@@ -353,6 +357,13 @@ options.extFile = options.extFile.split(',')
 options.extOutFile = options.extOutFile.split(',')
 try:
     options.extOutFile.remove('')
+except:
+    pass
+
+# glue packages
+options.gluePackages = options.gluePackages.split(',')
+try:
+    options.gluePackages.remove('')
 except:
     pass
 
@@ -739,7 +750,7 @@ else:
     if options.libDS == '' and not options.nobuild:
         # archive sources
 	archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,currentDir,tmpDir,
-                                                                     options.verbose) 
+                                                                     options.verbose,options.gluePackages) 
     else:
         # archive jobO
 	archiveName,archiveFullName = AthenaUtils.archiveJobOFiles(workArea,runDir,currentDir,
@@ -922,29 +933,50 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     del inputFileMap[fileName]
         # get locations when site==AUTO
         if options.site == "AUTO":
-            dsLocationMap = Client.getLocations(options.inDS,inputFileMap,options.cloud,False,options.verbose,expCloud=expCloudFlag)
+            dsLocationMap,dsLocationMapBack = Client.getLocations(options.inDS,inputFileMap,options.cloud,False,options.verbose,
+                                                                  expCloud=expCloudFlag,getReserved=True)
 	    # no location
-            if dsLocationMap == {}:
+            if dsLocationMap == {} and dsLocationMapBack == {}:
                 if expCloudFlag:
-                    tmpLog.error("could not find supported/online locations in the %s cloud for %s" % (options.cloud,options.inDS))
+                    tmpLog.error("could not find supported/online sites in the %s cloud for %s" % (options.cloud,options.inDS))
                 else:
-                    tmpLog.error("could not find supported/online locations for %s" % options.inDS)
+                    tmpLog.error("could not find supported/online sites for %s" % options.inDS)
                 sys.exit(EC_Dataset)
             # run brorage
-            tmpSites = []
-            for tmpItem in dsLocationMap.values():
-                tmpSites += tmpItem
-            status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True)
-            if status != 0:
-                tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
-                sys.exit(EC_Config)
-	    if out.startswith('ERROR :'):
-                tmpLog.error('brokerage failed')
-                print out
-                sys.exit(EC_Config)                
-	    if not Client.PandaSites.has_key(out):
-                tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
-                sys.exit(EC_Config)
+            tmpDsLocationMapList = [dsLocationMap]
+            if dsLocationMapBack != {}:
+                tmpDsLocationMapList.append(dsLocationMapBack)
+            tmpBrokerErr = ''   
+            for idxDsLocationMap,tmpDsLocationMap in enumerate(tmpDsLocationMapList):    
+                tmpSites = []
+                for tmpItem in tmpDsLocationMap.values():
+                    tmpSites += tmpItem
+		if tmpSites == []:
+                    continue
+                status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True)
+                if status != 0:
+                    tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
+                    sys.exit(EC_Config)
+                if out.startswith('ERROR :'):
+		    if idxDsLocationMap == 0:
+			tmpBrokerErr += out
+			tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+		    else:
+			if tmpBrokerErr != '':
+			    tmpBrokerErr += out
+			    tmpBrokerErr += " Could not find sites in other clouds.\n"
+			else:
+			    tmpBrokerErr += out
+			    tmpBrokerErr += " Could not find sites.\n"
+                    if idxDsLocationMap+1 >= len(tmpDsLocationMapList):
+                        tmpLog.error('brokerage failed')
+                        print tmpBrokerErr[:-1]
+                        sys.exit(EC_Config)
+                    continue    
+                if not Client.PandaSites.has_key(out):
+                    tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
+                    sys.exit(EC_Config)
+                break    
 	    # set site/cloud
             options.site  = out
             options.cloud = Client.PandaSites[options.site]['cloud']
@@ -1488,25 +1520,43 @@ if options.trf or options.dbRelease != '':
 
 # choose site automatically when it is still AUTO
 if options.site == "AUTO":
-    # get sites belonging to a cloud
-    tmpSites = []
+    # get sites belonging to a cloud and others
+    tmpPriSites = []
+    tmpSecSites = []
     for tmpID,spec in Client.PandaSites.iteritems():
-        if spec['cloud']==options.cloud and spec['status']=='online':
+        if spec['status']=='online':
             # exclude long,xrootd,local queues
             if Client.isExcudedSite(tmpID):
                 continue
-            tmpSites.append(tmpID)
-    status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True)    
-    if status != 0:
-        tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
-        sys.exit(EC_Config)
-    if out.startswith('ERROR :'):
-        tmpLog.error('brokerage failed')
-        print out
-        sys.exit(EC_Config)                
-    if not Client.PandaSites.has_key(out):
-	tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
-	sys.exit(EC_Config)
+            if spec['cloud']==options.cloud:
+                tmpPriSites.append(tmpID)
+            elif not expCloudFlag:
+                tmpSecSites.append(tmpID)
+    tmpSitesList = [tmpPriSites]
+    if not expCloudFlag:
+        tmpSitesList.append(tmpSecSites)
+    # run brokerage
+    tmpBrokerErr = ''
+    for idxTmpSites,tmpSites in enumerate(tmpSitesList):
+        status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True)    
+        if status != 0:
+            tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
+            sys.exit(EC_Config)
+        if out.startswith('ERROR :'):
+            tmpBrokerErr += out
+            if idxTmpSites == 0:
+                tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+            else:
+                tmpBrokerErr += " Could not find sites in other clouds.\n"
+            if idxTmpSites+1 >= len(tmpSitesList):
+                tmpLog.error('brokerage failed')
+                print tmpBrokerErr[:-1]
+                sys.exit(EC_Config)
+            continue    
+        if not Client.PandaSites.has_key(out):
+            tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
+            sys.exit(EC_Config)
+        break    
     # set site
     options.site = out
 
