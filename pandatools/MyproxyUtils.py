@@ -2,6 +2,7 @@
 
 import os
 import re
+import getpass
 import commands
 import Client
 
@@ -336,8 +337,10 @@ class MyProxyInterface(object):
         cmd += ' --voms %s'   % self.vomsattributes # voms attributes
         cmd += ' -d'                                # uses DN as username
         cmd += ' --credname %s' % credname
-        if gridPassPhrase != '':
-            cmd = 'echo "%s" | %s -S' % (gridPassPhrase,cmd)
+        if gridPassPhrase == '':
+            gridPassPhrase = getpass.getpass('Enter GRID pass phrase:')
+            gridPassPhrase = gridPassPhrase.replace('$','\$')
+        cmd = 'echo "%s" | %s -S' % (gridPassPhrase,cmd)
         cmd = self.srcFile + ' unset GT_PROXY_MODE; ' + cmd   
             
         self.__command = cmd  # for testing purpose
@@ -347,9 +350,14 @@ class MyProxyInterface(object):
             if gridPassPhrase != '':
                 cmdStr = re.sub(gridPassPhrase,'*****',cmd)
             print cmdStr
-        status = os.system( cmd )
+        status,out = commands.getstatusoutput( cmd )
+        if verbose:
+            print out
         if status != 0:
-            raise MyProxyError(2300)
+            if out.find('Warning: your certificate and proxy will expire') == -1:
+                if not verbose:
+                    print out
+                raise MyProxyError(2300)
         return credname
 
 
