@@ -14,10 +14,11 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.81 (7/22/2009)
   * fixed --trf of pathena for duplicated DBRelease 
   * fixed --trf of pathena for AMI=tag
   * fixed version check
+  * fixed resetting of sites which have a duplicated DQ2 ID
 
 0.1.80 (7/21/2009)
   * fixed POOL-ref extraction for old Athena to work with new CollectionTree name

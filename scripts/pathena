@@ -879,21 +879,25 @@ if outputDSexist:
     if outDSlocations == []:
         tmpLog.error("cannot find locations for existing output dataset:%s" % options.outDS)
         sys.exit(EC_Dataset)
-    # convert DQ2ID to Panda siteID
-    fFlag = False
-    for outDSlocation in outDSlocations:
-        convID = PsubUtils.convertDQ2toPandaID(outDSlocation)
-        if convID != '':
-            options.site  = convID
-            options.cloud = Client.PandaSites[convID]['cloud']
-            fFlag = True
-            tmpLog.info("set site:%s cloud:%s because outDS:%s already exists at %s" % \
-                        (options.site,options.cloud,options.outDS,outDSlocations))                
-            break
-    # not found
-    if not fFlag:
-        tmpLog.error("cannot find supported sites for existing output datasete:%s" % options.outDS)
-        sys.exit(EC_Dataset)
+    # keep origianl site
+    if Client.PandaSites.has_key(options.site) and Client.PandaSites[options.site]['ddm'] in outDSlocations:
+        pass
+    else:
+        # convert DQ2ID to Panda siteID
+        fFlag = False
+        for outDSlocation in outDSlocations:
+            convID = PsubUtils.convertDQ2toPandaID(outDSlocation)
+            if convID != '':
+                options.site  = convID
+                options.cloud = Client.PandaSites[convID]['cloud']
+                fFlag = True
+                tmpLog.info("set site:%s cloud:%s because outDS:%s already exists at %s" % \
+                            (options.site,options.cloud,options.outDS,outDSlocations))                
+                break
+        # not found
+        if not fFlag:
+            tmpLog.error("cannot find supported sites for existing output datasete:%s" % options.outDS)
+            sys.exit(EC_Dataset)
 elif options.libDS != '':
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
@@ -901,21 +905,25 @@ elif options.libDS != '':
     if libDSlocations == []:
         tmpLog.error("cannot find locations for existing lib dataset:%s" % options.libDS)
         sys.exit(EC_Dataset)
-    # convert DQ2ID to Panda siteID
-    fFlag = False
-    for libDSlocation in libDSlocations:
-        convID = PsubUtils.convertDQ2toPandaID(libDSlocation)
-        if convID != '':
-            options.site  = convID
-            options.cloud = Client.PandaSites[convID]['cloud']
-            fFlag = True
-            tmpLog.info("set site:%s cloud:%s because libDS:%s exists at %s" % \
-                        (options.site,options.cloud,options.libDS,libDSlocations))                
-            break
-    # not found
-    if not fFlag:
-        tmpLog.error("cannot find supported sites for existing lib datasete:%s" % options.libDS)
-        sys.exit(EC_Dataset)
+    # keep origianl site
+    if Client.PandaSites.has_key(options.site) and Client.PandaSites[options.site]['ddm'] in libDSlocations:
+        pass
+    else:
+        # convert DQ2ID to Panda siteID
+        fFlag = False
+        for libDSlocation in libDSlocations:
+            convID = PsubUtils.convertDQ2toPandaID(libDSlocation)
+            if convID != '':
+                options.site  = convID
+                options.cloud = Client.PandaSites[convID]['cloud']
+                fFlag = True
+                tmpLog.info("set site:%s cloud:%s because libDS:%s exists at %s" % \
+                            (options.site,options.cloud,options.libDS,libDSlocations))                
+                break
+        # not found
+        if not fFlag:
+            tmpLog.error("cannot find supported sites for existing lib datasete:%s" % options.libDS)
+            sys.exit(EC_Dataset)
         
 
 # input datasets    
