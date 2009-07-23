@@ -496,8 +496,9 @@ def setExtFile(v_extFile):
 
 # matching for extFiles
 def matchExtFile(fileName):
-    # .py/.dat/.C/.xml
-    for tmpExtention in ['.py','.dat','.C','.xml']:
+    # gather files with special extensions
+    for tmpExtention in ['.py','.dat','.C','.xml','Makefile',
+                         '.cc','.cxx','.h','.hh','.sh']:
         if fileName.endswith(tmpExtention):
             return True
     # check filename
