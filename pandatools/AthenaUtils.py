@@ -496,8 +496,9 @@ def setExtFile(v_extFile):
 
 # matching for extFiles
 def matchExtFile(fileName):
-    # .py/.dat/.C/.xml
-    for tmpExtention in ['.py','.dat','.C','.xml']:
+    # gather files with special extensions
+    for tmpExtention in ['.py','.dat','.C','.xml','Makefile',
+                         '.cc','.cxx','.h','.hh','.sh']:
         if fileName.endswith(tmpExtention):
             return True
     # check filename
@@ -520,11 +521,11 @@ def matchExtFile(fileName):
 specialFilesForAthena = ['dblookup.xml']
 
 # archive source files
-def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
+def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]):
     # archive sources
     tmpLog = PLogger.getPandaLogger()
     tmpLog.info('archiving source files')
-        
+
     #####################################################################
     # subroutines
 
@@ -535,8 +536,8 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
         except:
             return
         for item in list:
-            # skip if doc
-            if item == 'doc':
+            # skip if doc or .svn
+            if item in ['doc','.svn']:
                 continue
             fullName=dir+'/'+item
             if os.path.isdir(fullName):
@@ -568,7 +569,12 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
                 files.append(appFileName)
 
     # get package list
-    def getPackages(_workArea):
+    def getPackages(_workArea,gluePackages=[]):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # special packages
+        specialPackages = {'External/Lhapdf':'external/MCGenerators/lhapdf'}
+        # get file list
         installFiles = []
         getFileList(_workArea+'/InstallArea',installFiles,True)
         # get list of packages
@@ -595,6 +601,46 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
                         if os.path.isdir(_workArea+'/'+pName):
                             _packages.append(pName)
                     break
+            # check special packages just in case
+            for pName,pPath in specialPackages.iteritems():
+                if not pName in _packages:
+                    # look for path pattern
+                    if re.search(pPath,file) != None:
+                        if os.path.isdir(_workArea+'/'+pName):
+                            # check structured style
+                            tmpDirList = os.listdir(_workArea+'/'+pName)
+                            useSS = False
+                            for tmpDir in tmpDirList:
+                                if re.search('-\d+-\d+-\d+$',tmpDir) != None:
+                                    _packages.append(pName+'/'+tmpDir)
+                                    useSS = True
+                                    break
+                            # normal structure
+                            if not useSS:
+                                _packages.append(pName)
+                            # delete since no needs anymore
+                            del specialPackages[pName]
+                            break
+        # check glue packages
+        for pName in gluePackages:
+            if not pName in _packages:
+                if os.path.isdir(_workArea+'/'+pName):
+                    # check structured style
+                    tmpDirList = os.listdir(_workArea+'/'+pName)
+                    useSS = False
+                    for tmpDir in tmpDirList:
+                        if re.search('-\d+-\d+-\d+$',tmpDir) != None:
+                            fullPName = pName+'/'+tmpDir
+                            if not fullPName in _packages:
+                                _packages.append(fullPName)
+                            useSS = True
+                            break
+                    # normal structure
+                    if not useSS:
+                        _packages.append(pName)
+                else:
+                    tmpLog.warning('glue package %s not found under %s' % (pName,_workArea))
+        # return 
         return _packages
 
 
@@ -649,7 +695,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose):
     # execute
 
     # get packages in private area 
-    packages = getPackages(workArea)
+    packages = getPackages(workArea,gluePackages)
     # check TestRelease since it doesn't create any links in InstallArea
     if os.path.exists('%s/TestRelease' % workArea):
         # the TestRelease could be created by hand

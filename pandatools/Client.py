@@ -9,12 +9,12 @@ import sys
 import time
 import stat
 import types
+import random
 import urllib
 import commands
 import cPickle as pickle
 import xml.dom.minidom
 import socket
-import random
 import tempfile
 
 import PLogger
@@ -792,6 +792,9 @@ def convSrmV2ID(tmpSite):
     # patch for TAIWAN
     if tmpSite.startswith('ASGC'):
         tmpSite = 'TAIWANDISK'
+    # patch for CERN
+    if tmpSite.startswith('CERN'):
+        tmpSite = 'CERNDISK'
     # patche for some special sites where automatic conjecture is impossible
     if tmpSite == 'UVIC':
         tmpSite = 'VICTORIA'
@@ -808,7 +811,8 @@ def convSrmV2ID(tmpSite):
 
 
 # get locations
-def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
+def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
+                 getTapeSites=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -828,6 +832,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
         retSiteMap    = {}
         resRetSiteMap = {}
         resBadStSites = {}
+        resTapeSites  = []
         countSite  = {}
         for tmpName in names:
             # get VUID
@@ -888,8 +893,11 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                 if verbose:
                     print out
             tmpFirstDump = True
-            time.sleep(1)
             for origTmpSite,origTmpInfo in out.iteritems():
+                # don't use TAPE
+                if re.search('TAPE$',origTmpSite) != None:
+                    resTapeSites.append(origTmpSite)
+                    continue
                 # count number of available files
                 if not countSite.has_key(origTmpSite):
                     countSite[origTmpSite] = 0
@@ -907,7 +915,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                     # dump                        
                     if tmpFirstDump:
                         if verbose:
-                            print tmpID,tmpSpec['status'],tmpSpec['ddm'],str(srmv2ddmList)
+                            #print tmpID,tmpSpec['status'],tmpSpec['ddm'],str(srmv2ddmList)
+                            pass
                     if tmpSite in srmv2ddmList or convSrmV2ID(tmpSpec['ddm']).startswith(tmpSite):
                         # overwrite tmpSite for srmv1
                         tmpSite = convSrmV2ID(tmpSpec['ddm'])
@@ -943,17 +952,29 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
         if woFileCheck:
             return retSites
         # use reserved map when the cloud doesn't hold the dataset
-        if retSiteMap == {} and not expCloud:
+        if retSiteMap == {} and (not expCloud) and (not getReserved):
             retSiteMap = resRetSiteMap
+        # reset reserved map for expCloud
+        if getReserved and expCloud:
+            resRetSiteMap = {}
         # return map
         if verbose:
-            tmpLog.debug("getLocations -> %s" % retSiteMap)
+            if not getReserved:
+                tmpLog.debug("getLocations -> %s" % retSiteMap)
+            else:
+                tmpLog.debug("getLocations pri -> %s" % retSiteMap)
+                tmpLog.debug("getLocations sec -> %s" % resRetSiteMap)
         # print bad status sites for info    
-        if retSiteMap == {} and resBadStSites != {}:
+        if retSiteMap == {} and resRetSiteMap == {} and resBadStSites != {}:
             tmpLog.warning("the following sites hold %s but they are not online" % name)
             for tmpStatus,tmpSites in resBadStSites.iteritems():
                 print "   status=%s : %s" % (tmpStatus,tmpSites)
-        return retSiteMap
+        if not getReserved:        
+            return retSiteMap
+        elif not getTapeSites:
+            return retSiteMap,resRetSiteMap
+        else:
+            return retSiteMap,resRetSiteMap,resTapeSites            
     except:
         print status,out
         if errStr != '':
@@ -1336,6 +1357,9 @@ def getJobStatusFromMon(id,verbose=False):
 
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False):
+    # choose at most 20 sites randomly to avoid too many lookup
+    random.shuffle(sites)
+    sites = sites[:20]
     # serialize
     strSites = pickle.dumps(sites)
     # instantiate curl
@@ -1545,6 +1569,9 @@ def checkSiteAccessPermission(siteName,workingGroup,verbose):
         ret = addAllowedSites(verbose)
         if not ret:
             return True
+    # don't check if site name is undefined
+    if siteName == None:
+        return True
     # get logger
     tmpLog = PLogger.getPandaLogger()
     if verbose:
@@ -1702,3 +1729,51 @@ def getPandaClientVer(verbose):
         return EC_Failed,"invalid version '%s'" % output
     # return
     return status,output
+
+
+# get files in dataset with filte
+def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # query files in dataset
+    tmpLog.info("query files in %s" % inDS)
+    inputFileMap = queryFilesInDataset(inDS,verbose)
+    # read list of files to be used
+    filesToBeUsed = []
+    if inputFileListName != '':
+        rFile = open(inputFileListName)
+        for line in rFile:
+            line = re.sub('\n','',line)
+            filesToBeUsed.append(line)
+        rFile.close()
+    # remove redundant files
+    tmpKeys = inputFileMap.keys()
+    for tmpLFN in tmpKeys:
+        # remove log
+        if re.search('log\.tgz(\.\d+)*',tmpLFN) != None:
+            del inputFileMap[tmpLFN]            
+            continue
+        # filename matching
+        if filter != '':
+            if re.search(filter,tmpLFN) == None:
+                del inputFileMap[tmpLFN]
+                continue
+        # files in shadow
+        if tmpLFN in shadowList:
+            if inputFileMap.has_key(tmpLFN):
+                del inputFileMap[tmpLFN]            
+            continue
+        # files to be used
+        if filesToBeUsed != []:
+            # check matching    
+            matchFlag = False
+            for pattern in filesToBeUsed:
+                # normal matching
+                if pattern == tmpLFN:
+                    matchFlag =True
+                    break
+            # doesn't match
+            if not matchFlag:
+                del inputFileMap[tmpLFN]
+    # get logger
+    return inputFileMap
