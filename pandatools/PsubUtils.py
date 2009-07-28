@@ -552,3 +552,24 @@ def updatePackage(verbose=False):
     return result
                     
 
+# check direct access
+def isDirectAccess(site,usingRAW=False):
+    # unknown site
+    if not Client.PandaSites.has_key(site):
+        return False
+    # parse copysetup
+    params = Client.PandaSites[site]['copysetup'].split('^')
+    # doesn't use special parameters
+    if len(params) < 5:
+        return False
+    # directIn
+    directIn = params[4]
+    if directIn != 'True':
+        return False
+    # xrootd uses local copy for RAW
+    newPrefix = params[2]
+    if newPrefix.startswith('root:'):
+        if usingRAW:
+            return False
+    # return
+    return True

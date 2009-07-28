@@ -1082,6 +1082,9 @@ if options.inDS != '':
 # disp datasetname to identify inputs
 commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
 
+# check access method
+isDirectAccess = PsubUtils.isDirectAccess(options.site)
+
 # runJobs
 indexOffsetMap = {}
 for iJob in range(options.nJobs):
@@ -1192,7 +1195,7 @@ for iJob in range(options.nJobs):
             # append to map    
             tmpInputMap[tmpSecVal['streamName']] = tmpSecLfnList
         # size check    
-        if totalSize > maxTotalSize:
+        if (not isDirectAccess) and totalSize > maxTotalSize:
             errStr  = "A subjob has %s input files and requires %sMB of disk space." \
                   % (len(inList), (totalSize >> 20))
             errStr += "   It must be less than %sMB to avoid overflowing the remote disk." \

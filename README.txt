@@ -14,8 +14,9 @@ pathena -h
 
 ** Release Note
 
-current
-  * increased extensions to be picked up by prun
+0.1.82 (7/28/2009)
+  * removed size limitation for direct access sites
+  * increased default extensions to be picked up by prun
 
 0.1.81 (7/22/2009)
   * fixed --trf of pathena for duplicated DBRelease 

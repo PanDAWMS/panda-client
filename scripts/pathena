@@ -1967,6 +1967,9 @@ if options.inDS != '' and options.burstSubmit == '':
 # disp datasetname to identify inputs
 commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
 
+# check access method
+isDirectAccess = PsubUtils.isDirectAccess(options.site,runConfig.input.inBS)
+
 # split job
 #@ Loop for jobs here
 for iSubJob in range(options.split):
@@ -2069,7 +2072,7 @@ for iSubJob in range(options.split):
                 except:
                     pass
             # size check    
-            if totalSize > maxTotalSize:
+            if (not isDirectAccess) and totalSize > maxTotalSize:
                 tmpStr  = "A subjob has %s input files and requires %sMB of disk space.\n" \
                           % (len(tmpList), (totalSize >> 20))
                 tmpStr += "  It must be less than %sMB to avoid overflowing the remote disk.\n" \
