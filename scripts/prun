@@ -496,15 +496,17 @@ if options.inDS != '':
             dsLocationMap = None
             dsLocationMapBack = None
             for tmpDsForLookUp in tmpDsForLookUpList:
-                tmpDsLocationMap,tmpDsLocationMapBack = Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
-                                                                            options.verbose,expCloud=expCloudFlag,
-                                                                            getReserved=True)
+                tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites = Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
+                                                                                        options.verbose,expCloud=expCloudFlag,
+                                                                                        getReserved=True,getTapeSites=True)
                 # no location
                 if tmpDsLocationMap == {} and tmpDsLocationMapBack == {}:
                     if expCloudFlag:
                         tmpLog.error("could not find supported/online sites in the %s cloud for %s" % (options.cloud,tmpDsForLookUp))
                     else:
                         tmpLog.error("could not find supported/online sites for %s" % tmpDsForLookUp)
+                    if dsTapeSites != []:
+                        tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
                     sys.exit(EC_Dataset)
                 # append
                 tmpDsLocationForTest[tmpDsForLookUp] = {'pri':tmpDsLocationMap,
@@ -600,7 +602,7 @@ if options.inDS != '':
             tmpLog.debug("%s holds %s files" % (options.site,len(inputFileList)-len(missList)))
         # No files available
         if len(inputFileList) == len(missList):
-            tmpLog.error("No files available at %s" % options.site)
+            tmpLog.error("No files available on disk at %s" % options.site)
             sys.exit(EC_Dataset)
         # remove missing files
         newInputFiles = []

@@ -792,6 +792,9 @@ def convSrmV2ID(tmpSite):
     # patch for TAIWAN
     if tmpSite.startswith('ASGC'):
         tmpSite = 'TAIWANDISK'
+    # patch for CERN
+    if tmpSite.startswith('CERN'):
+        tmpSite = 'CERNDISK'
     # patche for some special sites where automatic conjecture is impossible
     if tmpSite == 'UVIC':
         tmpSite = 'VICTORIA'
@@ -808,7 +811,8 @@ def convSrmV2ID(tmpSite):
 
 
 # get locations
-def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False):
+def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
+                 getTapeSites=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -828,6 +832,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         retSiteMap    = {}
         resRetSiteMap = {}
         resBadStSites = {}
+        resTapeSites  = []
         countSite  = {}
         for tmpName in names:
             # get VUID
@@ -888,8 +893,11 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 if verbose:
                     print out
             tmpFirstDump = True
-            time.sleep(1)
             for origTmpSite,origTmpInfo in out.iteritems():
+                # don't use TAPE
+                if re.search('TAPE$',origTmpSite) != None:
+                    resTapeSites.append(origTmpSite)
+                    continue
                 # count number of available files
                 if not countSite.has_key(origTmpSite):
                     countSite[origTmpSite] = 0
@@ -963,8 +971,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 print "   status=%s : %s" % (tmpStatus,tmpSites)
         if not getReserved:        
             return retSiteMap
-        else:
+        elif not getTapeSites:
             return retSiteMap,resRetSiteMap
+        else:
+            return retSiteMap,resRetSiteMap,resTapeSites            
     except:
         print status,out
         if errStr != '':

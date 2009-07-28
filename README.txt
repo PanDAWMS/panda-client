@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.83 (7/28/2009)
+  * exclude TAPE in brokerage
+
 0.1.82 (7/28/2009)
   * removed size limitation for direct access sites
   * increased default extensions to be picked up by prun
