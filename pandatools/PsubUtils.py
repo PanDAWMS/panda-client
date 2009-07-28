@@ -2,6 +2,7 @@ import re
 import os
 import sys
 import time
+import random
 import commands
 
 import Client
@@ -119,6 +120,7 @@ def getCloudUsingFQAN(defaultCloud,verbose=False):
     if status == 0:
         vomsFQAN = out
     cloud = None
+    countryAttStr = ''
     # check countries
     for tmpCloud,spec in Client.PandaClouds.iteritems():
         # loop over all FQANs
@@ -132,6 +134,7 @@ def getCloudUsingFQAN(defaultCloud,verbose=False):
                 if re.search('^/atlas/%s/' % tmpCountry, tmpFQAN) != None:
                     # set cloud
                     cloud = tmpCloud
+                    countryAttStr = re.sub('/Capability=NULL','',tmpFQAN)
                     if verbose:
                         tmpLog.debug("  match %s %s %s" % (tmpCloud,tmpCountry,tmpFQAN))
                     break
@@ -143,11 +146,11 @@ def getCloudUsingFQAN(defaultCloud,verbose=False):
             break
     # set default
     if cloud == None:
-        cloud = defaultCloud
-        if verbose:
-            tmpLog.debug("  use default %s" % cloud)
-    if verbose:
-        tmpLog.debug("set cloud=%s" % cloud)
+        # use a cloud randomly
+        cloud = random.choice(Client.PandaClouds.keys())
+        tmpLog.info("use %s as default cloud" % cloud)
+    else:
+        tmpLog.info("use %s as default cloud due to VOMS:%s" % (cloud,countryAttStr))
     # return
     return cloud
 
@@ -306,6 +309,34 @@ def convSysArgv():
     return paramStr[:-1]
 
 
+# compare version
+def isLatestVersion(latestVer):
+    # extract local version numbers
+    import PandaToolsPkgInfo
+    match = re.search('^(\d+)\.(\d+)\.(\d+)$',PandaToolsPkgInfo.release_version)
+    if match == None:
+        return True
+    localMajorVer  = int(match.group(1))
+    localMinorVer  = int(match.group(2))
+    localBugfixVer = int(match.group(3))
+    # extract local version numbers
+    match = re.search('^(\d+)\.(\d+)\.(\d+)$',latestVer)
+    if match == None:
+        return True
+    latestMajorVer  = int(match.group(1))
+    latestMinorVer  = int(match.group(2))
+    latestBugfixVer = int(match.group(3))
+    # compare
+    if latestMajorVer > localMajorVer:
+        return False
+    if latestMinorVer > localMinorVer:
+        return False
+    if latestBugfixVer > localBugfixVer:
+        return False
+    # latest or higher
+    return True
+
+
 # check panda-client version
 def checkPandaClientVer(verbose):
     # get logger
@@ -314,14 +345,13 @@ def checkPandaClientVer(verbose):
     vStatus,latestVer = Client.getPandaClientVer(verbose)
     if vStatus == 0:
         # check version
-        import PandaToolsPkgInfo
-        if latestVer > PandaToolsPkgInfo.release_version:
+        if not isLatestVersion(latestVer):
             warStr = "A newer version of panda-client is available at https://twiki.cern.ch/twiki/bin/view/Atlas/PandaTools."
             if os.environ['PANDA_SYS'].startswith('/afs/cern.ch/atlas/offline/external/GRID/DA/panda-client'):
                 # if the user uses CERN AFS
                 warStr += " Please execute 'source /afs/cern.ch/atlas/offline/external/GRID/DA/panda-client/latest/etc/panda/panda_setup.[c]sh"
             else:
-                warStr += " Please execute '%s --update' or 'rpm -Uvh' if you installed the package locally" % sys.argv[0].split('/')[-1]
+                warStr += " Please execute '%s --update' if you installed the package locally" % sys.argv[0].split('/')[-1]
             print
             tmpLog.warning(warStr+'\n')
 
@@ -378,35 +408,10 @@ def updatePackage(verbose=False):
     # extract version
     latestVer = output
     # check version
-    import PandaToolsPkgInfo
-    if latestVer <= PandaToolsPkgInfo.release_version:
+    if isLatestVersion(latestVer):
         tmpLog.info('you are already using the latest version')
         return True
-    # get tarball
-    tmpLog.info('get panda-client-%s' % latestVer)
-    com = 'wget --timeout 120 https://twiki.cern.ch/twiki/pub/Atlas/PandaTools/panda-client-%s.tar.gz' \
-          % latestVer
-    status = os.system(com)
-    status %= 255    
-    if status != 0:
-        tmpLog.error('failed to download tarball : %s' % status)
-        # delete tarball just in case
-        commands.getoutput('rm panda-client-%s.tar.gz' % latestVer)    
-        return False
     tmpLog.info('update to %s from %s' % (latestVer,PandaToolsPkgInfo.release_version))
-    # expand
-    status,output = commands.getstatusoutput('tar xvfz panda-client-%s.tar.gz' % latestVer)
-    status %= 255    
-    if verbose:
-        tmpLog.debug(status)
-        tmpLog.debug(output)
-    if status != 0:
-        tmpLog.error('failed to expand tarball : %s' % status)        
-        # delete dirs just in case
-        commands.getoutput('rm -rf panda-client-%s' % latestVer)    
-        return False
-    # delete tarball
-    commands.getoutput('rm panda-client-%s.tar.gz' % latestVer)
     # set readline for auto-complete
     import readline
     readline.parse_and_bind("tab: complete")
@@ -417,6 +422,7 @@ def updatePackage(verbose=False):
     curDelimter = re.sub('\+|/|~','',curDelimter)
     readline.set_completer_delims(curDelimter)
     # installation type
+    rpmInstall = False
     newPrefix = os.environ['PANDA_SYS']
     print
     print "Please specify type of installation"
@@ -426,15 +432,17 @@ def updatePackage(verbose=False):
     print "      be installed to the same dir"
     print " 2. Install to a new dir"
     print "      new files will be installed to somewhere else than $PANDA_SYS"
-    print " 3. Patch (worst recommended)"
+    print " 3. Patch (not recommended)"
     print "      existing files in $PANDA_SYS will be patched with new ones"
+    print " 4. RPM installation"
+    print "      install RPM. sudo is required"
     print
     while True:
-        str = raw_input("Enter 1-3 : ")
+        str = raw_input("Enter 1-4 : ")
         if str == '1':
             cleanInstall = True
             break
-        if str== '2':
+        if str == '2':
             cleanInstall = False
             # set default
             def startupHookPath():
@@ -458,41 +466,110 @@ def updatePackage(verbose=False):
             # unset hook
             readline.set_startup_hook(None) 
             break
-        if str== '3':
+        if str == '3':
             cleanInstall = False
             break
-    # save current dir
-    currentDir = os.path.realpath(os.getcwd())
-    # keep old release
-    if cleanInstall:
-        tmpLog.info('keep old version in %s.back' % os.environ['PANDA_SYS'])
-        status,output = commands.getstatusoutput('mv %s %s.back' % \
-                                                 (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))
+        if str == '4':
+            rpmInstall = True
+            break
+    # get tarballa
+    tmpLog.info('get panda-client-%s' % latestVer)
+    if not rpmInstall:
+        packageName = 'panda-client-%s.tar.gz' % latestVer
+    else:
+        packageName = 'panda-client-%s-1.noarch.rpm' % latestVer
+    com = 'wget --timeout 120 https://twiki.cern.ch/twiki/pub/Atlas/PandaTools/%s' \
+          % packageName
+    status = os.system(com)
+    status %= 255    
+    if status != 0:
+        tmpLog.error('failed to download tarball : %s' % status)
+        # delete tarball just in case
+        commands.getoutput('rm %' % packageName)    
+        return False
+    # install
+    if not rpmInstall:
+        # expand
+        status,output = commands.getstatusoutput('tar xvfz %s' % packageName)
+        status %= 255    
+        if verbose:
+            tmpLog.debug(status)
+            tmpLog.debug(output)
         if status != 0:
-            tmpLog.error(output)
-            tmpLog.error('failed to keep old version')
-            # delete dirs
+            tmpLog.error('failed to expand tarball : %s' % status)        
+            # delete dirs just in case
             commands.getoutput('rm -rf panda-client-%s' % latestVer)    
             return False
-    # install
-    result = True
-    os.chdir('panda-client-%s' % latestVer)
-    status,output = commands.getstatusoutput('python setup.py install --prefix=%s' % newPrefix)
-    if verbose:
-        tmpLog.debug(output)
-        tmpLog.debug(status)
-    os.chdir(currentDir)
-    status %= 255
-    if status != 0:
-        tmpLog.error('failed to install panda-client : %s' % status)
-        # recover old one
-        commands.getoutput('rm -rf %s' % os.environ['PANDA_SYS'])
-        commands.getoutput('mv %s.back %s' % (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))        
-        result = False
-    # cleanup
-    commands.getoutput('rm -rf panda-client-%s' % latestVer)
+        # delete tarball
+        commands.getoutput('rm %s' % packageName)
+        # save current dir
+        currentDir = os.path.realpath(os.getcwd())
+        # keep old release
+        if cleanInstall:
+            tmpLog.info('keep old version in %s.back' % os.environ['PANDA_SYS'])
+            status,output = commands.getstatusoutput('mv %s %s.back' % \
+                                                     (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))
+            if status != 0:
+                tmpLog.error(output)
+                tmpLog.error('failed to keep old version')
+                # delete dirs
+                commands.getoutput('rm -rf panda-client-%s' % latestVer)    
+                return False
+        # install
+        result = True
+        os.chdir('panda-client-%s' % latestVer)
+        status,output = commands.getstatusoutput('python setup.py install --prefix=%s' % newPrefix)
+        if verbose:
+            tmpLog.debug(output)
+            tmpLog.debug(status)
+        os.chdir(currentDir)
+        status %= 255
+        if status != 0:
+            tmpLog.error('failed to install panda-client : %s' % status)
+            # recover old one
+            commands.getoutput('rm -rf %s' % os.environ['PANDA_SYS'])
+            commands.getoutput('mv %s.back %s' % (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))        
+            result = False
+        # cleanup
+        commands.getoutput('rm -rf panda-client-%s' % latestVer)
+    else:
+        # rpm install
+        result = True
+        newPrefix = ''
+        com = 'sudo rpm -Uvh %s' % packageName
+        print com
+        status = os.system(com)
+        status %= 255    
+        if status != 0:
+            tmpLog.error('failed to install rpm : %s' % status)
+            result = False
+        # cleanup
+        commands.getoutput('rm -rf %s' % packageName)
     # return
     if result:
         tmpLog.info('completed')
         tmpLog.info("please do 'source %s/etc/panda/panda_setup.[c]sh'" % newPrefix)
     return result
+                    
+
+# check direct access
+def isDirectAccess(site,usingRAW=False):
+    # unknown site
+    if not Client.PandaSites.has_key(site):
+        return False
+    # parse copysetup
+    params = Client.PandaSites[site]['copysetup'].split('^')
+    # doesn't use special parameters
+    if len(params) < 5:
+        return False
+    # directIn
+    directIn = params[4]
+    if directIn != 'True':
+        return False
+    # xrootd uses local copy for RAW
+    newPrefix = params[2]
+    if newPrefix.startswith('root:'):
+        if usingRAW:
+            return False
+    # return
+    return True
