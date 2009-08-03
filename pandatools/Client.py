@@ -988,7 +988,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
 #@ Returns number of events per file in a given dataset
 #SP 2006
 #
-def nEvents(name, verbose=False, askServer=True, fileList = {}, scanDir = '.'):
+def nEvents(name, verbose=False, askServer=True, fileList = {}, scanDir = '.', askUser=True):
     
     # @  These declarations can be moved to the configuration section at the very beginning
     # Here just for code clarity
@@ -1023,16 +1023,20 @@ def nEvents(name, verbose=False, askServer=True, fileList = {}, scanDir = '.'):
                 print "ERROR : could not get nEvents with ROOT - %s %s" % (type,value)
     # In case of error PANDAMON server returns full HTML page
     # Normally return an integer
-    if manualEnter: 
-        if askServer:
-            print "Could not get the # of events from MetaDB for %s " % name
-        while True:
-            str = raw_input("Enter the number of events per file : ")
-            try:
-                nEvents = int(str)
-                break
-            except:
-                pass
+    if manualEnter:
+        if askUser:
+            if askServer:
+                print "Could not get the # of events from MetaDB for %s " % name
+            while True:
+                str = raw_input("Enter the number of events per file : ")
+                try:
+                    nEvents = int(str)
+                    break
+                except:
+                    pass
+        else:
+            print "ERROR : Could not get the # of events from MetaDB for %s " % name
+            sys.exit(EC_Failed)
     if verbose:
        print "Dataset ", name, "has ", nEvents, " per file"
     return int(nEvents)

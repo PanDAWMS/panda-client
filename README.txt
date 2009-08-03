@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added askUser to Client.nEvents
+  
 0.1.83 (7/28/2009)
   * exclude TAPE in brokerage
 
