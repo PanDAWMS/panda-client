@@ -16,6 +16,7 @@ pathena -h
 
 current
   * added askUser to Client.nEvents
+  * enabled the peer verification in registerProxyKey to protect against pharming
   
 0.1.83 (7/28/2009)
   * exclude TAPE in brokerage

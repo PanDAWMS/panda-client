@@ -82,6 +82,20 @@ def _x509():
     return ''
 
 
+# look for a CA certificate directory
+def _x509_CApath():
+    # use X509_CERT_DIR
+    try:
+        return os.environ['X509_CERT_DIR']
+    except:
+        pass
+    # get X509_CERT_DIR
+    gridSrc = _getGridSrc()
+    com = "%s echo $X509_CERT_DIR" % gridSrc
+    tmpOut = commands.getoutput(com)
+    return tmpOut.split('\n')[-1]
+
+
 # keep list of tmp files for cleanup
 globalTmpDir = ''
 
@@ -108,6 +122,8 @@ class _Curl:
         com = '%s --silent --get' % self.path
         if not self.verifyHost:
             com += ' --insecure'
+        else:
+            com += ' --capath %s' %  _x509_CApath()
         if self.compress:
             com += ' --compressed'
         if self.sslCert != '':
@@ -153,6 +169,8 @@ class _Curl:
         com = '%s --silent' % self.path
         if not self.verifyHost:
             com += ' --insecure'
+        else:
+            com += ' --capath %s' %  _x509_CApath()
         if self.compress:
             com += ' --compressed'
         if self.sslCert != '':
@@ -1434,7 +1452,8 @@ def registerProxyKey(credname,origin,myproxy,verbose=False):
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey  = _x509()
-    curl.verbose = verbose    
+    curl.verbose = verbose
+    curl.verifyHost = True
     # execute
     url = baseURLSSL + '/registerProxyKey'
     data = {'credname': credname,
