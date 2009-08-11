@@ -26,6 +26,7 @@ current
   * fixed looping on BeamGas files
   * changed matching pattern for log files
   * allowed to use --dbRelease together with --trf in pathena
+  * use LFC as primary replica catalog
   
 0.1.83 (7/28/2009)
   * exclude TAPE in brokerage

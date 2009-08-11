@@ -1049,12 +1049,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             missList = []
         else:
             dsLocation = Client.PandaSites[options.site]['ddm']
-            if Client.getLRC(dsLocation) != None:
-		tmpLog.info("scanning LFC %s for %s" % (Client.getLRC(dsLocation),options.site))
-                # LRC
-                missList = Client.getMissLFNsFromLRC(inputFileMap,Client.getLRC(dsLocation),options.verbose,
-                                                     options.nfiles+options.nSkipFiles)
-            elif Client.getLFC(dsLocation) != None:
+            if Client.getLFC(dsLocation) != None:
 		tmpLog.info("scanning LFC %s for %s" % (Client.getLFC(dsLocation),options.site))
                 # LFC
                 if options.nfiles == 0 and options.nSkipFiles != 0:
@@ -1062,6 +1057,11 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 else:
                     missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
                                                          options.nfiles+options.nSkipFiles)
+            elif Client.getLRC(dsLocation) != None:
+		tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
+                # LRC
+                missList = Client.getMissLFNsFromLRC(inputFileMap,Client.getLRC(dsLocation),options.verbose,
+                                                     options.nfiles+options.nSkipFiles)
             else:
                 missList = []
             # choose min missList
