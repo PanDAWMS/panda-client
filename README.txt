@@ -23,6 +23,7 @@ current
   * added convertConfToOutput to AthenaUtils
   * fixed index incrementation of --individualOutDS for active jobs
   * changed starting JobID to 1
+  * fixed looping on BeamGas files
   
 0.1.83 (7/28/2009)
   * exclude TAPE in brokerage

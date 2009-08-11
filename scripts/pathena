@@ -2053,7 +2053,7 @@ for iSubJob in range(options.split):
                 # integrated dataset
                 if indexBGas+options.nBeamGas >= len(beamGasList):
                     # re-use files when BeamGas files are not enough   
-                    indexBGasO = 0   
+                    indexBGas = 0   
                 tmpList = beamGasList[indexBGas:indexBGas+options.nBeamGas]
                 indexBGas += options.nBeamGas
             else:
@@ -2116,7 +2116,7 @@ for iSubJob in range(options.split):
         if options.nEventsPerJob < 0:
           indexFiles += divF
 
-            
+
     # output files
     outMap = {}
     AthenaUtils.convertConfToOutput(runConfig,jobR,outMap,options.individualOutDS,options.extOutFile)
