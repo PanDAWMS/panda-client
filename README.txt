@@ -25,6 +25,7 @@ current
   * changed starting JobID to 1
   * fixed looping on BeamGas files
   * changed matching pattern for log files
+  * allowed to use --dbRelease together with --trf in pathena
   
 0.1.83 (7/28/2009)
   * exclude TAPE in brokerage

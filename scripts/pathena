@@ -1561,8 +1561,10 @@ if options.trf or options.dbRelease != '':
         # parse jobO for TRF
         tmpItems = jobO.split()
     else:
+	tmpItems = []
+    if options.dbRelease != '':    
         # mimic a trf parameter to reuse following algorithm
-        tmpItems = ['%DB='+options.dbRelease]
+        tmpItems += ['%DB='+options.dbRelease]
     # look for DBRelease
     for tmpItem in tmpItems:
         match = re.search('%DB=([^:]+):(.+)$',tmpItem)
@@ -2205,7 +2207,11 @@ for iSubJob in range(options.split):
             if tmpJobO.find(tmpPatt) != -1 and len(tmpInList) > 0:
                 tmpJobO = AthenaUtils.replaceParam(tmpPatt,tmpInList,tmpJobO)
         # DBRelease
-        for tmpItem in tmpJobO.split():
+        tmpItems = tmpJobO.split()
+        if options.dbRelease != '':
+            # mimic a trf parameter to reuse following algorithm
+            tmpItems += ['%DB='+options.dbRelease]
+        for tmpItem in tmpItems:
             match = re.search('%DB=([^:]+):(.+)$',tmpItem)
             if match:
                 tmpDbrDS  = match.group(1)
