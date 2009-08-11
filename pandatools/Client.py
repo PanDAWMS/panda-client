@@ -1773,7 +1773,8 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
     tmpKeys = inputFileMap.keys()
     for tmpLFN in tmpKeys:
         # remove log
-        if re.search('log\.tgz(\.\d+)*',tmpLFN) != None:
+        if re.search('\.log(\.tgz)*(\.\d+)*$',tmpLFN) != None or \
+               re.search('\.log(\.\d+)*(\.tgz)*$',tmpLFN) != None:
             del inputFileMap[tmpLFN]            
             continue
         # filename matching

@@ -955,7 +955,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         # remove log, and check matching
         for fileName in inputFileMap.keys():
             # ignore log file
-            if len(re.findall('.log.tgz.\d+$',fileName)) or len(re.findall('.log.tgz$',fileName)):
+            if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
+                   re.search('\.log(\.tgz)*(\.\d+)*$',fileName) != None:
                 del inputFileMap[fileName]
                 continue
             # check type
@@ -1240,7 +1241,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 	minbiasList = []
         for item in tmpList.keys():
             # remove log
-            if re.search('log\.tgz(\.\d+)*',item) != None:
+            if re.search('log(\.tgz)*(\.\d+)*$',item) != None or \
+                   re.search('\.log(\.\d+)*(\.tgz)*$',item) != None:
                 continue
             minbiasList.append((item,tmpList[item]))
         # sort
@@ -1281,7 +1283,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 	cavernList = []
         for item in tmpList.keys():
             # remove log
-            if re.search('log\.tgz(\.\d+)*',item) != None:
+            if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
+                   re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
                 continue
             cavernList.append((item,tmpList[item]))
         # sort
@@ -1323,7 +1326,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 	    beamHaloList = []
             for item in tmpList.keys():
                 # remove log
-                if re.search('log\.tgz(\.\d+)*',item) != None:
+                if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
+                       re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
                     continue
                 beamHaloList.append((item,tmpList[item]))
             # sort
@@ -1371,7 +1375,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 	    beamHaloAList = []
             for item in tmpList.keys():
                 # remove log
-                if re.search('log\.tgz(\.\d+)*',item) != None:
+                if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
+                       re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
                     continue
                 beamHaloAList.append((item,tmpList[item]))
             tmpLog.info("query files in %s" % beamHaloCdataset)
@@ -1379,7 +1384,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 	    beamHaloCList = []
             for item in tmpList.keys():
                 # remove log
-                if re.search('log\.tgz(\.\d+)*',item) != None:
+                if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
+                       re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
                     continue
                 beamHaloCList.append((item,tmpList[item]))
             # sort
@@ -1430,7 +1436,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 	    beamGasList = []
             for item in tmpList.keys():
                 # remove log
-                if re.search('log\.tgz(\.\d+)*',item) != None:
+                if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
+                       re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
                     continue
                 beamGasList.append((item,tmpList[item]))
             # sort
@@ -1488,7 +1495,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 	    beamGasHList = []
             for item in tmpList.keys():
                 # remove log
-                if re.search('log\.tgz(\.\d+)*',item) != None:
+                if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
+                       re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
                     continue
                 beamGasHList.append((item,tmpList[item]))
             tmpLog.info("query files in %s" % beamGasCdataset)
@@ -1496,7 +1504,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 	    beamGasCList = []
             for item in tmpList.keys():
                 # remove log
-                if re.search('log\.tgz(\.\d+)*',item) != None:
+                if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
+                       re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
                     continue
                 beamGasCList.append((item,tmpList[item]))
             tmpLog.info("query files in %s" % beamGasOdataset)
@@ -1504,7 +1513,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 	    beamGasOList = []
             for item in tmpList.keys():
                 # remove log
-                if re.search('log\.tgz(\.\d+)*',item) != None:
+                if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
+                       re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
                     continue
                 beamGasOList.append((item,tmpList[item]))
             # sort
@@ -1782,7 +1792,8 @@ else:
     tmpGUIDmap = {}
     for fileName in tmpList.keys():
         # ignore log file
-        if len(re.findall('.log.tgz.\d+$',fileName)) or len(re.findall('.log.tgz$',fileName)):
+        if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
+               re.search('\.log(\.tgz)*(\.\d+)*$',fileName) != None:
             continue
         tmpFileList.append(fileName)
         tmpGUIDmap[fileName] = tmpList[fileName]['guid'] 
@@ -1793,7 +1804,8 @@ else:
         # look for lib.tgz
 	for fileName in tmpMap[options.libDS]:
             # ignore log file
-            if len(re.findall('.log.tgz.\d+$',fileName)) or len(re.findall('.log.tgz$',fileName)):
+            if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
+                   re.search('\.log(\.tgz)*(\.\d+)*$',fileName) != None:
                 continue
             tmpFileList.append(fileName)
             tmpGUIDmap[fileName] = None

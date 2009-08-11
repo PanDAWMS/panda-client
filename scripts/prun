@@ -1025,7 +1025,8 @@ else:
     tmpGUIDmap = {}
     for fileName in tmpList.keys():
         # ignore log file
-        if len(re.findall('.log.tgz.\d+$',fileName)) or len(re.findall('.log.tgz$',fileName)):
+        if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
+               re.search('\.log(\.tgz)*(\.\d+)*$',fileName) != None:
             continue
         tmpFileList.append(fileName)
         tmpGUIDmap[fileName] = tmpList[fileName]['guid'] 
@@ -1036,7 +1037,8 @@ else:
         # look for lib.tgz
 	for fileName in tmpMap[options.libDS]:
             # ignore log file
-            if len(re.findall('.log.tgz.\d+$',fileName)) or len(re.findall('.log.tgz$',fileName)):
+            if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
+                   re.search('\.log(\.tgz)*(\.\d+)*$',fileName) != None:
                 continue
             tmpFileList.append(fileName)
             tmpGUIDmap[fileName] = None
