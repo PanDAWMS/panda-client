@@ -911,7 +911,7 @@ if options.nJobs == -1:
 
 
 # read jobID
-jobDefinitionID = 0
+jobDefinitionID = 1
 jobid_file = '%s/pjobid.dat' % os.environ['PANDA_CONFIG_ROOT']
 if os.path.exists(jobid_file):
     try:

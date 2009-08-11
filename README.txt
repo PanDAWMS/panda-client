@@ -16,8 +16,13 @@ pathena -h
 
 current
   * added askUser to Client.nEvents
-  * enabled the peer verification in registerProxyKey to protect against pharming
+  * enabled peer verification in registerProxyKey to protect against pharming
   * fixed libDS in pbook
+  * fixed --trf of pathena for remortIO sites
+  * fixed --update of pathena/prun
+  * added convertConfToOutput to AthenaUtils
+  * fixed index incrementation of --individualOutDS for active jobs
+  * changed starting JobID to 1
   
 0.1.83 (7/28/2009)
   * exclude TAPE in brokerage

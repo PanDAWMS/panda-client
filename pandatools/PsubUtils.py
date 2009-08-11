@@ -411,6 +411,7 @@ def updatePackage(verbose=False):
     if isLatestVersion(latestVer):
         tmpLog.info('you are already using the latest version')
         return True
+    import PandaToolsPkgInfo
     tmpLog.info('update to %s from %s' % (latestVer,PandaToolsPkgInfo.release_version))
     # set readline for auto-complete
     import readline
@@ -507,8 +508,9 @@ def updatePackage(verbose=False):
         # keep old release
         if cleanInstall:
             tmpLog.info('keep old version in %s.back' % os.environ['PANDA_SYS'])
-            status,output = commands.getstatusoutput('mv %s %s.back' % \
-                                                     (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))
+            backUpDir = '%s.back' % os.environ['PANDA_SYS']
+            status,output = commands.getstatusoutput('rm -rf %s; mv %s %s' % \
+                                                     (backUpDir,os.environ['PANDA_SYS'],backUpDir))
             if status != 0:
                 tmpLog.error(output)
                 tmpLog.error('failed to keep old version')
@@ -553,7 +555,7 @@ def updatePackage(verbose=False):
                     
 
 # check direct access
-def isDirectAccess(site,usingRAW=False):
+def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
     # unknown site
     if not Client.PandaSites.has_key(site):
         return False
@@ -570,6 +572,11 @@ def isDirectAccess(site,usingRAW=False):
     newPrefix = params[2]
     if newPrefix.startswith('root:'):
         if usingRAW:
+            return False
+    # official TRF doesn't work with direct dcap/xrootd
+    if usingTRF and (not usingARA):
+        if newPrefix.startswith('root:') or newPrefix.startswith('dcap:') or \
+           newPrefix.startswith('dcache:'):
             return False
     # return
     return True

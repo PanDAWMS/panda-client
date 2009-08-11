@@ -609,7 +609,7 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None):
 
 
 # get datasets
-def getDatasets(name,verbose=False):
+def getDatasets(name,verbose=False,withWC=False):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
@@ -625,7 +625,7 @@ def getDatasets(name,verbose=False):
             sys.exit(EC_Failed)
         # parse
         datasets = {}
-        if out == '\x00' or (not out.has_key(name)):
+        if out == '\x00' or ((not withWC) and (not out.has_key(name))):
             # no datasets
             return datasets
         # get VUIDs
