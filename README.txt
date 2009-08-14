@@ -14,7 +14,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.84 (8/12/2009)
   * added askUser to Client.nEvents
   * enabled peer verification in registerProxyKey to protect against pharming
   * fixed libDS in pbook
@@ -27,6 +27,7 @@ current
   * changed matching pattern for log files
   * allowed to use --dbRelease together with --trf in pathena
   * use LFC as primary replica catalog
+  * fixed pbook for SL5/64 + Athena rel15
   
 0.1.83 (7/28/2009)
   * exclude TAPE in brokerage

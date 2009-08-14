@@ -641,6 +641,8 @@ class PTreeView:
     def showJob(self,selection):
         # get job info
         model,selected = selection.get_selected_rows()
+        if len(selected) == 0:
+            return
         iter = model.get_iter(selected[0])
         jobID = model.get_value(iter,0)
         self.guiGlobal.setCurrentJob(jobID)
