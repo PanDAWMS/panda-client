@@ -200,14 +200,14 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
         ddata.buildStatus = pandaJob.jobStatus
         for tmpFile in pandaJob.Files:
             if tmpFile.type == 'output':
-                ddata.libDS = tmpFile.lfn
+                ddata.libDS = tmpFile.dataset
                 break
     else:
         # noBuild or libDS
         ddata.buildStatus = ''
         for tmpFile in pandaJob.Files:
             if tmpFile.type == 'input' and tmpFile.lfn.endswith('.lib.tgz'):
-                ddata.libDS = tmpFile.lfn
+                ddata.libDS = tmpFile.dataset
                 break
     # job parameters
     ddata.jobParams = pandaJob.metadata

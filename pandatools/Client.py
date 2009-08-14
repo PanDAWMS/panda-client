@@ -9,12 +9,12 @@ import sys
 import time
 import stat
 import types
+import random
 import urllib
 import commands
 import cPickle as pickle
 import xml.dom.minidom
 import socket
-import random
 import tempfile
 
 import PLogger
@@ -82,6 +82,20 @@ def _x509():
     return ''
 
 
+# look for a CA certificate directory
+def _x509_CApath():
+    # use X509_CERT_DIR
+    try:
+        return os.environ['X509_CERT_DIR']
+    except:
+        pass
+    # get X509_CERT_DIR
+    gridSrc = _getGridSrc()
+    com = "%s echo $X509_CERT_DIR" % gridSrc
+    tmpOut = commands.getoutput(com)
+    return tmpOut.split('\n')[-1]
+
+
 # keep list of tmp files for cleanup
 globalTmpDir = ''
 
@@ -108,6 +122,8 @@ class _Curl:
         com = '%s --silent --get' % self.path
         if not self.verifyHost:
             com += ' --insecure'
+        else:
+            com += ' --capath %s' %  _x509_CApath()
         if self.compress:
             com += ' --compressed'
         if self.sslCert != '':
@@ -153,6 +169,8 @@ class _Curl:
         com = '%s --silent' % self.path
         if not self.verifyHost:
             com += ' --insecure'
+        else:
+            com += ' --capath %s' %  _x509_CApath()
         if self.compress:
             com += ' --compressed'
         if self.sslCert != '':
@@ -591,7 +609,7 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None):
 
 
 # get datasets
-def getDatasets(name,verbose=False):
+def getDatasets(name,verbose=False,withWC=False):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
@@ -607,7 +625,7 @@ def getDatasets(name,verbose=False):
             sys.exit(EC_Failed)
         # parse
         datasets = {}
-        if out == '\x00' or (not out.has_key(name)):
+        if out == '\x00' or ((not withWC) and (not out.has_key(name))):
             # no datasets
             return datasets
         # get VUIDs
@@ -792,6 +810,9 @@ def convSrmV2ID(tmpSite):
     # patch for TAIWAN
     if tmpSite.startswith('ASGC'):
         tmpSite = 'TAIWANDISK'
+    # patch for CERN
+    if tmpSite.startswith('CERN'):
+        tmpSite = 'CERNDISK'
     # patche for some special sites where automatic conjecture is impossible
     if tmpSite == 'UVIC':
         tmpSite = 'VICTORIA'
@@ -808,7 +829,8 @@ def convSrmV2ID(tmpSite):
 
 
 # get locations
-def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
+def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
+                 getTapeSites=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -828,6 +850,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
         retSiteMap    = {}
         resRetSiteMap = {}
         resBadStSites = {}
+        resTapeSites  = []
         countSite  = {}
         for tmpName in names:
             # get VUID
@@ -888,8 +911,11 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                 if verbose:
                     print out
             tmpFirstDump = True
-            time.sleep(1)
             for origTmpSite,origTmpInfo in out.iteritems():
+                # don't use TAPE
+                if re.search('TAPE$',origTmpSite) != None:
+                    resTapeSites.append(origTmpSite)
+                    continue
                 # count number of available files
                 if not countSite.has_key(origTmpSite):
                     countSite[origTmpSite] = 0
@@ -907,7 +933,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
                     # dump                        
                     if tmpFirstDump:
                         if verbose:
-                            print tmpID,tmpSpec['status'],tmpSpec['ddm'],str(srmv2ddmList)
+                            #print tmpID,tmpSpec['status'],tmpSpec['ddm'],str(srmv2ddmList)
+                            pass
                     if tmpSite in srmv2ddmList or convSrmV2ID(tmpSpec['ddm']).startswith(tmpSite):
                         # overwrite tmpSite for srmv1
                         tmpSite = convSrmV2ID(tmpSpec['ddm'])
@@ -943,17 +970,29 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
         if woFileCheck:
             return retSites
         # use reserved map when the cloud doesn't hold the dataset
-        if retSiteMap == {} and not expCloud:
+        if retSiteMap == {} and (not expCloud) and (not getReserved):
             retSiteMap = resRetSiteMap
+        # reset reserved map for expCloud
+        if getReserved and expCloud:
+            resRetSiteMap = {}
         # return map
         if verbose:
-            tmpLog.debug("getLocations -> %s" % retSiteMap)
+            if not getReserved:
+                tmpLog.debug("getLocations -> %s" % retSiteMap)
+            else:
+                tmpLog.debug("getLocations pri -> %s" % retSiteMap)
+                tmpLog.debug("getLocations sec -> %s" % resRetSiteMap)
         # print bad status sites for info    
-        if retSiteMap == {} and resBadStSites != {}:
+        if retSiteMap == {} and resRetSiteMap == {} and resBadStSites != {}:
             tmpLog.warning("the following sites hold %s but they are not online" % name)
             for tmpStatus,tmpSites in resBadStSites.iteritems():
                 print "   status=%s : %s" % (tmpStatus,tmpSites)
-        return retSiteMap
+        if not getReserved:        
+            return retSiteMap
+        elif not getTapeSites:
+            return retSiteMap,resRetSiteMap
+        else:
+            return retSiteMap,resRetSiteMap,resTapeSites            
     except:
         print status,out
         if errStr != '':
@@ -967,7 +1006,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False):
 #@ Returns number of events per file in a given dataset
 #SP 2006
 #
-def nEvents(name, verbose=False, askServer=True, fileList = {}, scanDir = '.'):
+def nEvents(name, verbose=False, askServer=True, fileList = {}, scanDir = '.', askUser=True):
     
     # @  These declarations can be moved to the configuration section at the very beginning
     # Here just for code clarity
@@ -1002,16 +1041,20 @@ def nEvents(name, verbose=False, askServer=True, fileList = {}, scanDir = '.'):
                 print "ERROR : could not get nEvents with ROOT - %s %s" % (type,value)
     # In case of error PANDAMON server returns full HTML page
     # Normally return an integer
-    if manualEnter: 
-        if askServer:
-            print "Could not get the # of events from MetaDB for %s " % name
-        while True:
-            str = raw_input("Enter the number of events per file : ")
-            try:
-                nEvents = int(str)
-                break
-            except:
-                pass
+    if manualEnter:
+        if askUser:
+            if askServer:
+                print "Could not get the # of events from MetaDB for %s " % name
+            while True:
+                str = raw_input("Enter the number of events per file : ")
+                try:
+                    nEvents = int(str)
+                    break
+                except:
+                    pass
+        else:
+            print "ERROR : Could not get the # of events from MetaDB for %s " % name
+            sys.exit(EC_Failed)
     if verbose:
        print "Dataset ", name, "has ", nEvents, " per file"
     return int(nEvents)
@@ -1336,6 +1379,9 @@ def getJobStatusFromMon(id,verbose=False):
 
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False):
+    # choose at most 20 sites randomly to avoid too many lookup
+    random.shuffle(sites)
+    sites = sites[:20]
     # serialize
     strSites = pickle.dumps(sites)
     # instantiate curl
@@ -1406,7 +1452,8 @@ def registerProxyKey(credname,origin,myproxy,verbose=False):
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey  = _x509()
-    curl.verbose = verbose    
+    curl.verbose = verbose
+    curl.verifyHost = True
     # execute
     url = baseURLSSL + '/registerProxyKey'
     data = {'credname': credname,
@@ -1545,6 +1592,9 @@ def checkSiteAccessPermission(siteName,workingGroup,verbose):
         ret = addAllowedSites(verbose)
         if not ret:
             return True
+    # don't check if site name is undefined
+    if siteName == None:
+        return True
     # get logger
     tmpLog = PLogger.getPandaLogger()
     if verbose:
@@ -1702,3 +1752,52 @@ def getPandaClientVer(verbose):
         return EC_Failed,"invalid version '%s'" % output
     # return
     return status,output
+
+
+# get files in dataset with filte
+def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # query files in dataset
+    tmpLog.info("query files in %s" % inDS)
+    inputFileMap = queryFilesInDataset(inDS,verbose)
+    # read list of files to be used
+    filesToBeUsed = []
+    if inputFileListName != '':
+        rFile = open(inputFileListName)
+        for line in rFile:
+            line = re.sub('\n','',line)
+            filesToBeUsed.append(line)
+        rFile.close()
+    # remove redundant files
+    tmpKeys = inputFileMap.keys()
+    for tmpLFN in tmpKeys:
+        # remove log
+        if re.search('\.log(\.tgz)*(\.\d+)*$',tmpLFN) != None or \
+               re.search('\.log(\.\d+)*(\.tgz)*$',tmpLFN) != None:
+            del inputFileMap[tmpLFN]            
+            continue
+        # filename matching
+        if filter != '':
+            if re.search(filter,tmpLFN) == None:
+                del inputFileMap[tmpLFN]
+                continue
+        # files in shadow
+        if tmpLFN in shadowList:
+            if inputFileMap.has_key(tmpLFN):
+                del inputFileMap[tmpLFN]            
+            continue
+        # files to be used
+        if filesToBeUsed != []:
+            # check matching    
+            matchFlag = False
+            for pattern in filesToBeUsed:
+                # normal matching
+                if pattern == tmpLFN:
+                    matchFlag =True
+                    break
+            # doesn't match
+            if not matchFlag:
+                del inputFileMap[tmpLFN]
+    # get logger
+    return inputFileMap
