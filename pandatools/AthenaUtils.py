@@ -660,7 +660,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                 # run dir
                 if item=='run':
                     files = []
-                    getFileList('%s/%s/run' % (_workArea,pack),files,False)
+                    getFileList('%s/%s/run' % (_workArea,pack),files,False,False)
                     for iFile in files:
                         # converted to real path
                         file = os.path.realpath(iFile)

@@ -146,7 +146,7 @@ optP.add_option('--official', action='store_const', const=True, dest='official',
 optP.add_option('--extFile', action='store', dest='extFile',  default='',
                 help='pathena exports files with some special extensions (.C, .dat, .py .xml) in the current directory. If you want to add other files, specify their names, e.g., data1.root,data2.doc')
 optP.add_option('--extOutFile', action='store', dest='extOutFile',  default='',
-                help='define extra output files, \ or "" is required when a wildcard is used. e.g., output1.txt,output2.dat,JiveXML_\*.xml')
+                help='A comma-separated list of extra output files which cannot be extracted automatically. Either \ or "" is required when a wildcard is used. e.g., output1.txt,output2.dat,JiveXML_\*.xml')
 optP.add_option('--supStream', action='store', dest='supStream',  default='',
                 help='suppress some output streams. e.g., ESD,TAG ')
 optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',

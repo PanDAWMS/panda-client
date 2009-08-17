@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * not resolve symlink in run dir
+
 0.1.84 (8/12/2009)
   * added askUser to Client.nEvents
   * enabled peer verification in registerProxyKey to protect against pharming
