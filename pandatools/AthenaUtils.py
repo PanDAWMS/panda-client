@@ -660,7 +660,13 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                 # run dir
                 if item=='run':
                     files = []
-                    getFileList('%s/%s/run' % (_workArea,pack),files,False,False)
+                    getFileList('%s/%s/run' % (_workArea,pack),files,False)
+                    # not resolve symlink (appending instead of replacing for backward compatibility)
+                    tmpFiles = []
+                    getFileList('%s/%s/run' % (_workArea,pack),tmpFiles,False,False)
+                    for tmpFile in tmpFiles:
+                        if not tmpFile in files:
+                            files.append(tmpFile)
                     for iFile in files:
                         # converted to real path
                         file = os.path.realpath(iFile)
