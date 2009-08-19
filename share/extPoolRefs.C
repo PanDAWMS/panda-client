@@ -6,7 +6,8 @@ void extPoolRefs()
 {
   std::string arg;
 
-  TChain *m_tree = new TChain("CollectionTree");
+  TChain *m_tree  = new TChain("CollectionTree");
+  TChain *m_tree2 = new TChain("POOLCollectionTree");
   while (true)
     {
       std::cin >> arg;
@@ -15,8 +16,15 @@ void extPoolRefs()
 	break;
       // add 
       m_tree->Add(arg.c_str());
+      m_tree2->Add(arg.c_str());
       std::cout << "Adding " << arg << std::endl;
     } 
+
+  if ((m_tree->GetEntries()) == 0)
+    {
+      std::cout << "use POOLCollectionTree" << std::endl;
+      m_tree = m_tree2;
+    }
 
   // set address
   Char_t Token[153];

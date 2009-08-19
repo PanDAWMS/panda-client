@@ -59,6 +59,14 @@ def _getPFNsLFC(guids,lfcHost,storages,nFiles,verbose=False):
                         host = match.group(1)
                         if storages != [] and (not host in storages):
                             continue
+                        # skip tape
+                        onTapeFlag = False
+                        for tapePath in ['/MCTAPE/','/BNLT1D0/','/atlasmctape/','/atlasdatatape/']:
+                            if re.search(tapePath,fr.sfn) != None:
+                                onTapeFlag = True
+                                break
+                        if onTapeFlag:
+                            continue
                         # append
                         if not pfnMap.has_key(fr.guid):
                             pfnMap[fr.guid] = []
