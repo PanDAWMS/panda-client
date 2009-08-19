@@ -128,6 +128,7 @@ class PBookCore:
         # insert if missing
         for remoteJobID in remoteJobIDs:
             # check local status
+            job = None
             if remoteJobID in localJobIDs:
                 # get job info from local repository
                 job = PdbUtils.readJobDB(remoteJobID,self.verbose)
@@ -143,13 +144,21 @@ class PBookCore:
             pandaIDs = pandaIDstatus.keys()
             pandaIDs.sort()
             # get full JobSpec
-            tmpIDs = [pandaIDs[0],pandaIDs[-1]]
-            status,pandaJobs = Client.getFullJobStatus(tmpIDs,verbose=self.verbose)
-            if status != 0:
-                tmpLog.error("Failed to get PandaIDs for %s" % remoteJobID) 
-                return
+            pandaJobs = []            
+            pandaFileInfo = {}
+            if job == None:
+		tmpIDs = [pandaIDs[0],pandaIDs[-1]]
+                status,pandaJobs = Client.getFullJobStatus(tmpIDs,verbose=self.verbose)
+                if status != 0:
+                    tmpLog.error("Failed to get PandaIDs for %s" % remoteJobID) 
+                    return
+		# get slimmed file info
+                status,pandaFileInfo = Client.getSlimmedFileInfoPandaIDs(pandaIDs,verbose=self.verbose)
+                if status != 0:
+                    tmpLog.error("Failed to get file info  for %s" % remoteJobID)
+                    return
             # convert to local job spec
-            localJob = PdbUtils.convertPtoD(pandaJobs,pandaIDstatus)
+            localJob = PdbUtils.convertPtoD(pandaJobs,pandaIDstatus,job,pandaFileInfo)
             # update database 
             if not remoteJobID in localJobIDs:
                 # insert to DB

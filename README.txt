@@ -14,8 +14,10 @@ pathena -h
 
 ** Release Note
 
-current
-  * not resolve symlink in run dir
+0.1.85 (8/19/2009)
+  * fixed ArchiveSource not to resolve symlink in run dir
+  * allowed wildcard and/or comma in --inDS of pathena/prun to concatenate multiple datasets
+  * updated pbook for the above change
 
 0.1.84 (8/12/2009)
   * added askUser to Client.nEvents

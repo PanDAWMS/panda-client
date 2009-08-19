@@ -535,44 +535,75 @@ def deleteFile(file):
 
 
 # query files in dataset
-def queryFilesInDataset(name,verbose=False,v_vuids=None):
+def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
     # for container failure
     status,out = 0,''
+    nameVuidsMap = {}
+    dsString = ''
     try:
         errStr = ''
         # get VUID
         if v_vuids == None:
             url = baseURLDQ2 + '/ws_repository/rpc'
-            # container
-            if name.endswith('/'):
-                #names = getElementsFromContainer(name,verbose)
+            if re.search(',',name) != None:
+                # comma-separated list
+                names = name.split(',')
+            elif name.endswith('/'):
+                # container
                 names = [name]
             else:
                 names = [name]
             # loop over all names
             vuidList = []
-            for tmpName in names:    
+            iLookUp = 0
+            for tmpName in names:
+                iLookUp += 1
+                if iLookUp % 20 == 0:
+                    time.sleep(1)
                 data = {'operation':'queryDatasetByName','dsn':tmpName,
                         'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
                 status,out = curl.get(url,data)
-                if status != 0 or out == '\x00' or (not out.has_key(tmpName)):
+                if status != 0 or out == '\x00' or (re.search('\*',tmpName) == None and not out.has_key(tmpName)):
                     errStr = "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
                              % tmpName
                     sys.exit(EC_Failed)
                 # parse
-                vuidList.append(out[tmpName]['vuids'])
-                time.sleep(1)
+                if re.search('\*',tmpName) == None:
+                    vuidList.append(out[tmpName]['vuids'])
+                    # mapping between name and vuids
+                    nameVuidsMap[tuple(out[tmpName]['vuids'])] = tmpName
+                    # string to expand wildcard                    
+                    dsString += '%s,' % tmpName
+                else:
+                    # using wildcard
+                    for outKeyName in out.keys():
+                        # skip sub/dis
+                        if re.search('_dis\d+$',outKeyName) != None or re.search('_sub\d+$',outKeyName) != None:
+                            continue
+                        # append
+                        vuidList.append(out[outKeyName]['vuids'])
+                        # mapping between name and vuids
+                        nameVuidsMap[tuple(out[outKeyName]['vuids'])] = outKeyName
+                        # string to expand wildcard
+                        dsString += '%s,' % outKeyName
         else:
             vuidList = [v_vuids]
+        # reset for backward comatiblity when * or , is not used
+        if re.search('\*',name) == None and re.search(',',name) == None:
+            nameVuidsMap = {}
+            dsString = ''
         # get files
         url = baseURLDQ2 + '/ws_content/rpc'
         ret = {}
         generalLFNmap = {}
+        iLookUp = 0
         for  vuids in vuidList:
-            time.sleep(1)
+            iLookUp += 1
+            if iLookUp % 20 == 0:
+                time.sleep(1)
             data = {'operation': 'queryFilesInDataset','vuids':vuids,
                     'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
             status,out =  curl.post(url,data)
@@ -598,6 +629,9 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None):
                 ret[vals['lfn']] = {'guid'   : guid,
                                     'fsize'  : vals['filesize'],
                                     'md5sum' : vals['checksum']}
+                # add dataset name
+                if nameVuidsMap.has_key(tuple(vuids)):
+                    ret[vals['lfn']]['dataset'] = nameVuidsMap[tuple(vuids)]
     except:
         print status,out
         if errStr != '':
@@ -605,6 +639,8 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None):
         else:
             print "ERROR : invalid DQ2 response"
         sys.exit(EC_Failed)
+    if getDsString:
+        return ret,dsString[:-1]
     return ret            
 
 
@@ -840,19 +876,24 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
     tmpLog = PLogger.getPandaLogger()
     try:
         errStr = ''
-        containerFlag = False
-        names = [name]
-        # container
-        if name.endswith('/'):
-            containerFlag = True
+        names = name.split(',')
         # loop over all names
         retSites      = []
         retSiteMap    = {}
         resRetSiteMap = {}
         resBadStSites = {}
         resTapeSites  = []
-        countSite  = {}
+        countSite     = {}
+        allOut        = {}
+        iLookUp       = 0        
         for tmpName in names:
+            iLookUp += 1
+            if iLookUp % 20 == 0:
+                time.sleep(1)
+            # container
+            containerFlag = False
+            if tmpName.endswith('/'):
+                containerFlag = True
             # get VUID
             url = baseURLDQ2 + '/ws_repository/rpc'
             data = {'operation':'queryDatasetByName','dsn':tmpName,'version':0,
@@ -891,81 +932,88 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             outTmp[tmpEleLoc][0]['found'] += 1
                 # replace
                 out = outTmp
-                if verbose:
-                    print out
-            # choose sites where most files are available
-            if not woFileCheck:
-                tmpMaxFiles = -1
-                for origTmpSite,origTmpInfo in out.iteritems():
-                    # get PandaID
-                    tmpPandaSite = convertDQ2toPandaID(origTmpSite)
-                    # check status
-                    if PandaSites.has_key(tmpPandaSite) and PandaSites[tmpPandaSite]['status'] == 'online':
-                        # check the number of available files
-                        if tmpMaxFiles < origTmpInfo[0]['found']:
-                            tmpMaxFiles = origTmpInfo[0]['found']
-                # remove sites
-                for origTmpSite in out.keys():
-                    if out[origTmpSite][0]['found'] < tmpMaxFiles:
-                        del out[origTmpSite]
-                if verbose:
-                    print out
-            tmpFirstDump = True
+            # sum
+            for tmpOutKey,tmpOutVar in out.iteritems():
+                if allOut.has_key(tmpOutKey):
+                    allOut[tmpOutKey][0]['found'] += tmpOutVar[0]['found']
+                else:
+                    allOut[tmpOutKey] = tmpOutVar
+        # replace
+        out = allOut
+        if verbose:
+            print out
+        # choose sites where most files are available
+        if not woFileCheck:
+            tmpMaxFiles = -1
             for origTmpSite,origTmpInfo in out.iteritems():
-                # don't use TAPE
-                if re.search('TAPE$',origTmpSite) != None:
-                    resTapeSites.append(origTmpSite)
-                    continue
-                # count number of available files
-                if not countSite.has_key(origTmpSite):
-                    countSite[origTmpSite] = 0
-                countSite[origTmpSite] += origTmpInfo[0]['found']
-                # patch for SRM v2
-                tmpSite = convSrmV2ID(origTmpSite)
-                if verbose:
-                    tmpLog.debug('%s : %s->%s' % (tmpName,origTmpSite,tmpSite))
-                # check cloud, DQ2 ID and status
-                for tmpID,tmpSpec in PandaSites.iteritems():
-                    # get list of DQ2 IDs
-                    srmv2ddmList = []
-                    for tmpDdmID in tmpSpec['setokens'].values():
-                        srmv2ddmList.append(convSrmV2ID(tmpDdmID))
-                    # dump                        
-                    if tmpFirstDump:
-                        if verbose:
-                            #print tmpID,tmpSpec['status'],tmpSpec['ddm'],str(srmv2ddmList)
-                            pass
-                    if tmpSite in srmv2ddmList or convSrmV2ID(tmpSpec['ddm']).startswith(tmpSite):
-                        # overwrite tmpSite for srmv1
-                        tmpSite = convSrmV2ID(tmpSpec['ddm'])
-                        # exclude long,xrootd,local queues
-                        if isExcudedSite(tmpID):
-                            continue
-                        if not tmpSite in retSites:
-                            retSites.append(tmpSite)
-                        # just collect locations when file check is disabled
-                        if woFileCheck:    
-                            break
-                        # append site to return if in the cloud, otherwise reserved
-                        if tmpSpec['status'] == 'online':
-                            if tmpSpec['cloud'] == cloud:
-                                appendMap = retSiteMap
-                            else:
-                                appendMap = resRetSiteMap
-                            # mapping between location and Panda siteID
-                            if not appendMap.has_key(tmpSite):
-                                appendMap[tmpSite] = []
-                            if not tmpID in appendMap[tmpSite]:
-                                appendMap[tmpSite].append(tmpID)
+                # get PandaID
+                tmpPandaSite = convertDQ2toPandaID(origTmpSite)
+                # check status
+                if PandaSites.has_key(tmpPandaSite) and PandaSites[tmpPandaSite]['status'] == 'online':
+                    # check the number of available files
+                    if tmpMaxFiles < origTmpInfo[0]['found']:
+                        tmpMaxFiles = origTmpInfo[0]['found']
+            # remove sites
+            for origTmpSite in out.keys():
+                if out[origTmpSite][0]['found'] < tmpMaxFiles:
+                    del out[origTmpSite]
+            if verbose:
+                print out
+        tmpFirstDump = True
+        for origTmpSite,origTmpInfo in out.iteritems():
+            # don't use TAPE
+            if re.search('TAPE$',origTmpSite) != None:
+                resTapeSites.append(origTmpSite)
+                continue
+            # count number of available files
+            if not countSite.has_key(origTmpSite):
+                countSite[origTmpSite] = 0
+            countSite[origTmpSite] += origTmpInfo[0]['found']
+            # patch for SRM v2
+            tmpSite = convSrmV2ID(origTmpSite)
+            if verbose:
+                tmpLog.debug('%s : %s->%s' % (tmpName,origTmpSite,tmpSite))
+            # check cloud, DQ2 ID and status
+            for tmpID,tmpSpec in PandaSites.iteritems():
+                # get list of DQ2 IDs
+                srmv2ddmList = []
+                for tmpDdmID in tmpSpec['setokens'].values():
+                    srmv2ddmList.append(convSrmV2ID(tmpDdmID))
+                # dump                        
+                if tmpFirstDump:
+                    if verbose:
+                        pass
+                if tmpSite in srmv2ddmList or convSrmV2ID(tmpSpec['ddm']).startswith(tmpSite):
+                    # overwrite tmpSite for srmv1
+                    tmpSite = convSrmV2ID(tmpSpec['ddm'])
+                    # exclude long,xrootd,local queues
+                    if isExcudedSite(tmpID):
+                        continue
+                    if not tmpSite in retSites:
+                        retSites.append(tmpSite)
+                    # just collect locations when file check is disabled
+                    if woFileCheck:    
+                        break
+                    # append site to return if in the cloud, otherwise reserved
+                    if tmpSpec['status'] == 'online':
+                        if tmpSpec['cloud'] == cloud:
+                            appendMap = retSiteMap
                         else:
-                            # not interested in another cloud
-                            if tmpSpec['cloud'] != cloud and expCloud:
-                                continue
-                            # keep bad status sites for info
-                            if not resBadStSites.has_key(tmpSpec['status']):
-                                resBadStSites[tmpSpec['status']] = []
-                            resBadStSites[tmpSpec['status']].append(tmpID)
-                tmpFirstDump = False
+                            appendMap = resRetSiteMap
+                        # mapping between location and Panda siteID
+                        if not appendMap.has_key(tmpSite):
+                            appendMap[tmpSite] = []
+                        if not tmpID in appendMap[tmpSite]:
+                            appendMap[tmpSite].append(tmpID)
+                    else:
+                        # not interested in another cloud
+                        if tmpSpec['cloud'] != cloud and expCloud:
+                            continue
+                        # keep bad status sites for info
+                        if not resBadStSites.has_key(tmpSpec['status']):
+                            resBadStSites[tmpSpec['status']] = []
+                        resBadStSites[tmpSpec['status']].append(tmpID)
+            tmpFirstDump = False
         # return list when file check is not required
         if woFileCheck:
             return retSites
@@ -1694,6 +1742,27 @@ def getFullJobStatus(ids,verbose):
         return EC_Failed,None
 
 
+# get slimmed file info
+def getSlimmedFileInfoPandaIDs(ids,verbose):
+    # serialize
+    strIDs = pickle.dumps(ids)
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/getSlimmedFileInfoPandaIDs'
+    data = {'ids':strIDs}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR getSlimmedFileInfoPandaIDs : %s %s" % (type,value)
+        return EC_Failed,None
+
+
 # get input files currently in used for analysis
 def getFilesInUseForAnal(outDataset,verbose):
     # instantiate curl
@@ -1755,12 +1824,15 @@ def getPandaClientVer(verbose):
 
 
 # get files in dataset with filte
-def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose):
+def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose,dsStringFlag=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # query files in dataset
     tmpLog.info("query files in %s" % inDS)
-    inputFileMap = queryFilesInDataset(inDS,verbose)
+    if dsStringFlag:
+        inputFileMap,inputDsString = queryFilesInDataset(inDS,verbose,getDsString=True)
+    else:
+        inputFileMap,inputDsString = queryFilesInDataset(inDS,verbose)
     # read list of files to be used
     filesToBeUsed = []
     if inputFileListName != '':
@@ -1799,5 +1871,7 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             # doesn't match
             if not matchFlag:
                 del inputFileMap[tmpLFN]
-    # get logger
+    # return
+    if dsStringFlag:
+        return inputFileMap,inputDsString
     return inputFileMap

@@ -161,7 +161,7 @@ class PdbProxy:
 
 
 # convert Panda jobs to DB representation
-def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
+def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={}):
     statusOnly = False
     if localJob != None:
         # update status only 
@@ -212,16 +212,22 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
     # job parameters
     ddata.jobParams = pandaJob.metadata
     # extract datasets
-    pandaJob = pandaJobList[-1]
     iDSlist  = []
     oDSlist = []
-    for tmpFile in pandaJob.Files:
-        if tmpFile.type == 'input' and not tmpFile.lfn.endswith('.lib.tgz'):
-            if not tmpFile.dataset in iDSlist:
-                iDSlist.append(tmpFile.dataset)
-        elif tmpFile.type == 'output':
-            if not tmpFile.dataset in oDSlist:
-                oDSlist.append(tmpFile.dataset)
+    if fileInfo != {}:
+        if fileInfo.has_key('inDS'):
+            iDSlist = fileInfo['inDS']
+        if fileInfo.has_key('outDS'):
+            oDSlist = fileInfo['outDS']
+    else:
+        for pandaJob in pandaJobList:
+            for tmpFile in pandaJob.Files:
+                if tmpFile.type == 'input' and not tmpFile.lfn.endswith('.lib.tgz'):
+                    if not tmpFile.dataset in iDSlist:
+                        iDSlist.append(tmpFile.dataset)
+                elif tmpFile.type == 'output' and not tmpFile.lfn.endswith('.lib.tgz'):
+                    if not tmpFile.dataset in oDSlist:
+                        oDSlist.append(tmpFile.dataset)
     # convert to string
     ddata.inDS = ''
     for iDS in iDSlist:

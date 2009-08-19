@@ -472,7 +472,8 @@ if options.inDS != '':
     elif outputContExist:
 	shadowList = Client.getFilesInShadowDataset(options.outDS,suffixShadow,options.verbose)
     # query files in dataset
-    inputFileMap = Client.getFilesInDatasetWithFilter(options.inDS,options.match,shadowList,options.inputFileListName,options.verbose)
+    inputFileMap,inputDsString = Client.getFilesInDatasetWithFilter(options.inDS,options.match,shadowList,options.inputFileListName,
+                                                                    options.verbose,dsStringFlag=True)
     # sort
     inputFileList = inputFileMap.keys()
     inputFileList.sort()
@@ -491,7 +492,10 @@ if options.inDS != '':
     # get locations
     if inputFileList != []:
         if options.site == "AUTO":
-	    tmpDsForLookUpList = [options.inDS] + options.secondaryDSs.keys()
+            if inputDsString == '':
+                tmpDsForLookUpList = [options.inDS] + options.secondaryDSs.keys()
+            else:
+                tmpDsForLookUpList = [inputDsString] + options.secondaryDSs.keys()                
             tmpDsLocationForTest = {}
             dsLocationMap = None
             dsLocationMapBack = None
@@ -1080,7 +1084,7 @@ if options.outputs != '' and outputDSexist:
             existingFilesInOutDS[tmpLFN] = None
 
 if options.inDS != '':
-    tmpLog.info("%s files are missing or skipped at %s" % (len(missList),options.site))
+    tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
 
 # disp datasetname to identify inputs
@@ -1102,6 +1106,11 @@ for iJob in range(options.nJobs):
     jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
     jobR.destinationDBlock = options.outDS
     jobR.destinationSE     = options.site
+    if options.inDS != '':
+        if re.search(',',options.inDS) != None:
+            jobR.prodDBlock = options.inDS.split(',')[0]
+        else:
+            jobR.prodDBlock = options.inDS
     jobR.prodSourceLabel   = 'user'
     if options.processingType != '':
         jobR.processingType = options.processingType
@@ -1153,8 +1162,11 @@ for iJob in range(options.nJobs):
             fileI.GUID       = vals['guid']
 	    fileI.fsize      = vals['fsize']
 	    fileI.md5sum     = vals['md5sum']
-            fileI.dataset    = options.inDS
-            fileI.prodDBlock = options.inDS
+            if vals.has_key('dataset'):
+                fileI.dataset    = vals['dataset']
+            else:
+                fileI.dataset    = options.inDS
+            fileI.prodDBlock = fileI.dataset
             fileI.type       = 'input'
             fileI.status     = 'ready'
             fileI.dispatchDBlock = commonDispName
