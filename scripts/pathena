@@ -1096,12 +1096,16 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         inputFileList.sort()
     elif options.pfnList != '':
         # read PFNs from a file
+        devidedByGUID = False 
         rFile = open(options.pfnList)
+        inputFileList = []
         for line in rFile:
             line = re.sub('\n','',line)
-            inputFileList.append(line)
-            inputFileList.sort()
+            line.strip()
+            if line != '':
+                inputFileList.append(line)
         rFile.close()
+        inputFileList.sort()
     else:
         # ship input files
         devidedByGUID = False 

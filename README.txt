@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed --pfnList of pathena
+
 0.1.85 (8/19/2009)
   * fixed ArchiveSource not to resolve symlink in run dir
   * allowed wildcard and/or comma in --inDS of pathena/prun to concatenate multiple datasets
