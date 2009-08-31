@@ -14,9 +14,75 @@ pathena -h
 
 ** Release Note
 
-current 
+0.1.86 (8/31/2009)
+  * fixed --pfnList of pathena
+  * fixed pbook to update buildStatus
+  * added forceUpdate to pbook.show()
+
+0.1.85 (8/19/2009)
+  * fixed ArchiveSource not to resolve symlink in run dir
+  * allowed wildcard and/or comma in --inDS of pathena/prun to concatenate multiple datasets
+  * updated pbook for the above change
+
+0.1.84 (8/12/2009)
+  * added askUser to Client.nEvents
+  * enabled peer verification in registerProxyKey to protect against pharming
+  * fixed libDS in pbook
+  * fixed --trf of pathena for remortIO sites
+  * fixed --update of pathena/prun
+  * added convertConfToOutput to AthenaUtils
+  * fixed index incrementation of --individualOutDS for active jobs
+  * changed starting JobID to 1
+  * fixed looping on BeamGas files
+  * changed matching pattern for log files
+  * allowed to use --dbRelease together with --trf in pathena
+  * use LFC as primary replica catalog
+  * fixed pbook for SL5/64 + Athena rel15
+  
+0.1.83 (7/28/2009)
+  * exclude TAPE in brokerage
+
+0.1.82 (7/28/2009)
+  * removed size limitation for direct access sites
+  * increased default extensions to be picked up by prun
+
+0.1.81 (7/22/2009)
+  * fixed --trf of pathena for duplicated DBRelease 
+  * fixed --trf of pathena for AMI=tag
+  * fixed version check
+  * fixed resetting of sites which have a duplicated DQ2 ID
+
+0.1.80 (7/21/2009)
+  * fixed POOL-ref extraction for old Athena to work with new CollectionTree name
+  * added a protection to runBrokerage to avoid too many lookup
+  * support rpm installation in --update of pathena/prun
+  * fixed proxy delegation for expiring certificate
+
+0.1.79 (7/17/2009)
+  * dropped the default to use US cloud
+
+0.1.78 (7/15/2009)
+  * added error message when common location is not found for --secondaryDSs in prun  
+  * added --useAthenaPackages to compile Athena packages in build step of prun
+  * ignore log.tgz in prun
+  * ignore .svn in AthenaUtils.getPackages
+
+0.1.77 (7/14/2009)
+  * added --secondaryDSs to prun
+
+0.1.76 (7/10/2009)
+  * added --gluePackages to pathena
+
+0.1.75 (7/10/2009)
+  * fixed checkSiteAccessPermission for --burstSubmit
+  * fixed result() of PStep in non-blocking mode
+  * fixed getRunningPandaJobs in psequencer
+
+0.1.74 (7/9/2009)
   * removed urllib2 and md5 to avoid the hashlib problem in Athena on SL5
-  * changed UI at BNL for SL5
+  * added -c to pbook	
+  * added getPandaJob and getRunningPandaJobs to psequencer
+  * fixed AthenaUtils for Lhapdf
 
 0.1.73 (6/29/2009)
   * improved --update in pathena/prun
