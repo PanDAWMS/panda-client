@@ -778,6 +778,9 @@ def archiveJobOFiles(workArea,runDir,currentDir,tmpDir,verbose):
         for item in list:
             fullName=dir+'/'+item
             if os.path.isdir(fullName):
+                # skip symlinks in include since they cause full scan on releases
+                if os.path.islink(fullName) and re.search('InstallArea/include$',dir) != None:
+                    continue
                 # dir
                 getJobOs(fullName,files)
             else:
@@ -867,9 +870,13 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
         files = []
         cmtFiles = []
         os.chdir(areaName)
-        if areaName==workArea and not nobuild:
-        # ignore i686 for workArea
-            getFiles('InstallArea',files,True,True)
+        if areaName==workArea:
+            if not nobuild:
+                # ignore i686 and include for workArea
+                getFiles('InstallArea',files,True,True)
+            else:
+                # ignore include for workArea
+                getFiles('InstallArea',files,False,True)
         else:
             # groupArea
             if not os.path.exists('InstallArea'):

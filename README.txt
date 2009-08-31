@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.87 (8/31/2009)
+  * fixed archiving for --noBuild to ignore symlinks in InstallArea/include
+
 0.1.86 (8/31/2009)
   * fixed --pfnList of pathena
   * fixed pbook to update buildStatus
