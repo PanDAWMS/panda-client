@@ -211,7 +211,7 @@ class PBookCore:
     
         
     # get status
-    def status(self,JobID):
+    def status(self,JobID,forceUpdate=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
@@ -222,7 +222,7 @@ class PBookCore:
             tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)            
             return None
         # update if needed
-        if job.dbStatus != 'frozen':
+        if job.dbStatus != 'frozen' or forceUpdate:
             tmpLog.info("Getting status for JobID=%s ..." % JobID)            
             # get status from Panda server
             status,pandaIDstatus = Client.getPandIDsWithJobID(JobID,
@@ -460,7 +460,7 @@ For more info, do help(show) for example."""
         
                                         
     # show status
-    def show(JobID=None):
+    def show(JobID=None,forceUpdate=False):
         """Print job records. All jobs will be shown if JobID is omitted. Only running jobs will be shown if show('running')
         
          example:
@@ -482,7 +482,7 @@ For more info, do help(show) for example."""
                 if job.dbStatus != 'frozen':
                     show(job.JobID)
         else:
-            job = pbookCore.status(JobID)
+            job = pbookCore.status(JobID,forceUpdate)
             # print
             print "======================================"
             print job

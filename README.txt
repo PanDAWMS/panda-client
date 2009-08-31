@@ -14,8 +14,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.86 (8/31/2009)
   * fixed --pfnList of pathena
+  * fixed pbook to update buildStatus
+  * added forceUpdate to pbook.show()
 
 0.1.85 (8/19/2009)
   * fixed ArchiveSource not to resolve symlink in run dir

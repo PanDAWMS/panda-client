@@ -190,6 +190,10 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={}):
     ddata.jobStatus = sStr
     # return if update status only
     if statusOnly:
+        # build job
+        if ddata.buildStatus != '':
+            ddata.buildStatus = sStr.split(',')[0]
+        # return    
         return ddata
     # PandaID
     ddata.PandaID = pStr
