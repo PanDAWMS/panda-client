@@ -12,9 +12,10 @@ import optparse
 import commands
 import urllib
 import shelve
+import copy
 
 # default cloud/site
-defaultCloud = 'US'
+defaultCloud = None
 defaultSite  = 'AUTO'
 
 # suffix for shadow dataset
@@ -29,8 +30,9 @@ EC_Split     = 70
 EC_MyProxy   = 80
 EC_Submit    = 90
 
-usage = """%prog [options]"""
+usage = """%prog [options]
 
+  HowTo is available at https://twiki.cern.ch/twiki/bin/view/Atlas/PandaRun"""
 
 # command-line parameters
 optP = optparse.OptionParser(usage=usage,conflict_handler="resolve")
@@ -42,14 +44,20 @@ optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
                 help='Name of an output dataset. OUTDS will contain all output files')
 optP.add_option('--libDS',action='store',dest='libDS',default='',type='string',
                 help='Name of a library dataset')
+optP.add_option('--secondaryDSs',action='store',dest='secondaryDSs',default='',type='string',
+                help='List of secondary datasets when the job requires multiple inputs. See PandaRun wiki page for detail')
 optP.add_option('--site',action='store',dest='site',default=defaultSite,type='string',
-                help='Site name where jobs are sent (default:%s' % defaultSite)
+                help='Site name where jobs are sent (default:%s)' % defaultSite)
 optP.add_option('--cloud',action='store',dest='cloud',default=None,type='string',
-                help='Cloud where jobs are submitted (default:%s)' % defaultCloud)
+                help='Cloud where jobs are submitted. default is set according to your VOMS country group')
 optP.add_option('--match',action='store',dest='match',default='',type='string',
                 help='Use only files matching with given pattern')
 optP.add_option('--official',action='store_const',const=True,dest='official',default=False,
                 help='Produce official dataset')
+optP.add_option('--useAthenaPackages',action='store_const',const=True,dest='useAthenaPackages',default=False,
+                help='Use Athena packages. See PandaRun wiki page for detail')
+optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
+                help='list of glue packages which pathena cannot fine due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf')
 optP.add_option('--nFiles',action='store',dest='nFiles',default=0,type='int',
                 help='Use a limited number of files in the input dataset')
 optP.add_option('--nSkipFiles',action='store',dest='nSkipFiles',default=0,type='int',
@@ -215,7 +223,31 @@ if curDir != options.workDir:
 athenaVer = ''
 cacheVer  = ''
 nightVer  = ''
-if options.athenaTag != '':
+groupArea = ''
+if options.useAthenaPackages:
+    # get Athena versions
+    stA,retA = AthenaUtils.getAthenaVer()
+    # failed
+    if not stA:
+        tmpLog.error("You need to setup Athena runtime to use --useAthenaPackages")
+        sys.exit(EC_CMT)
+    workArea  = retA['workArea'] 
+    athenaVer = 'Atlas-%s' % retA['athenaVer'] 
+    groupArea = retA['groupArea'] 
+    cacheVer  = retA['cacheVer'] 
+    nightVer  = retA['nightVer']
+    # override run directory
+    sString=re.sub('[\+]','.',workArea)
+    runDir = re.sub('^%s' % sString, '', curDir)
+    if runDir == curDir:
+        tmpLog.error("you need to run prun in a directory under %s" % workArea)
+        sys.exit(EC_Config)
+    elif runDir == '':
+        runDir = '.'
+    elif runDir.startswith('/'):
+        runDir = runDir[1:]
+    runDir = runDir+'/'
+elif options.athenaTag != '':
     items = options.athenaTag.split(',')
     for item in items:
         # releases
@@ -256,6 +288,12 @@ else:
     for tmpItem in tmpItems:
         options.extFile.append(tmpItem.replace('*','.*'))
 
+# glue packages
+options.gluePackages = options.gluePackages.split(',')
+try:
+    options.gluePackages.remove('')
+except:
+    pass
 
 # LFN matching
 if options.match != '':
@@ -273,6 +311,36 @@ if options.jobParams == '':
 if options.outDS == '':
     tmpLog.error("no outDS is given\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
     sys.exit(EC_Config)
+
+# secondary datasets
+if options.secondaryDSs != '':
+    if options.inDS == '':
+        tmpLog.error("Primary input dataset is not defined using --inDS although --secondaryDSs is set")
+        sys.exit(EC_Config)
+    # parse
+    tmpMap = {}
+    for tmpItem in options.secondaryDSs.split(','):
+        tmpItems = tmpItem.split(':')
+        if len(tmpItems) in [3,4,5]:
+            tmpMap[tmpItems[2]] = {'nFiles'     : int(tmpItems[1]),
+                                   'streamName' : tmpItems[0],
+                                   'pattern'    : '',
+                                   'nSkip'      : 0,
+                                   'files'      : []}
+            # using filtering pattern
+            if len(tmpItems) >= 4:
+                tmpMap[tmpItems[2]]['pattern'] = tmpItems[3]
+            # nSkip
+            if len(tmpItems) >= 5:
+                tmpMap[tmpItems[2]]['nSkip'] = int(tmpItems[4])
+        else:         
+            tmpLog.error("Wrong format %s in --secondaryDSs. Must be StreamName:nFilesPerJob:DatasetName[:Pattern[:nSkipFiles]]" \
+                         % tmpItem)
+            sys.exit(EC_Config)
+    # set
+    options.secondaryDSs = tmpMap
+else:
+    options.secondaryDSs = {}
 
 # correct site
 if options.site != 'AUTO':
@@ -329,21 +397,25 @@ if outputDSexist:
     if outDSlocations == []:
         tmpLog.error("cannot find locations for existing output datasete:%s" % options.outDS)
         sys.exit(EC_Config)
-    # convert DQ2ID to Panda siteID
-    fFlag = False
-    for outDSlocation in outDSlocations:
-        convID = PsubUtils.convertDQ2toPandaID(outDSlocation)
-        if convID != '':
-            options.site  = convID
-            options.cloud = Client.PandaSites[convID]['cloud']
-            fFlag = True
-            tmpLog.info("set site:%s cloud:%s because outDS:%s already exists at %s" % \
-                        (options.site,options.cloud,options.outDS,outDSlocations))                
-            break
-    # not found
-    if not fFlag:
-        tmpLog.error("cannot find supported sites for existing output datasete:%s" % options.outDS)
-        sys.exit(EC_Config)
+    # keep origianl site
+    if Client.PandaSites.has_key(options.site) and Client.PandaSites[options.site]['ddm'] in outDSlocations:
+        pass
+    else:
+        # convert DQ2ID to Panda siteID
+        fFlag = False
+        for outDSlocation in outDSlocations:
+            convID = PsubUtils.convertDQ2toPandaID(outDSlocation)
+            if convID != '':
+                options.site  = convID
+                options.cloud = Client.PandaSites[convID]['cloud']
+                fFlag = True
+                tmpLog.info("set site:%s cloud:%s because outDS:%s already exists at %s" % \
+                            (options.site,options.cloud,options.outDS,outDSlocations))                
+                break
+        # not found
+        if not fFlag:
+            tmpLog.error("cannot find supported sites for existing output datasete:%s" % options.outDS)
+            sys.exit(EC_Config)
 elif options.libDS != '':
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
@@ -352,21 +424,25 @@ elif options.libDS != '':
     if libDSlocations == []:
         tmpLog.error("cannot find locations for existing lib datasete:%s" % options.libDS)
         sys.exit(EC_Config)
-    # convert DQ2ID to Panda siteID
-    fFlag = False
-    for libDSlocation in libDSlocations:
-        convID = PsubUtils.convertDQ2toPandaID(libDSlocation)
-        if convID != '':
-            options.site  = convID
-            options.cloud = Client.PandaSites[convID]['cloud']
-            fFlag = True
-            tmpLog.info("set site:%s cloud:%s because libDS:%s exists at %s" % \
-                        (options.site,options.cloud,options.libDS,libDSlocations))                
-            break
-    # not found
-    if not fFlag:
-        tmpLog.error("cannot find supported sites for existing lib datasete:%s" % options.libDS)
-        sys.exit(EC_Config)
+    # keep origianl site
+    if Client.PandaSites.has_key(options.site) and Client.PandaSites[options.site]['ddm'] in libDSlocations:
+        pass
+    else:
+        # convert DQ2ID to Panda siteID
+        fFlag = False
+        for libDSlocation in libDSlocations:
+            convID = PsubUtils.convertDQ2toPandaID(libDSlocation)
+            if convID != '':
+                options.site  = convID
+                options.cloud = Client.PandaSites[convID]['cloud']
+                fFlag = True
+                tmpLog.info("set site:%s cloud:%s because libDS:%s exists at %s" % \
+                            (options.site,options.cloud,options.libDS,libDSlocations))                
+                break
+        # not found
+        if not fFlag:
+            tmpLog.error("cannot find supported sites for existing lib datasete:%s" % options.libDS)
+            sys.exit(EC_Config)
 
         
 # set cloud for brokerage
@@ -396,71 +472,117 @@ if options.inDS != '':
     elif outputContExist:
 	shadowList = Client.getFilesInShadowDataset(options.outDS,suffixShadow,options.verbose)
     # query files in dataset
-    tmpLog.info("query files in %s" % options.inDS)
-    inputFileMap = Client.queryFilesInDataset(options.inDS,options.verbose)
-    # read list of files to be used
-    filesToBeUsed = []
-    if options.inputFileListName != '':
-        rFile = open(options.inputFileListName)
-        for line in rFile:
-            line = re.sub('\n','',line)
-            filesToBeUsed.append(line)
-        rFile.close()
-    # remove redundant files
-    tmpKeys = inputFileMap.keys()
-    for tmpLFN in tmpKeys:
-        # filename matching
-        if options.match != '':
-            if re.search(options.match,tmpLFN) == None:
-                del inputFileMap[tmpLFN]
-                continue
-        # files in shadow
-        if tmpLFN in shadowList:
-            if inputFileMap.has_key(tmpLFN):
-                del inputFileMap[tmpLFN]            
-            continue
-        # files to be used
-        if filesToBeUsed != []:
-            # check matching    
-            matchFlag = False
-            for pattern in filesToBeUsed:
-                # normal matching
-                if pattern == tmpLFN:
-                    matchFlag =True
-                    break
-            # doesn't match
-            if not matchFlag:
-                del inputFileMap[tmpLFN]
-    # append
+    inputFileMap,inputDsString = Client.getFilesInDatasetWithFilter(options.inDS,options.match,shadowList,options.inputFileListName,
+                                                                    options.verbose,dsStringFlag=True)
+    # sort
     inputFileList = inputFileMap.keys()
     inputFileList.sort()
+    # query files in secondary datasets
+    for tmpDsName,tmpValMap in options.secondaryDSs.iteritems():
+        tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose)
+        # sort
+        tmpSecFileList = tmpSecFileMap.keys()
+        tmpSecFileList.sort()
+        # append
+        for tmpSecFile in tmpSecFileList:
+            tmpSecFileMap[tmpSecFile]['LFN'] = tmpSecFile
+            options.secondaryDSs[tmpDsName]['files'].append(tmpSecFileMap[tmpSecFile])
+        # skip files    
+        options.secondaryDSs[tmpDsName]['files'] = options.secondaryDSs[tmpDsName]['files'][options.secondaryDSs[tmpDsName]['nSkip']:]
     # get locations
     if inputFileList != []:
         if options.site == "AUTO":
-            dsLocationMap = Client.getLocations(options.inDS,inputFileList,options.cloud,False,
-                                                options.verbose,expCloud=expCloudFlag)
-            # no location
-            if dsLocationMap == {}:
-                if expCloudFlag:
-                    tmpLog.error("could not find supported/online locations in the %s cloud for %s" % (options.cloud,options.inDS))
-                else:
-                    tmpLog.error("could not find supported/online locations for %s" % options.inDS)
-                sys.exit(EC_Dataset)
+            if inputDsString == '':
+                tmpDsForLookUpList = [options.inDS] + options.secondaryDSs.keys()
+            else:
+                tmpDsForLookUpList = [inputDsString] + options.secondaryDSs.keys()                
+            tmpDsLocationForTest = {}
+            dsLocationMap = None
+            dsLocationMapBack = None
+            for tmpDsForLookUp in tmpDsForLookUpList:
+                tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites = Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
+                                                                                        options.verbose,expCloud=expCloudFlag,
+                                                                                        getReserved=True,getTapeSites=True)
+                # no location
+                if tmpDsLocationMap == {} and tmpDsLocationMapBack == {}:
+                    if expCloudFlag:
+                        tmpLog.error("could not find supported/online sites in the %s cloud for %s" % (options.cloud,tmpDsForLookUp))
+                    else:
+                        tmpLog.error("could not find supported/online sites for %s" % tmpDsForLookUp)
+                    if dsTapeSites != []:
+                        tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
+                    sys.exit(EC_Dataset)
+                # append
+                tmpDsLocationForTest[tmpDsForLookUp] = {'pri':tmpDsLocationMap,
+                                                        'sec':tmpDsLocationMapBack}
+                # set initial value
+                if dsLocationMap == None:
+                    dsLocationMap = copy.deepcopy(tmpDsLocationMap)
+                    dsLocationMapBack = copy.deepcopy(tmpDsLocationMapBack)
+            # choose common locations
+            if len(tmpDsLocationForTest) > 1:
+                # primary sites
+                for tmpDsForLookUp,tmpVal in tmpDsLocationForTest.iteritems():
+                    tmpDsLocationMap = tmpVal['pri'] 
+                    tmpDsLocationList = dsLocationMap.keys()
+                    for tmpDsLocation in tmpDsLocationList:
+                        if not tmpDsLocationMap.has_key(tmpDsLocation):
+                            del dsLocationMap[tmpDsLocation]
+                # secondary sites
+                for tmpDsForLookUp,tmpVal in tmpDsLocationForTest.iteritems():
+                    tmpDsLocationMap = tmpVal['sec'] 
+                    tmpDsLocationList = dsLocationMapBack.keys()
+                    for tmpDsLocation in tmpDsLocationList:
+                        if not tmpDsLocationMap.has_key(tmpDsLocation):
+                            del dsLocationMapBack[tmpDsLocation]
+                # check
+                if dsLocationMap == {} and dsLocationMapBack == {}:
+                    errStr = "Could not find common sites for input datasets\n\n"
+                    for tmpDsForLookUp,tmpVal in tmpDsLocationForTest.iteritems():
+                        tmpSiteStr = ''
+                        for tmpDsLocationMap in [tmpVal['pri'],tmpVal['sec']]:
+                            for tmpSiteList in tmpDsLocationMap.values():
+                                tmpSiteStr += "%s," % tmpSiteList[0]
+                        tmpSiteStr = tmpSiteStr[:-1]   
+                        errStr += "   %s\n      exists at %s\n" % (tmpDsForLookUp,tmpSiteStr)
+                    errStr += "\nYou need to request DDM subscription to aggregate them to a site"    
+                    tmpLog.error(errStr)
+                    sys.exit(EC_Dataset)
             # run brokerage
-            tmpSites = []
-            for tmpItem in dsLocationMap.values():
-                tmpSites += tmpItem
-            status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)
-            if status != 0:
-                tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
-                sys.exit(EC_Config)
-            if out.startswith('ERROR :'):
-		tmpLog.error('brokerage failed')
-		print out
-		sys.exit(EC_Config)                
-            if not Client.PandaSites.has_key(out):
-                tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
-                sys.exit(EC_Config)
+            tmpDsLocationMapList = [dsLocationMap]
+            if dsLocationMapBack != {}:
+                tmpDsLocationMapList.append(dsLocationMapBack)
+            tmpBrokerErr = ''   
+            for idxDsLocationMap,tmpDsLocationMap in enumerate(tmpDsLocationMapList):    
+                tmpSites = []
+                for tmpItem in tmpDsLocationMap.values():
+                    tmpSites += tmpItem
+		if tmpSites == []:
+                    continue
+                status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)
+                if status != 0:
+                    tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
+                    sys.exit(EC_Config)
+                if out.startswith('ERROR :'):
+		    if idxDsLocationMap == 0:
+			tmpBrokerErr += out
+			tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+		    else:
+			if tmpBrokerErr != '':
+			    tmpBrokerErr += out
+			    tmpBrokerErr += " Could not find sites in other clouds.\n"
+			else:
+			    tmpBrokerErr += out
+			    tmpBrokerErr += " Could not find sites.\n"
+                    if idxDsLocationMap+1 >= len(tmpDsLocationMapList):
+                        tmpLog.error('brokerage failed')
+                        print tmpBrokerErr[:-1]
+                        sys.exit(EC_Config)
+                    continue
+                if not Client.PandaSites.has_key(out):
+                    tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
+                    sys.exit(EC_Config)
+                break    
             # set site/cloud
             options.site  = out
             options.cloud = Client.PandaSites[options.site]['cloud']
@@ -484,7 +606,7 @@ if options.inDS != '':
             tmpLog.debug("%s holds %s files" % (options.site,len(inputFileList)-len(missList)))
         # No files available
         if len(inputFileList) == len(missList):
-            tmpLog.error("No files available at %s" % options.site)
+            tmpLog.error("No files available on disk at %s" % options.site)
             sys.exit(EC_Dataset)
         # remove missing files
         newInputFiles = []
@@ -507,25 +629,43 @@ if options.inDS != '':
 else:
     # set cloud for no input dataset
     if options.site == "AUTO":
-        # get sites belonging to a cloud
-        tmpSites = []
-        for tmpID,spec in Client.PandaSites.iteritems():
-            if spec['cloud']==options.cloud and spec['status']=='online':
-                # exclude long,xrootd,local queues
-                if Client.isExcudedSite(tmpID):
-                    continue
-                tmpSites.append(tmpID)
-        status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)    
-        if status != 0:
-            tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
-            sys.exit(EC_Config)
-	if out.startswith('ERROR :'):
-	    tmpLog.error('brokerage failed')
-	    print out
-	    sys.exit(EC_Config)                
-        if not Client.PandaSites.has_key(out):
-            tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
-            sys.exit(EC_Config)
+	# get sites belonging to a cloud and others
+	tmpPriSites = []
+	tmpSecSites = []
+	for tmpID,spec in Client.PandaSites.iteritems():
+	    if spec['status']=='online':
+		# exclude long,xrootd,local queues
+		if Client.isExcudedSite(tmpID):
+		    continue
+		if spec['cloud']==options.cloud:
+		    tmpPriSites.append(tmpID)
+		elif not expCloudFlag:
+		    tmpSecSites.append(tmpID)
+	tmpSitesList = [tmpPriSites]
+	if not expCloudFlag:
+	    tmpSitesList.append(tmpSecSites)
+        # run brokerage
+        tmpBrokerErr = ''
+        for idxTmpSites,tmpSites in enumerate(tmpSitesList):
+            status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)    
+            if status != 0:
+                tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
+                sys.exit(EC_Config)
+            if out.startswith('ERROR :'):
+                tmpBrokerErr += out
+                if idxTmpSites == 0:
+                    tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+                else:
+                    tmpBrokerErr += " Could not find sites in other clouds.\n"
+                if idxTmpSites+1 >= len(tmpSitesList):
+                    tmpLog.error('brokerage failed')
+                    print tmpBrokerErr[:-1]
+                    sys.exit(EC_Config)
+                continue    
+            if not Client.PandaSites.has_key(out):
+                tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
+                sys.exit(EC_Config)
+            break    
         # set site
         options.site = out
 
@@ -553,101 +693,121 @@ if options.panda_srcName != '':
     # go to tmp dir
     os.chdir(tmpDir)
 else:
-    # go to workdir
-    os.chdir(options.workDir)
+    if options.useAthenaPackages:
+        # gather Athena packages
 
-    # gather files under work dir
-    if options.libDS == '':
-        tmpLog.info("gathering files under %s" % options.workDir)
+        # set extFile
+        AthenaUtils.setExtFile(options.extFile)
+        if options.libDS == '':
+            # archive sources
+            archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,curDir,tmpDir,
+                                                                     options.verbose,options.gluePackages)
+        else:
+            # archive jobO
+            archiveName,archiveFullName = AthenaUtils.archiveJobOFiles(workArea,runDir,curDir,
+                                                                       tmpDir,options.verbose)
+        # archive InstallArea
+        if options.libDS == '':
+            AthenaUtils.archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
+                                           tmpDir,False,options.verbose)
+    else:        
+        # gather normal files
+        
+        # go to workdir
+        os.chdir(options.workDir)
 
-        # get files in the working dir
-        skippedExt   = ['.o','.a','.so']
-        skippedFlag  = False
-        workDirFiles = []
-        for tmpRoot,tmpDirs,tmpFiles in os.walk('.'):
-            emptyFlag    = True
-            for tmpFile in tmpFiles:
-                tmpPath = '%s/%s' % (tmpRoot,tmpFile)
-                # get size
-                try:
-                    size = os.path.getsize(tmpPath)
-                except:
-                    # skip dead symlink
-                    if options.verbose:
-                        type,value,traceBack = sys.exc_info()
-                        print "  Ignore : %s:%s" % (type,value)
-                    continue
-                # skipped extension
-                isSkippedExt = False
-                for tmpExt in skippedExt:
-                    if tmpPath.endswith(tmpExt):
-                        isSkippedExt = True
-                        break
-                # check root
-                isRoot = False
-                if re.search('\.root(\.\d+)*$',tmpPath) != None:
-                    isRoot = True
-                # extra files
-                isExtra = False
-                for tmpExt in options.extFile:
-                    if re.search(tmpExt+'$',tmpPath) != None:
-                        isExtra = True
-                        break
-                # regular files
-                if not isExtra:
-                    # skipped extensions
-                    if isSkippedExt:
-                        print "  skip %s %s" % (str(skippedExt),tmpPath)
-                        skippedFlag = True
+        # gather files under work dir
+        if options.libDS == '':
+            tmpLog.info("gathering files under %s" % options.workDir)
+
+            # get files in the working dir
+            skippedExt   = ['.o','.a','.so']
+            skippedFlag  = False
+            workDirFiles = []
+            for tmpRoot,tmpDirs,tmpFiles in os.walk('.'):
+                emptyFlag    = True
+                for tmpFile in tmpFiles:
+                    tmpPath = '%s/%s' % (tmpRoot,tmpFile)
+                    # get size
+                    try:
+                        size = os.path.getsize(tmpPath)
+                    except:
+                        # skip dead symlink
+                        if options.verbose:
+                            type,value,traceBack = sys.exc_info()
+                            print "  Ignore : %s:%s" % (type,value)
                         continue
-                    # skip root
-                    if isRoot:
-                        print "  skip root file %s" % tmpPath
-                        skippedFlag = True
+                    # skipped extension
+                    isSkippedExt = False
+                    for tmpExt in skippedExt:
+                        if tmpPath.endswith(tmpExt):
+                            isSkippedExt = True
+                            break
+                    # check root
+                    isRoot = False
+                    if re.search('\.root(\.\d+)*$',tmpPath) != None:
+                        isRoot = True
+                    # extra files
+                    isExtra = False
+                    for tmpExt in options.extFile:
+                        if re.search(tmpExt+'$',tmpPath) != None:
+                            isExtra = True
+                            break
+                    # regular files
+                    if not isExtra:
+                        # skipped extensions
+                        if isSkippedExt:
+                            print "  skip %s %s" % (str(skippedExt),tmpPath)
+                            skippedFlag = True
+                            continue
+                        # skip root
+                        if isRoot:
+                            print "  skip root file %s" % tmpPath
+                            skippedFlag = True
+                            continue
+                        # check size
+                        if size > options.maxFileSize:
+                            print "  skip large file %s:%sB>%sB" % (tmpPath,size,options.maxFileSize)
+                            skippedFlag = True
+                            continue
+
+                    # remove ./
+                    tmpPath = re.sub('^\./','',tmpPath)
+                    # append
+                    workDirFiles.append(tmpPath)
+                    emptyFlag = False
+                # add empty directory		
+                if emptyFlag and tmpDirs==[]:
+                    tmpPath = re.sub('^\./','',tmpRoot)
+                    # skip tmpDir
+                    if tmpPath.split('/')[-1] == tmpDir.split('/')[-1]:
                         continue
-                    # check size
-                    if size > options.maxFileSize:
-                        print "  skip large file %s:%sB>%sB" % (tmpPath,size,options.maxFileSize)
-                        skippedFlag = True
-                        continue
+                    # append
+                    workDirFiles.append(tmpPath)
+            if skippedFlag:
+                tmpLog.info("please use --maxFileSize or --extFile if you need to send the skipped files to WNs")
 
-                # remove ./
-                tmpPath = re.sub('^\./','',tmpPath)
-                # append
-                workDirFiles.append(tmpPath)
-		emptyFlag = False
-            # add empty directory		
-	    if emptyFlag and tmpDirs==[]:
-		tmpPath = re.sub('^\./','',tmpRoot)
-                # skip tmpDir
-                if tmpPath.split('/')[-1] == tmpDir.split('/')[-1]:
-                    continue
-                # append
-                workDirFiles.append(tmpPath)
-        if skippedFlag:
-            tmpLog.info("please use --maxFileSize or --extFile if you need to send the skipped files to WNs")
+        # create archive
+        if options.libDS == '':
+            archiveName     = 'sources.%s.tar' % commands.getoutput('uuidgen')
+            archiveFullName = "%s/%s" % (tmpDir,archiveName)
 
-    # create archive
-    if options.libDS == '':
-        archiveName     = 'sources.%s.tar' % commands.getoutput('uuidgen')
-        archiveFullName = "%s/%s" % (tmpDir,archiveName)
-
-        # collect files
-        for tmpFile in workDirFiles:
-            if os.path.islink(tmpFile):
-                status,out = commands.getstatusoutput('tar -rh %s -f %s' % (tmpFile,archiveFullName))
-            else:
-                status,out = commands.getstatusoutput('tar rf %s %s' % (archiveFullName,tmpFile))
-            if options.verbose:
-                print tmpFile
-            if status != 0 or out != '':
-                print out
+            # collect files
+            for tmpFile in workDirFiles:
+                if os.path.islink(tmpFile):
+                    status,out = commands.getstatusoutput('tar -rh %s -f %s' % (tmpFile,archiveFullName))
+                else:
+                    status,out = commands.getstatusoutput('tar rf %s %s' % (archiveFullName,tmpFile))
+                if options.verbose:
+                    print tmpFile
+                if status != 0 or out != '':
+                    print out
 
     # go to tmpdir
     os.chdir(tmpDir)
 
     # compress
-    if options.libDS == '':
+    if options.libDS == '' or options.useAthenaPackages:
         status,out = commands.getstatusoutput('gzip %s' % archiveName)
         archiveName += '.gz'
         if status !=0 or options.verbose:
@@ -660,6 +820,26 @@ else:
         if status != 0:
             tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'") 
             sys.exit(EC_Archive)
+ 
+        # check symlinks
+        if options.useAthenaPackages:
+            tmpLog.info("checking symbolic links")
+            status,out = commands.getstatusoutput('tar tvfz %s' % archiveName)
+            if status != 0:
+                tmpLog.error("Failed to expand archive")
+                sys.exit(EC_Archive)
+            symlinks = []    
+            for line in out.split('\n'):
+                items = line.split()
+                if items[0].startswith('l') and items[-1].startswith('/'):
+                    symlinks.append(line)
+            if symlinks != []:
+                tmpStr  = "Found some unresolved symlinks which may cause a problem\n"
+                tmpStr += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
+                tmpStr += "   Please ignore if you believe they are harmless"
+                tmpLog.warning(tmpStr)
+                for symlink in symlinks:
+                    print "  %s" % symlink
 
 # look for pandatools package
 for path in sys.path:
@@ -735,7 +915,7 @@ if options.nJobs == -1:
 
 
 # read jobID
-jobDefinitionID = 0
+jobDefinitionID = 1
 jobid_file = '%s/pjobid.dat' % os.environ['PANDA_CONFIG_ROOT']
 if os.path.exists(jobid_file):
     try:
@@ -758,8 +938,12 @@ if options.verbose:
     print "== parameters =="
     print "Site       : %s" % options.site
     print "Athena     : %s" % athenaVer
+    if groupArea != '':
+        print "Group Area : %s" % groupArea
     if cacheVer != '':
         print "Cache      : %s" % cacheVer[1:]
+    if nightVer != '':
+        print "Nightly    : %s" % nightVer[1:]
     print "RunDir     : %s" % runDir
     print "exec       : %s" % options.jobParams
 
@@ -814,6 +998,9 @@ if options.libDS == '':
     matchURL = re.search("(http.*://[^/]+)/",Client.baseURLSSL)
     if matchURL != None:
         jobB.jobParameters += "--sourceURL %s " % matchURL.group(1)
+    # use Athena packages
+    if options.useAthenaPackages:
+        jobB.jobParameters += "--useAthenaPackages "
     # log    
     file = FileSpec()
     file.lfn               = '%s.log.tgz' % jobB.destinationDBlock
@@ -842,7 +1029,8 @@ else:
     tmpGUIDmap = {}
     for fileName in tmpList.keys():
         # ignore log file
-        if len(re.findall('.log.tgz.\d+$',fileName)) or len(re.findall('.log.tgz$',fileName)):
+        if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
+               re.search('\.log(\.tgz)*(\.\d+)*$',fileName) != None:
             continue
         tmpFileList.append(fileName)
         tmpGUIDmap[fileName] = tmpList[fileName]['guid'] 
@@ -853,7 +1041,8 @@ else:
         # look for lib.tgz
 	for fileName in tmpMap[options.libDS]:
             # ignore log file
-            if len(re.findall('.log.tgz.\d+$',fileName)) or len(re.findall('.log.tgz$',fileName)):
+            if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
+                   re.search('\.log(\.tgz)*(\.\d+)*$',fileName) != None:
                 continue
             tmpFileList.append(fileName)
             tmpGUIDmap[fileName] = None
@@ -895,8 +1084,14 @@ if options.outputs != '' and outputDSexist:
             existingFilesInOutDS[tmpLFN] = None
 
 if options.inDS != '':
-    tmpLog.info("%s files are missing or skipped at %s" % (len(missList),options.site))
+    tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
+
+# disp datasetname to identify inputs
+commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
+
+# check access method
+isDirectAccess = PsubUtils.isDirectAccess(options.site)
 
 # runJobs
 indexOffsetMap = {}
@@ -911,6 +1106,11 @@ for iJob in range(options.nJobs):
     jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
     jobR.destinationDBlock = options.outDS
     jobR.destinationSE     = options.site
+    if options.inDS != '':
+        if re.search(',',options.inDS) != None:
+            jobR.prodDBlock = options.inDS.split(',')[0]
+        else:
+            jobR.prodDBlock = options.inDS
     jobR.prodSourceLabel   = 'user'
     if options.processingType != '':
         jobR.processingType = options.processingType
@@ -925,6 +1125,9 @@ for iJob in range(options.nJobs):
     matchURL = re.search("(http.*://[^/]+)/",Client.baseURLSSL)
     if matchURL != None:
         jobR.jobParameters += "--sourceURL %s " % matchURL.group(1)
+    # use Athena packages
+    if options.useAthenaPackages:
+        jobR.jobParameters += "--useAthenaPackages "
     if options.jobParams != '':
         # random seed
         tmpJobO = options.jobParams
@@ -959,18 +1162,56 @@ for iJob in range(options.nJobs):
             fileI.GUID       = vals['guid']
 	    fileI.fsize      = vals['fsize']
 	    fileI.md5sum     = vals['md5sum']
-            fileI.dataset    = options.inDS
-            fileI.prodDBlock = options.inDS
+            if vals.has_key('dataset'):
+                fileI.dataset    = vals['dataset']
+            else:
+                fileI.dataset    = options.inDS
+            fileI.prodDBlock = fileI.dataset
             fileI.type       = 'input'
             fileI.status     = 'ready'
-            fileI.dispatchDBlock = options.inDS
+            fileI.dispatchDBlock = commonDispName
             jobR.addFile(fileI)
             try:
                 totalSize += long(fileI.fsize)
             except:
                 pass
+        tmpInputMap = {'IN': copy.deepcopy(inList)}  
+        # secondary datasets
+        secMap = {}
+        for tmpSecDS,tmpSecVal in options.secondaryDSs.iteritems():
+            tmpIndexSec = iJob*tmpSecVal['nFiles']
+            tmpSecList  = tmpSecVal['files'][tmpIndexSec:tmpIndexSec+tmpSecVal['nFiles']]
+            # check length
+            if len(tmpSecList) < tmpSecVal['nFiles']:
+                errStr  = "%s contains %s files which is insufficient for splitting. " % (tmpSecDS,len(tmpSecVal['files']))
+                errStr += "nJobs*nFilesPerJob=%s*%s=%s files are required" % (options.nJobs,tmpSecVal['nFiles'],
+                                                                              options.nJobs*tmpSecVal['nFiles'])
+                tmpLog.error(errStr)            
+                sys.exit(EC_Split)
+            # add FileSpec
+            tmpSecLfnList = []
+            for vals in tmpSecList:
+                fileI = FileSpec()
+                fileI.lfn        = vals['LFN']
+                fileI.GUID       = vals['guid']
+                fileI.fsize      = vals['fsize']
+                fileI.md5sum     = vals['md5sum']
+                fileI.dataset    = tmpSecDS
+                fileI.prodDBlock = tmpSecDS
+                fileI.type       = 'input'
+                fileI.status     = 'ready'
+                fileI.dispatchDBlock = commonDispName
+                jobR.addFile(fileI)
+                inList.append(fileI.lfn)
+                tmpSecLfnList.append(fileI.lfn)
+                try:
+                    totalSize += long(fileI.fsize)
+                except:
+                    pass
+            # append to map    
+            tmpInputMap[tmpSecVal['streamName']] = tmpSecLfnList
         # size check    
-        if totalSize > maxTotalSize:
+        if (not isDirectAccess) and totalSize > maxTotalSize:
             errStr  = "A subjob has %s input files and requires %sMB of disk space." \
                   % (len(inList), (totalSize >> 20))
             errStr += "   It must be less than %sMB to avoid overflowing the remote disk." \
@@ -980,6 +1221,8 @@ for iJob in range(options.nJobs):
             sys.exit(EC_Split)
         # set parameter
         jobR.jobParameters += '-i "%s" ' % inList
+	if options.secondaryDSs != {}:
+	    jobR.jobParameters += '--inMap "%s" ' % tmpInputMap
     # output files
     outMap = {}
     if options.outputs != '':

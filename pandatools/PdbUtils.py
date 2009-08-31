@@ -161,7 +161,7 @@ class PdbProxy:
 
 
 # convert Panda jobs to DB representation
-def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
+def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={}):
     statusOnly = False
     if localJob != None:
         # update status only 
@@ -190,6 +190,10 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
     ddata.jobStatus = sStr
     # return if update status only
     if statusOnly:
+        # build job
+        if ddata.buildStatus != '':
+            ddata.buildStatus = sStr.split(',')[0]
+        # return    
         return ddata
     # PandaID
     ddata.PandaID = pStr
@@ -200,28 +204,34 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None):
         ddata.buildStatus = pandaJob.jobStatus
         for tmpFile in pandaJob.Files:
             if tmpFile.type == 'output':
-                ddata.libDS = tmpFile.lfn
+                ddata.libDS = tmpFile.dataset
                 break
     else:
         # noBuild or libDS
         ddata.buildStatus = ''
         for tmpFile in pandaJob.Files:
             if tmpFile.type == 'input' and tmpFile.lfn.endswith('.lib.tgz'):
-                ddata.libDS = tmpFile.lfn
+                ddata.libDS = tmpFile.dataset
                 break
     # job parameters
     ddata.jobParams = pandaJob.metadata
     # extract datasets
-    pandaJob = pandaJobList[-1]
     iDSlist  = []
     oDSlist = []
-    for tmpFile in pandaJob.Files:
-        if tmpFile.type == 'input' and not tmpFile.lfn.endswith('.lib.tgz'):
-            if not tmpFile.dataset in iDSlist:
-                iDSlist.append(tmpFile.dataset)
-        elif tmpFile.type == 'output':
-            if not tmpFile.dataset in oDSlist:
-                oDSlist.append(tmpFile.dataset)
+    if fileInfo != {}:
+        if fileInfo.has_key('inDS'):
+            iDSlist = fileInfo['inDS']
+        if fileInfo.has_key('outDS'):
+            oDSlist = fileInfo['outDS']
+    else:
+        for pandaJob in pandaJobList:
+            for tmpFile in pandaJob.Files:
+                if tmpFile.type == 'input' and not tmpFile.lfn.endswith('.lib.tgz'):
+                    if not tmpFile.dataset in iDSlist:
+                        iDSlist.append(tmpFile.dataset)
+                elif tmpFile.type == 'output' and not tmpFile.lfn.endswith('.lib.tgz'):
+                    if not tmpFile.dataset in oDSlist:
+                        oDSlist.append(tmpFile.dataset)
     # convert to string
     ddata.inDS = ''
     for iDS in iDSlist:

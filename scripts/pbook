@@ -2,6 +2,7 @@
 
 "exec" "/usr/bin/python" "-u" "-Wignore" "$0" "$@"
 
+# using /usr/bin/python for pyGTK 
 
 import re
 import os
@@ -13,6 +14,15 @@ import signal
 import datetime
 import tempfile
 import commands
+
+# tweak sys.path since threading cannot be imported with Athena 15 on SLC5/64
+tmpOut = commands.getoutput('unset LD_LIBRARY_PATH; unset PYTHONPATH; /usr/bin/python -c "import sys;print sys.path"')
+try:
+    exec "tmpSysPath = %s" % tmpOut.split('\n')[-1]
+    sys.path = tmpSysPath + sys.path
+except:
+    pass
+
 import optparse
 import readline
 import threading
@@ -118,6 +128,7 @@ class PBookCore:
         # insert if missing
         for remoteJobID in remoteJobIDs:
             # check local status
+            job = None
             if remoteJobID in localJobIDs:
                 # get job info from local repository
                 job = PdbUtils.readJobDB(remoteJobID,self.verbose)
@@ -133,13 +144,21 @@ class PBookCore:
             pandaIDs = pandaIDstatus.keys()
             pandaIDs.sort()
             # get full JobSpec
-            tmpIDs = [pandaIDs[0],pandaIDs[-1]]
-            status,pandaJobs = Client.getFullJobStatus(tmpIDs,verbose=self.verbose)
-            if status != 0:
-                tmpLog.error("Failed to get PandaIDs for %s" % remoteJobID) 
-                return
+            pandaJobs = []            
+            pandaFileInfo = {}
+            if job == None:
+		tmpIDs = [pandaIDs[0],pandaIDs[-1]]
+                status,pandaJobs = Client.getFullJobStatus(tmpIDs,verbose=self.verbose)
+                if status != 0:
+                    tmpLog.error("Failed to get PandaIDs for %s" % remoteJobID) 
+                    return
+		# get slimmed file info
+                status,pandaFileInfo = Client.getSlimmedFileInfoPandaIDs(pandaIDs,verbose=self.verbose)
+                if status != 0:
+                    tmpLog.error("Failed to get file info  for %s" % remoteJobID)
+                    return
             # convert to local job spec
-            localJob = PdbUtils.convertPtoD(pandaJobs,pandaIDstatus)
+            localJob = PdbUtils.convertPtoD(pandaJobs,pandaIDstatus,job,pandaFileInfo)
             # update database 
             if not remoteJobID in localJobIDs:
                 # insert to DB
@@ -192,7 +211,7 @@ class PBookCore:
     
         
     # get status
-    def status(self,JobID):
+    def status(self,JobID,forceUpdate=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
@@ -203,7 +222,7 @@ class PBookCore:
             tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)            
             return None
         # update if needed
-        if job.dbStatus != 'frozen':
+        if job.dbStatus != 'frozen' or forceUpdate:
             tmpLog.info("Getting status for JobID=%s ..." % JobID)            
             # get status from Panda server
             status,pandaIDstatus = Client.getPandIDsWithJobID(JobID,
@@ -419,7 +438,7 @@ _orgHelp = help
 
 
 # main for interactive session
-def intmain(pbookCore):
+def intmain(pbookCore,comString):
 
     # help
     def help(*arg):
@@ -441,7 +460,7 @@ For more info, do help(show) for example."""
         
                                         
     # show status
-    def show(JobID=None):
+    def show(JobID=None,forceUpdate=False):
         """Print job records. All jobs will be shown if JobID is omitted. Only running jobs will be shown if show('running')
         
          example:
@@ -463,7 +482,7 @@ For more info, do help(show) for example."""
                 if job.dbStatus != 'frozen':
                     show(job.JobID)
         else:
-            job = pbookCore.status(JobID)
+            job = pbookCore.status(JobID,forceUpdate)
             # print
             print "======================================"
             print job
@@ -510,6 +529,25 @@ For more info, do help(show) for example."""
         pbookCore.sync()
 
 
+    # execut command in the batch mode
+    if comString != '':
+        try:
+            # decompose to function name and argument
+            match = re.search('^([^\(]+)\((\d*)\)$',comString)
+            comName = match.group(1)
+            comArg  = match.group(2)
+            if comArg != '':
+                # convert to int
+                comArg = (long(comArg),)
+            else:
+                # for functions without arguments
+                comArg = ()
+            # exec : exec cannot be used due to unqualified exec with nested functions
+            apply(locals()[comName],comArg)
+        except:
+            pass
+        # exit
+        sys.exit(0)
     # run sync
     pbookCore.sync()
     # go to interactive prompt
@@ -546,6 +584,8 @@ if __name__ == "__main__":
                       help="verbose")
     parser.add_option("--gui",action="store_true",dest="gui",default=False,
                       help="use GUI")
+    parser.add_option('-c',action='store',dest='comString',default='',type='string',
+                      help='execute a command in the batch mode')
     parser.add_option("--noPass",action="store_true",dest="noPass",default=False,
                       help="disable to enter pass phrase for GUI")
     parser.add_option('--version',action='store_const',const=True,dest='version',default=False,
@@ -583,7 +623,7 @@ if __name__ == "__main__":
             # instantiate core
             pbookCore = PBookCore(False,options.verbose)
             # CUI
-            intmain(pbookCore)
+            intmain(pbookCore,options.comString)
     else:
         # set handler
         signal.signal(signal.SIGINT, catch_sig)
