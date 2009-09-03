@@ -710,7 +710,7 @@ def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
     
 
 # register dataset
-def addDataset(name,verbose=False):
+def addDataset(name,verbose=False,location=''):
     # generate DUID/VUID
     duid = commands.getoutput("uuidgen")
     vuid = commands.getoutput("uuidgen")
@@ -729,6 +729,16 @@ def addDataset(name,verbose=False):
         if status != 0 or (out != None and re.search('Exception',out) != None):
             errStr = "ERROR : could not add dataset to DQ2 repository"
             sys.exit(EC_Failed)
+        # add replica
+        if location != '':
+            url = baseURLDQ2SSL + '/ws_location/rpc'
+            data = {'operation':'addDatasetReplica','vuid':vuid,'site':location,
+                    'complete':0,'transferState':1,
+                    'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+            status,out = curl.post(url,data)
+            if status != 0 or out != 1:
+                errStr = "ERROR : could not register location : %s" % location
+                sys.exit(EC_Failed)
     except:
         print status,out
         if errStr != '':

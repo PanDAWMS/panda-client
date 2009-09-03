@@ -1309,9 +1309,15 @@ if not options.nosubmit:
             tmpLog.error("failed to upload source files with %s" % status)
             sys.exit(EC_Post)
 
+    # dataset location
+    tmpOutDsLocation = Client.PandaSites[options.site]['ddm']
+    if options.spaceToken != '':
+        if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+            tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
+
     # register output dataset
     if not outputDSexist:
-        Client.addDataset(options.outDS,options.verbose)
+        Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation)
 
     # register output dataset container
     if original_outDS_Name.endswith('/'):
@@ -1328,7 +1334,7 @@ if not options.nosubmit:
 
     # register libDS
     if options.libDS == '':
-        Client.addDataset(jobB.destinationDBlock,options.verbose)
+        Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpOutDsLocation)
 
     # submit
     tmpLog.info("submit to %s" % options.site)

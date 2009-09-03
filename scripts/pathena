@@ -2382,18 +2382,23 @@ if not options.nosubmit:
     if options.burstSubmit == '':
         # normal submission
 
+	# dataset location
+	tmpOutDsLocation = Client.PandaSites[options.site]['ddm']
+	if options.spaceToken != '':
+	    if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+		tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
         # register output dataset
 	tmpIdvOutDsList = []
         if not outputDSexist:
             if not options.individualOutDS:
-                Client.addDataset(options.outDS,options.verbose)
+                Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation)
                 tmpIdvOutDsList.append(options.outDS)
         if options.individualOutDS:        
             # register individual datasets
             for tmpFile in jobList[-1].Files:
                 if tmpFile.type in ['output','log']:
                     if (not outputIndvDSlist.has_key(tmpFile.dataset)) and (not tmpFile.dataset in tmpIdvOutDsList):
-                        Client.addDataset(tmpFile.dataset,options.verbose)
+                        Client.addDataset(tmpFile.dataset,options.verbose,location=tmpOutDsLocation)
                         tmpIdvOutDsList.append(tmpFile.dataset)
                             
         # register output dataset container
@@ -2412,7 +2417,7 @@ if not options.nosubmit:
 
         # register libDS
         if options.libDS == '' and (not options.nobuild):
-            Client.addDataset(jobB.destinationDBlock,options.verbose)
+            Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpOutDsLocation)
 
         # submit
         tmpLog.info("submit to %s" % options.site)

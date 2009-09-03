@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed replica-metadata
+
 0.1.87 (8/31/2009)
   * fixed archiving for --noBuild to ignore symlinks in InstallArea/include
 
