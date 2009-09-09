@@ -16,6 +16,7 @@ pathena -h
 
 current
   * fixed replica-metadata
+  * added --prodSourceLabel tp pathena
 
 0.1.87 (8/31/2009)
   * fixed archiving for --noBuild to ignore symlinks in InstallArea/include
