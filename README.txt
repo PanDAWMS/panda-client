@@ -16,7 +16,7 @@ pathena -h
 
 0.1.88 (9/10/2009)
   * fixed ownership of dataset replicas
-  * added --prodSourceLabel tp pathena
+  * added --prodSourceLabel to pathena
 
 0.1.87 (8/31/2009)
   * fixed archiving for --noBuild to ignore symlinks in InstallArea/include
