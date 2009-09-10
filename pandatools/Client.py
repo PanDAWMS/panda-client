@@ -730,7 +730,8 @@ def addDataset(name,verbose=False,location=''):
             errStr = "ERROR : could not add dataset to DQ2 repository"
             sys.exit(EC_Failed)
         # add replica
-        if location != '':
+        if re.search('SCRATCHDISK$',location) != None or re.search('USERDISK$',location) != None \
+           or re.search('LOCALGROUPDISK$',location) != None:
             url = baseURLDQ2SSL + '/ws_location/rpc'
             data = {'operation':'addDatasetReplica','vuid':vuid,'site':location,
                     'complete':0,'transferState':1,
