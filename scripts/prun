@@ -104,7 +104,7 @@ optP.add_option('--exec',action='store',dest='jobParams',default='',type='string
                 help='execution string. e.g., --exec "./myscript arg1 arg2"')
 optP.add_option('--bexec',action='store',dest='bexec',default='',type='string',
                 help='execution string for build stage. e.g., --bexec "make"')
-optP.add_option('--myproxy',action='store',dest='myproxy',default='pandaprx.usatlas.bnl.gov',type='string',
+optP.add_option('--myproxy',action='store',dest='myproxy',default='myproxy.cern.ch',type='string',
                 help='Name of the myproxy server')
 optP.add_option('-v',action='store_const',const=True,dest='verbose',default=False,
                 help='Verbose')

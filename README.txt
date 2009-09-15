@@ -14,8 +14,16 @@ pathena -h
 
 ** Release Note
 
-current
-  * fixed replica-metadata
+0.1.90 (9/16/2009)
+  * changed the default MyProxy for ANALY_ARC etc
+
+0.1.89 (9/15/2009)
+  * check LFC module for grid source
+  * added -s to pathena
+
+0.1.88 (9/10/2009)
+  * fixed ownership of dataset replicas
+  * added --prodSourceLabel to pathena
 
 0.1.87 (8/31/2009)
   * fixed archiving for --noBuild to ignore symlinks in InstallArea/include
