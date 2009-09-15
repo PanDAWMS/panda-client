@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.90 (9/16/2009)
+  * changed the default MyProxy for ANALY_ARC etc
+
 0.1.89 (9/15/2009)
   * check LFC module for grid source
   * added -s to pathena

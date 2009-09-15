@@ -175,7 +175,7 @@ optP.add_option('--noLock', action='store_const', const=True, dest='nolock',  de
                 help="Don't create a lock for local database access")
 optP.add_option('--fileList', action='store', dest='filelist', default='',
                 type='string', help='List of files in the input dataset to be run')
-optP.add_option('--myproxy', action='store', dest='myproxy', default='pandaprx.usatlas.bnl.gov',
+optP.add_option('--myproxy', action='store', dest='myproxy', default='myproxy.cern.ch',
                 type='string', help='Name of the myproxy server')
 optP.add_option('--dbRelease', action='store', dest='dbRelease', default='',
                 type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz')
