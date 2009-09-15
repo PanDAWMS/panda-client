@@ -230,6 +230,8 @@ optP.add_option('-c',action='store',dest='singleLine',type='string',default='',m
                 help='One-liner, runs before any jobOs')
 optP.add_option('-p',action='store',dest='preConfig',type='string',default='',metavar='BOOTSTRAP',
                 help='location of bootstrap file')
+optP.add_option('-s',action='store_const',const=True,dest='codeTrace',default=False,
+                help='show printout of included files')
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -2352,6 +2354,9 @@ for iSubJob in range(options.split):
     # use theApp.nextEvent
     if options.useNextEvent:
         param += '--useNextEvent '
+    # use code tracer 
+    if options.codeTrace:
+        param += '--codeTrace '
     # assign    
     jobR.jobParameters = param
 

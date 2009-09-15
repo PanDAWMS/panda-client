@@ -1274,11 +1274,12 @@ def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
 def _getGridSrc():
     # set Grid setup.sh if needed
     status,out = commands.getstatusoutput('which voms-proxy-info')
-    if status == 0:
+    stLFC,outLFC = commands.getstatusoutput('python -c "import lfc"')
+    if status == 0 and stLFC == 0:
         gridSrc = ''
         status,athenaPath = commands.getstatusoutput('which athena.py')
         if status == 0 and athenaPath.startswith('/afs/in2p3.fr'):
-            # for LYON, to avoid messing LD_LIBRARY_PATH
+            # for LYON, to avoid missing LD_LIBRARY_PATH
             gridSrc = '/afs/in2p3.fr/grid/profiles/lcg_env.sh'
         elif status == 0 and athenaPath.startswith('/afs/cern.ch'):
             # for CERN, VDT is already installed
