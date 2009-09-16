@@ -888,7 +888,9 @@ if outputDSexist:
         tmpLog.error("cannot find locations for existing output dataset:%s" % options.outDS)
         sys.exit(EC_Dataset)
     # keep origianl site
-    if Client.PandaSites.has_key(options.site) and Client.PandaSites[options.site]['ddm'] in outDSlocations:
+    if Client.PandaSites.has_key(options.site) and \
+       (Client.PandaSites[options.site]['ddm'] in outDSlocations or \
+        Client.convSrmV2ID(Client.PandaSites[options.site]['ddm']) in outDSlocations):
         pass
     else:
         # convert DQ2ID to Panda siteID
@@ -914,7 +916,9 @@ elif options.libDS != '':
         tmpLog.error("cannot find locations for existing lib dataset:%s" % options.libDS)
         sys.exit(EC_Dataset)
     # keep origianl site
-    if Client.PandaSites.has_key(options.site) and Client.PandaSites[options.site]['ddm'] in libDSlocations:
+    if Client.PandaSites.has_key(options.site) and \
+       (Client.PandaSites[options.site]['ddm'] in libDSlocations or \
+        Client.convSrmV2ID(Client.PandaSites[options.site]['ddm']) in libDSlocations):
         pass
     else:
         # convert DQ2ID to Panda siteID

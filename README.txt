@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.91 (9/16/2009)
+  * fixed site lookup for ANALY_CERN when outDS is reused
+
 0.1.90 (9/16/2009)
   * changed the default MyProxy for ANALY_ARC etc
 
