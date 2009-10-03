@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.1.92 (10/3/2009)
+  * fixed fakeProperty for serialization by RecExCommon/PrintRecoSummary
+  * added --noBuild to prun
+
 0.1.91 (9/16/2009)
   * fixed site lookup for ANALY_CERN when outDS is reused
 
