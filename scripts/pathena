@@ -155,6 +155,8 @@ optP.add_option('--excludedSite', action='store', dest='excludedSite',  default=
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
 optP.add_option('--noSubmit', action='store_const', const=True, dest='nosubmit',  default=False,
                 help="Don't submit jobs")
+optP.add_option('--prodSourceLabel', action='store', dest='prodSourceLabel',  default='',
+                help="set prodSourceLabel")
 optP.add_option('--processingType', action='store', dest='processingType',  default='pathena',
                 help="set processingType")
 optP.add_option('--seriesLabel', action='store', dest='seriesLabel',  default='',
@@ -173,7 +175,7 @@ optP.add_option('--noLock', action='store_const', const=True, dest='nolock',  de
                 help="Don't create a lock for local database access")
 optP.add_option('--fileList', action='store', dest='filelist', default='',
                 type='string', help='List of files in the input dataset to be run')
-optP.add_option('--myproxy', action='store', dest='myproxy', default='pandaprx.usatlas.bnl.gov',
+optP.add_option('--myproxy', action='store', dest='myproxy', default='myproxy.cern.ch',
                 type='string', help='Name of the myproxy server')
 optP.add_option('--dbRelease', action='store', dest='dbRelease', default='',
                 type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz')
@@ -228,6 +230,8 @@ optP.add_option('-c',action='store',dest='singleLine',type='string',default='',m
                 help='One-liner, runs before any jobOs')
 optP.add_option('-p',action='store',dest='preConfig',type='string',default='',metavar='BOOTSTRAP',
                 help='location of bootstrap file')
+optP.add_option('-s',action='store_const',const=True,dest='codeTrace',default=False,
+                help='show printout of included files')
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -884,7 +888,9 @@ if outputDSexist:
         tmpLog.error("cannot find locations for existing output dataset:%s" % options.outDS)
         sys.exit(EC_Dataset)
     # keep origianl site
-    if Client.PandaSites.has_key(options.site) and Client.PandaSites[options.site]['ddm'] in outDSlocations:
+    if Client.PandaSites.has_key(options.site) and \
+       (Client.PandaSites[options.site]['ddm'] in outDSlocations or \
+        Client.convSrmV2ID(Client.PandaSites[options.site]['ddm']) in outDSlocations):
         pass
     else:
         # convert DQ2ID to Panda siteID
@@ -910,7 +916,9 @@ elif options.libDS != '':
         tmpLog.error("cannot find locations for existing lib dataset:%s" % options.libDS)
         sys.exit(EC_Dataset)
     # keep origianl site
-    if Client.PandaSites.has_key(options.site) and Client.PandaSites[options.site]['ddm'] in libDSlocations:
+    if Client.PandaSites.has_key(options.site) and \
+       (Client.PandaSites[options.site]['ddm'] in libDSlocations or \
+        Client.convSrmV2ID(Client.PandaSites[options.site]['ddm']) in libDSlocations):
         pass
     else:
         # convert DQ2ID to Panda siteID
@@ -1748,7 +1756,10 @@ elif options.libDS == '':
         jobB.destinationSE     = options.destSE
     else:
         jobB.destinationSE     = options.site
-    jobB.prodSourceLabel   = 'panda'        
+    if options.prodSourceLabel != '':
+        jobB.prodSourceLabel = options.prodSourceLabel
+    else:
+        jobB.prodSourceLabel = 'panda'        
     if options.processingType != '':    
         jobB.processingType = options.processingType
     if options.seriesLabel != '':    
@@ -1873,7 +1884,10 @@ for iSubJob in range(options.split):
         jobR.destinationSE     = options.destSE
     else:
         jobR.destinationSE     = options.site
-    jobR.prodSourceLabel   = 'user'        
+    if options.prodSourceLabel != '':
+        jobR.prodSourceLabel = options.prodSourceLabel
+    else:
+        jobR.prodSourceLabel   = 'user'        
     if options.processingType != '':
         jobR.processingType = options.processingType
     if options.seriesLabel != '':    
@@ -2344,6 +2358,9 @@ for iSubJob in range(options.split):
     # use theApp.nextEvent
     if options.useNextEvent:
         param += '--useNextEvent '
+    # use code tracer 
+    if options.codeTrace:
+        param += '--codeTrace '
     # assign    
     jobR.jobParameters = param
 
