@@ -42,6 +42,8 @@ optP.add_option('--inDS',action='store',dest='inDS',default='',type='string',
                 help='Name of an input dataset or dataset container')
 optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
                 help='Name of an output dataset. OUTDS will contain all output files')
+optP.add_option('--destSE',action='store', dest='destSE',default='',type='string',
+                help='Destination strorage element')
 optP.add_option('--libDS',action='store',dest='libDS',default='',type='string',
                 help='Name of a library dataset')
 optP.add_option('--noBuild', action='store_const',const=True,dest='nobuild',default=False,
@@ -364,6 +366,11 @@ if options.site != 'AUTO':
     # set cloud
     options.cloud = Client.PandaSites[options.site]['cloud']
 
+# check destSE
+if options.destSE != '':
+    if not PsubUtils.checkDestSE(options.destSE):
+        sys.exit(EC_Config)
+
 # get DN
 distinguishedName = PsubUtils.getDN()
 if distinguishedName == '':
@@ -390,8 +397,24 @@ tmpDatasets = Client.getDatasets("%s%s" % (options.outDS,suffixShadow),options.v
 if len(tmpDatasets) != 0:
     shadowDSexist = True
 
+# check destSE
+if outputDSexist and options.destSE != '':
+    if options.verbose:
+        tmpLog.debug("get locations for outDS:%s" % options.outDS)
+    destSElocations = Client.getLocations(options.outDS,[],options.cloud,True,options.verbose,getDQ2IDs=True)
+    if destSElocations == []:
+        tmpLog.error("cannot find locations for existing output dataset:%s" % options.outDS)
+        sys.exit(EC_Dataset)
+    # set destSE
+    if not options.destSE in destSElocations:
+        options.destSE = destSElocations[0]
+        tmpLog.info("set destSE:%s because outDS:%s already exists there" % \
+                    (options.destSE,options.outDS))
+
 # set site/cloud if output/lib dataset already exists
-if outputDSexist:
+checkLibDS = True
+if outputDSexist and options.destSE == '':
+    checkLibDS = False
     if options.verbose:
         tmpLog.debug("get locations for outDS:%s" % options.outDS)
     # get locations for outDS    
@@ -418,9 +441,11 @@ if outputDSexist:
                 break
         # not found
         if not fFlag:
-            tmpLog.error("cannot find supported sites for existing output datasete:%s" % options.outDS)
-            sys.exit(EC_Config)
-elif options.libDS != '':
+	    checkLibDS = True
+	    options.destSE = outDSlocations[0]
+	    tmpLog.info("set destSE:%s because outDS:%s already exists there" % \
+		(options.destSE,options.outDS))
+if checkLibDS and options.libDS != '':
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
     # get locations for libDS    
@@ -674,6 +699,14 @@ else:
             break    
         # set site
         options.site = out
+
+# reset destSE if it is redundant
+tmpOutDsLocation = Client.PandaSites[options.site]['ddm']
+if options.spaceToken != '':
+    if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+	tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
+if options.destSE == tmpOutDsLocation:
+    options.destSE = ''
 
 
 #####################################################################
@@ -1115,7 +1148,11 @@ for iJob in range(options.nJobs):
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
     jobR.destinationDBlock = options.outDS
-    jobR.destinationSE     = options.site
+    if options.destSE != '':
+        # write outputs to destSE
+        jobR.destinationSE     = options.destSE
+    else:                
+        jobR.destinationSE     = options.site
     if options.inDS != '':
         if re.search(',',options.inDS) != None:
             jobR.prodDBlock = options.inDS.split(',')[0]
@@ -1327,6 +1364,11 @@ if not options.nosubmit:
     if options.spaceToken != '':
         if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
             tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
+    # always use site's SE for libDS
+    tmpLibDsLocation = tmpOutDsLocation
+    # use destSE if it is defined
+    if options.destSE != '':
+        tmpOutDsLocation = options.destSE
 
     # register output dataset
     if not outputDSexist:
@@ -1347,7 +1389,7 @@ if not options.nosubmit:
 
     # register libDS
     if options.libDS == '' and not options.nobuild:
-        Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpOutDsLocation)
+        Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpLibDsLocation)
 
     # submit
     tmpLog.info("submit to %s" % options.site)

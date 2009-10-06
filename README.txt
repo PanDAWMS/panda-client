@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * enabled --destSE
+
 0.1.92 (10/3/2009)
   * fixed fakeProperty for serialization by RecExCommon/PrintRecoSummary
   * added --noBuild to prun

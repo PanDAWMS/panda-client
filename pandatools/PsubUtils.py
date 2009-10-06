@@ -580,3 +580,23 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
             return False
     # return
     return True
+
+
+# check destination SE
+def checkDestSE(destSE):
+    # check destSE
+    if destSE == '':
+        return True
+    # loop over allowed SEs
+    okDestSE = False
+    destSEpatt = ['SCRATCHDISK','USERDISK','GROUPDISK']
+    for tmpDestSE in destSEpatt:
+        if destSE.endswith(tmpDestSE):
+            okDestSE = True
+            break
+    if not okDestSE:
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        tmpLog.error("invalid destSE:%s which must be one of %s" % (destSE,str(destSEpatt)))
+        return False
+    return True

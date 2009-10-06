@@ -877,7 +877,7 @@ def convSrmV2ID(tmpSite):
 
 # get locations
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
-                 getTapeSites=False):
+                 getTapeSites=False,getDQ2IDs=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -894,6 +894,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         resRetSiteMap = {}
         resBadStSites = {}
         resTapeSites  = []
+        retDQ2IDs     = []
         countSite     = {}
         allOut        = {}
         iLookUp       = 0        
@@ -976,6 +977,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             if re.search('TAPE$',origTmpSite) != None:
                 resTapeSites.append(origTmpSite)
                 continue
+            # collect DQ2 IDs
+            if not origTmpSite in retDQ2IDs:
+                retDQ2IDs.append(origTmpSite)
             # count number of available files
             if not countSite.has_key(origTmpSite):
                 countSite[origTmpSite] = 0
@@ -1025,6 +1029,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             resBadStSites[tmpSpec['status']] = []
                         resBadStSites[tmpSpec['status']].append(tmpID)
             tmpFirstDump = False
+        # retrun DQ2 IDs
+        if getDQ2IDs:
+            return retDQ2IDs
         # return list when file check is not required
         if woFileCheck:
             return retSites
