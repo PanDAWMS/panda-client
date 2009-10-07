@@ -461,16 +461,19 @@ For more info, do help(show) for example."""
                                         
     # show status
     def show(JobID=None,forceUpdate=False):
-        """Print job records. All jobs will be shown if JobID is omitted. Only running jobs will be shown if show('running')
+        """Print job records. All jobs will be shown if JobID is omitted. Only running jobs and last N jobs will be shown if show('running') and show(-N), respectively.
         
          example:
            >>> show()
            >>> show(12)
+           >>> show(-5)
            >>> show('running')
          """
-        if JobID == None:
+        if JobID == None or JobID < 0:
             # show all local info
             jobList = pbookCore.getLocalJobList()
+            if JobID < 0:
+                jobList = jobList[JobID:]
             # print
             for job in jobList:
                 print "======================================"
