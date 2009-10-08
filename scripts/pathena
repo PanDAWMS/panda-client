@@ -116,7 +116,7 @@ optP.add_option('--nBeamGasO',  action='store', dest='nBeamGasO',  default=-1,
 optP.add_option('--outDS', action='store', dest='outDS', default='',
                 type='string', help='Name of an output dataset. OUTDS will contain all output files')
 optP.add_option('--destSE',action='store', dest='destSE',default='',
-                type='string', help='Destination strorage element. All outputs go to DESTSE (default :%BNL_ATLAS_2)')
+                type='string', help='Destination strorage element')
 optP.add_option('--nFiles', '--nfiles', action='store', dest='nfiles',  default=0,
                 type='int',    help='Use an limited number of files in the input dataset')
 optP.add_option('--nSkipFiles', action='store', dest='nSkipFiles',  default=0,
@@ -155,6 +155,8 @@ optP.add_option('--excludedSite', action='store', dest='excludedSite',  default=
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
 optP.add_option('--noSubmit', action='store_const', const=True, dest='nosubmit',  default=False,
                 help="Don't submit jobs")
+optP.add_option('--prodSourceLabel', action='store', dest='prodSourceLabel',  default='',
+                help="set prodSourceLabel")
 optP.add_option('--processingType', action='store', dest='processingType',  default='pathena',
                 help="set processingType")
 optP.add_option('--seriesLabel', action='store', dest='seriesLabel',  default='',
@@ -173,7 +175,7 @@ optP.add_option('--noLock', action='store_const', const=True, dest='nolock',  de
                 help="Don't create a lock for local database access")
 optP.add_option('--fileList', action='store', dest='filelist', default='',
                 type='string', help='List of files in the input dataset to be run')
-optP.add_option('--myproxy', action='store', dest='myproxy', default='pandaprx.usatlas.bnl.gov',
+optP.add_option('--myproxy', action='store', dest='myproxy', default='myproxy.cern.ch',
                 type='string', help='Name of the myproxy server')
 optP.add_option('--dbRelease', action='store', dest='dbRelease', default='',
                 type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz')
@@ -228,6 +230,8 @@ optP.add_option('-c',action='store',dest='singleLine',type='string',default='',m
                 help='One-liner, runs before any jobOs')
 optP.add_option('-p',action='store',dest='preConfig',type='string',default='',metavar='BOOTSTRAP',
                 help='location of bootstrap file')
+optP.add_option('-s',action='store_const',const=True,dest='codeTrace',default=False,
+                help='show printout of included files')
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -482,6 +486,10 @@ if options.burstSubmit == '':
         tmpLog.error("unsupported cloud:%s" % options.cloud)
         sys.exit(EC_Config)
 
+# check destSE
+if options.destSE != '':
+    if not PsubUtils.checkDestSE(options.destSE):
+        sys.exit(EC_Config)
 
 # get DN
 distinguishedName = PsubUtils.getDN()
@@ -875,8 +883,24 @@ tmpDatasets = Client.getDatasets("%s%s" % (options.outDS,suffixShadow),options.v
 if len(tmpDatasets) != 0:
     shadowDSexist = True
 
+# check destSE
+if outputDSexist and options.destSE != '':
+    if options.verbose:
+        tmpLog.debug("get locations for outDS:%s" % options.outDS)
+    destSElocations = Client.getLocations(options.outDS,[],options.cloud,True,options.verbose,getDQ2IDs=True)
+    if destSElocations == []:
+        tmpLog.error("cannot find locations for existing output dataset:%s" % options.outDS)
+        sys.exit(EC_Dataset)
+    # set destSE
+    if not options.destSE in destSElocations:
+        options.destSE = destSElocations[0]
+        tmpLog.info("set destSE:%s because outDS:%s already exists there" % \
+                    (options.destSE,options.outDS))
+
 # set location when outDS or libDS already exists
-if outputDSexist:
+checkLibDS = True
+if outputDSexist and options.destSE == '':
+    checkLibDS = False
     if options.verbose:
         tmpLog.debug("get locations for outDS:%s" % options.outDS)
     outDSlocations = Client.getLocations(options.outDS,[],options.cloud,True,options.verbose)
@@ -884,7 +908,9 @@ if outputDSexist:
         tmpLog.error("cannot find locations for existing output dataset:%s" % options.outDS)
         sys.exit(EC_Dataset)
     # keep origianl site
-    if Client.PandaSites.has_key(options.site) and Client.PandaSites[options.site]['ddm'] in outDSlocations:
+    if Client.PandaSites.has_key(options.site) and \
+       (Client.PandaSites[options.site]['ddm'] in outDSlocations or \
+        Client.convSrmV2ID(Client.PandaSites[options.site]['ddm']) in outDSlocations):
         pass
     else:
         # convert DQ2ID to Panda siteID
@@ -900,9 +926,11 @@ if outputDSexist:
                 break
         # not found
         if not fFlag:
-            tmpLog.error("cannot find supported sites for existing output datasete:%s" % options.outDS)
-            sys.exit(EC_Dataset)
-elif options.libDS != '':
+	    checkLibDS = True
+	    options.destSE = outDSlocations[0]
+	    tmpLog.info("set destSE:%s because outDS:%s already exists there" % \
+		(options.destSE,options.outDS))
+if checkLibDS and options.libDS != '':
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
     libDSlocations = Client.getLocations(options.libDS,[],options.cloud,True,options.verbose)
@@ -910,7 +938,9 @@ elif options.libDS != '':
         tmpLog.error("cannot find locations for existing lib dataset:%s" % options.libDS)
         sys.exit(EC_Dataset)
     # keep origianl site
-    if Client.PandaSites.has_key(options.site) and Client.PandaSites[options.site]['ddm'] in libDSlocations:
+    if Client.PandaSites.has_key(options.site) and \
+       (Client.PandaSites[options.site]['ddm'] in libDSlocations or \
+        Client.convSrmV2ID(Client.PandaSites[options.site]['ddm']) in libDSlocations):
         pass
     else:
         # convert DQ2ID to Panda siteID
@@ -1041,11 +1071,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 	    # set site/cloud
             options.site  = out
             options.cloud = Client.PandaSites[options.site]['cloud']
-            # destination
-            if options.destSE == '':
-                options.destSE = options.site
             if options.verbose:
-                tmpLog.debug("chosen site=%s destSE=%s" % (options.site,options.destSE))
+                tmpLog.debug("chosen site=%s" % options.site)
         # scan local replica catalog
         if options.skipScan:
             # skip remote scan
@@ -1673,6 +1700,14 @@ if outputDSexist:
 if not Client.checkSiteAccessPermission(options.site,options.workingGroup,options.verbose):
     sys.exit(EC_Config)
 
+# reset destSE if it is redundant
+tmpOutDsLocation = Client.PandaSites[options.site]['ddm']
+if options.spaceToken != '':
+    if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+	tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
+if options.destSE == tmpOutDsLocation:
+    options.destSE = ''
+
 if options.verbose:
     print "== parameters =="
     print "Site       : %s" % options.site
@@ -1743,12 +1778,11 @@ elif options.libDS == '':
                                                                time.strftime('%m%d%H%M%S',time.gmtime()),
                                                                datetime.datetime.utcnow().microsecond,
                                                                jobDefinitionID)
-    if options.useExperimental and options.destSE != '':
-        # write outputs to destSE
-        jobB.destinationSE     = options.destSE
+    jobB.destinationSE     = options.site
+    if options.prodSourceLabel != '':
+        jobB.prodSourceLabel = options.prodSourceLabel
     else:
-        jobB.destinationSE     = options.site
-    jobB.prodSourceLabel   = 'panda'        
+        jobB.prodSourceLabel = 'panda'        
     if options.processingType != '':    
         jobB.processingType = options.processingType
     if options.seriesLabel != '':    
@@ -1868,12 +1902,15 @@ for iSubJob in range(options.split):
         else:
             jobR.prodDBlock = options.inDS
     jobR.destinationDBlock = options.outDS
-    if options.useExperimental and options.destSE != '':
+    if options.destSE != '':
         # write outputs to destSE
         jobR.destinationSE     = options.destSE
     else:
         jobR.destinationSE     = options.site
-    jobR.prodSourceLabel   = 'user'        
+    if options.prodSourceLabel != '':
+        jobR.prodSourceLabel = options.prodSourceLabel
+    else:
+        jobR.prodSourceLabel   = 'user'        
     if options.processingType != '':
         jobR.processingType = options.processingType
     if options.seriesLabel != '':    
@@ -2344,6 +2381,9 @@ for iSubJob in range(options.split):
     # use theApp.nextEvent
     if options.useNextEvent:
         param += '--useNextEvent '
+    # use code tracer 
+    if options.codeTrace:
+        param += '--codeTrace '
     # assign    
     jobR.jobParameters = param
 
@@ -2387,6 +2427,12 @@ if not options.nosubmit:
 	if options.spaceToken != '':
 	    if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
 		tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
+	# always use site's SE for libDS
+      	tmpLibDsLocation = tmpOutDsLocation
+	# use destSE if it is defined
+	if options.destSE != '':
+	    tmpOutDsLocation = options.destSE
+
         # register output dataset
 	tmpIdvOutDsList = []
         if not outputDSexist:
@@ -2417,7 +2463,7 @@ if not options.nosubmit:
 
         # register libDS
         if options.libDS == '' and (not options.nobuild):
-            Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpOutDsLocation)
+            Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpLibDsLocation)
 
         # submit
         tmpLog.info("submit to %s" % options.site)

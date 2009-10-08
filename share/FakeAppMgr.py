@@ -15,6 +15,14 @@ class fakeProperty(list):
             setattr(self,name,fakeProperty(name))
             return object.__getattribute__(self,name)
 
+    def __getstate__(self):
+        return self.__dict__
+
+    def __reduce_ex__(self,proto=0):
+        if proto >= 2:
+            proto = 1
+        return super(fakeProperty,self).__reduce_ex__(proto)
+                            
     def properties(self):
         prp = fakeProperty('properties')
         for attr in dir(self):
