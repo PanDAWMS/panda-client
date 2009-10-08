@@ -14,9 +14,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.93 (10/8/2009)
   * enabled --destSE in pathena/prun
   * added pbook.show(-N) to show last N jobs
+  * fixed pbook.retry() to correct short/long mixture of destSE
 
 0.1.92 (10/3/2009)
   * fixed fakeProperty for serialization by RecExCommon/PrintRecoSummary
