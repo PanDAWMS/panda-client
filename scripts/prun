@@ -352,6 +352,9 @@ if options.site != 'AUTO':
     # patch for BNL
     if options.site in ['BNL',"ANALY_BNL"]:
         options.site = "ANALY_BNL_ATLAS_1"
+    # patch for CERN
+    if options.site in ['CERN']:
+        options.site = "ANALY_CERN"        
     # try to convert DQ2ID to PandaID
     pID = PsubUtils.convertDQ2toPandaID(options.site)
     if pID != '':

@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.1.94 (10/13/2009)
+  * changed the default site of CERN to ANALY_CERN 
+  * changed parameter formatting of DB and RNDM in --trf of pathena 
+
 0.1.93 (10/8/2009)
   * enabled --destSE in pathena/prun
   * added pbook.show(-N) to show last N jobs

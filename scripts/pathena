@@ -461,6 +461,9 @@ if options.site != 'AUTO' and options.burstSubmit == '':
     # patch for BNL
     if options.site in ['BNL',"ANALY_BNL"]:
         options.site = "ANALY_BNL_ATLAS_1"
+    # patch for CERN
+    if options.site in ['CERN']:
+        options.site = "ANALY_CERN"        
     # try to convert DQ2ID to PandaID
     pID = PsubUtils.convertDQ2toPandaID(options.site)
     if pID != '':
@@ -531,6 +534,9 @@ runDir = runDir+'/'
 # get job options
 jobO = ''
 if options.trf:
+    # replace : to = for backward compatibility
+    for optArg in ['DB','RNDM']:
+        options.trf = re.sub('%'+optArg+':','%'+optArg+'=',options.trf)
     # use trf's parameters
     jobO = options.trf
 else:
