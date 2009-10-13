@@ -730,7 +730,8 @@ def addDataset(name,verbose=False,location=''):
             errStr = "ERROR : could not add dataset to DQ2 repository"
             sys.exit(EC_Failed)
         # add replica
-        if location != '':
+        if re.search('SCRATCHDISK$',location) != None or re.search('USERDISK$',location) != None \
+           or re.search('LOCALGROUPDISK$',location) != None:
             url = baseURLDQ2SSL + '/ws_location/rpc'
             data = {'operation':'addDatasetReplica','vuid':vuid,'site':location,
                     'complete':0,'transferState':1,
@@ -876,7 +877,7 @@ def convSrmV2ID(tmpSite):
 
 # get locations
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
-                 getTapeSites=False):
+                 getTapeSites=False,getDQ2IDs=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -893,6 +894,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         resRetSiteMap = {}
         resBadStSites = {}
         resTapeSites  = []
+        retDQ2IDs     = []
         countSite     = {}
         allOut        = {}
         iLookUp       = 0        
@@ -975,6 +977,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             if re.search('TAPE$',origTmpSite) != None:
                 resTapeSites.append(origTmpSite)
                 continue
+            # collect DQ2 IDs
+            if not origTmpSite in retDQ2IDs:
+                retDQ2IDs.append(origTmpSite)
             # count number of available files
             if not countSite.has_key(origTmpSite):
                 countSite[origTmpSite] = 0
@@ -1024,6 +1029,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             resBadStSites[tmpSpec['status']] = []
                         resBadStSites[tmpSpec['status']].append(tmpID)
             tmpFirstDump = False
+        # retrun DQ2 IDs
+        if getDQ2IDs:
+            return retDQ2IDs
         # return list when file check is not required
         if woFileCheck:
             return retSites
@@ -1273,11 +1281,12 @@ def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
 def _getGridSrc():
     # set Grid setup.sh if needed
     status,out = commands.getstatusoutput('which voms-proxy-info')
-    if status == 0:
+    stLFC,outLFC = commands.getstatusoutput('python -c "import lfc"')
+    if status == 0 and stLFC == 0:
         gridSrc = ''
         status,athenaPath = commands.getstatusoutput('which athena.py')
         if status == 0 and athenaPath.startswith('/afs/in2p3.fr'):
-            # for LYON, to avoid messing LD_LIBRARY_PATH
+            # for LYON, to avoid missing LD_LIBRARY_PATH
             gridSrc = '/afs/in2p3.fr/grid/profiles/lcg_env.sh'
         elif status == 0 and athenaPath.startswith('/afs/cern.ch'):
             # for CERN, VDT is already installed

@@ -580,3 +580,37 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
             return False
     # return
     return True
+
+
+# check destination SE
+def checkDestSE(destSE):
+    # check destSE
+    if destSE == '':
+        return True
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # loop over allowed SEs
+    okDestSE = False
+    destSEpatt = ['SCRATCHDISK','USERDISK','GROUPDISK']
+    for tmpDestSE in destSEpatt:
+        if destSE.endswith(tmpDestSE):
+            okDestSE = True
+            break
+    if not okDestSE:
+        tmpLog.error("invalid destSE:%s which must be one of %s" % (destSE,str(destSEpatt)))
+        return False
+    # get SiteID to check LFC
+    destPandaSite = convertDQ2toPandaID(destSE)
+    if not Client.PandaSites.has_key(destPandaSite):
+        tmpLog.error("failed to find corresponding SiteID for destSE:%s" % destSE)
+        return False
+    # check LFC to allow only T3s for now
+    destAllowedLFCs = ['t3lfcv01.usatlas.bnl.gov']
+    destLFC = Client.PandaSites[destPandaSite]['lfchost']
+    if not destLFC in destAllowedLFCs:
+        errMsg  = "destSE:%s is hosted by LFC:%s. " % (destSE,destLFC)
+        errMsg += "Currently destination is allowed only for sites that are hosted by one of %s, to avoid chaotic data flow" % str(destAllowedLFCs)
+        tmpLog.error(errMsg)
+        return False
+    # return
+    return True

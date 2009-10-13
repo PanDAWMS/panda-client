@@ -42,8 +42,12 @@ optP.add_option('--inDS',action='store',dest='inDS',default='',type='string',
                 help='Name of an input dataset or dataset container')
 optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
                 help='Name of an output dataset. OUTDS will contain all output files')
+optP.add_option('--destSE',action='store', dest='destSE',default='',type='string',
+                help='Destination strorage element')
 optP.add_option('--libDS',action='store',dest='libDS',default='',type='string',
                 help='Name of a library dataset')
+optP.add_option('--noBuild', action='store_const',const=True,dest='nobuild',default=False,
+                help='Skip buildGen')
 optP.add_option('--secondaryDSs',action='store',dest='secondaryDSs',default='',type='string',
                 help='List of secondary datasets when the job requires multiple inputs. See PandaRun wiki page for detail')
 optP.add_option('--site',action='store',dest='site',default=defaultSite,type='string',
@@ -104,7 +108,7 @@ optP.add_option('--exec',action='store',dest='jobParams',default='',type='string
                 help='execution string. e.g., --exec "./myscript arg1 arg2"')
 optP.add_option('--bexec',action='store',dest='bexec',default='',type='string',
                 help='execution string for build stage. e.g., --bexec "make"')
-optP.add_option('--myproxy',action='store',dest='myproxy',default='pandaprx.usatlas.bnl.gov',type='string',
+optP.add_option('--myproxy',action='store',dest='myproxy',default='myproxy.cern.ch',type='string',
                 help='Name of the myproxy server')
 optP.add_option('-v',action='store_const',const=True,dest='verbose',default=False,
                 help='Verbose')
@@ -348,6 +352,9 @@ if options.site != 'AUTO':
     # patch for BNL
     if options.site in ['BNL',"ANALY_BNL"]:
         options.site = "ANALY_BNL_ATLAS_1"
+    # patch for CERN
+    if options.site in ['CERN']:
+        options.site = "ANALY_CERN"        
     # try to convert DQ2ID to PandaID
     pID = PsubUtils.convertDQ2toPandaID(options.site)
     if pID != '':
@@ -361,6 +368,11 @@ if options.site != 'AUTO':
         sys.exit(EC_Config)
     # set cloud
     options.cloud = Client.PandaSites[options.site]['cloud']
+
+# check destSE
+if options.destSE != '':
+    if not PsubUtils.checkDestSE(options.destSE):
+        sys.exit(EC_Config)
 
 # get DN
 distinguishedName = PsubUtils.getDN()
@@ -388,8 +400,24 @@ tmpDatasets = Client.getDatasets("%s%s" % (options.outDS,suffixShadow),options.v
 if len(tmpDatasets) != 0:
     shadowDSexist = True
 
+# check destSE
+if outputDSexist and options.destSE != '':
+    if options.verbose:
+        tmpLog.debug("get locations for outDS:%s" % options.outDS)
+    destSElocations = Client.getLocations(options.outDS,[],options.cloud,True,options.verbose,getDQ2IDs=True)
+    if destSElocations == []:
+        tmpLog.error("cannot find locations for existing output dataset:%s" % options.outDS)
+        sys.exit(EC_Dataset)
+    # set destSE
+    if not options.destSE in destSElocations:
+        options.destSE = destSElocations[0]
+        tmpLog.info("set destSE:%s because outDS:%s already exists there" % \
+                    (options.destSE,options.outDS))
+
 # set site/cloud if output/lib dataset already exists
-if outputDSexist:
+checkLibDS = True
+if outputDSexist and options.destSE == '':
+    checkLibDS = False
     if options.verbose:
         tmpLog.debug("get locations for outDS:%s" % options.outDS)
     # get locations for outDS    
@@ -398,7 +426,9 @@ if outputDSexist:
         tmpLog.error("cannot find locations for existing output datasete:%s" % options.outDS)
         sys.exit(EC_Config)
     # keep origianl site
-    if Client.PandaSites.has_key(options.site) and Client.PandaSites[options.site]['ddm'] in outDSlocations:
+    if Client.PandaSites.has_key(options.site) and \
+       (Client.PandaSites[options.site]['ddm'] in outDSlocations or \
+        Client.convSrmV2ID(Client.PandaSites[options.site]['ddm']) in outDSlocations):
         pass
     else:
         # convert DQ2ID to Panda siteID
@@ -414,9 +444,11 @@ if outputDSexist:
                 break
         # not found
         if not fFlag:
-            tmpLog.error("cannot find supported sites for existing output datasete:%s" % options.outDS)
-            sys.exit(EC_Config)
-elif options.libDS != '':
+	    checkLibDS = True
+	    options.destSE = outDSlocations[0]
+	    tmpLog.info("set destSE:%s because outDS:%s already exists there" % \
+		(options.destSE,options.outDS))
+if checkLibDS and options.libDS != '':
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
     # get locations for libDS    
@@ -425,7 +457,9 @@ elif options.libDS != '':
         tmpLog.error("cannot find locations for existing lib datasete:%s" % options.libDS)
         sys.exit(EC_Config)
     # keep origianl site
-    if Client.PandaSites.has_key(options.site) and Client.PandaSites[options.site]['ddm'] in libDSlocations:
+    if Client.PandaSites.has_key(options.site) and \
+       (Client.PandaSites[options.site]['ddm'] in libDSlocations or \
+        Client.convSrmV2ID(Client.PandaSites[options.site]['ddm']) in libDSlocations):
         pass
     else:
         # convert DQ2ID to Panda siteID
@@ -669,6 +703,14 @@ else:
         # set site
         options.site = out
 
+# reset destSE if it is redundant
+tmpOutDsLocation = Client.PandaSites[options.site]['ddm']
+if options.spaceToken != '':
+    if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+	tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
+if options.destSE == tmpOutDsLocation:
+    options.destSE = ''
+
 
 #####################################################################
 # archive sources and send it to HTTP-reachable location
@@ -698,7 +740,7 @@ else:
 
         # set extFile
         AthenaUtils.setExtFile(options.extFile)
-        if options.libDS == '':
+        if options.libDS == '' and not options.nobuild:
             # archive sources
             archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,curDir,tmpDir,
                                                                      options.verbose,options.gluePackages)
@@ -709,7 +751,7 @@ else:
         # archive InstallArea
         if options.libDS == '':
             AthenaUtils.archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
-                                           tmpDir,False,options.verbose)
+                                           tmpDir,options.nobuild,options.verbose)
     else:        
         # gather normal files
         
@@ -717,129 +759,131 @@ else:
         os.chdir(options.workDir)
 
         # gather files under work dir
-        if options.libDS == '':
-            tmpLog.info("gathering files under %s" % options.workDir)
+        tmpLog.info("gathering files under %s" % options.workDir)
 
-            # get files in the working dir
-            skippedExt   = ['.o','.a','.so']
-            skippedFlag  = False
-            workDirFiles = []
-            for tmpRoot,tmpDirs,tmpFiles in os.walk('.'):
-                emptyFlag    = True
-                for tmpFile in tmpFiles:
-                    tmpPath = '%s/%s' % (tmpRoot,tmpFile)
-                    # get size
-                    try:
-                        size = os.path.getsize(tmpPath)
-                    except:
-                        # skip dead symlink
-                        if options.verbose:
-                            type,value,traceBack = sys.exc_info()
-                            print "  Ignore : %s:%s" % (type,value)
+        # get files in the working dir
+        skippedExt   = ['.o','.a','.so']
+        skippedFlag  = False
+        workDirFiles = []
+        for tmpRoot,tmpDirs,tmpFiles in os.walk('.'):
+            emptyFlag    = True
+            for tmpFile in tmpFiles:
+                tmpPath = '%s/%s' % (tmpRoot,tmpFile)
+                # get size
+                try:
+                    size = os.path.getsize(tmpPath)
+                except:
+                    # skip dead symlink
+                    if options.verbose:
+                        type,value,traceBack = sys.exc_info()
+                        print "  Ignore : %s:%s" % (type,value)
+                    continue
+                # skipped extension
+                isSkippedExt = False
+                for tmpExt in skippedExt:
+                    if tmpPath.endswith(tmpExt):
+                        isSkippedExt = True
+                        break
+                # check root
+                isRoot = False
+                if re.search('\.root(\.\d+)*$',tmpPath) != None:
+                    isRoot = True
+                # extra files
+                isExtra = False
+                for tmpExt in options.extFile:
+                    if re.search(tmpExt+'$',tmpPath) != None:
+                        isExtra = True
+                        break
+                # regular files
+                if not isExtra:
+                    # skipped extensions
+                    if isSkippedExt:
+                        print "  skip %s %s" % (str(skippedExt),tmpPath)
+                        skippedFlag = True
                         continue
-                    # skipped extension
-                    isSkippedExt = False
-                    for tmpExt in skippedExt:
-                        if tmpPath.endswith(tmpExt):
-                            isSkippedExt = True
-                            break
-                    # check root
-                    isRoot = False
-                    if re.search('\.root(\.\d+)*$',tmpPath) != None:
-                        isRoot = True
-                    # extra files
-                    isExtra = False
-                    for tmpExt in options.extFile:
-                        if re.search(tmpExt+'$',tmpPath) != None:
-                            isExtra = True
-                            break
-                    # regular files
-                    if not isExtra:
-                        # skipped extensions
-                        if isSkippedExt:
-                            print "  skip %s %s" % (str(skippedExt),tmpPath)
-                            skippedFlag = True
-                            continue
-                        # skip root
-                        if isRoot:
-                            print "  skip root file %s" % tmpPath
-                            skippedFlag = True
-                            continue
-                        # check size
-                        if size > options.maxFileSize:
-                            print "  skip large file %s:%sB>%sB" % (tmpPath,size,options.maxFileSize)
-                            skippedFlag = True
-                            continue
+                    # skip root
+                    if isRoot:
+                        print "  skip root file %s" % tmpPath
+                        skippedFlag = True
+                        continue
+                    # check size
+                    if size > options.maxFileSize:
+                        print "  skip large file %s:%sB>%sB" % (tmpPath,size,options.maxFileSize)
+                        skippedFlag = True
+                        continue
 
-                    # remove ./
-                    tmpPath = re.sub('^\./','',tmpPath)
-                    # append
-                    workDirFiles.append(tmpPath)
-                    emptyFlag = False
-                # add empty directory		
-                if emptyFlag and tmpDirs==[]:
-                    tmpPath = re.sub('^\./','',tmpRoot)
-                    # skip tmpDir
-                    if tmpPath.split('/')[-1] == tmpDir.split('/')[-1]:
-                        continue
-                    # append
-                    workDirFiles.append(tmpPath)
-            if skippedFlag:
-                tmpLog.info("please use --maxFileSize or --extFile if you need to send the skipped files to WNs")
+                # remove ./
+                tmpPath = re.sub('^\./','',tmpPath)
+                # append
+                workDirFiles.append(tmpPath)
+                emptyFlag = False
+            # add empty directory		
+            if emptyFlag and tmpDirs==[]:
+                tmpPath = re.sub('^\./','',tmpRoot)
+                # skip tmpDir
+                if tmpPath.split('/')[-1] == tmpDir.split('/')[-1]:
+                    continue
+                # append
+                workDirFiles.append(tmpPath)
+        if skippedFlag:
+            tmpLog.info("please use --maxFileSize or --extFile if you need to send the skipped files to WNs")
 
         # create archive
-        if options.libDS == '':
+        if options.libDS != '' or options.nobuild:
+            # use 'jobO' for libDS/noBuild
+            archiveName     = 'jobO.%s.tar' % commands.getoutput('uuidgen')
+        else:
+            # use 'sources' for normal build
             archiveName     = 'sources.%s.tar' % commands.getoutput('uuidgen')
-            archiveFullName = "%s/%s" % (tmpDir,archiveName)
+        archiveFullName = "%s/%s" % (tmpDir,archiveName)
 
-            # collect files
-            for tmpFile in workDirFiles:
-                if os.path.islink(tmpFile):
-                    status,out = commands.getstatusoutput('tar -rh %s -f %s' % (tmpFile,archiveFullName))
-                else:
-                    status,out = commands.getstatusoutput('tar rf %s %s' % (archiveFullName,tmpFile))
-                if options.verbose:
-                    print tmpFile
-                if status != 0 or out != '':
-                    print out
+        # collect files
+        for tmpFile in workDirFiles:
+            if os.path.islink(tmpFile):
+                status,out = commands.getstatusoutput('tar -rh %s -f %s' % (tmpFile,archiveFullName))
+            else:
+                status,out = commands.getstatusoutput('tar rf %s %s' % (archiveFullName,tmpFile))
+            if options.verbose:
+                print tmpFile
+            if status != 0 or out != '':
+                print out
 
     # go to tmpdir
     os.chdir(tmpDir)
 
     # compress
-    if options.libDS == '' or options.useAthenaPackages:
-        status,out = commands.getstatusoutput('gzip %s' % archiveName)
-        archiveName += '.gz'
-        if status !=0 or options.verbose:
-            print out
+    status,out = commands.getstatusoutput('gzip %s' % archiveName)
+    archiveName += '.gz'
+    if status !=0 or options.verbose:
+        print out
 
-        # check archive
-        status,out = commands.getstatusoutput('ls -l %s' % archiveName)
-        if options.verbose:
-            print out
-        if status != 0:
-            tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'") 
-            sys.exit(EC_Archive)
+    # check archive
+    status,out = commands.getstatusoutput('ls -l %s' % archiveName)
+    if options.verbose:
+        print out
+    if status != 0:
+        tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'") 
+        sys.exit(EC_Archive)
  
-        # check symlinks
-        if options.useAthenaPackages:
-            tmpLog.info("checking symbolic links")
-            status,out = commands.getstatusoutput('tar tvfz %s' % archiveName)
-            if status != 0:
-                tmpLog.error("Failed to expand archive")
-                sys.exit(EC_Archive)
-            symlinks = []    
-            for line in out.split('\n'):
-                items = line.split()
-                if items[0].startswith('l') and items[-1].startswith('/'):
-                    symlinks.append(line)
-            if symlinks != []:
-                tmpStr  = "Found some unresolved symlinks which may cause a problem\n"
-                tmpStr += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
-                tmpStr += "   Please ignore if you believe they are harmless"
-                tmpLog.warning(tmpStr)
-                for symlink in symlinks:
-                    print "  %s" % symlink
+    # check symlinks
+    if options.useAthenaPackages:
+        tmpLog.info("checking symbolic links")
+        status,out = commands.getstatusoutput('tar tvfz %s' % archiveName)
+        if status != 0:
+            tmpLog.error("Failed to expand archive")
+            sys.exit(EC_Archive)
+        symlinks = []    
+        for line in out.split('\n'):
+            items = line.split()
+            if items[0].startswith('l') and items[-1].startswith('/'):
+                symlinks.append(line)
+        if symlinks != []:
+            tmpStr  = "Found some unresolved symlinks which may cause a problem\n"
+            tmpStr += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
+            tmpStr += "   Please ignore if you believe they are harmless"
+            tmpLog.warning(tmpStr)
+            for symlink in symlinks:
+                print "  %s" % symlink
 
 # look for pandatools package
 for path in sys.path:
@@ -958,7 +1002,9 @@ jobName = 'prun.%s' % commands.getoutput('uuidgen')
 jobList = []
 
 # buildJob
-if options.libDS == '': 
+if options.nobuild:
+    pass
+elif options.libDS == '':
     jobB = JobSpec()
     jobB.jobDefinitionID   = jobDefinitionID
     jobB.jobName           = jobName
@@ -1105,7 +1151,11 @@ for iJob in range(options.nJobs):
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
     jobR.destinationDBlock = options.outDS
-    jobR.destinationSE     = options.site
+    if options.destSE != '':
+        # write outputs to destSE
+        jobR.destinationSE     = options.destSE
+    else:                
+        jobR.destinationSE     = options.site
     if options.inDS != '':
         if re.search(',',options.inDS) != None:
             jobR.prodDBlock = options.inDS.split(',')[0]
@@ -1139,15 +1189,19 @@ for iJob in range(options.nJobs):
                 tmpJobO = tmpJobO.replace(match.group(0),'%s' % tmpRndmNum)
         jobR.jobParameters += '-p "%s" ' % urllib.quote(tmpJobO)
     # source files
-    fileS = FileSpec()
-    fileS.lfn            = fileBO.lfn
-    fileS.GUID           = fileBO.GUID
-    fileS.type           = 'input'
-    fileS.status         = fileBO.status
-    fileS.dataset        = fileBO.destinationDBlock
-    fileS.dispatchDBlock = fileBO.destinationDBlock
-    jobR.addFile(fileS)
-    jobR.jobParameters  += '-l %s ' % fileS.lfn    
+    if not options.nobuild:
+        fileS = FileSpec()
+        fileS.lfn            = fileBO.lfn
+        fileS.GUID           = fileBO.GUID
+        fileS.type           = 'input'
+        fileS.status         = fileBO.status
+        fileS.dataset        = fileBO.destinationDBlock
+        fileS.dispatchDBlock = fileBO.destinationDBlock
+        jobR.addFile(fileS)
+        jobR.jobParameters  += '-l %s ' % fileS.lfn    
+    # additional files for libDS or noBuild
+    if options.libDS != "" or options.nobuild:
+        jobR.jobParameters += '-a %s ' % archiveName
     # input files
     if options.inDS != '':
         totalSize = 0
@@ -1301,19 +1355,23 @@ if not options.nosubmit:
             sys.exit(EC_MyProxy)
 
     # upload sources via HTTP POST
-    if options.libDS == '': 
-        tmpLog.info("upload source files")
-        status,out = Client.putFile(archiveName,options.verbose)
-        if out != 'True':
-            print out
-            tmpLog.error("failed to upload source files with %s" % status)
-            sys.exit(EC_Post)
+    tmpLog.info("upload source files")
+    status,out = Client.putFile(archiveName,options.verbose)
+    if out != 'True':
+        print out
+        tmpLog.error("failed to upload source files with %s" % status)
+        sys.exit(EC_Post)
 
     # dataset location
     tmpOutDsLocation = Client.PandaSites[options.site]['ddm']
     if options.spaceToken != '':
         if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
             tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
+    # always use site's SE for libDS
+    tmpLibDsLocation = tmpOutDsLocation
+    # use destSE if it is defined
+    if options.destSE != '':
+        tmpOutDsLocation = options.destSE
 
     # register output dataset
     if not outputDSexist:
@@ -1333,8 +1391,8 @@ if not options.nosubmit:
         Client.addDataset("%s%s" % (options.outDS,suffixShadow),options.verbose)
 
     # register libDS
-    if options.libDS == '':
-        Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpOutDsLocation)
+    if options.libDS == '' and not options.nobuild:
+        Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpLibDsLocation)
 
     # submit
     tmpLog.info("submit to %s" % options.site)
@@ -1356,12 +1414,12 @@ if not options.nosubmit:
             if index==0:
                 # set JobID
                 jobID = o[1]
-            if index==0 and options.libDS=='':
+            if index==0 and options.libDS=='' and not options.nobuild:
                 outstr += "  > build\n"
                 outstr += "    PandaID=%s\n" % o[0]
                 buildStr = '%s' % o[0]            
-            elif (index==1 and options.libDS=='') or \
-                 (index==0 and options.libDS!=''):
+            elif (index==1 and options.libDS=='' and not options.nobuild) or \
+                 (index==0 and (options.libDS!='' or options.nobuild)):
                 outstr += "  > run\n"
                 outstr += "    PandaID=%s" % o[0]
                 runStr = '%s' % o[0]                        
@@ -1383,7 +1441,7 @@ if not options.nosubmit:
     tmpJobIdFile.close()
 
     # record libDS
-    if options.libDS == '':
+    if options.libDS == '' and not options.nobuild:
         tmpFile = open(libds_file,'w')
         tmpFile.write(jobB.destinationDBlock)
         tmpFile.close()
