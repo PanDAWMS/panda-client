@@ -2185,7 +2185,11 @@ for iSubJob in range(options.split):
 
         if options.nEventsPerJob < 0:
           indexFiles += divF
-
+    elif options.trf and options.nEventsPerJob > 0 :
+        # Calculate how many events to skip mainly to set event number for evgen
+        nEventsToSkip = nSkips*options.nEventsPerJob
+        # @Increment number of skipped blocks
+        nSkips = nSkips + 1
 
     # output files
     outMap = {}

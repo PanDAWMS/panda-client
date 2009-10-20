@@ -23,6 +23,7 @@ def replaceParam(patt,inList,tmpJobO):
         tmpTail = ''
         tmpLFN0 = compactLFNs[0]
         tmpLFN1 = compactLFNs[1]
+        fullLFNList = ''
         for i in range(len(tmpLFN0)):
             match = re.search('^(%s)' % tmpLFN0[:i],tmpLFN1)
             if match:
@@ -36,14 +37,23 @@ def replaceParam(patt,inList,tmpJobO):
         # create compact paramter
         compactPar = '%s[' % tmpHead
         for tmpLFN in compactLFNs:
+            # keep full LFNs
+            fullLFNList += '%s,' % tmpLFN
             # extract number
             tmpLFN = re.sub('^%s' % tmpHead,'',tmpLFN)
             tmpLFN = re.sub('%s$' % tmpTail,'',tmpLFN)
             compactPar += '%s,' % tmpLFN
         compactPar = compactPar[:-1]
         compactPar += ']%s' % tmpTail
-        # replace
-        tmpJobO = tmpJobO.replace(patt,compactPar)
+        fullLFNList = fullLFNList[:-1]
+        # check contents in []
+        conMatch = re.search('\[([^\]]+)\]',compactPar)
+        if conMatch != None and re.search('^[\d,]+$',conMatch.group(1)) != None:
+            # replace with compact format
+            tmpJobO = tmpJobO.replace(patt,compactPar)
+        else:
+            # replace with full format since [] contains non digits
+            tmpJobO = tmpJobO.replace(patt,fullLFNList)
     # return
     return tmpJobO
 

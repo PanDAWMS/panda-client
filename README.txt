@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.1.95 (10/20/2009)
+  * enabled %SKIPEVENTS for evgen trf
+  * fixed compact parameters in --trf of pathena for changes to T0 naming convention
+	
 0.1.94 (10/13/2009)
   * changed the default site of CERN to ANALY_CERN 
   * changed parameter formatting of DB and RNDM in --trf of pathena 
