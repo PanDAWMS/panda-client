@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.96 (10/24/2009)
+  * added --parentDS to pathena
+
 0.1.95 (10/20/2009)
   * enabled %SKIPEVENTS for evgen trf
   * fixed compact parameters in --trf of pathena for changes to T0 naming convention

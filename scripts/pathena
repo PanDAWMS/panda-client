@@ -113,6 +113,8 @@ optP.add_option('--nBeamGasC',  action='store', dest='nBeamGasC',  default=-1,
                 type='int', help='Number of beam gas files for Carbon per sub job')
 optP.add_option('--nBeamGasO',  action='store', dest='nBeamGasO',  default=-1,
                 type='int', help='Number of beam gas files for Oxygen per sub job')
+optP.add_option('--parentDS', action='store', dest='parentDS', default='',
+                type='string', help='Parent dataset names. The brokerage takes their locations into account for TAG-based analysis')
 optP.add_option('--outDS', action='store', dest='outDS', default='',
                 type='string', help='Name of an output dataset. OUTDS will contain all output files')
 optP.add_option('--destSE',action='store', dest='destSE',default='',
@@ -965,6 +967,14 @@ if checkLibDS and options.libDS != '':
             tmpLog.error("cannot find supported sites for existing lib datasete:%s" % options.libDS)
             sys.exit(EC_Dataset)
         
+# parent datasets
+parentDSlocations = None
+if options.parentDS != '':
+    parentDSlocations = Client.getLocations(options.parentDS,[],options.cloud,False,options.verbose,
+                                            getDQ2IDs=True)
+    if parentDSlocations == []:
+        tmpLog.error("could not find replica locations for %s" % options.parentDS)
+        sys.exit(EC_Dataset)
 
 # input datasets    
 if options.inDS != '' or options.shipinput or options.pfnList != '':
@@ -1029,13 +1039,17 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 # not using wildcard
                 inputDsString = options.inDS
             dsLocationMap,dsLocationMapBack,dsTapeSites = Client.getLocations(inputDsString,inputFileMap,options.cloud,False,options.verbose,
-                                                                              expCloud=expCloudFlag,getReserved=True,getTapeSites=True)
+                                                                              expCloud=expCloudFlag,getReserved=True,getTapeSites=True,
+                                                                              locCandidates=parentDSlocations)
 	    # no location
             if dsLocationMap == {} and dsLocationMapBack == {}:
                 if expCloudFlag:
-                    tmpLog.error("could not find supported/online sites in the %s cloud for %s" % (options.cloud,options.inDS))
+                    errStr = "could not find supported/online sites in the %s cloud for %s" % (options.cloud,options.inDS)
                 else:
-                    tmpLog.error("could not find supported/online sites for %s" % options.inDS)
+                    errStr = "could not find supported/online sites for %s" % options.inDS
+                if options.parentDS != '':
+                    errStr += ' and %s' % options.parentDS
+                tmpLog.error(errStr)
                 if dsTapeSites != []:
                     tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
                 sys.exit(EC_Dataset)
@@ -1629,6 +1643,11 @@ if options.trf or options.dbRelease != '':
 
 # choose site automatically when it is still AUTO
 if options.site == "AUTO":
+    # convert candidates for SRM v2
+    if options.parentDS != '':
+        parentDSlocationsSrmV2 = []
+        for locTmp in parentDSlocations:
+            parentDSlocationsSrmV2.append(Client.convSrmV2ID(locTmp))
     # get sites belonging to a cloud and others
     tmpPriSites = []
     tmpSecSites = []
@@ -1637,6 +1656,11 @@ if options.site == "AUTO":
             # exclude long,xrootd,local queues
             if Client.isExcudedSite(tmpID):
                 continue
+            # check DDM for parent datasets
+            if options.parentDS != '':            
+                if not Client.convSrmV2ID(spec['ddm']) in parentDSlocationsSrmV2:
+                    continue
+            # check cloud    
             if spec['cloud']==options.cloud:
                 tmpPriSites.append(tmpID)
             elif not expCloudFlag:

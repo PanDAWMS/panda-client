@@ -877,7 +877,7 @@ def convSrmV2ID(tmpSite):
 
 # get locations
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
-                 getTapeSites=False,getDQ2IDs=False):
+                 getTapeSites=False,getDQ2IDs=False,locCandidates=None):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -897,7 +897,13 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         retDQ2IDs     = []
         countSite     = {}
         allOut        = {}
-        iLookUp       = 0        
+        iLookUp       = 0
+        # convert candidates for SRM v2
+        if locCandidates != None:
+            locCandidatesSrmV2 = []
+            for locTmp in locCandidates:
+                locCandidatesSrmV2.append(convSrmV2ID(locTmp))
+        # loop over all names        
         for tmpName in names:
             iLookUp += 1
             if iLookUp % 20 == 0:
@@ -986,6 +992,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             countSite[origTmpSite] += origTmpInfo[0]['found']
             # patch for SRM v2
             tmpSite = convSrmV2ID(origTmpSite)
+            # if candidates are limited
+            if locCandidates != None and (not tmpSite in locCandidatesSrmV2):
+                continue
             if verbose:
                 tmpLog.debug('%s : %s->%s' % (tmpName,origTmpSite,tmpSite))
             # check cloud, DQ2 ID and status
