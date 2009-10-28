@@ -376,11 +376,15 @@ if options.destSE != '':
 
 # get DN
 distinguishedName = PsubUtils.getDN()
-if distinguishedName == '':
+
+# get nickname
+nickName = PsubUtils.getNickname()
+
+if distinguishedName == '' and nickName == '':
     sys.exit(EC_Config)
 
 # check outDS format
-if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official):
+if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName):
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
 
@@ -1013,8 +1017,15 @@ elif options.libDS == '':
         jobB.AtlasRelease  = athenaVer
         jobB.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobB.transformation    = '%s/buildGen-00-00-01' % Client.baseURLSUB
-    jobB.destinationDBlock = 'user%s.%s.lib._%s' % (time.strftime('%y',time.gmtime()),distinguishedName,
-                                                    time.time())
+    if nickName == '':
+        # old convention
+        tmpDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
+    else:
+        tmpDsPrefix = 'user.%s' % nickName
+    jobB.destinationDBlock = '%s.%s.%s.lib._%06d' % (tmpDsPrefix,
+                                                     time.strftime('%m%d%H%M%S',time.gmtime()),
+                                                     datetime.datetime.utcnow().microsecond,
+                                                     jobDefinitionID)
     jobB.destinationSE     = options.site
     jobB.prodSourceLabel   = 'panda'
     if options.processingType != '':    
@@ -1406,6 +1417,13 @@ if not options.nosubmit:
     if out == []:
         tmpLog.error("Job submission was denied")
         sys.exit(EC_Submit)
+    # check length
+    if len(jobList) != len(out):
+        wStr  = "Only %s/%s sub-jobs were accepted " % (len(out),len(jobList))
+        wStr += "since the number of sub-jobs in a single submission is limited. "
+        wStr += "Please submit the same job again (i.e., the same inDS and outDS). "
+        wStr += "New sub-jobs will run only on unused files and outputs will be added to the same outDS\n"
+        tmpLog.warning(wStr)
     outstr   = ''
     buildStr = ''
     runStr   = ''

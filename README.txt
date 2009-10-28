@@ -16,6 +16,7 @@ pathena -h
 
 current
   * fixed PANDA_SYS in rpm
+  * added warning message when the number of sub-jobs exceeds the limit
 
 0.1.96 (10/24/2009)
   * added --parentDS to pathena

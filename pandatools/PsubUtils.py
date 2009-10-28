@@ -193,9 +193,41 @@ def getDN():
     distinguishedName = re.sub('[\'\"]','',distinguishedName)
     # check
     if distinguishedName == '':
-        print 'could not get DistinguishedName from %s' % output
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        tmpLog.error('could not get DistinguishedName from %s' % output)
     return distinguishedName
 
+
+# get nickname
+def getNickname():
+    nickName = ''
+    gridSrc = Client._getGridSrc()
+    if gridSrc == False:
+        return ''
+    # get generic attribute from voms proxy
+    output = commands.getoutput('%s voms-proxy-info -all' % gridSrc)
+    for line in output.split('\n'):
+        if line.startswith('attribute'):
+            match = re.search('nickname =\s*([^\s]+)\s*\(atlas\)',line)
+            if match != None:
+                nickName = match.group(1)
+                break
+    # check        
+    if nickName == '':
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        wMessage =  'Could not get nickname from voms proxy\n'
+        wMessage += 'Please register nickname to ATLAS VO via\n\n'
+        wMessage += '   https://lcg-voms.cern.ch:8443/vo/atlas/vomrs\n'
+        wMessage += '      [Member Info] -> [Edit Personal Info]\n\n'
+        wMessage += 'Then you can use the new naming convention "user.nickname" '
+        wMessage += 'which should be shorter than "userXY.FirstnameLastname".'
+        #tmpLog.warning(wMessage)
+    # FIXME
+    #return nickName
+    return ''
+        
 
 # check if valid cloud
 def checkValidCloud(cloud):
@@ -207,7 +239,7 @@ def checkValidCloud(cloud):
 
 
 # check name of output dataset
-def checkOutDsName(outDS,distinguishedName,official):
+def checkOutDsName(outDS,distinguishedName,official,nickName=''):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # official dataset
@@ -226,13 +258,13 @@ def checkOutDsName(outDS,distinguishedName,official):
         return False
     # check output dataset format
     matStr = '^user' + ('%s' % time.strftime('%y',time.gmtime())) + '\.' + distinguishedName + '\.'
-    if re.match(matStr,outDS) == None:
-        errStr  = "outDS must be 'user%s.%s.<user-controlled string...'\n" % \
-                 (time.strftime('%y',time.gmtime()),distinguishedName)
-        errStr += "        e.g., user%s.%s.test1234\n" % \
-                  (time.strftime('%y',time.gmtime()),distinguishedName)
-        errStr += "        Please use 'user%s.' instead of 'user.' to follow ATL-GEN-INT-2007-001" % \
-                  time.strftime('%y',time.gmtime())
+    if re.match(matStr,outDS) == None and (nickName != '' and re.match('^user\.'+nickName+'\.',outDS) == None):
+        if nickName == '':
+            outDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
+        else:
+            outDsPrefix = 'user.%s' % nickName
+        errStr  = "outDS must be '%s.<user-controlled string...'\n" % outDsPrefix
+        errStr += "        e.g., %s.test1234" % outDsPrefix
         tmpLog.error(errStr)
         return False
     # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
