@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed PANDA_SYS in rpm
+
 0.1.96 (10/24/2009)
   * added --parentDS to pathena
 
