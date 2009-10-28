@@ -258,7 +258,7 @@ def checkOutDsName(outDS,distinguishedName,official,nickName=''):
         return False
     # check output dataset format
     matStr = '^user' + ('%s' % time.strftime('%y',time.gmtime())) + '\.' + distinguishedName + '\.'
-    if re.match(matStr,outDS) == None and (nickName != '' and re.match('^user\.'+nickName+'\.',outDS) == None):
+    if re.match(matStr,outDS) == None and (nickName == '' or re.match('^user\.'+nickName+'\.',outDS) == None):
         if nickName == '':
             outDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
         else:
