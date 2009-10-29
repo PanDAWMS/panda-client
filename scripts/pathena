@@ -2339,8 +2339,14 @@ for iSubJob in range(options.split):
                 # replace parameters
                 tmpJobO = tmpJobO.replace(match.group(0),'%s' % tmpRndmNum)
         # skipEvent
-        if tmpJobO.find('%SKIPEVENTS') != -1:
-            tmpJobO = tmpJobO.replace('%SKIPEVENTS','%s' % nEventsToSkip)
+        for tmpItem in tmpJobO.split():
+            match = re.search('%SKIPEVENTS(:*)(\d*)$',tmpItem)
+            if match != None:
+                if match.group(2) == '':
+                    tmpJobO = re.sub('%SKIPEVENTS( |$)','%s ' % nEventsToSkip,tmpJobO)
+                else:
+                    tmpSkipEvents = int(match.group(2)) + nEventsToSkip 
+                    tmpJobO = tmpJobO.replace(match.group(0),'%s' % tmpSkipEvents)
         # set jobO parameter
         param += '-j "%s" ' % urllib.quote(tmpJobO)		
     param += '-i "%s" ' % inList

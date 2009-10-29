@@ -20,6 +20,7 @@ current
   * added --long to prun
   * fixed long queue brokerage
   * changed parameter format in --exec of prun to be consistent with pathena
+  * enabled to set the start number to %SKIPEVENTS in --trf of pathena
 
 0.1.96 (10/24/2009)
   * added --parentDS to pathena
