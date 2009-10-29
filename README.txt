@@ -16,7 +16,7 @@ pathena -h
 
 current
   * fixed PANDA_SYS in rpm
-  * added warning message when the number of sub-jobs exceeds the limit
+  * fixed pathena/prun to give warning message when the number of sub-jobs exceeds the limit
   * added --long to prun
   * fixed long queue brokerage
   * changed parameter format in --exec of prun to be consistent with pathena
