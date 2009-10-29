@@ -2333,22 +2333,22 @@ for iSubJob in range(options.split):
                 tmpJobO = tmpJobO.replace(match.group(0),tmpDbrLFN)
         # random seed
         for tmpItem in tmpJobO.split():
-            match = re.search('%RNDM=(.+)$',tmpItem)
+            match = re.search('%RNDM=(\d+)( |$|\'|\"|;)',tmpItem)
             if match:
                 tmpRndmNum = int(match.group(1)) + iSubJob
                 # replace parameters
-                tmpJobO = tmpJobO.replace(match.group(0),'%s' % tmpRndmNum)
+                tmpJobO = re.sub(match.group(0),'%s%s' % (tmpRndmNum,match.group(2)),tmpJobO)
         # skipEvent
         for tmpItem in tmpJobO.split():
-            match = re.search('%SKIPEVENTS(:*)(\d*)$',tmpItem)
+            match = re.search('%SKIPEVENTS(:*)(\d*)( |$|\'|\"|;)',tmpItem)
             if match != None:
                 if match.group(2) == '':
                     # replace %SKIPEVENTS
-                    tmpJobO = re.sub('%SKIPEVENTS( |$)','%s ' % nEventsToSkip,tmpJobO)
+                    tmpJobO = re.sub(match.group(0),'%s%s' % (nEventsToSkip,match.group(3)),tmpJobO)
                 else:
                     # replace %SKIPEVENTS:NN
                     tmpSkipEvents = int(match.group(2)) + nEventsToSkip 
-                    tmpJobO = tmpJobO.replace(match.group(0),'%s' % tmpSkipEvents)
+                    tmpJobO = re.sub(match.group(0),'%s%s' % (tmpSkipEvents,match.group(3)),tmpJobO)
         # set jobO parameter
         param += '-j "%s" ' % urllib.quote(tmpJobO)		
     param += '-i "%s" ' % inList

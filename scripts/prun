@@ -1209,11 +1209,11 @@ for iJob in range(options.nJobs):
         # random seed
         tmpJobO = options.jobParams
         for tmpItem in tmpJobO.split():
-            match = re.search('%RNDM=(.+)$',tmpItem)
+            match = re.search('%RNDM=(\d+)( |$|\'|\"|;)',tmpItem)
             if match:
                 tmpRndmNum = int(match.group(1)) + iJob
                 # replace parameters
-                tmpJobO = tmpJobO.replace(match.group(0),'%s' % tmpRndmNum)
+                tmpJobO = re.sub(match.group(0),'%s%s' % (tmpRndmNum,match.group(2)),tmpJobO)
         jobR.jobParameters += '-p "%s" ' % urllib.quote(tmpJobO)
     # source files
     if not options.nobuild:
