@@ -2343,8 +2343,10 @@ for iSubJob in range(options.split):
             match = re.search('%SKIPEVENTS(:*)(\d*)$',tmpItem)
             if match != None:
                 if match.group(2) == '':
+                    # replace %SKIPEVENTS
                     tmpJobO = re.sub('%SKIPEVENTS( |$)','%s ' % nEventsToSkip,tmpJobO)
                 else:
+                    # replace %SKIPEVENTS:NN
                     tmpSkipEvents = int(match.group(2)) + nEventsToSkip 
                     tmpJobO = tmpJobO.replace(match.group(0),'%s' % tmpSkipEvents)
         # set jobO parameter
