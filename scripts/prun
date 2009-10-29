@@ -112,6 +112,8 @@ optP.add_option('--myproxy',action='store',dest='myproxy',default='myproxy.cern.
                 help='Name of the myproxy server')
 optP.add_option('-v',action='store_const',const=True,dest='verbose',default=False,
                 help='Verbose')
+optP.add_option('--long', action='store_const',const=True,dest='long',default=False,
+                help='Send job to a long queue')
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -593,8 +595,12 @@ if options.inDS != '':
             tmpBrokerErr = ''   
             for idxDsLocationMap,tmpDsLocationMap in enumerate(tmpDsLocationMapList):    
                 tmpSites = []
-                for tmpItem in tmpDsLocationMap.values():
-                    tmpSites += tmpItem
+                for tmpItems in tmpDsLocationMap.values():
+                    for tmpItem in tmpItems:
+                        # convert to long
+                        if options.long:
+                            tmpItem = Client.convertToLong(tmpItem)
+                        tmpSites.append(tmpItem)
 		if tmpSites == []:
                     continue
                 status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)
@@ -675,6 +681,10 @@ else:
 		# exclude long,xrootd,local queues
 		if Client.isExcudedSite(tmpID):
 		    continue
+                # convert to long
+                if options.long:
+                    tmpID = Client.convertToLong(tmpID)
+                # check cloud    
 		if spec['cloud']==options.cloud:
 		    tmpPriSites.append(tmpID)
 		elif not expCloudFlag:
@@ -715,6 +725,9 @@ if options.spaceToken != '':
 if options.destSE == tmpOutDsLocation:
     options.destSE = ''
 
+# long queue
+if options.long and not options.site.startswith('ANALY_LONG_'):
+    options.site = Client.convertToLong(options.site)
 
 #####################################################################
 # archive sources and send it to HTTP-reachable location
