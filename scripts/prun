@@ -312,6 +312,9 @@ if options.jobParams == '':
     tmpLog.error("you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
     sys.exit(EC_Config)
 
+# replace : to = for backward compatibility
+for optArg in ['RNDM']:
+    options.jobParams = re.sub('%'+optArg+':','%'+optArg+'=',options.jobParams)
 
 # check output dataset
 if options.outDS == '':

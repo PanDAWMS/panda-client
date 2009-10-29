@@ -19,6 +19,7 @@ current
   * added warning message when the number of sub-jobs exceeds the limit
   * added --long to prun
   * fixed long queue brokerage
+  * changed parameter format in --exec of prun to be consistent with pathena
 
 0.1.96 (10/24/2009)
   * added --parentDS to pathena
