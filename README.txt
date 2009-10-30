@@ -22,6 +22,7 @@ current
   * changed parameter format in --exec of prun to be consistent with pathena
   * enabled to set the start number to %SKIPEVENTS in --trf of pathena
   * fixed parameter replacement in --trf/pathena and --exec/prun to take delimiter into account
+  * added protection to pbook against orphan directories created by distutils
 
 0.1.96 (10/24/2009)
   * added --parentDS to pathena

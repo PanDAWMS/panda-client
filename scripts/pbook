@@ -83,7 +83,8 @@ atexit.register(_onExit,tmpDir,historyFile)
 for path in sys.path:
     if path == '':
         path = '.'
-    if os.path.exists(path) and 'pandatools' in os.listdir(path):
+    if os.path.exists(path) and 'pandatools' in os.listdir(path) \
+           and os.path.exists('%s/pandatools/__init__.py' % path):
         # make symlink for module name
         os.symlink('%s/pandatools' % path,'%s/taskbuffer' % tmpDir)
         break
