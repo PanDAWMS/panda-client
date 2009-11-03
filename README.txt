@@ -23,6 +23,7 @@ current
   * enabled to set the start number to %SKIPEVENTS in --trf of pathena
   * fixed parameter replacement in --trf/pathena and --exec/prun to take delimiter into account
   * added protection to pbook against orphan directories created by distutils
+  * fixed pbook not to show duplicated datasets in inDS/outDS
 
 0.1.96 (10/24/2009)
   * added --parentDS to pathena
