@@ -14,7 +14,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.97 (11/4/2009)
   * fixed PANDA_SYS in rpm
   * fixed pathena/prun to give warning message when the number of sub-jobs exceeds the limit
   * added --long to prun
