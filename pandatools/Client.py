@@ -373,6 +373,16 @@ def convertDQ2toPandaID(site):
     return keptSite
 
 
+# convert to long queue
+def convertToLong(site):
+    tmpsite = re.sub('ANALY_','ANALY_LONG_',site)
+    tmpsite = re.sub('_\d+$','',tmpsite)
+    # if sitename exists
+    if PandaSites.has_key(tmpsite):
+        site = tmpsite
+    return site
+
+
 # submit jobs
 def submitJobs(jobs,verbose=False):
     # set hostname
