@@ -161,7 +161,7 @@ class PdbProxy:
 
 
 # convert Panda jobs to DB representation
-def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={}):
+def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobForSiteID=None):
     statusOnly = False
     if localJob != None:
         # update status only 
@@ -193,6 +193,9 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={}):
         # build job
         if ddata.buildStatus != '':
             ddata.buildStatus = sStr.split(',')[0]
+        # set computingSite mainly for rebrokerage
+        if pandaJobForSiteID != None:
+            ddata.site = pandaJobForSiteID.computingSite
         # return    
         return ddata
     # PandaID
