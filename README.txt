@@ -17,6 +17,7 @@ pathena -h
 current
   * added kill(X,Y) to pbook
   * added rebrokerage() to pbook 
+  * added --outputPath for DQ2-free sites
 	
 0.1.97 (11/4/2009)
   * fixed PANDA_SYS in rpm

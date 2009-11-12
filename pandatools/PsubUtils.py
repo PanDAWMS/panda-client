@@ -239,9 +239,12 @@ def checkValidCloud(cloud):
 
 
 # check name of output dataset
-def checkOutDsName(outDS,distinguishedName,official,nickName=''):
+def checkOutDsName(outDS,distinguishedName,official,nickName='',site=''):
     # get logger
     tmpLog = PLogger.getPandaLogger()
+    # don't check if DQ2-free
+    if Client.isDQ2free(site):
+        return True
     # official dataset
     if official:
         allowedPrefix = ['group']

@@ -1940,3 +1940,10 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
     if dsStringFlag:
         return inputFileMap,inputDsString
     return inputFileMap
+
+
+# check if DQ2-free site
+def isDQ2free(site):
+    if PandaSites.has_key(site) and PandaSites[site]['ddm'] == 'local':
+        return True
+    return False
