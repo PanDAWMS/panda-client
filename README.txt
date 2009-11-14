@@ -14,10 +14,11 @@ pathena -h
 
 ** Release Note
 
-current
+0.1.98 (11/13/2009)
   * added kill(X,Y) to pbook
   * added rebrokerage() to pbook 
   * added --outputPath for DQ2-free sites
+  * fixed pathena for UserDataSvc
 	
 0.1.97 (11/4/2009)
   * fixed PANDA_SYS in rpm
