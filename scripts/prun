@@ -112,6 +112,10 @@ optP.add_option('--myproxy',action='store',dest='myproxy',default='myproxy.cern.
                 help='Name of the myproxy server')
 optP.add_option('-v',action='store_const',const=True,dest='verbose',default=False,
                 help='Verbose')
+optP.add_option('--long', action='store_const',const=True,dest='long',default=False,
+                help='Send job to a long queue')
+optP.add_option('--outputPath',action='store',dest='outputPath', default='',
+                type='string', help='Physical path of output directory relative to a root path')
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -181,6 +185,16 @@ original_outDS_Name = options.outDS
 # reset crossSite unless container is used for output 
 if not original_outDS_Name.endswith('/'):
     options.crossSite = 0
+
+# use outputPath as outDS
+if Client.isDQ2free(options.site):
+    # change empty to outDS or ./
+    if options.outputPath == '':
+        if options.outDS != '':
+            options.outputPath = options.outDS
+        else:
+            options.outputPath = './'
+    options.outDS = options.outputPath
 
 # libDS
 libds_file = '%s/libds_prun.dat' % os.environ['PANDA_CONFIG_ROOT']
@@ -310,6 +324,9 @@ if options.jobParams == '':
     tmpLog.error("you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
     sys.exit(EC_Config)
 
+# replace : to = for backward compatibility
+for optArg in ['RNDM']:
+    options.jobParams = re.sub('%'+optArg+':','%'+optArg+'=',options.jobParams)
 
 # check output dataset
 if options.outDS == '':
@@ -376,29 +393,35 @@ if options.destSE != '':
 
 # get DN
 distinguishedName = PsubUtils.getDN()
-if distinguishedName == '':
+
+# get nickname
+nickName = PsubUtils.getNickname()
+
+if distinguishedName == '' and nickName == '':
     sys.exit(EC_Config)
 
 # check outDS format
-if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official):
+if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site):
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
 
 # check if output dataset already exists
 outputDSexist = False
 outputContExist = False
-tmpDatasets = Client.getDatasets(options.outDS,options.verbose)
-if len(tmpDatasets) != 0:
-    if original_outDS_Name.endswith('/'):
-        outputContExist = True
-    else:
-        outputDSexist = True
+if not Client.isDQ2free(options.site):
+    tmpDatasets = Client.getDatasets(options.outDS,options.verbose)
+    if len(tmpDatasets) != 0:
+        if original_outDS_Name.endswith('/'):
+            outputContExist = True
+        else:
+            outputDSexist = True
 
 # check if shadow dataset exists
 shadowDSexist = False
-tmpDatasets = Client.getDatasets("%s%s" % (options.outDS,suffixShadow),options.verbose)
-if len(tmpDatasets) != 0:
-    shadowDSexist = True
+if not Client.isDQ2free(options.site):
+    tmpDatasets = Client.getDatasets("%s%s" % (options.outDS,suffixShadow),options.verbose)
+    if len(tmpDatasets) != 0:
+        shadowDSexist = True
 
 # check destSE
 if outputDSexist and options.destSE != '':
@@ -589,8 +612,12 @@ if options.inDS != '':
             tmpBrokerErr = ''   
             for idxDsLocationMap,tmpDsLocationMap in enumerate(tmpDsLocationMapList):    
                 tmpSites = []
-                for tmpItem in tmpDsLocationMap.values():
-                    tmpSites += tmpItem
+                for tmpItems in tmpDsLocationMap.values():
+                    for tmpItem in tmpItems:
+                        # convert to long
+                        if options.long:
+                            tmpItem = Client.convertToLong(tmpItem)
+                        tmpSites.append(tmpItem)
 		if tmpSites == []:
                     continue
                 status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)
@@ -671,6 +698,10 @@ else:
 		# exclude long,xrootd,local queues
 		if Client.isExcudedSite(tmpID):
 		    continue
+                # convert to long
+                if options.long:
+                    tmpID = Client.convertToLong(tmpID)
+                # check cloud    
 		if spec['cloud']==options.cloud:
 		    tmpPriSites.append(tmpID)
 		elif not expCloudFlag:
@@ -711,6 +742,9 @@ if options.spaceToken != '':
 if options.destSE == tmpOutDsLocation:
     options.destSE = ''
 
+# long queue
+if options.long and not options.site.startswith('ANALY_LONG_'):
+    options.site = Client.convertToLong(options.site)
 
 #####################################################################
 # archive sources and send it to HTTP-reachable location
@@ -1013,9 +1047,25 @@ elif options.libDS == '':
         jobB.AtlasRelease  = athenaVer
         jobB.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobB.transformation    = '%s/buildGen-00-00-01' % Client.baseURLSUB
-    jobB.destinationDBlock = 'user%s.%s.lib._%s' % (time.strftime('%y',time.gmtime()),distinguishedName,
-                                                    time.time())
-    jobB.destinationSE     = options.site
+    if nickName == '':
+        # old convention
+        tmpDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
+    else:
+        tmpDsPrefix = 'user.%s' % nickName
+    libDsName = '%s.%s.%s.lib._%06d' % (tmpDsPrefix,
+                                        time.strftime('%m%d%H%M%S',time.gmtime()),
+                                        datetime.datetime.utcnow().microsecond,
+                                        jobDefinitionID)
+    if Client.isDQ2free(options.site):
+        # user specified output path 
+        jobB.destinationDBlock = re.sub('/+$','',options.outputPath)+'/%s' % libDsName
+    else:
+        jobB.destinationDBlock = libDsName
+    if Client.isDQ2free(options.site):
+        # flag to use DQ2-free output
+        jobB.destinationSE = 'local'
+    else:
+        jobB.destinationSE = options.site
     jobB.prodSourceLabel   = 'panda'
     if options.processingType != '':    
         jobB.processingType = options.processingType
@@ -1027,7 +1077,7 @@ elif options.libDS == '':
     jobB.cloud             = Client.PandaSites[options.site]['cloud']
     # lib.tgz
     fileBO = FileSpec()
-    fileBO.lfn               = '%s.lib.tgz' % jobB.destinationDBlock
+    fileBO.lfn               = '%s.lib.tgz' % libDsName
     fileBO.type              = 'output'
     fileBO.dataset           = jobB.destinationDBlock
     fileBO.destinationSE     = jobB.destinationSE
@@ -1049,7 +1099,7 @@ elif options.libDS == '':
         jobB.jobParameters += "--useAthenaPackages "
     # log    
     file = FileSpec()
-    file.lfn               = '%s.log.tgz' % jobB.destinationDBlock
+    file.lfn               = '%s.log.tgz' % libDsName
     file.type              = 'log'
     file.dataset           = jobB.destinationDBlock
     file.destinationSE     = jobB.destinationSE
@@ -1151,11 +1201,14 @@ for iJob in range(options.nJobs):
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
     jobR.destinationDBlock = options.outDS
-    if options.destSE != '':
+    if Client.isDQ2free(options.site):
+        # flag to use non-DQ2 output
+        jobR.destinationSE = 'local'
+    elif options.destSE != '':
         # write outputs to destSE
-        jobR.destinationSE     = options.destSE
+        jobR.destinationSE = options.destSE
     else:                
-        jobR.destinationSE     = options.site
+        jobR.destinationSE = options.site
     if options.inDS != '':
         if re.search(',',options.inDS) != None:
             jobR.prodDBlock = options.inDS.split(',')[0]
@@ -1182,11 +1235,11 @@ for iJob in range(options.nJobs):
         # random seed
         tmpJobO = options.jobParams
         for tmpItem in tmpJobO.split():
-            match = re.search('%RNDM=(.+)$',tmpItem)
+            match = re.search('%RNDM=(\d+)( |$|\'|\"|;)',tmpItem)
             if match:
                 tmpRndmNum = int(match.group(1)) + iJob
                 # replace parameters
-                tmpJobO = tmpJobO.replace(match.group(0),'%s' % tmpRndmNum)
+                tmpJobO = re.sub(match.group(0),'%s%s' % (tmpRndmNum,match.group(2)),tmpJobO)
         jobR.jobParameters += '-p "%s" ' % urllib.quote(tmpJobO)
     # source files
     if not options.nobuild:
@@ -1373,26 +1426,28 @@ if not options.nosubmit:
     if options.destSE != '':
         tmpOutDsLocation = options.destSE
 
-    # register output dataset
-    if not outputDSexist:
-        Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation)
-
-    # register output dataset container
-    if original_outDS_Name.endswith('/'):
-        # create
-        if not outputContExist:
-            Client.createContainer(original_outDS_Name,options.verbose)
-        # add dataset
+    # dataset registration
+    if not Client.isDQ2free(options.site):
+        # register output dataset
         if not outputDSexist:
-            Client.addDatasetsToContainer(original_outDS_Name,[options.outDS],options.verbose)
+            Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation)
 
-    # register shadow dataset
-    if not outputDSexist:
-        Client.addDataset("%s%s" % (options.outDS,suffixShadow),options.verbose)
+        # register output dataset container
+        if original_outDS_Name.endswith('/'):
+            # create
+            if not outputContExist:
+                Client.createContainer(original_outDS_Name,options.verbose)
+            # add dataset
+            if not outputDSexist:
+                Client.addDatasetsToContainer(original_outDS_Name,[options.outDS],options.verbose)
 
-    # register libDS
-    if options.libDS == '' and not options.nobuild:
-        Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpLibDsLocation)
+        # register shadow dataset
+        if not outputDSexist:
+            Client.addDataset("%s%s" % (options.outDS,suffixShadow),options.verbose)
+
+        # register libDS
+        if options.libDS == '' and not options.nobuild:
+            Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpLibDsLocation)
 
     # submit
     tmpLog.info("submit to %s" % options.site)
@@ -1406,6 +1461,13 @@ if not options.nosubmit:
     if out == []:
         tmpLog.error("Job submission was denied")
         sys.exit(EC_Submit)
+    # check length
+    if len(jobList) != len(out):
+        wStr  = "Only %s/%s sub-jobs were accepted " % (len(out),len(jobList))
+        wStr += "since the number of sub-jobs in a single submission is limited. "
+        wStr += "Please submit the same job again (i.e., the same inDS and outDS). "
+        wStr += "New sub-jobs will run only on unused files and outputs will be added to the same outDS\n"
+        tmpLog.warning(wStr)
     outstr   = ''
     buildStr = ''
     runStr   = ''

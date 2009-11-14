@@ -14,6 +14,23 @@ pathena -h
 
 ** Release Note
 
+0.1.98 (11/13/2009)
+  * added kill(X,Y) to pbook
+  * added rebrokerage() to pbook 
+  * added --outputPath for DQ2-free sites
+  * fixed pathena for UserDataSvc
+	
+0.1.97 (11/4/2009)
+  * fixed PANDA_SYS in rpm
+  * fixed pathena/prun to give warning message when the number of sub-jobs exceeds the limit
+  * added --long to prun
+  * fixed long queue brokerage
+  * changed parameter format in --exec of prun to be consistent with pathena
+  * allowed to set the start number to %SKIPEVENTS in --trf of pathena
+  * fixed parameter replacement in --trf/pathena and --exec/prun to take delimiter into account
+  * added protection to pbook against orphan directories created by distutils
+  * fixed pbook not to show duplicated datasets in inDS/outDS
+
 0.1.96 (10/24/2009)
   * added --parentDS to pathena
 

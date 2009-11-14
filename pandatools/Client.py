@@ -373,6 +373,16 @@ def convertDQ2toPandaID(site):
     return keptSite
 
 
+# convert to long queue
+def convertToLong(site):
+    tmpsite = re.sub('ANALY_','ANALY_LONG_',site)
+    tmpsite = re.sub('_\d+$','',tmpsite)
+    # if sitename exists
+    if PandaSites.has_key(tmpsite):
+        site = tmpsite
+    return site
+
+
 # submit jobs
 def submitJobs(jobs,verbose=False):
     # set hostname
@@ -1474,7 +1484,34 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False):
     if trustIS:
         data['trustIS'] = True
     return curl.get(url,data)
-   
+
+
+# run rebrokerage
+def runReBrokerage(jobID,cloud=None,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/runReBrokerage'
+    data = {'jobID':jobID}
+    if cloud != None:
+        data['cloud'] = cloud
+    retVal = curl.get(url,data)
+    # communication error
+    if retVal[0] != 0:
+        return retVal
+    # succeeded
+    if retVal[1] == True:
+        return 0,''
+    # server error
+    errMsg = retVal[1]
+    if errMsg.startswith('ERROR: '):
+        # remove ERROR:
+        errMsg = re.sub('ERROR: ','',errMsg)
+    return EC_Failed,errMsg
+
 
 # exclude long,xrootd,local queues
 def isExcudedSite(tmpID):
@@ -1903,3 +1940,10 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
     if dsStringFlag:
         return inputFileMap,inputDsString
     return inputFileMap
+
+
+# check if DQ2-free site
+def isDQ2free(site):
+    if PandaSites.has_key(site) and PandaSites[site]['ddm'] == 'local':
+        return True
+    return False
