@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.1.99 (11/15/2009)
+  * removed case sensitivity from dataset lookup
+
 0.1.98 (11/13/2009)
   * added kill(X,Y) to pbook
   * added rebrokerage() to pbook 

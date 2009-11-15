@@ -544,6 +544,26 @@ def deleteFile(file):
     return curl.post(url,data)
 
 
+# check dataset in map by ignoring case sensitivity
+def checkDatasetInMap(name,outMap):
+    try:
+        for tmpKey in outMap.keys():
+            if name.upper() == tmpKey.upper():
+                return True
+    except:
+        pass
+    return False
+
+
+# get real dataset name from map by ignoring case sensitivity
+def getDatasetValueInMap(name,outMap):
+    for tmpKey in outMap.keys():
+        if name.upper() == tmpKey.upper():
+            return tmpKey
+    # return original name    
+    return name
+
+
 # query files in dataset
 def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False):
     # instantiate curl
@@ -576,12 +596,14 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False):
                 data = {'operation':'queryDatasetByName','dsn':tmpName,
                         'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
                 status,out = curl.get(url,data)
-                if status != 0 or out == '\x00' or (re.search('\*',tmpName) == None and not out.has_key(tmpName)):
+                if status != 0 or out == '\x00' or (re.search('\*',tmpName) == None and not checkDatasetInMap(tmpName,out)):
                     errStr = "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
                              % tmpName
                     sys.exit(EC_Failed)
                 # parse
                 if re.search('\*',tmpName) == None:
+                    # get real dataset name
+                    tmpName = getDatasetValueInMap(tmpName,out)
                     vuidList.append(out[tmpName]['vuids'])
                     # mapping between name and vuids
                     nameVuidsMap[tuple(out[tmpName]['vuids'])] = tmpName
@@ -671,7 +693,7 @@ def getDatasets(name,verbose=False,withWC=False):
             sys.exit(EC_Failed)
         # parse
         datasets = {}
-        if out == '\x00' or ((not withWC) and (not out.has_key(name))):
+        if out == '\x00' or ((not withWC) and (not checkDatasetInMap(name,out))):
             # no datasets
             return datasets
         # get VUIDs
@@ -927,11 +949,13 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             data = {'operation':'queryDatasetByName','dsn':tmpName,'version':0,
                     'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
             status,out = curl.get(url,data)
-            if status != 0 or out == '\x00' or (not out.has_key(tmpName)):
+            if status != 0 or out == '\x00' or (not checkDatasetInMap(out,tmpName)):
                 if verbose:
                     print "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
                           % tmpName
                     return retSites
+            # get real datasetname
+            tmpName = getDatasetValueInMap(tmpName,out)
             # parse
             duid  = out[tmpName]['duid']
             # get replica location
