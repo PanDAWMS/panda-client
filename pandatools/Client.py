@@ -373,6 +373,16 @@ def convertDQ2toPandaID(site):
     return keptSite
 
 
+# convert to long queue
+def convertToLong(site):
+    tmpsite = re.sub('ANALY_','ANALY_LONG_',site)
+    tmpsite = re.sub('_\d+$','',tmpsite)
+    # if sitename exists
+    if PandaSites.has_key(tmpsite):
+        site = tmpsite
+    return site
+
+
 # submit jobs
 def submitJobs(jobs,verbose=False):
     # set hostname
@@ -534,6 +544,26 @@ def deleteFile(file):
     return curl.post(url,data)
 
 
+# check dataset in map by ignoring case sensitivity
+def checkDatasetInMap(name,outMap):
+    try:
+        for tmpKey in outMap.keys():
+            if name.upper() == tmpKey.upper():
+                return True
+    except:
+        pass
+    return False
+
+
+# get real dataset name from map by ignoring case sensitivity
+def getDatasetValueInMap(name,outMap):
+    for tmpKey in outMap.keys():
+        if name.upper() == tmpKey.upper():
+            return tmpKey
+    # return original name    
+    return name
+
+
 # query files in dataset
 def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False):
     # instantiate curl
@@ -566,12 +596,14 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False):
                 data = {'operation':'queryDatasetByName','dsn':tmpName,
                         'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
                 status,out = curl.get(url,data)
-                if status != 0 or out == '\x00' or (re.search('\*',tmpName) == None and not out.has_key(tmpName)):
+                if status != 0 or out == '\x00' or (re.search('\*',tmpName) == None and not checkDatasetInMap(tmpName,out)):
                     errStr = "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
                              % tmpName
                     sys.exit(EC_Failed)
                 # parse
                 if re.search('\*',tmpName) == None:
+                    # get real dataset name
+                    tmpName = getDatasetValueInMap(tmpName,out)
                     vuidList.append(out[tmpName]['vuids'])
                     # mapping between name and vuids
                     nameVuidsMap[tuple(out[tmpName]['vuids'])] = tmpName
@@ -661,7 +693,7 @@ def getDatasets(name,verbose=False,withWC=False):
             sys.exit(EC_Failed)
         # parse
         datasets = {}
-        if out == '\x00' or ((not withWC) and (not out.has_key(name))):
+        if out == '\x00' or ((not withWC) and (not checkDatasetInMap(name,out))):
             # no datasets
             return datasets
         # get VUIDs
@@ -917,11 +949,13 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             data = {'operation':'queryDatasetByName','dsn':tmpName,'version':0,
                     'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
             status,out = curl.get(url,data)
-            if status != 0 or out == '\x00' or (not out.has_key(tmpName)):
+            if status != 0 or out == '\x00' or (not checkDatasetInMap(out,tmpName)):
                 if verbose:
                     print "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
                           % tmpName
                     return retSites
+            # get real datasetname
+            tmpName = getDatasetValueInMap(tmpName,out)
             # parse
             duid  = out[tmpName]['duid']
             # get replica location
@@ -1474,7 +1508,34 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False):
     if trustIS:
         data['trustIS'] = True
     return curl.get(url,data)
-   
+
+
+# run rebrokerage
+def runReBrokerage(jobID,cloud=None,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/runReBrokerage'
+    data = {'jobID':jobID}
+    if cloud != None:
+        data['cloud'] = cloud
+    retVal = curl.get(url,data)
+    # communication error
+    if retVal[0] != 0:
+        return retVal
+    # succeeded
+    if retVal[1] == True:
+        return 0,''
+    # server error
+    errMsg = retVal[1]
+    if errMsg.startswith('ERROR: '):
+        # remove ERROR:
+        errMsg = re.sub('ERROR: ','',errMsg)
+    return EC_Failed,errMsg
+
 
 # exclude long,xrootd,local queues
 def isExcudedSite(tmpID):
@@ -1903,3 +1964,10 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
     if dsStringFlag:
         return inputFileMap,inputDsString
     return inputFileMap
+
+
+# check if DQ2-free site
+def isDQ2free(site):
+    if PandaSites.has_key(site) and PandaSites[site]['ddm'] == 'local':
+        return True
+    return False
