@@ -52,6 +52,27 @@ class LocalJobSpec(object):
             nJobsStr = "%d + 1(build)" % (nJobs-1)
         else:
             nJobsStr = "%d" % nJobs
+        # remove duplication in inDS and outDS
+        strInDS = ''
+        try:
+            tmpInDSList = []
+            for tmpItem in str(self.inDS).split(','):
+                if not tmpItem in tmpInDSList:
+                    tmpInDSList.append(tmpItem)
+                    strInDS += '%s,' % tmpItem
+            strInDS = strInDS[:-1]
+        except:
+            pass
+        strOutDS = ''
+        try:
+            tmpOutDSList = []
+            for tmpItem in str(self.outDS).split(','):
+                if not tmpItem in tmpOutDSList:
+                    tmpOutDSList.append(tmpItem)
+                    strOutDS += '%s,' % tmpItem
+            strOutDS = strOutDS[:-1]
+        except:
+            pass
         # string representation
         strFormat = "%15s : %s\n"
         strOut =  ""
@@ -61,8 +82,8 @@ class LocalJobSpec(object):
         strOut += strFormat % ("nJobs",        nJobsStr)
         strOut += strFormat % ("site",         self.site)
         strOut += strFormat % ("cloud",        self.cloud)                
-        strOut += strFormat % ("inDS",         str(self.inDS))
-        strOut += strFormat % ("outDS",        str(self.outDS))
+        strOut += strFormat % ("inDS",         strInDS)
+        strOut += strFormat % ("outDS",        strOutDS)
         strOut += strFormat % ("libDS",        str(self.libDS))
         strOut += strFormat % ("retryID",      self.retryID)        
         strOut += strFormat % ("provenanceID", self.provenanceID)
