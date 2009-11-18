@@ -949,7 +949,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             data = {'operation':'queryDatasetByName','dsn':tmpName,'version':0,
                     'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
             status,out = curl.get(url,data)
-            if status != 0 or out == '\x00' or (not checkDatasetInMap(out,tmpName)):
+            if status != 0 or out == '\x00' or (not checkDatasetInMap(tmpName,out)):
                 if verbose:
                     print "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
                           % tmpName

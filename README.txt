@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.0 (11/18/2009)
+  * fixed dataset lookup
+
 0.1.99 (11/15/2009)
   * removed case sensitivity from dataset lookup
 
