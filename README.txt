@@ -14,6 +14,12 @@ pathena -h
 
 ** Release Note
 
+0.2.1 (11/19/2009)
+  * added schema evolution to pbook
+  * added release/cache info to pbook.show
+  * set version info to lockedby
+  * added clean() to pbook  
+
 0.2.0 (11/18/2009)
   * fixed dataset lookup
 
@@ -23,7 +29,7 @@ pathena -h
 0.1.98 (11/13/2009)
   * added kill(X,Y) to pbook
   * added rebrokerage() to pbook 
-  * added --outputPath for DQ2-free sites
+  * added --outputPath for DQ2-free sites like T3
   * fixed pathena for UserDataSvc
 	
 0.1.97 (11/4/2009)

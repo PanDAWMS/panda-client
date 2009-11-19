@@ -1511,7 +1511,7 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False):
 
 
 # run rebrokerage
-def runReBrokerage(jobID,cloud=None,verbose=False):
+def runReBrokerage(jobID,libDS='',cloud=None,verbose=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1522,6 +1522,8 @@ def runReBrokerage(jobID,cloud=None,verbose=False):
     data = {'jobID':jobID}
     if cloud != None:
         data['cloud'] = cloud
+    if not libDS in ['',None,'NULL']:
+        data['libDS'] = libDS
     retVal = curl.get(url,data)
     # communication error
     if retVal[0] != 0:

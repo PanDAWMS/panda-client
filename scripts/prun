@@ -128,8 +128,8 @@ if options.verbose:
     print options
 
 # display version
+from pandatools import PandaToolsPkgInfo
 if options.version:
-    from pandatools import PandaToolsPkgInfo
     print "Version: %s" % PandaToolsPkgInfo.release_version
     sys.exit(0)
 
@@ -1042,6 +1042,7 @@ elif options.libDS == '':
     jobB = JobSpec()
     jobB.jobDefinitionID   = jobDefinitionID
     jobB.jobName           = jobName
+    jobB.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version 
     jobB.metadata          = fullExecString
     if athenaVer != '':
         jobB.AtlasRelease  = athenaVer
@@ -1195,6 +1196,7 @@ for iJob in range(options.nJobs):
     jobR = JobSpec()
     jobR.jobDefinitionID   = jobDefinitionID
     jobR.jobName           = jobName
+    jobR.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
     jobR.metadata          = fullExecString
     if athenaVer != '':
         jobR.AtlasRelease  = athenaVer

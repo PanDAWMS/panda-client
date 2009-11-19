@@ -12,7 +12,15 @@ class LocalJobSpec(object):
     _attributes = ('id','JobID','PandaID','jobStatus','site','cloud','jobType',
                    'jobName','inDS','outDS','libDS','provenanceID','creationTime',
                    'lastUpdate','jobParams','dbStatus','buildStatus','retryID',
-                   'commandToPilot') 
+                   'commandToPilot')
+    # appended attributes
+    appended = {
+        'groupID'    :'INTEGER',
+        'releaseVar' :'VARCHAR(128)',
+        'cacheVar'   :'VARCHAR(128)',
+        }
+    
+    _attributes += tuple(appended.keys())
     # slots
     __slots__ = _attributes
 
@@ -73,11 +81,21 @@ class LocalJobSpec(object):
             strOutDS = strOutDS[:-1]
         except:
             pass
+        # parse
+        relStr = ''
+        if not self.releaseVar in ['','NULL','None',None]:
+            relStr = self.releaseVar
+        # cache
+        cacheStr = ''
+        if not self.cacheVar in ['','NULL','None',None]:
+            cacheStr = self.cacheVar
         # string representation
         strFormat = "%15s : %s\n"
         strOut =  ""
         strOut += strFormat % ("JobID",        self.JobID)
         strOut += strFormat % ("type",         self.jobType)
+        strOut += strFormat % ("release",      relStr)
+        strOut += strFormat % ("cache",        cacheStr)
         strOut += strFormat % ("PandaID",      self.encodeCompact()['PandaID'])
         strOut += strFormat % ("nJobs",        nJobsStr)
         strOut += strFormat % ("site",         self.site)
