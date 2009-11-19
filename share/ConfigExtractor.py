@@ -379,7 +379,7 @@ if hasattr(THistSvc.Output,'__len__') and len(THistSvc.Output):
                 fName = re.sub('[\"\']','',fName)
                 fName = fName.split('/')[-1]
             # keep output of UserDataSvc
-            if sName in ['userdataoutputstream']:
+            if sName in ['userdataoutputstream'] or sName.startswith('userdataoutputstream'):
                 userDataSvcStream[sName] = fName
                 continue
             _printConfig('Output=THIST %s' % sName)
