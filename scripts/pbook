@@ -83,7 +83,8 @@ atexit.register(_onExit,tmpDir,historyFile)
 for path in sys.path:
     if path == '':
         path = '.'
-    if os.path.exists(path) and 'pandatools' in os.listdir(path):
+    if os.path.exists(path) and 'pandatools' in os.listdir(path) \
+           and os.path.exists('%s/pandatools/__init__.py' % path):
         # make symlink for module name
         os.symlink('%s/pandatools' % path,'%s/taskbuffer' % tmpDir)
         break
@@ -146,19 +147,27 @@ class PBookCore:
             # get full JobSpec
             pandaJobs = []            
             pandaFileInfo = {}
+	    pandaJobForSiteID = None
             if job == None:
 		tmpIDs = [pandaIDs[0],pandaIDs[-1]]
                 status,pandaJobs = Client.getFullJobStatus(tmpIDs,verbose=self.verbose)
                 if status != 0:
-                    tmpLog.error("Failed to get PandaIDs for %s" % remoteJobID) 
+                    tmpLog.error("Failed to get PandaJobs for %s" % remoteJobID) 
                     return
 		# get slimmed file info
                 status,pandaFileInfo = Client.getSlimmedFileInfoPandaIDs(pandaIDs,verbose=self.verbose)
                 if status != 0:
                     tmpLog.error("Failed to get file info  for %s" % remoteJobID)
                     return
+            else:
+                # get one job to set computingSite which may have changed due to rebrokerage
+                status,tmpPandaJobs = Client.getFullJobStatus([pandaIDs[0]],verbose=self.verbose)
+                if status != 0:
+                    tmpLog.error("Failed to get PandaJobs for %s" % remoteJobID)
+                    return
+                pandaJobForSiteID = tmpPandaJobs[0]
             # convert to local job spec
-            localJob = PdbUtils.convertPtoD(pandaJobs,pandaIDstatus,job,pandaFileInfo)
+            localJob = PdbUtils.convertPtoD(pandaJobs,pandaIDstatus,job,pandaFileInfo,pandaJobForSiteID)
             # update database 
             if not remoteJobID in localJobIDs:
                 # insert to DB
@@ -219,20 +228,26 @@ class PBookCore:
         # get job info from local repository
         job = self.getJobInfo(JobID)
         if job == None:
-            tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)            
+	    # not found
             return None
         # update if needed
         if job.dbStatus != 'frozen' or forceUpdate:
             tmpLog.info("Getting status for JobID=%s ..." % JobID)            
             # get status from Panda server
-            status,pandaIDstatus = Client.getPandIDsWithJobID(JobID,
-                                                              nJobs=len(job.PandaID.split(',')),
-                                                              verbose=self.verbose)
+            status,pandaIDstatus = Client.getPandIDsWithJobID(JobID,verbose=self.verbose)
             if status != 0:
                 tmpLog.error("Failed to get status for JobID=%s" % JobID)
                 return None
+            # get one job to set computingSite which may have changed due to rebrokerage
+            pandaJob = None
+            if pandaIDstatus != {}:
+                status,tmpPandaJobs = Client.getFullJobStatus([pandaIDstatus.keys()[0]],verbose=self.verbose)
+                if status != 0:
+                    tmpLog.error("Failed to get PandaJobs for %s" % JobID)
+                    return None
+                pandaJob = tmpPandaJobs[0]
             # convert to local job spec
-            job = PdbUtils.convertPtoD([],pandaIDstatus,job)
+            job = PdbUtils.convertPtoD([],pandaIDstatus,job,pandaJobForSiteID=pandaJob)
             # update DB
             try:
                 PdbUtils.updateJobDB(job,self.verbose)
@@ -257,7 +272,7 @@ class PBookCore:
             return None
 	# skip frozen job
         if job.dbStatus == 'frozen':
-            tmpLog.info('All subJobs already finished/failed')
+            tmpLog.info('All subJobs in JobID=%s already finished/failed' % JobID)
             return
         # get PandaID list
         killJobs = job.PandaID.split(',')
@@ -280,6 +295,48 @@ class PBookCore:
         tmpLog.info('Done. JobID=%s will be killed in 30min' % JobID)
         return
 
+
+    # rebrokerage
+    def rebrokerage(self,JobID,cloud):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # check proxy
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
+        # get job info using status
+        job = self.status(JobID)
+        if job == None:
+	    # not found
+            return
+	# skip frozen job
+        if job.dbStatus == 'frozen':
+            tmpLog.info('All subJobs already finished/failed')
+            return
+        # rebrokerage
+        tmpLog.info('Sending rebrokerage request ...')
+        status,output = Client.runReBrokerage(JobID,job.libDS,cloud,self.verbose)
+        if status != 0:
+            tmpLog.error(output)
+            tmpLog.error("Failed to reassign JobID=%s" % JobID)
+            return
+        # done
+        tmpLog.info('Done')
+        return
+
+
+    # clean
+    def clean(self,nDays=90):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # delete
+        try:
+            PdbUtils.deleteOldJobs(nDays,self.verbose)
+        except:
+            tmpLog.error("Failed to delete old jobs")
+            return
+        # done
+        tmpLog.info('Done')
+        return
+                        
 
     # retry
     def retry(self,JobID):
@@ -458,6 +515,8 @@ def intmain(pbookCore,comString):
    show
    kill
    retry
+   clean
+   reassign
          
 For more info, do help(show) for example."""
         print str
@@ -496,13 +555,24 @@ For more info, do help(show) for example."""
 
 
     # kill
-    def kill(JobID):
-        """Kill all subJobs in JobID
+    def kill(JobID,upperJobID=None):
+        """Kill all subJobs in JobID. JobID and UpperJobID will be killed if upperJobID is given
 
          example:
            >>> kill(15)
+           >>> kill(15,20)
         """
-        pbookCore.kill(JobID)
+        if upperJobID != None:
+            # check range
+            if JobID > upperJobID:
+                tmpLog = PLogger.getPandaLogger()
+                tmpLog.error("upper JobID must be larger than %s" % JobID)
+            else:
+                # kill jobs between the range
+                for tmpJobID in range(JobID,upperJobID+1):
+                    pbookCore.kill(tmpJobID)
+        else:            
+            pbookCore.kill(JobID)
 
 
     # retry
@@ -524,6 +594,27 @@ For more info, do help(show) for example."""
                     pbookCore.retry(tmpJobID)
         else:            
             pbookCore.retry(JobID)
+
+
+    # rebrokerage
+    def reassign(JobID,cloud=None):
+        """Reassign JobID to another optimal site. When cloud is specified one of sites in the cloud is chosen. One can not use this command more than once within one hour 
+
+         example:
+           >>> reassign(15)
+           >>> reassign(15,'CA')
+        """
+	pbookCore.rebrokerage(JobID,cloud)
+
+
+    # delete jobs older than nDays
+    def clean(nDays):
+        """Delete jobs older than nDays from local database. Old jobs are automatically deleted 90 days after they were created, to keep the database size reasonable
+
+         example:
+           >>> clean(60)
+        """
+        pbookCore.clean(nDays)
 
 
     # synchronize local repository
@@ -557,6 +648,8 @@ For more info, do help(show) for example."""
         sys.exit(0)
     # run sync
     pbookCore.sync()
+    # delete old jobs
+    pbookCore.clean()
     # go to interactive prompt
     code.interact(banner="\nStart pBook %s" % PandaToolsPkgInfo.release_version,
                   local=locals())
