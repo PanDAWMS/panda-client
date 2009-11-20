@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.2 (11/20/2009)
+  * protection against unchecked replica info in DQ2
+
 0.2.1 (11/19/2009)
   * added schema evolution to pbook
   * added release/cache info to pbook.show

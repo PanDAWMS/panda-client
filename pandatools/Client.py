@@ -986,10 +986,14 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 out = outTmp
             # sum
             for tmpOutKey,tmpOutVar in out.iteritems():
+                # protection against unchecked
+                tmpNfound = tmpOutVar[0]['found']
+                if not isinstance(tmpNfound,types.IntType):
+                    tmpNfound = 1
                 if allOut.has_key(tmpOutKey):
-                    allOut[tmpOutKey][0]['found'] += tmpOutVar[0]['found']
+                    allOut[tmpOutKey][0]['found'] += tmpNfound
                 else:
-                    allOut[tmpOutKey] = tmpOutVar
+                    allOut[tmpOutKey] = [{'found':tmpNfound}]
         # replace
         out = allOut
         if verbose:
