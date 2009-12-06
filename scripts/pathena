@@ -1751,12 +1751,13 @@ if not Client.checkSiteAccessPermission(options.site,options.workingGroup,option
     sys.exit(EC_Config)
 
 # reset destSE if it is redundant
-tmpOutDsLocation = Client.PandaSites[options.site]['ddm']
-if options.spaceToken != '':
-    if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
-	tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
-if options.destSE == tmpOutDsLocation:
-    options.destSE = ''
+if options.burstSubmit == '':
+    tmpOutDsLocation = Client.PandaSites[options.site]['ddm']
+    if options.spaceToken != '':
+	if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+	    tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
+    if options.destSE == tmpOutDsLocation:
+	options.destSE = ''
 
 if options.verbose:
     print "== parameters =="

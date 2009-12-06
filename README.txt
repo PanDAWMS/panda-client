@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed for --burstSubmit
+
 0.2.2 (11/20/2009)
   * protection against unchecked replica info in DQ2
 
