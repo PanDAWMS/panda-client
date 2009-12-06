@@ -1006,6 +1006,11 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 tmpPandaSite = convertDQ2toPandaID(origTmpSite)
                 # check status
                 if PandaSites.has_key(tmpPandaSite) and PandaSites[tmpPandaSite]['status'] == 'online':
+                    # don't use TAPE
+                    if re.search('TAPE$',origTmpSite) != None:
+                        if not origTmpSite in resTapeSites:
+                            resTapeSites.append(origTmpSite)
+                        continue
                     # check the number of available files
                     if tmpMaxFiles < origTmpInfo[0]['found']:
                         tmpMaxFiles = origTmpInfo[0]['found']
@@ -1019,7 +1024,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         for origTmpSite,origTmpInfo in out.iteritems():
             # don't use TAPE
             if re.search('TAPE$',origTmpSite) != None:
-                resTapeSites.append(origTmpSite)
+                if not origTmpSite in resTapeSites:
+                    resTapeSites.append(origTmpSite)
                 continue
             # collect DQ2 IDs
             if not origTmpSite in retDQ2IDs:
@@ -1074,7 +1080,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                         # keep bad status sites for info
                         if not resBadStSites.has_key(tmpSpec['status']):
                             resBadStSites[tmpSpec['status']] = []
-                        resBadStSites[tmpSpec['status']].append(tmpID)
+                        if not tmpID in resBadStSites[tmpSpec['status']]:    
+                            resBadStSites[tmpSpec['status']].append(tmpID)
             tmpFirstDump = False
         # retrun DQ2 IDs
         if getDQ2IDs:
@@ -1492,7 +1499,7 @@ def getJobStatusFromMon(id,verbose=False):
 
 
 # run brokerage
-def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False):
+def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer=''):
     # choose at most 20 sites randomly to avoid too many lookup
     random.shuffle(sites)
     sites = sites[:20]
@@ -1511,6 +1518,14 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False):
         data['cmtConfig'] = cmtConfig
     if trustIS:
         data['trustIS'] = True
+    if cacheVer != '':
+        # change format if needed
+        cacheVer = re.sub('^-','',cacheVer)
+        match = re.search('^([^_]+)_(\d+\.\d+\.\d+\.\d+)$',cacheVer)
+        if match != None:
+            cacheVer = '%s-%s' % (match.group(1),match.group(2))
+        # use cache for brokerage
+        data['atlasRelease'] = cacheVer
     return curl.get(url,data)
 
 

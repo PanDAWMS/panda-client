@@ -14,8 +14,10 @@ pathena -h
 
 ** Release Note
 
-current
-  * fixed for --burstSubmit
+0.2.3 (12/6/2009)
+  * updated brokerage to use cache version if applicable
+  * fixed location lookup to ignore TAPE when checking available files
+  * fixed pathena for --burstSubmit
 
 0.2.2 (11/20/2009)
   * protection against unchecked replica info in DQ2

@@ -620,7 +620,7 @@ if options.inDS != '':
                         tmpSites.append(tmpItem)
 		if tmpSites == []:
                     continue
-                status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)
+                status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer)
                 if status != 0:
                     tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
                     sys.exit(EC_Config)
@@ -712,7 +712,7 @@ else:
         # run brokerage
         tmpBrokerErr = ''
         for idxTmpSites,tmpSites in enumerate(tmpSitesList):
-            status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True)    
+            status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer)    
             if status != 0:
                 tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
                 sys.exit(EC_Config)
