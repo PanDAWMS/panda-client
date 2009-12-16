@@ -1902,9 +1902,17 @@ def setGlobalTmpDir(tmpDir):
 def excludeSite(excludedSite):
     if excludedSite == '':
         return
+    # sites composed of long/short queues
+    compSites = ['CERN','LYON','BNL']
     # remove sites
     global PandaSites
     for tmpPatt in excludedSite.split(','):
+        # check if it is a composite
+        for tmpComp in compSites:
+            if tmpComp in tmpPatt:
+                # use generic ID to remove all queues
+                tmpPatt = tmpComp
+                break
         sites = PandaSites.keys()
         for site in sites:
             # look for pattern

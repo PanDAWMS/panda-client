@@ -338,6 +338,12 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
                 # TAG output
                 if match[0]=='Output=TAG':            
                     outputConfig['outTAG'] = True
+                # TAGCOM
+                if match[0].startswith('Output=TAGX'):
+                    if not outputConfig.has_key('outTAGX'):
+                        outputConfig['outTAGX'] = []
+                    tmpItems = match[0].split()
+                    outputConfig['outTAGX'].append(tuple(tmpItems[1:]))
                 # AANT
                 if match[0].startswith('Output=AANT'):
                     if not outputConfig.has_key('outAANT'):
@@ -944,6 +950,7 @@ indexTHIST   = 0
 indexAANT    = 0
 indexIROOT   = 0
 indexEXT     = 0
+indexTAGX    = 0
 indexStreamG = 0
 indexMeta    = 0
 indexMS      = 0
@@ -966,6 +973,7 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
     global indexTHIST
     global indexAANT
     global indexIROOT
+    global indexTAGX
     global indexEXT
     global indexStreamG
     global indexMeta
@@ -1081,6 +1089,11 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
             tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (outDS,sName))
             if tmpIndex > indexAANT:
                 indexAANT  = tmpIndex
+    if runConfig.output.outTAGX:            
+        for sName,oName in runConfig.output.outTAGX:
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.%s" % (outDS,sName,oName))
+            if tmpIndex > indexTAGX:
+                indexTAGX  = tmpIndex
     if runConfig.output.outIROOT:            
         for sIndex,sName in enumerate(runConfig.output.outIROOT):
             tmpIndex = getIndex(tmpList,"%s\.iROOT%s\._(\d+)\.%s" % (outDS,sIndex,sName))
@@ -1125,6 +1138,7 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
     global indexESD
     global indexAOD
     global indexTAG
+    global indexTAGX    
     global indexStream1
     global indexStream2
     global indexBS
@@ -1301,6 +1315,23 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
             if not outMap.has_key('IROOT'):
                 outMap['IROOT'] = []
             outMap['IROOT'].append((origSName,file.lfn))
+    if runConfig.output.outTAGX:
+        indexTAGX += 1
+        for sName,oName in runConfig.output.outTAGX:
+            file = FileSpec()
+            file.lfn  = '%s.%s._%05d.%s' % (jobR.destinationDBlock,sName,indexTAGX,oName)
+            file.type = 'output'
+            file.dataset = jobR.destinationDBlock
+            file.destinationDBlock = jobR.destinationDBlock
+            if individualOutDS:
+                tmpSuffix = '_%s' % sName
+                file.dataset += tmpSuffix
+                file.destinationDBlock += tmpSuffix
+            file.destinationSE = jobR.destinationSE
+            jobR.addFile(file)
+            if not outMap.has_key('IROOT'):
+                outMap['IROOT'] = []
+            outMap['IROOT'].append((oName,file.lfn))
     if runConfig.output.outStream1:
         indexStream1 += 1                                        
         file = FileSpec()

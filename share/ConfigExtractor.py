@@ -271,6 +271,21 @@ if hasattr(StreamTAG,'OutputCollection') and hasattr(StreamTAG.OutputCollection,
     _printConfig('Output=TAG')
     _printConfig(' Name: %s'% StreamTAG.OutputCollection)
 
+# TAGCOM    
+keys = ["AthenaOutputStream/StreamTAGCOM","RegistrationStream/StreamTAGCOM"]
+foundKey = False
+for key in keys:
+    if key in _configs:
+        StreamTAGX = _getConfig( key )
+        foundKey = True
+        break
+if not foundKey:
+    StreamTAGX = _Algorithm( key.split('/')[-1] )
+if hasattr(StreamTAGX,'OutputCollection') and hasattr(StreamTAGX.OutputCollection,'__len__') and \
+       len(StreamTAGX.OutputCollection):
+    _printConfig('Output=TAGX %s %s' % (StreamTAGX.name(),StreamTAGX.OutputCollection))
+    _printConfig(' Name: %s'% StreamTAGX.OutputCollection)
+
 # AANT
 aantStream = []
 appStList = []
