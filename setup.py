@@ -89,9 +89,6 @@ class install_data_panda (install_data_org):
                     patt = re.sub('build/[^/]+/dumb','',patt)
                     # remove /var/tmp/*-buildroot for bdist_rpm
                     patt = re.sub('/var/tmp/.*-buildroot','',patt)
-                    # patch for bdist_rpm
-                    if rpmInstall and item in ['install_dir'] and patt=='':
-                        patt = self.prefix
                     # replace
                     filedata = filedata.replace('@@%s@@' % item, patt)
                 # write to dest

@@ -271,6 +271,21 @@ if hasattr(StreamTAG,'OutputCollection') and hasattr(StreamTAG.OutputCollection,
     _printConfig('Output=TAG')
     _printConfig(' Name: %s'% StreamTAG.OutputCollection)
 
+# TAGCOM    
+keys = ["AthenaOutputStream/StreamTAGCOM","RegistrationStream/StreamTAGCOM"]
+foundKey = False
+for key in keys:
+    if key in _configs:
+        StreamTAGX = _getConfig( key )
+        foundKey = True
+        break
+if not foundKey:
+    StreamTAGX = _Algorithm( key.split('/')[-1] )
+if hasattr(StreamTAGX,'OutputCollection') and hasattr(StreamTAGX.OutputCollection,'__len__') and \
+       len(StreamTAGX.OutputCollection):
+    _printConfig('Output=TAGX %s %s' % (StreamTAGX.name(),StreamTAGX.OutputCollection))
+    _printConfig(' Name: %s'% StreamTAGX.OutputCollection)
+
 # AANT
 aantStream = []
 appStList = []
@@ -379,7 +394,7 @@ if hasattr(THistSvc.Output,'__len__') and len(THistSvc.Output):
                 fName = re.sub('[\"\']','',fName)
                 fName = fName.split('/')[-1]
             # keep output of UserDataSvc
-            if sName in ['userdataoutputstream']:
+            if sName in ['userdataoutputstream'] or sName.startswith('userdataoutputstream'):
                 userDataSvcStream[sName] = fName
                 continue
             _printConfig('Output=THIST %s' % sName)

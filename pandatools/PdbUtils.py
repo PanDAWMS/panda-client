@@ -122,8 +122,40 @@ class PdbProxy:
         # the table already exist or not
         if retV == []:
             return False
-        return self.tablename in retV[-1].split()
+        if not self.tablename in retV[-1].split():
+            return False
+        # check schema
+        self.checkSchema()
+        return True
+
             
+    # check schema
+    def checkSchema(self,noAdd=False):
+        # get colum names
+        retS,retV = self.execute('PRAGMA table_info(%s)' % self.tablename)
+        if not retS:
+            raise RuntimeError,"cannot get table_info"
+        # parse
+        columns = []
+        for line in retV:
+            items = line.split('|')
+            if len(items) > 1:
+                columns.append(items[1])
+        # check        
+        for tmpC,tmpA in LocalJobSpec.appended.iteritems():
+            if not tmpC in columns:
+                if noAdd:
+                    raise RuntimeError,"%s not found in database schema" % tmpC
+                # add column
+                retS,retV = self.execute("ALTER TABLE %s ADD COLUMN '%s' %s" % \
+                                         (self.tablename,tmpC,tmpA))
+                if not retS:
+                    raise RuntimeError,"cannot add %s to database schema" % tmpC
+        if noAdd:
+            return
+        # check whole schema just in case
+        self.checkSchema(noAdd=True)
+        
 
 
     # create table
@@ -148,7 +180,9 @@ class PdbProxy:
         sql += "'lastUpdate'     TIMESTAMP,"
         sql += "'dbStatus'       VARCHAR(20),"
         sql += "'buildStatus'    VARCHAR(20),"
-        sql += "'commandToPilot' VARCHAR(20),"        
+        sql += "'commandToPilot' VARCHAR(20),"
+        for tmpC,tmpA in LocalJobSpec.appended.iteritems():
+            sql += "'%s' %s," % (tmpC,tmpA)
         sql = sql[:-1]
         sql += ")"
         # execute
@@ -161,7 +195,7 @@ class PdbProxy:
 
 
 # convert Panda jobs to DB representation
-def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={}):
+def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobForSiteID=None):
     statusOnly = False
     if localJob != None:
         # update status only 
@@ -188,31 +222,46 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={}):
     sStr = sStr[:-1]
     # job status
     ddata.jobStatus = sStr
+    # PandaID
+    ddata.PandaID = pStr
+    # get panda Job
+    pandaJob = None
+    if pandaJobList != []:
+        pandaJob = pandaJobList[0]
+    elif pandaJobForSiteID != None:
+        pandaJob = pandaJobForSiteID
+    # extract libDS
+    if pandaJob != None:
+        if pandaJob.prodSourceLabel == 'panda':
+            # build Jobs
+            ddata.buildStatus = pandaJob.jobStatus
+            for tmpFile in pandaJob.Files:
+                if tmpFile.type == 'output':
+                    ddata.libDS = tmpFile.dataset
+                    break
+        else:
+            # noBuild or libDS
+            ddata.buildStatus = ''
+            for tmpFile in pandaJob.Files:
+                if tmpFile.type == 'input' and tmpFile.lfn.endswith('.lib.tgz'):
+                    ddata.libDS = tmpFile.dataset
+                    break
+        # release
+        ddata.releaseVar = pandaJob.AtlasRelease
+        # cache
+        tmpCache = re.sub('^[^-]+-*','',pandaJob.homepackage)
+        tmpCache = re.sub('_','-',tmpCache)
+        ddata.cacheVar = tmpCache
     # return if update status only
     if statusOnly:
         # build job
         if ddata.buildStatus != '':
             ddata.buildStatus = sStr.split(',')[0]
+        # set computingSite mainly for rebrokerage
+        if pandaJobForSiteID != None:
+            ddata.site = pandaJobForSiteID.computingSite
         # return    
         return ddata
-    # PandaID
-    ddata.PandaID = pStr
-    # extract libDS
-    pandaJob = pandaJobList[0]
-    if pandaJob.prodSourceLabel == 'panda':
-        # build Jobs
-        ddata.buildStatus = pandaJob.jobStatus
-        for tmpFile in pandaJob.Files:
-            if tmpFile.type == 'output':
-                ddata.libDS = tmpFile.dataset
-                break
-    else:
-        # noBuild or libDS
-        ddata.buildStatus = ''
-        for tmpFile in pandaJob.Files:
-            if tmpFile.type == 'input' and tmpFile.lfn.endswith('.lib.tgz'):
-                ddata.libDS = tmpFile.dataset
-                break
     # job parameters
     ddata.jobParams = pandaJob.metadata
     # extract datasets
@@ -257,6 +306,8 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={}):
     ddata.retryID = 0
     # provenance ID
     ddata.provenanceID = pandaJob.jobExecutionID
+    # groupID
+    ddata.groupID = 0
     # job type
     ddata.jobType = ''
     trfTypeMap = {
@@ -319,6 +370,18 @@ def setRetryID(job,verbose=False):
     status,out = pdbProxy.execute(sql1)
     if not status:
         raise RuntimeError,"failed to set retryID"
+
+
+# delete old jobs
+def deleteOldJobs(days,verbose=False):
+    # time limit
+    limit = datetime.datetime.utcnow() - datetime.timedelta(days=days)
+    # make sql
+    sql1  = "DELETE FROM %s " % pdbProxy.tablename
+    sql1 += " WHERE creationTime<'%s' " % limit.strftime('%Y-%m-%d %H:%M:%S')
+    status,out = pdbProxy.execute(sql1)
+    if not status:
+        raise RuntimeError,"failed to delete old jobs"
 
 
 # read job info from DB
