@@ -174,6 +174,11 @@ PsubUtils.checkPandaClientVer(options.verbose)
 if options.excludedSite != '':
     Client.excludeSite(options.excludedSite)
 
+# use certain sites
+useRandomCloud = []
+if re.search(',',options.site) != None:
+    options.site,useRandomCloud = Client.useCertainSites(options.site)
+
 # site specified
 siteSpecified = True
 if options.site == 'AUTO':
@@ -505,7 +510,7 @@ if checkLibDS and options.libDS != '':
 # set cloud for brokerage
 expCloudFlag = False
 if options.cloud == None:
-    options.cloud = PsubUtils.getCloudUsingFQAN(defaultCloud,options.verbose)
+    options.cloud = PsubUtils.getCloudUsingFQAN(defaultCloud,options.verbose,useRandomCloud)
 else:
     # use cloud explicitly    
     expCloudFlag = True

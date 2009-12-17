@@ -293,6 +293,11 @@ PsubUtils.checkPandaClientVer(options.verbose)
 if options.excludedSite != '':
     Client.excludeSite(options.excludedSite)
 
+# use certain sites
+useRandomCloud = []
+if re.search(',',options.site) != None:
+    options.site,useRandomCloud = Client.useCertainSites(options.site)
+
 # site specified
 siteSpecified = True
 if options.site == 'AUTO':
@@ -464,7 +469,7 @@ if (not siteSpecified) and options.burstSubmit == '':
 # set cloud according to country FQAN
 expCloudFlag = False
 if options.cloud == None and options.burstSubmit == '':
-    options.cloud = PsubUtils.getCloudUsingFQAN(defaultCloud,options.verbose)
+    options.cloud = PsubUtils.getCloudUsingFQAN(defaultCloud,options.verbose,useRandomCloud)
 elif options.cloud != None:
     # use cloud explicitly
     expCloudFlag = True

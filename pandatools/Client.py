@@ -1500,6 +1500,8 @@ def getJobStatusFromMon(id,verbose=False):
 
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer=''):
+    if sites == []:
+        return 0,'ERROR : no candidate'
     # choose at most 20 sites randomly to avoid too many lookup
     random.shuffle(sites)
     sites = sites[:20]
@@ -1921,6 +1923,31 @@ def excludeSite(excludedSite):
                     del PandaSites[site]
                 except:
                     pass
+
+
+# use certain sites
+def useCertainSites(sitePat):
+    if re.search(',',sitePat) == None:
+        return sitePat,[]
+    # remove sites
+    global PandaSites
+    sites = PandaSites.keys()
+    cloudsForRandom = []
+    for site in sites:
+        # look for pattern
+        useThisSite = False
+        for tmpPatt in sitePat.split(','):
+            if tmpPatt in site:
+                useThisSite = True
+                break
+        # delete
+        if not useThisSite:
+            PandaSites[site]['status'] = 'skip'
+        else:
+            if not PandaSites[site]['cloud'] in cloudsForRandom:
+                cloudsForRandom.append(PandaSites[site]['cloud'])
+    # return
+    return 'AUTO',cloudsForRandom
 
 
 # get client version

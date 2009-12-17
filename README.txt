@@ -14,9 +14,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.4 (12/17/2009)
   * fixed --excludedSite to treat composite sites properly
   * supported TAGCOMM in pathena
+  * changed --site to allow a list of sites
 
 0.2.3 (12/6/2009)
   * updated brokerage to use cache version if applicable
