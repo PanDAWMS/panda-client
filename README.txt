@@ -14,7 +14,7 @@ pathena -h
 
 ** Release Note
 
-0.2.5 (1/3/2009)
+0.2.5 (1/3/2010)
   * added --nGBPerJob to pathena
 
 0.2.4 (12/17/2009)
