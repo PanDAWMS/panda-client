@@ -1,1 +1,1 @@
-release_version = "0.2.5"
+release_version = "0.2.6"

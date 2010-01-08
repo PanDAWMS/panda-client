@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.6 (1/8/2010)
+  * removed strict number checking on output dataset name
+
 0.2.5 (1/3/2010)
   * added --nGBPerJob to pathena
 
