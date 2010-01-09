@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.7 (1/9/2010)
+  * fixed the brokerage to check minBias/CavernBeamGas/Halo DSs
+
 0.2.6 (1/8/2010)
   * removed strict number checking on output dataset name
 
