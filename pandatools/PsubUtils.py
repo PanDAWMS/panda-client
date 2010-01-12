@@ -264,7 +264,7 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site=''):
         tmpLog.error(errStr)
         return False
     # check output dataset format
-    matStr = '^user' + ('%s' % time.strftime('%y',time.gmtime())) + '\.' + distinguishedName + '\.'
+    matStr = '^user' + '\d{2}' + '\.' + distinguishedName + '\.'
     if re.match(matStr,outDS) == None and (nickName == '' or re.match('^user\.'+nickName+'\.',outDS) == None):
         if nickName == '':
             outDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
