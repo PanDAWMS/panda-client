@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.8 (1/12/2010)
+  * fixed prun to allow submission with unready libDS
+
 0.2.7 (1/9/2010)
   * fixed the brokerage to check minBias/CavernBeamGas/Halo DSs
 

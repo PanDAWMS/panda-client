@@ -1162,8 +1162,8 @@ else:
     fileBO.GUID = tmpGUIDmap[fileBO.lfn]
     fileBO.dataset = options.libDS
     fileBO.destinationDBlock = options.libDS
-    fileBO.status = 'ready'
-
+    if fileBO.GUID != 'NULL':
+        fileBO.status = 'ready'
 
 # modify outDS name when container is used for output
 if original_outDS_Name.endswith('/'):
