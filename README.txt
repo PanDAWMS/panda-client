@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added killAndRetry to pbook
+
 0.2.8 (1/12/2010)
   * fixed prun to allow submission with unready libDS
 

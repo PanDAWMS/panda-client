@@ -269,11 +269,11 @@ class PBookCore:
         job = self.getJobInfo(JobID)
         if job == None:
             tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)            
-            return None
+            return False
 	# skip frozen job
         if job.dbStatus == 'frozen':
             tmpLog.info('All subJobs in JobID=%s already finished/failed' % JobID)
-            return
+            return False
         # get PandaID list
         killJobs = job.PandaID.split(',')
         # kill
@@ -282,7 +282,7 @@ class PBookCore:
         if status != 0:
             tmpLog.error(output)
             tmpLog.error("Failed to kill JobID=%s" % JobID)
-            return
+            return False
         # update database
         job.commandToPilot = 'tobekilled'
         # update DB
@@ -290,10 +290,10 @@ class PBookCore:
             PdbUtils.updateJobDB(job,self.verbose)
         except:
             tmpLog.error("Failed to update local repository for JobID=%s" % JobID)
-            return
+            return False
         # done
         tmpLog.info('Done. JobID=%s will be killed in 30min' % JobID)
-        return
+        return True
 
 
     # rebrokerage
@@ -335,6 +335,39 @@ class PBookCore:
             return
         # done
         tmpLog.info('Done')
+        return
+
+
+    # kill and retry
+    def killAndRetry(self,JobID):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # kill
+        retK = self.kill(JobID)
+        if not retK:
+            return False
+        # sleep
+        tmpLog.info('Going to sleep for 5sec')
+        time.sleep(5)
+        nTry = 6
+        for iTry in range(nTry):
+            # get status
+            job = self.status(JobID)
+            if job == None:
+                return False
+            # check if frozen
+            if job.dbStatus == 'frozen':
+                break
+            tmpLog.info('Some sub-jobs are still running')
+            if iTry+1 < nTry:
+                # sleep
+                tmpLog.info('Going to sleep for 10min')
+                time.sleep(600)
+            else:
+                tmpLog.info('Max attempts exceeded. Please try later')
+                return False
+        # retry
+        self.retry(JobID)
         return
                         
 
@@ -517,6 +550,7 @@ def intmain(pbookCore,comString):
    retry
    clean
    reassign
+   killAndRetry
          
 For more info, do help(show) for example."""
         print str
@@ -570,9 +604,9 @@ For more info, do help(show) for example."""
             else:
                 # kill jobs between the range
                 for tmpJobID in range(JobID,upperJobID+1):
-                    pbookCore.kill(tmpJobID)
+                    retK = pbookCore.kill(tmpJobID)
         else:            
-            pbookCore.kill(JobID)
+            retK = pbookCore.kill(JobID)
 
 
     # retry
@@ -615,6 +649,16 @@ For more info, do help(show) for example."""
            >>> clean(60)
         """
         pbookCore.clean(nDays)
+
+
+    # kill and retry
+    def killAndRetry(JobID):
+        """Kill JobID and then retry failed sub-jobs
+
+         example:
+           >>> killAndRetry(15)
+        """
+	ret = pbookCore.killAndRetry(JobID)
 
 
     # synchronize local repository
