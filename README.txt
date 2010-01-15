@@ -16,6 +16,7 @@ pathena -h
 
 current
   * added killAndRetry to pbook
+  * fixed error message for wrong DBR filename
 
 0.2.8 (1/12/2010)
   * fixed prun to allow submission with unready libDS

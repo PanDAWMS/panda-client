@@ -1744,7 +1744,7 @@ if options.trf or options.dbRelease != '':
                 dbrDsList.append(tmpDbrDS)
             # check
             if not dbrFiles.has_key(tmpDbrLFN):
-                tmpLog.error("%s is not in %s" (tmpDbrLFN,tmpDbrDS))
+                tmpLog.error("%s is not in %s" % (tmpDbrLFN,tmpDbrDS))
 		sys.exit(EC_Dataset)
 
 
