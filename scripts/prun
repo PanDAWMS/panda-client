@@ -1053,6 +1053,7 @@ elif options.libDS == '':
         jobB.AtlasRelease  = athenaVer
         jobB.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobB.transformation    = '%s/buildGen-00-00-01' % Client.baseURLSUB
+    jobB.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
     if nickName == '':
         # old convention
         tmpDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
@@ -1207,6 +1208,7 @@ for iJob in range(options.nJobs):
         jobR.AtlasRelease  = athenaVer
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
+    jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
     jobR.destinationDBlock = options.outDS
     if Client.isDQ2free(options.site):
         # flag to use non-DQ2 output

@@ -14,9 +14,11 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.9 (1/21/2010)
   * added killAndRetry to pbook
-  * fixed error message for wrong DBR filename
+  * fixed error message in pathena for wrong DBR filename
+  * set cmtConfig for 15.6.3 or higher for now
+  * added retry in database sessions in pbook
 
 0.2.8 (1/12/2010)
   * fixed prun to allow submission with unready libDS
