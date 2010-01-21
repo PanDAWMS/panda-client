@@ -950,10 +950,13 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                     'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
             status,out = curl.get(url,data)
             if status != 0 or out == '\x00' or (not checkDatasetInMap(tmpName,out)):
+                errStr = "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
+                         % tmpName
+                if getReserved and getTapeSites:
+                    sys.exit(EC_Failed)
                 if verbose:
-                    print "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
-                          % tmpName
-                    return retSites
+                    print errStr
+                return retSites
             # get real datasetname
             tmpName = getDatasetValueInMap(tmpName,out)
             # parse
