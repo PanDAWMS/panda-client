@@ -1515,6 +1515,8 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
             # FIXME once the pilot sets cmtconfig properly
             if maVer >= 15 and miVer >= 6 and reVer >= 3:
                 return 'i686-slc5-gcc43-opt'
+            # use i686-slc4-gcc34-opt by default
+            return 'i686-slc4-gcc34-opt'
         return None
     except:
         return None

@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.10 (1/22/2010)
+  * set cmtConfig for old releases for SL5 sites
+
 0.2.9 (1/21/2010)
   * added killAndRetry to pbook
   * fixed error message in pathena for wrong DBR filename
