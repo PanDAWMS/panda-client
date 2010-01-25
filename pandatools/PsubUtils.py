@@ -102,7 +102,7 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
 
 
 # get cloud according to country FQAN
-def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=False):
+def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=[]):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # get FQAN
@@ -149,7 +149,7 @@ def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=False):
         # choose one cloud from the list
         cloud = random.choice(randomCloud)
         tmpLog.info("use %s as default cloud" % cloud)
-    elif cloud == None or randomCloud:
+    elif cloud == None:
         # use a cloud randomly
         cloud = random.choice(Client.PandaClouds.keys())
         tmpLog.info("use %s as default cloud" % cloud)

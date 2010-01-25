@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed the default value in getCloudUsingFQAN
+
 0.2.10 (1/22/2010)
   * set cmtConfig for old releases for SL5 sites
 
