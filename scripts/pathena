@@ -1228,12 +1228,53 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     inputDsString = inputDsString + ',' + beamGasHdataset
                     inputDsString = inputDsString + ',' + beamGasCdataset
                     inputDsString = inputDsString + ',' + beamGasOdataset
+            # DBRelease
+            dbrDsString = ''
+            if options.trf or options.dbRelease != '':
+                dbrDsList = []
+                if options.trf:
+                    # parse jobO for TRF
+                    tmpItems = jobO.split()
+                else:
+                    tmpItems = []
+                if options.dbRelease != '':
+                    # mimic a trf parameter to reuse following algorithm
+                    tmpItems += ['%DB='+options.dbRelease]
+                # look for DBRelease
+                for tmpItem in tmpItems:
+                    match = re.search('%DB=([^:]+):(.+)$',tmpItem)
+                    if match:
+                        tmpDbrDS  = match.group(1)
+                        if not tmpDbrDS in dbrDsList:
+                            if dbrDsString == '':
+                                dbrDsString = tmpDbrDS
+                            else:
+                                dbrDsString = dbrDsString + ',' + tmpDbrDS
+                            dbrDsList.append(tmpDbrDS)
             # get location        
             dsLocationMap,dsLocationMapBack,dsTapeSites = Client.getLocations(inputDsString,inputFileMap,options.cloud,
                                                                               False,options.verbose,
                                                                               expCloud=expCloudFlag,getReserved=True,
                                                                               getTapeSites=True,
                                                                               locCandidates=parentDSlocations)
+            # get locations for DBR
+            if dbrDsString != '':
+                dbrDsLocationMap,dbrDsLocationMapBack,dbrDsTapeSites = Client.getLocations(dbrDsString,{},options.cloud,
+                                                                                           False,options.verbose,
+                                                                                           expCloud=expCloudFlag,getReserved=True,
+                                                                                           getTapeSites=True,
+                                                                                           locCandidates=parentDSlocations)
+                # remove if DBR is unavailable
+                tmpSiteKeys = dsLocationMap.keys()
+                for tmpSite in tmpSiteKeys:
+                    if not tmpSite in dbrDsLocationMap and not tmpSite in dbrDsLocationMapBack:
+                        tmpLog.info("%s is unavailabe at %s although input dataset exists there" % (dbrDsString,tmpSite))
+                        del dsLocationMap[tmpSite]
+                tmpSiteKeys = dbrDsLocationMapBack.keys()
+                for tmpSite in tmpSiteKeys:
+                    if not tmpSite in dbrDsLocationMap and not tmpSite in dbrDsLocationMapBack:
+                        tmpLog.info("%s is unavailabe at %s although input datasets exist there" % (dbrDsString,tmpSite))
+                        del dbrDsLocationMapBack[tmpSite]
 	    # no location
             if dsLocationMap == {} and dsLocationMapBack == {}:
                 if expCloudFlag:
@@ -1242,6 +1283,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     errStr = "could not find supported/online sites for %s" % options.inDS
                 if options.parentDS != '':
                     errStr += ' and %s' % options.parentDS
+                if dbrDsString != '':
+                    errStr += ' and %s' % dbrDsString
                 tmpLog.error(errStr)
                 if dsTapeSites != []:
                     tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
@@ -1757,6 +1800,17 @@ if options.site == "AUTO":
         parentDSlocationsSrmV2 = []
         for locTmp in parentDSlocations:
             parentDSlocationsSrmV2.append(Client.convSrmV2ID(locTmp))
+    # get DBR locations
+    if dbrDsList != []:
+	dbrDsString = ''
+        for tmpDS in dbrDsList:
+            dbrDsString += (tmpDS + ',')
+        dbrDsString = dbrDsString[:-1]    
+        dbrDsLocationMap,dbrDsLocationMapBack,dbrDsTapeSites = Client.getLocations(dbrDsString,{},options.cloud,
+                                                                                   False,options.verbose,
+                                                                                   expCloud=expCloudFlag,getReserved=True,
+                                                                                   getTapeSites=True,
+                                                                                   locCandidates=parentDSlocations)
     # get sites belonging to a cloud and others
     tmpPriSites = []
     tmpSecSites = []
@@ -1768,6 +1822,10 @@ if options.site == "AUTO":
             # check DDM for parent datasets
             if options.parentDS != '':            
                 if not Client.convSrmV2ID(spec['ddm']) in parentDSlocationsSrmV2:
+                    continue
+            # check DBR locations
+            if dbrDsList != []:
+                if not Client.convSrmV2ID(spec['ddm']) in dbrDsLocationMap.keys()+dbrDsLocationMapBack.keys():
                     continue
 	    # convert to long
             if options.long:
@@ -1783,7 +1841,10 @@ if options.site == "AUTO":
     # run brokerage
     tmpBrokerErr = ''
     for idxTmpSites,tmpSites in enumerate(tmpSitesList):
-        status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer)    
+        if tmpSites != []:
+            status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer)
+        else:
+            status,out = 0,'ERROR : site list is empty.' 
         if status != 0:
             tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
             sys.exit(EC_Config)

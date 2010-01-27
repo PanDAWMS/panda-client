@@ -14,8 +14,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.11 (1/27/2010)
   * fixed the default value in getCloudUsingFQAN
+  * fixed the brokerage to check DBRelease locations
 
 0.2.10 (1/22/2010)
   * set cmtConfig for old releases for SL5 sites
