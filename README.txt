@@ -14,6 +14,31 @@ pathena -h
 
 ** Release Note
 
+0.2.11 (1/27/2010)
+  * fixed the default value in getCloudUsingFQAN
+  * fixed the brokerage to check DBRelease locations
+
+0.2.10 (1/22/2010)
+  * set cmtConfig for old releases for SL5 sites
+
+0.2.9 (1/21/2010)
+  * added killAndRetry to pbook
+  * fixed error message in pathena for wrong DBR filename
+  * set cmtConfig for 15.6.3 or higher for now
+  * added retry in database sessions in pbook
+
+0.2.8 (1/12/2010)
+  * fixed prun to allow submission with unready libDS
+
+0.2.7 (1/9/2010)
+  * fixed the brokerage to check minBias/CavernBeamGas/Halo DSs
+
+0.2.6 (1/8/2010)
+  * removed strict number checking on output dataset name
+
+0.2.5 (1/3/2010)
+  * added --nGBPerJob to pathena
+
 0.2.4 (12/17/2009)
   * fixed --excludedSite to treat composite sites properly
   * supported TAGCOMM in pathena
