@@ -1065,9 +1065,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                     # just collect locations when file check is disabled
                     if woFileCheck:    
                         break
-                    # append site to return if in the cloud, otherwise reserved
+                    # append site
                     if tmpSpec['status'] == 'online':
-                        if tmpSpec['cloud'] == cloud:
+                        # return sites in a cloud when it is specified or all sites
+                        if tmpSpec['cloud'] == cloud or (not expCloud):
                             appendMap = retSiteMap
                         else:
                             appendMap = resRetSiteMap

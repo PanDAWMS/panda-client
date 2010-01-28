@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.12 (1/28/2010)
+  * removed cloud constraint using VOMS attributes from brokerage
+
 0.2.11 (1/27/2010)
   * fixed the default value in getCloudUsingFQAN
   * fixed the brokerage to check DBRelease locations

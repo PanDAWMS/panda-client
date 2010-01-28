@@ -148,13 +148,14 @@ def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=[]):
     if randomCloud != []:
         # choose one cloud from the list
         cloud = random.choice(randomCloud)
-        tmpLog.info("use %s as default cloud" % cloud)
+        #tmpLog.info("use %s as default cloud" % cloud)
     elif cloud == None:
         # use a cloud randomly
         cloud = random.choice(Client.PandaClouds.keys())
-        tmpLog.info("use %s as default cloud" % cloud)
+        #tmpLog.info("use %s as default cloud" % cloud)
     else:
-        tmpLog.info("use %s as default cloud due to VOMS:%s" % (cloud,countryAttStr))
+        #tmpLog.info("use %s as default cloud due to VOMS:%s" % (cloud,countryAttStr))
+        pass
     # return
     return cloud
 
