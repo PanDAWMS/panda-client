@@ -44,10 +44,6 @@ defaultCloud = None
 suffixShadow = "_shadow"
 
 
-# max size per job
-maxTotalSize = long(10*1024*1024*1024)
-        
-
 usage = """%prog [options] <jobOption1.py> [<jobOption2.py> [...]]
 
 '%prog --help' prints a summary of the options
@@ -270,6 +266,9 @@ if options.update:
 	sys.exit(0)
     else:
 	sys.exit(1)
+
+# max size per job
+maxTotalSize = Client.maxTotalSize
 
 # set grid source file
 globalConf = GlobalConfig.getConfig()
@@ -1333,6 +1332,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             options.cloud = Client.PandaSites[options.site]['cloud']
             if options.verbose:
                 tmpLog.debug("chosen site=%s" % options.site)
+        # reset max input size
+        if Client.PandaSites[options.site]['maxinputsize'] != 0:
+            maxTotalSize = Client.PandaSites[options.site]['maxinputsize'] * 1024*1024
         # scan local replica catalog
         if options.skipScan:
             # skip remote scan

@@ -940,7 +940,9 @@ from taskbuffer.FileSpec import FileSpec
 
 
 # max total filesize on each WN
-maxTotalSize = long(10*1024*1024*1024)
+maxTotalSize = Client.PandaSites[options.site]['maxinputsize'] * 1024*1024
+if maxTotalSize == 0:
+    maxTotalSize = Client.maxTotalSize
 
 # set number of files per job
 if options.inDS != '' and options.nFilesPerJob == None:

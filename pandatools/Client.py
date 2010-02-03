@@ -38,6 +38,8 @@ baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
 # exit code
 EC_Failed = 255
 
+# default max size per job
+maxTotalSize = long(14*1024*1024*1024)
 
 # retrieve pathena config
 try:

@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.13 (2/3/2010)
+  * changed max input size to a site parameter
+
 0.2.12 (1/28/2010)
   * removed cloud constraint using VOMS attributes from brokerage
 
