@@ -706,8 +706,8 @@ else:
                 # convert to long
                 if options.long:
                     tmpID = Client.convertToLong(tmpID)
-                # check cloud    
-		if spec['cloud']==options.cloud:
+                # check cloud if it is specified   
+		if spec['cloud']==options.cloud or not expCloudFlag:
 		    tmpPriSites.append(tmpID)
 		elif not expCloudFlag:
 		    tmpSecSites.append(tmpID)
@@ -940,7 +940,9 @@ from taskbuffer.FileSpec import FileSpec
 
 
 # max total filesize on each WN
-maxTotalSize = long(10*1024*1024*1024)
+maxTotalSize = Client.PandaSites[options.site]['maxinputsize'] * 1024*1024
+if maxTotalSize == 0:
+    maxTotalSize = Client.maxTotalSize
 
 # set number of files per job
 if options.inDS != '' and options.nFilesPerJob == None:
@@ -1053,6 +1055,7 @@ elif options.libDS == '':
         jobB.AtlasRelease  = athenaVer
         jobB.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobB.transformation    = '%s/buildGen-00-00-01' % Client.baseURLSUB
+    jobB.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
     if nickName == '':
         # old convention
         tmpDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
@@ -1162,8 +1165,8 @@ else:
     fileBO.GUID = tmpGUIDmap[fileBO.lfn]
     fileBO.dataset = options.libDS
     fileBO.destinationDBlock = options.libDS
-    fileBO.status = 'ready'
-
+    if fileBO.GUID != 'NULL':
+        fileBO.status = 'ready'
 
 # modify outDS name when container is used for output
 if original_outDS_Name.endswith('/'):
@@ -1186,7 +1189,10 @@ if options.outputs != '' and outputDSexist:
             existingFilesInOutDS[tmpLFN] = None
 
 if options.inDS != '':
-    tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
+    if len(missList) == 0:
+	tmpLog.info("all files are available at %s" % options.site)
+    else:
+        tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
 
 # disp datasetname to identify inputs
@@ -1207,6 +1213,7 @@ for iJob in range(options.nJobs):
         jobR.AtlasRelease  = athenaVer
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
+    jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
     jobR.destinationDBlock = options.outDS
     if Client.isDQ2free(options.site):
         # flag to use non-DQ2 output

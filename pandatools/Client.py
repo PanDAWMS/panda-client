@@ -38,6 +38,8 @@ baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
 # exit code
 EC_Failed = 255
 
+# default max size per job
+maxTotalSize = long(14*1024*1024*1024)
 
 # retrieve pathena config
 try:
@@ -950,10 +952,13 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                     'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
             status,out = curl.get(url,data)
             if status != 0 or out == '\x00' or (not checkDatasetInMap(tmpName,out)):
+                errStr = "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
+                         % tmpName
+                if getReserved and getTapeSites:
+                    sys.exit(EC_Failed)
                 if verbose:
-                    print "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
-                          % tmpName
-                    return retSites
+                    print errStr
+                return retSites
             # get real datasetname
             tmpName = getDatasetValueInMap(tmpName,out)
             # parse
@@ -1062,9 +1067,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                     # just collect locations when file check is disabled
                     if woFileCheck:    
                         break
-                    # append site to return if in the cloud, otherwise reserved
+                    # append site
                     if tmpSpec['status'] == 'online':
-                        if tmpSpec['cloud'] == cloud:
+                        # return sites in a cloud when it is specified or all sites
+                        if tmpSpec['cloud'] == cloud or (not expCloud):
                             appendMap = retSiteMap
                         else:
                             appendMap = resRetSiteMap

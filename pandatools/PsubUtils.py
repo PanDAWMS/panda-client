@@ -102,7 +102,7 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
 
 
 # get cloud according to country FQAN
-def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=False):
+def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=[]):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # get FQAN
@@ -148,13 +148,14 @@ def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=False):
     if randomCloud != []:
         # choose one cloud from the list
         cloud = random.choice(randomCloud)
-        tmpLog.info("use %s as default cloud" % cloud)
-    elif cloud == None or randomCloud:
+        #tmpLog.info("use %s as default cloud" % cloud)
+    elif cloud == None:
         # use a cloud randomly
         cloud = random.choice(Client.PandaClouds.keys())
-        tmpLog.info("use %s as default cloud" % cloud)
+        #tmpLog.info("use %s as default cloud" % cloud)
     else:
-        tmpLog.info("use %s as default cloud due to VOMS:%s" % (cloud,countryAttStr))
+        #tmpLog.info("use %s as default cloud due to VOMS:%s" % (cloud,countryAttStr))
+        pass
     # return
     return cloud
 
@@ -264,7 +265,7 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site=''):
         tmpLog.error(errStr)
         return False
     # check output dataset format
-    matStr = '^user' + ('%s' % time.strftime('%y',time.gmtime())) + '\.' + distinguishedName + '\.'
+    matStr = '^user' + '\d{2}' + '\.' + distinguishedName + '\.'
     if re.match(matStr,outDS) == None and (nickName == '' or re.match('^user\.'+nickName+'\.',outDS) == None):
         if nickName == '':
             outDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
