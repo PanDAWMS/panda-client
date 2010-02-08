@@ -406,7 +406,7 @@ if distinguishedName == '' and nickName == '':
     sys.exit(EC_Config)
 
 # check outDS format
-if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site):
+if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site,vomsFQAN):
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
 

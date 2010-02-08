@@ -244,7 +244,7 @@ def checkValidCloud(cloud):
 
 
 # check name of output dataset
-def checkOutDsName(outDS,distinguishedName,official,nickName='',site=''):
+def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN=''):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # don't check if DQ2-free
@@ -252,16 +252,37 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site=''):
         return True
     # official dataset
     if official:
+        # extract production role
+        prodGroups = []
+        for tmpLine in vomsFQAN.split('\n'):
+            match = re.search('/([^/]+)/Role=production',tmpLine)
+            if match != None:
+                # ignore atlas production role
+                if not match.group(1) in ['atlas']:
+                    prodGroups.append(match.group(1))
+        # no production role
+        if prodGroups == []:
+            errStr  = "The --official option requires production role. Please use the --voms option to set production role;\n"
+            errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
+            errStr += "If you don't have production role for the group please request it in ATLAS VO first"                        
+            tmpLog.error(errStr)
+            return False
+        # loop over all prefixes    
         allowedPrefix = ['group']
         for tmpPrefix in allowedPrefix:
-            if outDS.startswith(tmpPrefix):
-                return True
+            for tmpGroup in prodGroups:
+                tmpPatt = '^'+tmpPrefix+'\d{2}'+'\.'+tmpGroup+'\.'
+                if re.search(tmpPatt,outDS):
+                    return True
         # didn't match
-        errStr  = "End-users are allowed to produce official datasets\n"
+        errStr  = "Your proxy is allowed to produce official datasets\n"
         errStr += "        with the following prefix\n"
         for tmpPrefix in allowedPrefix:
-            errStr += "          %s%s\n" % (tmpPrefix,time.strftime('%y',time.gmtime()))
-        errStr += "If you need to use another prefix please request it to Panda Savannah"
+            for tmpGroup in prodGroups:
+                tmpPatt = '%s%s.%s' % (tmpPrefix,time.strftime('%y',time.gmtime()),tmpGroup)
+                errStr += "          %s\n" % tmpPatt
+        errStr += "If you have production role for another group please use the --voms option to set the role\n"
+        errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
         tmpLog.error(errStr)
         return False
     # check output dataset format

@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * check production role for group production
+
 0.2.13 (2/3/2010)
   * changed max input size to a site parameter
 
