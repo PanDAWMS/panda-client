@@ -1525,6 +1525,10 @@ if not options.nosubmit:
 # go back to current dir
 os.chdir(curDir)
 
+# check site occupancy
+if siteSpecified or expCloudFlag:
+    Client.checkQueuedAnalJobs(options.site,options.verbose)
+
 # try another site if input files remain
 options.crossSite -= 1
 if options.crossSite > 0 and options.inDS != '' and not siteSpecified:

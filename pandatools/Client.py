@@ -2033,3 +2033,33 @@ def isDQ2free(site):
     if PandaSites.has_key(site) and PandaSites[site]['ddm'] == 'local':
         return True
     return False
+
+
+# check queued analysis jobs at a site
+def checkQueuedAnalJobs(site,verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/getQueuedAnalJobs'
+    data = {'site':site}
+    status,output = curl.post(url,data)
+    try:
+        # get queued analysis
+        queuedMap = pickle.loads(output)
+        if queuedMap.has_key('running') and queuedMap.has_key('queued'):
+            if queuedMap['running'] > 20 and queuedMap['queued'] > 2 * queuedMap['running']:
+                warStr  = 'Your job might be delayed since %s is busy. ' % site
+                warStr += 'There are %s jobs already queued by other users while %s jobs are running. ' \
+                          % (queuedMap['queued'],queuedMap['running'])
+                warStr += 'Please consider replicating the input dataset to a free site '
+                warStr += 'or avoiding the --site/--cloud option so that the brokerage will '
+                warStr += 'find a free site'
+                tmpLog.warning(warStr)
+    except:
+        type, value, traceBack = sys.exc_info()
+        tmpLog.error("checkQueuedAnalJobs %s %s" % (type,value))

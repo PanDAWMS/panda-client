@@ -14,7 +14,8 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.14 (2/11/2010)
+  * added warning message for busy sites
   * check production role for group production
 
 0.2.13 (2/3/2010)
