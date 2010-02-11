@@ -1495,3 +1495,29 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
         pass
     file.destinationSE = jobR.destinationSE
     jobR.addFile(file)
+
+
+# get CMTCONFIG
+def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
+    try:
+        if athenaVer != None:
+            # remove prefix
+            verStr = re.sub('^[^-]+-','',athenaVer)
+            # extract version numbers
+            match = re.search('(\d+)\.(\d+)\.(\d+)',verStr)
+            if match == None:
+                return None
+            # major,miner,rev
+            maVer = int(match.group(1))
+            miVer = int(match.group(2))
+            reVer = int(match.group(3))
+            # use i686-slc5-gcc43-opt for 15.6.3 or higher
+            # FIXME once the pilot sets cmtconfig properly
+            if maVer >= 15 and miVer >= 6 and reVer >= 3:
+                return 'i686-slc5-gcc43-opt'
+            # use i686-slc4-gcc34-opt by default
+            return 'i686-slc4-gcc34-opt'
+        return None
+    except:
+        return None
+    
