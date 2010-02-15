@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * updated pbook for canceled state
+
 0.2.14 (2/11/2010)
   * added warning message for busy sites
   * check production role for group production

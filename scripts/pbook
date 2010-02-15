@@ -401,7 +401,7 @@ class PBookCore:
         jobList = []
         for idx in range(len(pandaIDs)):
             # check status
-            if statusList[idx] != 'failed':
+            if not statusList[idx] in ['failed','canceled']:
                 continue
             jobList.append(pandaIDs[idx])
         # no failed job
