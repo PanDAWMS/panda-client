@@ -253,7 +253,7 @@ class LocalJobSpec(object):
         toBeFrozen = True
         for tmpStatus in self.jobStatus.split(','):
             # check if is should be frozen
-            if toBeFrozen and not tmpStatus in ['finished','failed','partial','canceled']:
+            if toBeFrozen and not tmpStatus in ['finished','failed','partial','cancelled']:
                 toBeFrozen = False
             # set start status
             if sStatus == None:
