@@ -16,6 +16,7 @@ pathena -h
 
 current
   * updated pbook for canceled state
+  * added --excludeFile to pathena/prun
 
 0.2.14 (2/11/2010)
   * added warning message for busy sites

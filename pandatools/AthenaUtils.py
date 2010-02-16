@@ -510,8 +510,30 @@ def setExtFile(v_extFile):
     global extFile
     extFile = v_extFile
 
+
+# set excludeFile
+excludeFile = []
+def setExcludeFile(strExcludeFile):
+    # empty
+    if strExcludeFile == '':
+        return
+    # convert to list
+    global excludeFile
+    for tmpItem in strExcludeFile.split(','):
+        # change . to \. for regexp
+        tmpItem = tmpItem.replace('.','\.')        
+        # change * to .* for regexp
+        tmpItem = tmpItem.replace('*','.*')
+        # append
+        excludeFile.append(tmpItem)
+    
+                
 # matching for extFiles
 def matchExtFile(fileName):
+    # check exclude files
+    for tmpPatt in excludeFile:
+        if re.search(tmpPatt,fileName) != None:
+            return False
     # gather files with special extensions
     for tmpExtention in ['.py','.dat','.C','.xml','Makefile',
                          '.cc','.cxx','.h','.hh','.sh']:
@@ -672,6 +694,14 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                 # ignore libraries
                 if item.startswith('i686') or item.startswith('i386') or item.startswith('x86_64') \
                        or item=='dict' or item=='pool' or item =='pool_plugins':
+                    continue
+                # check exclude files
+                excludeFileFlag = False
+                for tmpPatt in excludeFile:
+                    if re.search(tmpPatt,'%s/%s' % (pack,item)) != None:
+                        excludeFileFlag = True
+                        break
+                if excludeFileFlag:
                     continue
                 # run dir
                 if item=='run':
@@ -910,6 +940,14 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
         # archive files if they are under the area
         for file in files+cmtFiles:
             relPath = re.sub(sString+'/','',os.path.realpath(file))
+            # check exclude files
+            excludeFileFlag = False
+            for tmpPatt in excludeFile:
+                if re.search(tmpPatt,relPath) != None:
+                    excludeFileFlag = True
+                    break
+            if excludeFileFlag:
+                continue
             if not relPath.startswith('/'):
                 # use files in private InstallArea instead of group InstallArea
                 if not file in allFiles:

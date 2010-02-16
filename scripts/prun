@@ -78,6 +78,8 @@ optP.add_option('--workDir',action='store',dest='workDir',default='.',type='stri
                 help='All files under WORKDIR will be transfered to WNs (default=./)')
 optP.add_option('--extFile',action='store',dest='extFile',default='',
                 help='root or large files under WORKDIR are not sent to WNs by default. If you want to send some skipped files, specify their names, e.g., data.root,data.tgz')
+optP.add_option('--excludeFile',action='store',dest='excludeFile',default='',
+                help='specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C')
 optP.add_option('--inputFileList', action='store', dest='inputFileListName', default='',
                 type='string', help='name of file which contains a list of files to be run in the input dataset')
 optP.add_option('--crossSite',action='store',dest='crossSite',default=3,
@@ -317,6 +319,10 @@ try:
     options.gluePackages.remove('')
 except:
     pass
+
+# set excludeFile
+if options.excludeFile != '':
+    AthenaUtils.setExcludeFile(options.excludeFile)
 
 # LFN matching
 if options.match != '':
@@ -816,6 +822,14 @@ else:
                     if options.verbose:
                         type,value,traceBack = sys.exc_info()
                         print "  Ignore : %s:%s" % (type,value)
+                    continue
+                # check exclude files
+                excludeFileFlag = False
+                for tmpPatt in AthenaUtils.excludeFile:
+                    if re.search(tmpPatt,tmpPath) != None:
+                        excludeFileFlag = True
+                        break
+                if excludeFileFlag:
                     continue
                 # skipped extension
                 isSkippedExt = False
