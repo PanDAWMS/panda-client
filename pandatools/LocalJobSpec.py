@@ -52,7 +52,7 @@ class LocalJobSpec(object):
                 statusMap[tmpStatus] += tmpCount
         statusStr = self.dbStatus
         for tmpStatus,tmpCount in statusMap.iteritems():
-            statusStr += '\n%8s   %8s : %s' % ('',tmpStatus,tmpCount)
+            statusStr += '\n%8s   %10s : %s' % ('',tmpStatus,tmpCount)
         # number of jobs
         nJobs = len(self.PandaID.split(','))
         if self.buildStatus != '':
