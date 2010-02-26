@@ -14,7 +14,8 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.15 (2/26/2010)
+  * added --dbRelease=LATEST to pathena  	
   * updated pbook for canceled state
   * added --excludeFile to pathena/prun
 

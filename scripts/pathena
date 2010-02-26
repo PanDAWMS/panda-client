@@ -179,7 +179,7 @@ optP.add_option('--fileList', action='store', dest='filelist', default='',
 optP.add_option('--myproxy', action='store', dest='myproxy', default='myproxy.cern.ch',
                 type='string', help='Name of the myproxy server')
 optP.add_option('--dbRelease', action='store', dest='dbRelease', default='',
-                type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz')
+                type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used')
 optP.add_option('--dbRunNumber', action='store', dest='dbRunNumber', default='',
                 type='string', help='RunNumber for DBRelease or CDRelease. If this option is used some redundant files are removed to save disk usage when unpacking DBRelease tarball. e.g., 0091890')
 optP.add_option('--addPoolFC', action='store', dest='addPoolFC',  default='',
@@ -397,8 +397,8 @@ if options.nGBPerJob != -1:
     
 
 # check DBRelease
-if options.dbRelease != '' and options.dbRelease.find(':') == -1:
-    tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName")  
+if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
+    tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")  
     sys.exit(EC_Config)
     
 # additinal files
@@ -921,6 +921,10 @@ else:
 
 ####################################################################3
 # datasets 
+
+# get the latest of DBRelease
+if options.dbRelease == 'LATEST':
+    options.dbRelease = Client.getLatestDBRelease(options.verbose)
 
 # check if output dataset is unique
 outputDSexist = False

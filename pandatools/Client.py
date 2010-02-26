@@ -2063,3 +2063,87 @@ def checkQueuedAnalJobs(site,verbose=False):
     except:
         type, value, traceBack = sys.exc_info()
         tmpLog.error("checkQueuedAnalJobs %s %s" % (type,value))
+
+
+# get latest DBRelease
+def getLatestDBRelease(verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    tmpLog.info('trying to get the latest version number for DBRelease=LATEST')
+    # get ddo datasets
+    ddoDatasets = getDatasets('ddo.*',verbose,True)
+    if ddoDatasets == {}:
+        tmpLog.error('failed to get a list of DBRelease datasets from DQ2')
+        sys.exit(EC_Failed)
+    # reverse sort to avoid redundant lookup   
+    ddoDatasets = ddoDatasets.keys()
+    ddoDatasets.sort()
+    ddoDatasets.reverse()
+    # extract version number
+    latestVerMajor = 0
+    latestVerMinor = 0
+    latestVerBuild = 0
+    latestVerRev   = 0
+    latestDBR = ''
+    for tmpName in ddoDatasets:
+        match = re.search('\.v(\d+)_*[^\.]*$',tmpName)
+        if match == None:
+            tmpLog.warning('cannot extract version number from %s' % tmpName)
+            continue
+        # get major,minor,build,revision numbers
+        tmpVerStr = match.group(1)
+        tmpVerMajor = 0
+        tmpVerMinor = 0
+        tmpVerBuild = 0
+        tmpVerRev   = 0
+        try:
+            tmpVerMajor = int(tmpVerStr[0:2])
+        except:
+            pass
+        try:
+            tmpVerMinor = int(tmpVerStr[2:4])
+        except:
+            pass
+        try:
+            tmpVerBuild = int(tmpVerStr[4:6])
+        except:
+            pass
+        try:
+            tmpVerRev = int(tmpVerStr[6:])
+        except:
+            pass
+        # compare
+        if latestVerMajor > tmpVerMajor:
+            continue
+        elif latestVerMajor == tmpVerMajor:
+            if latestVerMinor > tmpVerMinor:
+                continue
+            elif latestVerMinor == tmpVerMinor:
+                if latestVerBuild > tmpVerBuild:
+                    continue
+                elif latestVerBuild == tmpVerBuild:
+                    if latestVerRev > tmpVerRev:
+                        continue
+        # check replica locations to use well distributed DBRelease. i.e. to avoid DBR just created
+        tmpLocations = getLocations(tmpName,[],'',False,verbose,getDQ2IDs=True)
+        if len(tmpLocations) < 10:
+            continue
+        # higher or equal version
+        latestVerMajor = tmpVerMajor
+        latestVerMinor = tmpVerMinor
+        latestVerBuild = tmpVerBuild
+        latestVerRev   = tmpVerRev
+        latestDBR = tmpName
+    # failed
+    if latestDBR == '':
+        tmpLog.error('failed to get the latest version of DBRelease dataset from DQ2')
+        sys.exit(EC_Failed)
+    # get DBRelease file name
+    tmpList = queryFilesInDataset(latestDBR,verbose)
+    if len(tmpList) == 0:
+        tmpLog.error('DBRelease=%s is empty' % latestDBR)
+        sys.exit(EC_Failed)
+    # retrun dataset:file
+    retVal = '%s:%s' % (latestDBR,tmpList.keys()[0])
+    tmpLog.info('use %s' % retVal)
+    return retVal
