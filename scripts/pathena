@@ -44,10 +44,6 @@ defaultCloud = None
 suffixShadow = "_shadow"
 
 
-# max size per job
-maxTotalSize = long(10*1024*1024*1024)
-        
-
 usage = """%prog [options] <jobOption1.py> [<jobOption2.py> [...]]
 
 '%prog --help' prints a summary of the options
@@ -67,6 +63,7 @@ optP.add_option('--nEventsPerJob', action='store', dest='nEventsPerJob',  defaul
                 type='int',    help='Number of events on which each sub-job runs')
 optP.add_option('--nEventsPerFile', action='store', dest='nEventsPerFile',  default=0,
                 type='int',    help='Number of events per file')
+optP.add_option('--nGBPerJob',action='store',dest='nGBPerJob',default=-1, help='Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value')
 optP.add_option('--site', action='store', dest='site',  default="AUTO",
                 type='string',    help='Site name where jobs are sent (default:AUTO)')
 optP.add_option('--inDS',  action='store', dest='inDS',  default='',
@@ -147,6 +144,8 @@ optP.add_option('--official', action='store_const', const=True, dest='official',
                 help='Produce official dataset')
 optP.add_option('--extFile', action='store', dest='extFile',  default='',
                 help='pathena exports files with some special extensions (.C, .dat, .py .xml) in the current directory. If you want to add other files, specify their names, e.g., data1.root,data2.doc')
+optP.add_option('--excludeFile',action='store',dest='excludeFile',default='',
+                help='specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C')
 optP.add_option('--extOutFile', action='store', dest='extOutFile',  default='',
                 help='A comma-separated list of extra output files which cannot be extracted automatically. Either \ or "" is required when a wildcard is used. e.g., output1.txt,output2.dat,JiveXML_\*.xml')
 optP.add_option('--supStream', action='store', dest='supStream',  default='',
@@ -180,7 +179,7 @@ optP.add_option('--fileList', action='store', dest='filelist', default='',
 optP.add_option('--myproxy', action='store', dest='myproxy', default='myproxy.cern.ch',
                 type='string', help='Name of the myproxy server')
 optP.add_option('--dbRelease', action='store', dest='dbRelease', default='',
-                type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz')
+                type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used')
 optP.add_option('--dbRunNumber', action='store', dest='dbRunNumber', default='',
                 type='string', help='RunNumber for DBRelease or CDRelease. If this option is used some redundant files are removed to save disk usage when unpacking DBRelease tarball. e.g., 0091890')
 optP.add_option('--addPoolFC', action='store', dest='addPoolFC',  default='',
@@ -269,6 +268,9 @@ if options.update:
 	sys.exit(0)
     else:
 	sys.exit(1)
+
+# max size per job
+maxTotalSize = Client.maxTotalSize
 
 # set grid source file
 globalConf = GlobalConfig.getConfig()
@@ -366,13 +368,37 @@ if options.burstSubmit != '':
         
 
 # split options are mutually exclusive
-if (options.nFilesPerJob > 0 and options.nEventsPerJob > 0):
-    tmpLog.error("split by files and split by events can not be defined sumaltaneously")
+if (options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob != -1):
+    tmpLog.error("split by files and split by events and split by file size can not be defined sumaltaneously")
     sys.exit(EC_Config)
 
+
+# check nGBPerJob
+if options.nGBPerJob != -1:
+    # convert to int
+    try:
+        if options.nGBPerJob != 'MAX':
+            options.nGBPerJob = int(options.nGBPerJob)
+    except:
+        tmpLog.error("nGBPerJob must be an integer or MAX")
+        sys.exit(EC_Config)
+    # check negative    
+    if options.nGBPerJob <= 0:
+        tmpLog.error("nGBPerJob must be positive")
+        sys.exit(EC_Config)
+    # convert MAX to default max value
+    if options.nGBPerJob == 'MAX':
+        options.nGBPerJob = maxTotalSize
+    else:
+        # convert to Bytes
+        options.nGBPerJob = long(int(options.nGBPerJob)*1024*1024*1024)
+        # reset max size per job
+        maxTotalSize = options.nGBPerJob
+    
+
 # check DBRelease
-if options.dbRelease != '' and options.dbRelease.find(':') == -1:
-    tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName")  
+if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
+    tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")  
     sys.exit(EC_Config)
     
 # additinal files
@@ -389,6 +415,10 @@ try:
     options.gluePackages.remove('')
 except:
     pass
+
+# set excludeFile
+if options.excludeFile != '':
+    AthenaUtils.setExcludeFile(options.excludeFile)
 
 # set ara on when ares is used
 if options.ares:
@@ -523,7 +553,7 @@ if distinguishedName == '' and nickName == '':
     sys.exit(EC_Config)
 
 # check outDS format
-if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site):
+if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site,vomsFQAN):
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
 
@@ -892,6 +922,10 @@ else:
 ####################################################################3
 # datasets 
 
+# get the latest of DBRelease
+if options.dbRelease == 'LATEST':
+    options.dbRelease = Client.getLatestDBRelease(options.verbose)
+
 # check if output dataset is unique
 outputDSexist = False
 outputContExist = False
@@ -1001,6 +1035,129 @@ if options.parentDS != '':
 
 # input datasets    
 if options.inDS != '' or options.shipinput or options.pfnList != '':
+    # minimum bias dataset
+    if options.trf and jobO.find('%MININ') != -1:
+        runConfig.input.inMinBias = True
+    # set dataset name    
+    if runConfig.input.inMinBias:
+        if options.minDS == "":
+            # read from stdin   
+            print
+            print "This job uses Minimum-Bias stream"
+            while True:
+                minbiasDataset = raw_input("Enter dataset name for Minimum Bias : ")
+                minbiasDataset = minbiasDataset.strip()
+                if minbiasDataset != "":
+                    break
+        else:
+            minbiasDataset = options.minDS
+    # cavern dataset
+    if options.trf and jobO.find('%CAVIN') != -1:
+        runConfig.input.inCavern = True
+    if runConfig.input.inCavern:
+        if options.cavDS == "":
+            # read from stdin                  
+            print
+            print "This job uses Cavern stream"
+            while True:
+                cavernDataset = raw_input("Enter dataset name for Cavern : ")
+                cavernDataset = cavernDataset.strip()
+                if cavernDataset != "":
+                    break
+        else:
+            cavernDataset = options.cavDS
+    # beam halo dataset
+    if options.trf and jobO.find('%BHIN') != -1:
+        runConfig.input.inBeamHalo = True 
+    if runConfig.input.inBeamHalo:
+	# use common DS
+	if options.useCommonHalo:
+	    if options.beamHaloDS == "":
+                # read from stdin                  
+                print
+                print "This job uses BeamHalo stream"
+                while True:
+                    beamHaloDataset = raw_input("Enter dataset name for BeamHalo : ")
+                    beamHaloDataset = beamHaloDataset.strip()
+                    if beamHaloDataset != "":
+                        break
+            else:
+                beamHaloDataset = options.beamHaloDS
+	else:	
+            # get DS for A-side        
+            if options.beamHaloADS == "":
+                # read from stdin                  
+                print
+                print "This job uses BeamHalo stream"
+                while True:
+                    beamHaloAdataset = raw_input("Enter dataset name for BeamHalo A-side : ")
+                    beamHaloAdataset = beamHaloAdataset.strip()
+                    if beamHaloAdataset != "":
+                        break
+            else:
+                beamHaloAdataset = options.beamHaloADS
+            # get DS for C-side
+            if options.beamHaloCDS == "":
+                # read from stdin                  
+                while True:
+                    beamHaloCdataset = raw_input("Enter dataset name for BeamHalo C-side : ")
+                    beamHaloCdataset = beamHaloCdataset.strip()
+                    if beamHaloCdataset != "":
+                        break
+            else:
+                beamHaloCdataset = options.beamHaloCDS
+    # beam gas dataset
+    if options.trf and jobO.find('%BGIN') != -1:
+        runConfig.input.inBeamGas = True  
+    if runConfig.input.inBeamGas: 
+	# use common DS
+	if options.useCommonGas:
+            # get BeamGas DS
+            if options.beamGasDS == "":
+                # read from stdin                  
+                print
+                print "This job uses BeamGas stream"
+                while True:
+                    beamGasDataset = raw_input("Enter dataset name for BeamGas : ")
+                    beamGasDataset = beamGasDataset.strip()
+                    if beamGasDataset != "":
+                        break
+            else:
+                beamGasDataset = options.beamGasDS
+        else:
+            # get DS for H
+            if options.beamGasHDS == "":
+                # read from stdin                  
+                print
+                print "This job uses BeamGas stream"
+                while True:
+                    beamGasHdataset = raw_input("Enter dataset name for BeamGas Hydrogen : ")
+                    beamGasHdataset = beamGasHdataset.strip()
+                    if beamGasHdataset != "":
+                        break
+            else:
+                beamGasHdataset = options.beamGasHDS
+            # get DS for C
+            if options.beamGasCDS == "":
+                # read from stdin                  
+                while True:
+                    beamGasCdataset = raw_input("Enter dataset name for BeamGas Carbon : ")
+                    beamGasCdataset = beamGasCdataset.strip()
+                    if beamGasCdataset != "":
+                        break
+            else:
+                beamGasCdataset = options.beamGasCDS
+            # get DS for O
+            if options.beamGasODS == "":
+                # read from stdin                  
+                while True:
+                    beamGasOdataset = raw_input("Enter dataset name for BeamGas Oxygen : ")
+                    beamGasOdataset = beamGasOdataset.strip()
+                    if beamGasOdataset != "":
+                        break
+            else:
+                beamGasOdataset = options.beamGasODS
+    # input dataset        
     if options.inDS != '':
         # query files in shadow dataset
         shadowList = []
@@ -1061,9 +1218,72 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             if inputDsString == '':
                 # not using wildcard
                 inputDsString = options.inDS
-            dsLocationMap,dsLocationMapBack,dsTapeSites = Client.getLocations(inputDsString,inputFileMap,options.cloud,False,options.verbose,
-                                                                              expCloud=expCloudFlag,getReserved=True,getTapeSites=True,
+            # take MinBias/Cavern datasets into account
+            if runConfig.input.inMinBias:
+                inputDsString = inputDsString + ',' + minbiasDataset
+            if runConfig.input.inCavern:
+                inputDsString = inputDsString + ',' + cavernDataset
+            # take beamgas/halo datasets into account
+            if runConfig.input.inBeamHalo:
+                if options.useCommonHalo:
+                    inputDsString = inputDsString + ',' + beamHaloDataset
+                else:
+                    inputDsString = inputDsString + ',' + beamHaloAdataset
+                    inputDsString = inputDsString + ',' + beamHaloCdataset
+            if runConfig.input.inBeamGas:
+                if options.useCommonGas:
+                    inputDsString = inputDsString + ',' + beamGasDataset                    
+                else:
+                    inputDsString = inputDsString + ',' + beamGasHdataset
+                    inputDsString = inputDsString + ',' + beamGasCdataset
+                    inputDsString = inputDsString + ',' + beamGasOdataset
+            # DBRelease
+            dbrDsString = ''
+            if options.trf or options.dbRelease != '':
+                dbrDsList = []
+                if options.trf:
+                    # parse jobO for TRF
+                    tmpItems = jobO.split()
+                else:
+                    tmpItems = []
+                if options.dbRelease != '':
+                    # mimic a trf parameter to reuse following algorithm
+                    tmpItems += ['%DB='+options.dbRelease]
+                # look for DBRelease
+                for tmpItem in tmpItems:
+                    match = re.search('%DB=([^:]+):(.+)$',tmpItem)
+                    if match:
+                        tmpDbrDS  = match.group(1)
+                        if not tmpDbrDS in dbrDsList:
+                            if dbrDsString == '':
+                                dbrDsString = tmpDbrDS
+                            else:
+                                dbrDsString = dbrDsString + ',' + tmpDbrDS
+                            dbrDsList.append(tmpDbrDS)
+            # get location        
+            dsLocationMap,dsLocationMapBack,dsTapeSites = Client.getLocations(inputDsString,inputFileMap,options.cloud,
+                                                                              False,options.verbose,
+                                                                              expCloud=expCloudFlag,getReserved=True,
+                                                                              getTapeSites=True,
                                                                               locCandidates=parentDSlocations)
+            # get locations for DBR
+            if dbrDsString != '':
+                dbrDsLocationMap,dbrDsLocationMapBack,dbrDsTapeSites = Client.getLocations(dbrDsString,{},options.cloud,
+                                                                                           False,options.verbose,
+                                                                                           expCloud=expCloudFlag,getReserved=True,
+                                                                                           getTapeSites=True,
+                                                                                           locCandidates=parentDSlocations)
+                # remove if DBR is unavailable
+                tmpSiteKeys = dsLocationMap.keys()
+                for tmpSite in tmpSiteKeys:
+                    if not tmpSite in dbrDsLocationMap and not tmpSite in dbrDsLocationMapBack:
+                        tmpLog.info("%s is unavailabe at %s although input dataset exists there" % (dbrDsString,tmpSite))
+                        del dsLocationMap[tmpSite]
+                tmpSiteKeys = dbrDsLocationMapBack.keys()
+                for tmpSite in tmpSiteKeys:
+                    if not tmpSite in dbrDsLocationMap and not tmpSite in dbrDsLocationMapBack:
+                        tmpLog.info("%s is unavailabe at %s although input datasets exist there" % (dbrDsString,tmpSite))
+                        del dbrDsLocationMapBack[tmpSite]
 	    # no location
             if dsLocationMap == {} and dsLocationMapBack == {}:
                 if expCloudFlag:
@@ -1072,6 +1292,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     errStr = "could not find supported/online sites for %s" % options.inDS
                 if options.parentDS != '':
                     errStr += ' and %s' % options.parentDS
+                if dbrDsString != '':
+                    errStr += ' and %s' % dbrDsString
                 tmpLog.error(errStr)
                 if dsTapeSites != []:
                     tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
@@ -1120,6 +1342,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             options.cloud = Client.PandaSites[options.site]['cloud']
             if options.verbose:
                 tmpLog.debug("chosen site=%s" % options.site)
+        # reset max input size
+        if Client.PandaSites[options.site]['maxinputsize'] != 0:
+            maxTotalSize = Client.PandaSites[options.site]['maxinputsize'] * 1024*1024
         # scan local replica catalog
         if options.skipScan:
             # skip remote scan
@@ -1243,7 +1468,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 pass
         #@ If number of jobs is not defined then....
         #@ For splitting by files case
-        if(options.nEventsPerJob == -1):
+        if options.nEventsPerJob == -1 and options.nGBPerJob == -1:
             if options.nFilesPerJob > 0:
                 defaultNFile = options.nFilesPerJob
             else:
@@ -1291,7 +1516,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # set            
             options.split = tmpNSplit
         #@ For splitting by events case
-        else:
+        elif options.nGBPerJob == -1:
             #@ split by number of events defined
             defaultNFile=1 #Each job has one input file in this case
             #@ tmpNSplit - number of jobs per file in case of splitting by event number
@@ -1300,22 +1525,29 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 tmpNSplit +=1
             #@ Number of Jobs calculated here:
             options.split = tmpNSplit*len(inputFileList)
+        else:
+            # calcurate number of jobs for nGBPerJob
+            options.split = 0
+            tmpSubTotal = 0
+            for fileName in inputFileList:
+                vals = inputFileMap[fileName]
+                tmpSize = long(vals['fsize'])
+                singleLargeFile = False
+                if tmpSubTotal + tmpSize > options.nGBPerJob:
+                    options.split += 1
+                    # single large file uses one job
+                    if tmpSubTotal == 0:
+                        singleLargeFile = True
+                    tmpSubTotal = 0
+                if not singleLargeFile:
+                    tmpSubTotal += tmpSize
+            # remaining
+            if tmpSubTotal != 0:
+                options.split += 1    
+                    
 
     # input stream for minimum bias
-    if options.trf and jobO.find('%MININ') != -1:
-        runConfig.input.inMinBias = True
     if runConfig.input.inMinBias:
-        if options.minDS == "":
-            # read from stdin   
-            print
-            print "This job uses Minimum-Bias stream"
-            while True:
-                minbiasDataset = raw_input("Enter dataset name for Minimum Bias : ")
-                minbiasDataset = minbiasDataset.strip()
-                if minbiasDataset != "":
-                    break
-        else:
-            minbiasDataset = options.minDS
         # query files in dataset
         tmpLog.info("query files in %s" % minbiasDataset)
         tmpList = Client.queryFilesInDataset(minbiasDataset,options.verbose)
@@ -1342,22 +1574,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             tmpLog.error("%s contains only %s files which is less than %s" % \
                          (minbiasDataset,len(minbiasList),options.nMin))
             sys.exit(EC_Dataset)
-
     # input stream for cavern
-    if options.trf and jobO.find('%CAVIN') != -1:
-        runConfig.input.inCavern = True
     if runConfig.input.inCavern:
-        if options.cavDS == "":
-            # read from stdin                  
-            print
-            print "This job uses Cavern stream"
-            while True:
-                cavernDataset = raw_input("Enter dataset name for Cavern : ")
-                cavernDataset = cavernDataset.strip()
-                if cavernDataset != "":
-                    break
-        else:
-            cavernDataset = options.cavDS
         # query files in dataset
         tmpLog.info("query files in %s" % cavernDataset)
         tmpList = Client.queryFilesInDataset(cavernDataset,options.verbose)
@@ -1385,22 +1603,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                          (cavernDataset,len(cavernList),options.nCav))
             sys.exit(EC_Dataset)
     # input stream for beam halo
-    if options.trf and jobO.find('%BHIN') != -1:
-        runConfig.input.inBeamHalo = True 
     if runConfig.input.inBeamHalo:
 	# use common DS
 	if options.useCommonHalo:
-	    if options.beamHaloDS == "":
-                # read from stdin                  
-                print
-                print "This job uses BeamHalo stream"
-                while True:
-                    beamHaloDataset = raw_input("Enter dataset name for BeamHalo : ")
-                    beamHaloDataset = beamHaloDataset.strip()
-                    if beamHaloDataset != "":
-                        break
-            else:
-                beamHaloDataset = options.beamHaloDS
             # query files in dataset
             tmpLog.info("query files in %s" % beamHaloDataset)
             tmpList = Client.queryFilesInDataset(beamHaloDataset,options.verbose)
@@ -1428,28 +1633,6 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                              (beamHaloDataset,len(beamHaloList),options.nBeamHalo))
                 sys.exit(EC_Dataset)
 	else:	
-            # get DS for A-side        
-            if options.beamHaloADS == "":
-                # read from stdin                  
-                print
-                print "This job uses BeamHalo stream"
-                while True:
-                    beamHaloAdataset = raw_input("Enter dataset name for BeamHalo A-side : ")
-                    beamHaloAdataset = beamHaloAdataset.strip()
-                    if beamHaloAdataset != "":
-                        break
-            else:
-                beamHaloAdataset = options.beamHaloADS
-            # get DS for C-side
-            if options.beamHaloCDS == "":
-                # read from stdin                  
-                while True:
-                    beamHaloCdataset = raw_input("Enter dataset name for BeamHalo C-side : ")
-                    beamHaloCdataset = beamHaloCdataset.strip()
-                    if beamHaloCdataset != "":
-                        break
-            else:
-                beamHaloCdataset = options.beamHaloCDS
             # query files in dataset
             tmpLog.info("query files in %s" % beamHaloAdataset)
             tmpList = Client.queryFilesInDataset(beamHaloAdataset,options.verbose)
@@ -1493,24 +1676,10 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 tmpLog.error("%s contains only %s files which is less than %s" % \
                              (beamHaloCdataset,len(beamHaloCList),options.nBeamHaloC))
                 sys.exit(EC_Dataset)
-    # input stream for beam gas
-    if options.trf and jobO.find('%BGIN') != -1:
-        runConfig.input.inBeamGas = True  
+    # beam gas dataset
     if runConfig.input.inBeamGas: 
 	# use common DS
 	if options.useCommonGas:
-            # get BeamGas DS
-            if options.beamGasDS == "":
-                # read from stdin                  
-                print
-                print "This job uses BeamGas stream"
-                while True:
-                    beamGasDataset = raw_input("Enter dataset name for BeamGas : ")
-                    beamGasDataset = beamGasDataset.strip()
-                    if beamGasDataset != "":
-                        break
-            else:
-                beamGasDataset = options.beamGasDS
             # query files in dataset
             tmpLog.info("query files in %s" % beamGasDataset)
             tmpList = Client.queryFilesInDataset(beamGasDataset,options.verbose)
@@ -1538,38 +1707,6 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                              (beamGasDataset,len(beamGasList),options.nBeamGas))
                 sys.exit(EC_Dataset)
         else:
-            # get DS for H
-            if options.beamGasHDS == "":
-                # read from stdin                  
-                print
-                print "This job uses BeamGas stream"
-                while True:
-                    beamGasHdataset = raw_input("Enter dataset name for BeamGas Hydrogen : ")
-                    beamGasHdataset = beamGasHdataset.strip()
-                    if beamGasHdataset != "":
-                        break
-            else:
-                beamGasHdataset = options.beamGasHDS
-            # get DS for C
-            if options.beamGasCDS == "":
-                # read from stdin                  
-                while True:
-                    beamGasCdataset = raw_input("Enter dataset name for BeamGas Carbon : ")
-                    beamGasCdataset = beamGasCdataset.strip()
-                    if beamGasCdataset != "":
-                        break
-            else:
-                beamGasCdataset = options.beamGasCDS
-            # get DS for O
-            if options.beamGasODS == "":
-                # read from stdin                  
-                while True:
-                    beamGasOdataset = raw_input("Enter dataset name for BeamGas Oxygen : ")
-                    beamGasOdataset = beamGasOdataset.strip()
-                    if beamGasOdataset != "":
-                        break
-            else:
-                beamGasOdataset = options.beamGasODS
             # query files in dataset
             tmpLog.info("query files in %s" % beamGasHdataset)
             tmpList = Client.queryFilesInDataset(beamGasHdataset,options.verbose)
@@ -1662,7 +1799,7 @@ if options.trf or options.dbRelease != '':
                 dbrDsList.append(tmpDbrDS)
             # check
             if not dbrFiles.has_key(tmpDbrLFN):
-                tmpLog.error("%s is not in %s" (tmpDbrLFN,tmpDbrDS))
+                tmpLog.error("%s is not in %s" % (tmpDbrLFN,tmpDbrDS))
 		sys.exit(EC_Dataset)
 
 
@@ -1675,6 +1812,17 @@ if options.site == "AUTO":
         parentDSlocationsSrmV2 = []
         for locTmp in parentDSlocations:
             parentDSlocationsSrmV2.append(Client.convSrmV2ID(locTmp))
+    # get DBR locations
+    if dbrDsList != []:
+	dbrDsString = ''
+        for tmpDS in dbrDsList:
+            dbrDsString += (tmpDS + ',')
+        dbrDsString = dbrDsString[:-1]    
+        dbrDsLocationMap,dbrDsLocationMapBack,dbrDsTapeSites = Client.getLocations(dbrDsString,{},options.cloud,
+                                                                                   False,options.verbose,
+                                                                                   expCloud=expCloudFlag,getReserved=True,
+                                                                                   getTapeSites=True,
+                                                                                   locCandidates=parentDSlocations)
     # get sites belonging to a cloud and others
     tmpPriSites = []
     tmpSecSites = []
@@ -1687,11 +1835,15 @@ if options.site == "AUTO":
             if options.parentDS != '':            
                 if not Client.convSrmV2ID(spec['ddm']) in parentDSlocationsSrmV2:
                     continue
+            # check DBR locations
+            if dbrDsList != []:
+                if not Client.convSrmV2ID(spec['ddm']) in dbrDsLocationMap.keys()+dbrDsLocationMapBack.keys():
+                    continue
 	    # convert to long
             if options.long:
                 tmpID = Client.convertToLong(tmpID)
-            # check cloud    
-            if spec['cloud']==options.cloud:
+            # check cloud if it is specified   
+            if spec['cloud']==options.cloud or (not expCloudFlag):
                 tmpPriSites.append(tmpID)
             elif not expCloudFlag:
                 tmpSecSites.append(tmpID)
@@ -1701,7 +1853,10 @@ if options.site == "AUTO":
     # run brokerage
     tmpBrokerErr = ''
     for idxTmpSites,tmpSites in enumerate(tmpSitesList):
-        status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer)    
+        if tmpSites != []:
+            status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer)
+        else:
+            status,out = 0,'ERROR : site list is empty.' 
         if status != 0:
             tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
             sys.exit(EC_Config)
@@ -1830,6 +1985,7 @@ elif options.libDS == '':
     jobB.AtlasRelease      = 'Atlas-%s' % athenaVer
     jobB.homepackage       = 'AnalysisTransforms'+cacheVer+nightVer
     jobB.transformation    = '%s/buildJob-00-00-03' % Client.baseURLSUB
+    jobB.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
     hostName = commands.getoutput('hostname').split('.')[0]
     if nickName == '':
         # old convention
@@ -1943,7 +2099,10 @@ else:
 # run athena            
 
 if options.inDS != '' and options.burstSubmit == '':
-    tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
+    if len(missList) == 0:
+        tmpLog.info("all files are available at %s" % options.site)
+    else:
+        tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
 
 # disp datasetname to identify inputs
@@ -1966,6 +2125,7 @@ for iSubJob in range(options.split):
     jobR.AtlasRelease      = 'Atlas-%s' % athenaVer
     jobR.homepackage       = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runAthena-00-00-11' % Client.baseURLSUB
+    jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
     if options.inDS == '':
         jobR.prodDBlock     = 'NULL'
     else:
@@ -2021,25 +2181,40 @@ for iSubJob in range(options.split):
     guidBoundary = []
     if options.inDS != '' or options.shipinput or options.pfnList != '':
         # calculate N files
-        (divF,modF) = divmod(len(inputFileList),options.split)
-        if modF != 0:
-            divF += 1
-        # if split by files was specified
-        if options.nFilesPerJob > 0:
-            divF = options.nFilesPerJob 
-        # if split by events was specified then
-        if options.nEventsPerJob > 0:
-           #@Calculate how many events to skip
-           nEventsToSkip = nSkips*options.nEventsPerJob
-           # @Increment number of skipped blocks
-           nSkips = nSkips + 1
-           #Take just one file
-           divF = 1
-           # @ If splitting of file per event is complete then take the next file
-           if nEventsToSkip >= options.nEventsPerFile :
-               nEventsToSkip = 0
-               nSkips        = 1
-               indexFiles   += divF
+        if options.nGBPerJob == -1:
+            (divF,modF) = divmod(len(inputFileList),options.split)
+            if modF != 0:
+                divF += 1
+            # if split by files was specified
+            if options.nFilesPerJob > 0:
+                divF = options.nFilesPerJob 
+            # if split by events was specified then
+            if options.nEventsPerJob > 0:
+               #@Calculate how many events to skip
+               nEventsToSkip = nSkips*options.nEventsPerJob
+               # @Increment number of skipped blocks
+               nSkips = nSkips + 1
+               #Take just one file
+               divF = 1
+               # @ If splitting of file per event is complete then take the next file
+               if nEventsToSkip >= options.nEventsPerFile :
+                   nEventsToSkip = 0
+                   nSkips        = 1
+                   indexFiles   += divF
+        else:
+            # calculate number of files for nGBPerJob
+            divF = 0
+            tmpSubTotal = 0
+            for fileName in inputFileList[indexFiles:]:
+                vals = inputFileMap[fileName]
+                tmpSize = long(vals['fsize'])
+                if tmpSubTotal + tmpSize > options.nGBPerJob:
+                    break
+                divF += 1
+                tmpSubTotal += tmpSize
+            # avoid zero-divide    
+            if divF == 0:
+                divF = 1
         # File Selector    
         tmpList = inputFileList[indexFiles:indexFiles+divF]
         if options.inDS != '':
@@ -2070,12 +2245,13 @@ for iSubJob in range(options.split):
                 except:
                     pass
             # size check    
-            if (not isDirectAccess) and totalSize > maxTotalSize:
+            if (not isDirectAccess) and totalSize > maxTotalSize and len(tmpList) > 1:
                 tmpStr  = "A subjob has %s input files and requires %sMB of disk space.\n" \
                           % (len(tmpList), (totalSize >> 20))
                 tmpStr += "  It must be less than %sMB to avoid overflowing the remote disk.\n" \
                           % (maxTotalSize >> 20)
-                tmpStr += "  Please split the job using --nFilesPerJob."
+                tmpStr += "  Please split the job using --nFilesPerJob. If file sizes vary in large range\n"
+                tmpStr += "  --nGBPerJob may help"                
                 tmpLog.error(tmpStr)
                 sys.exit(EC_Split)
         else:        
@@ -2486,7 +2662,7 @@ if options.individualOutDS:
     for tmpFile in jobList[-1].Files:
         if tmpFile.type in ['output','log']:
             if not tmpFile.dataset in tmpIdvOutDsList:
-                if not PsubUtils.checkOutDsName(tmpFile.dataset,distinguishedName,options.official,nickName,options.site):
+                if not PsubUtils.checkOutDsName(tmpFile.dataset,distinguishedName,options.official,nickName,options.site,vomsFQAN):
                     tmpLog.info("a suffix is added to datasetname for each output stream when --individualOutDS is used. e.g. outDS_suffix:%s. Please use shorter name for --outDS" % tmpFile.dataset)
                     sys.exit(EC_Config)
                 tmpIdvOutDsList.append(tmpFile.dataset)
@@ -2705,6 +2881,10 @@ if not options.nosubmit:
 
 # go back to current dir
 os.chdir(currentDir)
+
+# check site occupancy
+if (siteSpecified or expCloudFlag) and options.burstSubmit == '':
+    Client.checkQueuedAnalJobs(options.site,options.verbose)
 
 # try another site if input files remain
 options.crossSite -= 1

@@ -510,8 +510,30 @@ def setExtFile(v_extFile):
     global extFile
     extFile = v_extFile
 
+
+# set excludeFile
+excludeFile = []
+def setExcludeFile(strExcludeFile):
+    # empty
+    if strExcludeFile == '':
+        return
+    # convert to list
+    global excludeFile
+    for tmpItem in strExcludeFile.split(','):
+        # change . to \. for regexp
+        tmpItem = tmpItem.replace('.','\.')        
+        # change * to .* for regexp
+        tmpItem = tmpItem.replace('*','.*')
+        # append
+        excludeFile.append(tmpItem)
+    
+                
 # matching for extFiles
 def matchExtFile(fileName):
+    # check exclude files
+    for tmpPatt in excludeFile:
+        if re.search(tmpPatt,fileName) != None:
+            return False
     # gather files with special extensions
     for tmpExtention in ['.py','.dat','.C','.xml','Makefile',
                          '.cc','.cxx','.h','.hh','.sh']:
@@ -672,6 +694,14 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                 # ignore libraries
                 if item.startswith('i686') or item.startswith('i386') or item.startswith('x86_64') \
                        or item=='dict' or item=='pool' or item =='pool_plugins':
+                    continue
+                # check exclude files
+                excludeFileFlag = False
+                for tmpPatt in excludeFile:
+                    if re.search(tmpPatt,'%s/%s' % (pack,item)) != None:
+                        excludeFileFlag = True
+                        break
+                if excludeFileFlag:
                     continue
                 # run dir
                 if item=='run':
@@ -910,6 +940,14 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
         # archive files if they are under the area
         for file in files+cmtFiles:
             relPath = re.sub(sString+'/','',os.path.realpath(file))
+            # check exclude files
+            excludeFileFlag = False
+            for tmpPatt in excludeFile:
+                if re.search(tmpPatt,relPath) != None:
+                    excludeFileFlag = True
+                    break
+            if excludeFileFlag:
+                continue
             if not relPath.startswith('/'):
                 # use files in private InstallArea instead of group InstallArea
                 if not file in allFiles:
@@ -1495,3 +1533,29 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
         pass
     file.destinationSE = jobR.destinationSE
     jobR.addFile(file)
+
+
+# get CMTCONFIG
+def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
+    try:
+        if athenaVer != None:
+            # remove prefix
+            verStr = re.sub('^[^-]+-','',athenaVer)
+            # extract version numbers
+            match = re.search('(\d+)\.(\d+)\.(\d+)',verStr)
+            if match == None:
+                return None
+            # major,miner,rev
+            maVer = int(match.group(1))
+            miVer = int(match.group(2))
+            reVer = int(match.group(3))
+            # use i686-slc5-gcc43-opt for 15.6.3 or higher
+            # FIXME once the pilot sets cmtconfig properly
+            if maVer >= 15 and miVer >= 6 and reVer >= 3:
+                return 'i686-slc5-gcc43-opt'
+            # use i686-slc4-gcc34-opt by default
+            return 'i686-slc4-gcc34-opt'
+        return None
+    except:
+        return None
+    
