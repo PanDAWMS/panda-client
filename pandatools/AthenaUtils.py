@@ -233,7 +233,12 @@ def getAthenaVer():
                       tmpLog.error("unsupported nightly %s" % line)
                       return False,{}
                 break
-            elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT']:
+            # cache or analysis projects
+            elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT'] or \
+                 items[1].count('.') >= 4:  
+                # tailside cache is used
+                if cacheVer != '':
+                    continue
                 # production cache
                 cacheTag = os.path.basename(res.group(1))
                 # doesn't use when it is a base release since it is not installed in EGEE
@@ -282,7 +287,7 @@ class ConfigAttr(dict):
                         
 
 # extract run configuration
-def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
+def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     outputConfig = ConfigAttr()
@@ -294,7 +299,9 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
     else:
         baseName = os.environ['PANDA_SYS'] + "/etc/panda/share"
         com = 'athena.py %s/FakeAppMgr.py %s %s/ConfigExtractor.py' % \
-              (baseName,jobO,baseName)          
+              (baseName,jobO,baseName)
+        if verbose:
+            tmpLog.debug(com)
         # run ConfigExtractor for normal jobO
         out = commands.getoutput(com)
         failExtractor = True

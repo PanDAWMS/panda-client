@@ -1529,7 +1529,7 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
     if cacheVer != '':
         # change format if needed
         cacheVer = re.sub('^-','',cacheVer)
-        match = re.search('^([^_]+)_(\d+\.\d+\.\d+\.\d+)$',cacheVer)
+        match = re.search('^([^_]+)_(\d+\.\d+\.\d+\.\d+\.*\d*)$',cacheVer)
         if match != None:
             cacheVer = '%s-%s' % (match.group(1),match.group(2))
         # use cache for brokerage

@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.16 (3/1/2010)
+  * fixed for analysis projects
+
 0.2.15 (2/26/2010)
   * added --dbRelease=LATEST to pathena  	
   * updated pbook for canceled state
