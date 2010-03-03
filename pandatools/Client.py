@@ -911,7 +911,8 @@ def convSrmV2ID(tmpSite):
 
 # get locations
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
-                 getTapeSites=False,getDQ2IDs=False,locCandidates=None):
+                 getTapeSites=False,getDQ2IDs=False,locCandidates=None,removeDS=False,
+                 removedDatasets=[]):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -932,6 +933,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         countSite     = {}
         allOut        = {}
         iLookUp       = 0
+        resUsedDsMap  = {}
         # convert candidates for SRM v2
         if locCandidates != None:
             locCandidatesSrmV2 = []
@@ -980,13 +982,30 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             if containerFlag:
                 # count number of complete elements
                 for tmpEleName,tmpEleVal in out.iteritems():
+                    # ignore removed datasets
+                    if tmpEleName in removedDatasets:
+                        continue
                     for tmpEleVUID,tmpEleLocs in tmpEleVal.iteritems():
                         # get complete locations
                         for tmpEleLoc in tmpEleLocs[1]:
                             if not outTmp.has_key(tmpEleLoc):
-                                outTmp[tmpEleLoc] = [{'found':0}]
+                                outTmp[tmpEleLoc] = [{'found':0,'useddatasets':[]}]
                             # increment    
                             outTmp[tmpEleLoc][0]['found'] += 1
+                            # append list
+                            if not tmpEleName in outTmp[tmpEleLoc][0]['useddatasets']:
+                                outTmp[tmpEleLoc][0]['useddatasets'].append(tmpEleName)
+                        # use incomplete locations for user container if no complete replicas
+                        if tmpEleLocs[1] == [] and (tmpEleName.startswith('user') or \
+                                                    tmpEleName.startswith('group')):
+                            for tmpEleLoc in tmpEleLocs[0]:
+                                if not outTmp.has_key(tmpEleLoc):
+                                    outTmp[tmpEleLoc] = [{'found':0,'useddatasets':[]}]
+                                # increment
+                                outTmp[tmpEleLoc][0]['found'] += 1
+                                # append list
+                                if not tmpEleName in outTmp[tmpEleLoc][0]['useddatasets']:
+                                    outTmp[tmpEleLoc][0]['useddatasets'].append(tmpEleName)
                 # replace
                 out = outTmp
             # sum
@@ -999,6 +1018,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                     allOut[tmpOutKey][0]['found'] += tmpNfound
                 else:
                     allOut[tmpOutKey] = [{'found':tmpNfound}]
+                if tmpOutVar[0].has_key('useddatasets'):
+                    allOut[tmpOutKey][0]['useddatasets'] = tmpOutVar[0]['useddatasets']    
         # replace
         out = allOut
         if verbose:
@@ -1079,6 +1100,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             appendMap[tmpSite] = []
                         if not tmpID in appendMap[tmpSite]:
                             appendMap[tmpSite].append(tmpID)
+                        if not tmpID in resUsedDsMap and origTmpInfo[0].has_key('useddatasets'):
+                            resUsedDsMap[tmpID] = origTmpInfo[0]['useddatasets']
                     else:
                         # not interested in another cloud
                         if tmpSpec['cloud'] != cloud and expCloud:
@@ -1117,8 +1140,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             return retSiteMap
         elif not getTapeSites:
             return retSiteMap,resRetSiteMap
+        elif not removeDS:
+            return retSiteMap,resRetSiteMap,resTapeSites
         else:
-            return retSiteMap,resRetSiteMap,resTapeSites            
+            return retSiteMap,resRetSiteMap,resTapeSites,resUsedDsMap            
     except:
         print status,out
         if errStr != '':

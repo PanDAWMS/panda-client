@@ -46,6 +46,8 @@ optP.add_option('--destSE',action='store', dest='destSE',default='',type='string
                 help='Destination strorage element')
 optP.add_option('--libDS',action='store',dest='libDS',default='',type='string',
                 help='Name of a library dataset')
+optP.add_option('--removedDS', action='store', dest='removedDS', default='',
+                type='string', help="don't use datasets in the input dataset container")
 optP.add_option('--noBuild', action='store_const',const=True,dest='nobuild',default=False,
                 help='Skip buildGen')
 optP.add_option('--secondaryDSs',action='store',dest='secondaryDSs',default='',type='string',
@@ -123,6 +125,8 @@ optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='
                 type='string', help='internal parameter')
 optP.add_option('--panda_srcName', action='store', dest='panda_srcName', default='',
                 type='string', help='internal parameter')
+optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
+                type='string', help='internal parameter')
 
 # parse options
 options,args = optP.parse_args()
@@ -148,6 +152,9 @@ if options.update:
 	sys.exit(0)
     else:
 	sys.exit(1)
+
+# full execution string
+fullExecString = PsubUtils.convSysArgv()
 
 # set dummy CMTSITE
 if not os.environ.has_key('CMTSITE'):
@@ -228,6 +235,12 @@ if not siteSpecified:
         tmpLog.error("Failed to get allowed site list")
         sys.exit(EC_Config)
 
+# removed datasets
+if options.removedDS == '':
+    options.removedDS = []
+else:
+    options.removedDS = options.removedDS.split(',')
+
 # save current dir
 curDir = os.path.realpath(os.getcwd())
 
@@ -243,6 +256,18 @@ if curDir != options.workDir:
     # remove special characters
     wDirString=re.sub('[\+]','.',options.workDir)
     runDir = re.sub('^'+wDirString+'/','',curDir)
+
+# create tmp dir
+if options.tmpDir == '':
+    tmpDir = '%s/%s' % (curDir,commands.getoutput('uuidgen'))
+else:
+    tmpDir = '%s/%s' % (options.tmpDir,commands.getoutput('uuidgen'))    
+os.makedirs(tmpDir)
+
+# exit action
+def _onExit(dir):
+    commands.getoutput('rm -rf %s' % dir)
+atexit.register(_onExit,tmpDir)
 
 # parse tag
 athenaVer = ''
@@ -529,7 +554,7 @@ if not PsubUtils.checkValidCloud(options.cloud):
 if options.inDS != '':
     # query files in shadow dataset
     shadowList = []
-    if shadowDSexist:
+    if shadowDSexist and not outputContExist:
 	for tmpItem in Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose):
             shadowList.append(tmpItem)
         # query files in PandaDB
@@ -545,6 +570,7 @@ if options.inDS != '':
     # sort
     inputFileList = inputFileMap.keys()
     inputFileList.sort()
+    missList = []
     # query files in secondary datasets
     for tmpDsName,tmpValMap in options.secondaryDSs.iteritems():
         tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose)
@@ -568,9 +594,11 @@ if options.inDS != '':
             dsLocationMap = None
             dsLocationMapBack = None
             for tmpDsForLookUp in tmpDsForLookUpList:
-                tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites = Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
-                                                                                        options.verbose,expCloud=expCloudFlag,
-                                                                                        getReserved=True,getTapeSites=True)
+                tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites,dsUsedDsMap = Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
+                                                                                                    options.verbose,expCloud=expCloudFlag,
+                                                                                                    getReserved=True,getTapeSites=True,
+                                                                                                    removeDS=True,
+                                                                                                    removedDatasets=options.removedDS)
                 # no location
                 if tmpDsLocationMap == {} and tmpDsLocationMapBack == {}:
                     if expCloudFlag:
@@ -658,6 +686,11 @@ if options.inDS != '':
             # set site/cloud
             options.site  = out
             options.cloud = Client.PandaSites[options.site]['cloud']
+            # update used the list of used datasets
+            for tmpDsUsedDsMapKey,tmpDsUsedDsVal in dsUsedDsMap.iteritems():
+                if options.site in [tmpDsUsedDsMapKey,Client.convertToLong(tmpDsUsedDsMapKey)]:
+                    options.removedDS += tmpDsUsedDsVal
+                    break
         # scan local replica catalog
         dsLocation = Client.PandaSites[options.site]['ddm']
         if Client.getLFC(dsLocation) != None:
@@ -676,10 +709,6 @@ if options.inDS != '':
             missList = []
         if options.verbose:
             tmpLog.debug("%s holds %s files" % (options.site,len(inputFileList)-len(missList)))
-        # No files available
-        if len(inputFileList) == len(missList):
-            tmpLog.error("No files available on disk at %s" % options.site)
-            sys.exit(EC_Dataset)
         # remove missing files
         newInputFiles = []
         for inputFile in inputFileList:
@@ -690,11 +719,29 @@ if options.inDS != '':
     inputFileList = inputFileList[options.nSkipFiles:]
     # no available input files
     if inputFileList == []:
-        tmpStr  = "all input files had already been used in %s\n" % options.inDS
-        tmpStr += "  prun runs on files which were failed or were not used in\n"
+        if options.site == 'AUTO':
+            # no lookup was made
+            tmpStr  = "all input files had already been used"
+        else:
+            tmpStr  = "all input files at %s had already been used" % options.site
+        tmpStr += "\n  prun runs on files which were failed or were not used in\n"
         tmpStr += "  previous submissions if it runs with the same inDS and outDS"
-        tmpLog.error(tmpStr)
-        sys.exit(EC_Dataset)
+        if options.crossSite == 0:
+            tmpLog.error(tmpStr)
+            sys.exit(EC_Dataset)
+        else:
+            tmpLog.info(tmpStr)
+            # go back to current dir
+            os.chdir(curDir)
+            # try another site if input files remain
+            options.crossSite -= 1
+            if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
+                if missList != []:
+                    PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
+                                         options.site,options.crossSite,"",options.removedDS,
+                                         options.verbose)
+            # succeeded
+            sys.exit(0)
     # truncate
     if options.nFiles != 0:
         inputFileList = inputFileList[:options.nFiles]
@@ -759,18 +806,6 @@ if options.long and not options.site.startswith('ANALY_LONG_'):
 
 #####################################################################
 # archive sources and send it to HTTP-reachable location
-
-# create tmp dir
-if options.tmpDir == '':
-    tmpDir = '%s/%s' % (curDir,commands.getoutput('uuidgen'))
-else:
-    tmpDir = '%s/%s' % (options.tmpDir,commands.getoutput('uuidgen'))    
-os.makedirs(tmpDir)
-
-# exit action
-def _onExit(dir):
-    commands.getoutput('rm -rf %s' % dir)
-atexit.register(_onExit,tmpDir)
 
 # create archive
 if options.panda_srcName != '':
@@ -1047,9 +1082,6 @@ if options.verbose:
     print "exec       : %s" % options.jobParams
 
 
-# full execution string
-fullExecString = PsubUtils.convSysArgv()
-
 # job name
 jobName = 'prun.%s' % commands.getoutput('uuidgen')
 
@@ -1063,8 +1095,11 @@ elif options.libDS == '':
     jobB = JobSpec()
     jobB.jobDefinitionID   = jobDefinitionID
     jobB.jobName           = jobName
-    jobB.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version 
-    jobB.metadata          = fullExecString
+    jobB.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
+    if options.panda_origFullExecString == '':    
+        jobB.metadata = fullExecString
+    else:
+        jobB.metadata = urllib.unquote(options.panda_origFullExecString)        
     if athenaVer != '':
         jobB.AtlasRelease  = athenaVer
         jobB.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
@@ -1222,13 +1257,16 @@ for iJob in range(options.nJobs):
     jobR.jobDefinitionID   = jobDefinitionID
     jobR.jobName           = jobName
     jobR.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
-    jobR.metadata          = fullExecString
+    if options.panda_origFullExecString == '':
+        jobR.metadata = fullExecString
+    else:
+        jobR.metadata = urllib.unquote(options.panda_origFullExecString)
     if athenaVer != '':
         jobR.AtlasRelease  = athenaVer
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
     jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
-    jobR.destinationDBlock = options.outDS
+    jobR.destinationDBlock = original_outDS_Name
     if Client.isDQ2free(options.site):
         # flag to use non-DQ2 output
         jobR.destinationSE = 'local'
@@ -1373,39 +1411,39 @@ for iJob in range(options.nJobs):
                 idxOffset = 0
                 getOffset = True
             # new LFN
-            tmpNewLFN = '%s._%05d.%s' % (jobR.destinationDBlock,idxOffset+iJob+1,tmpLFN)
+            tmpNewLFN = '%s._%05d.%s' % (options.outDS,idxOffset+iJob+1,tmpLFN)
             # change * to XYZ and add .tgz
 	    if tmpNewLFN.find('*') != -1:
 		tmpNewLFN = tmpNewLFN.replace('*','XYZ')
 		tmpNewLFN = '%s.tgz' % tmpNewLFN
             # get offset
             if getOffset:
-                oldHead = '%s._%05d.' % (jobR.destinationDBlock,idxOffset+iJob+1)
-                filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % jobR.destinationDBlock)
+                oldHead = '%s._%05d.' % (options.outDS,idxOffset+iJob+1)
+                filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % options.outDS)
                 idxOffset = PsubUtils.getMaxIndex(existingFilesInOutDS,filePatt)
                 # append
                 existingFilesInOutDS[tmpLFN] = idxOffset
                 # correct
-                newHead = '%s._%05d.' % (jobR.destinationDBlock,idxOffset+iJob+1)
+                newHead = '%s._%05d.' % (options.outDS,idxOffset+iJob+1)
                 tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)
             # set file spec
             file = FileSpec()
             file.lfn               = tmpNewLFN              
             file.type              = 'output'
-            file.dataset           = jobR.destinationDBlock        
+            file.dataset           = options.outDS        
             file.destinationSE     = jobR.destinationSE
-            file.destinationDBlock = jobR.destinationDBlock
+            file.destinationDBlock = options.outDS
             jobR.addFile(file)
             outMap[tmpLFN] = file.lfn
         # set parameter
         jobR.jobParameters += '-o "%s" ' % str(outMap)
     # log
     file = FileSpec()
-    file.lfn               = '%s._$PANDAID.log.tgz' % jobR.destinationDBlock
+    file.lfn               = '%s._$PANDAID.log.tgz' % options.outDS
     file.type              = 'log'
-    file.dataset           = jobR.destinationDBlock    
+    file.dataset           = options.outDS    
     file.destinationSE     = jobR.destinationSE
-    file.destinationDBlock = jobR.destinationDBlock
+    file.destinationDBlock = options.outDS
     jobR.addFile(file)
     jobR.jobParameters += '-r %s ' % runDir
     # set space token
@@ -1436,12 +1474,13 @@ if not options.nosubmit:
             sys.exit(EC_MyProxy)
 
     # upload sources via HTTP POST
-    tmpLog.info("upload source files")
-    status,out = Client.putFile(archiveName,options.verbose)
-    if out != 'True':
-        print out
-        tmpLog.error("failed to upload source files with %s" % status)
-        sys.exit(EC_Post)
+    if options.panda_srcName == '':
+        tmpLog.info("upload source files")
+        status,out = Client.putFile(archiveName,options.verbose)
+        if out != 'True':
+            print out
+            tmpLog.error("failed to upload source files with %s" % status)
+            sys.exit(EC_Post)
 
     # dataset location
     tmpOutDsLocation = Client.PandaSites[options.site]['ddm']
@@ -1547,52 +1586,8 @@ if siteSpecified or expCloudFlag:
 options.crossSite -= 1
 if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
     if missList != []:
-        anotherTry = True
-        # nfiles
-        if options.nFiles != 0:
-            if options.nFiles > len(inputFileMap):
-                fullExecString = re.sub('--nFiles\s*=*\d+',
-                                        '--nFiles=%s' % (options.nFiles-len(inputFileMap)),
-                                        fullExecString)
-            else:
-                anotherTry = False
- 	# decrement crossSite counter
-        fullExecString = re.sub(' --crossSite\s*=*\d+','',fullExecString)
-        fullExecString += ' --crossSite=%s' % options.crossSite
-        # don't reuse site
-        match = re.search('--excludedSite\s*=*\S+',fullExecString)
-        if match != None:
-            # append site
-            fullExecString = re.sub(match.group(0),'%s,%s' % (match.group(0),options.site),fullExecString)
-        else:
-            # add option
-            fullExecString += ' --excludedSite=%s' % options.site
-        # set list of input files
-        inputTmpfile = '%s/intmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
-        iFile = open(inputTmpfile,'w')
-        for tmpMiss in missList:
-            iFile.write(tmpMiss+'\n')
-        iFile.close()
-        fullExecString = re.sub(' --inputFileList\s*=*\S+','',fullExecString)
-        fullExecString += ' --inputFileList=%s' % inputTmpfile
-        # source name
-        if not '--panda_srcName' in fullExecString:
-            fullExecString += ' --panda_srcName=%s' % archiveName
-        # server URL
-        if not '--panda_srvURL' in fullExecString:
-            fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
-
-        # run prun
-        if anotherTry:
-            tmpLog.info("trying other sites for the missing files")
-            com = 'prun ' + fullExecString
-            if options.verbose:
-                tmpLog.debug(com)
-            status = os.system(com)
-            # delete tmp files
-            commands.getoutput('\rm -f %s' % inputTmpfile)
-            # exit
-            sys.exit(status)
-
+	PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
+                             options.site,options.crossSite,archiveName,options.removedDS,
+                             options.verbose)
 # succeeded
 sys.exit(0)

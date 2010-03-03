@@ -4,6 +4,8 @@ import sys
 import time
 import random
 import commands
+import urllib
+import pickle
 
 import Client
 import MyproxyUtils
@@ -675,3 +677,153 @@ def checkDestSE(destSE):
         return False
     # return
     return True
+
+
+# run pathena recursively
+def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,removedDS,verbose):
+    anotherTry = True
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # keep original args
+    if not '--panda_origFullExecString=' in fullExecString:
+        fullExecString += (" --panda_origFullExecString=" + urllib.quote(fullExecString))
+    # nfiles
+    if nfiles != 0:
+        if nfiles > len(inputFileMap):
+            fullExecString = re.sub('--nFiles\s*=*\d+',
+                                    '--nFiles=%s' % (nfiles-len(inputFileMap)),
+                                    fullExecString)
+        else:
+            anotherTry = False
+    # decrement crossSite counter
+    fullExecString = re.sub(' --crossSite\s*=*\d+','',fullExecString)
+    fullExecString += ' --crossSite=%s' % crossSite
+    # don't reuse site
+    match = re.search('--excludedSite\s*=*[^ "]+',fullExecString)
+    if match != None:
+        # append site
+        fullExecString = re.sub(match.group(0),'%s,%s' % (match.group(0),site),fullExecString)
+    else:
+        # add option
+        fullExecString += ' --excludedSite=%s' % site
+    # remove datasets
+    if removedDS != []:
+        match = re.search('--removedDS\s*=*[^ "]+',fullExecString)
+        if match != None:
+            # remove the option
+            fullExecString = re.sub('"*--removedDS\s*=*[^ "]+"*','',fullExecString)
+        # add option
+        tmpDsStr = ''
+        for tmpItem in removedDS:
+            tmpDsStr += '%s,' % tmpItem
+        tmpDsStr = tmpDsStr[:-1]    
+        fullExecString += ' --removedDS=%s' % tmpDsStr
+    # remove --fileList
+    fullExecString = re.sub('"*--fileList\s*=*[^ "]+"*','',fullExecString)
+    # set list of input files
+    inputTmpfile = '%s/intmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
+    iFile = open(inputTmpfile,'w')
+    for tmpMiss in missList:
+        iFile.write(tmpMiss+'\n')
+    iFile.close()
+    fullExecString = re.sub(' "*--inputFileList\s*=*[^ "]+"*','',fullExecString)
+    fullExecString += ' --inputFileList=%s' % inputTmpfile
+    # source name
+    if not '--panda_srcName' in fullExecString:
+        fullExecString += ' --panda_srcName=%s' % archiveName
+    # server URL
+    if not '--panda_srvURL' in fullExecString:
+        fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
+    # run config
+    conTmpfile = ''
+    if not '--panda_runConfig' in fullExecString:
+        conTmpfile = '%s/conftmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
+        cFile = open(conTmpfile,'w')
+        pickle.dump(runConfig,cFile)
+        cFile.close()
+        fullExecString += ' --panda_runConfig=%s' % conTmpfile
+
+    # run pathena
+    if anotherTry:
+        tmpLog.info("trying other sites for the missing files")
+        com = 'pathena ' + fullExecString
+        if verbose:
+            tmpLog.debug(com)
+        status = os.system(com)
+        # delete tmp files
+        commands.getoutput('\rm -f %s' % inputTmpfile)
+        commands.getoutput('\rm -f %s' % conTmpfile)            
+        # exit
+        sys.exit(status)
+    # exit
+    sys.exit(0)
+    
+    
+# run prun recursively
+def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite,archiveName,removedDS,verbose):
+    anotherTry = True
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # keep original args
+    if not '--panda_origFullExecString=' in fullExecString:
+        fullExecString += (" --panda_origFullExecString=" + urllib.quote(fullExecString))
+    # nfiles
+    if nFiles != 0:
+        if nFiles > len(inputFileMap):
+            fullExecString = re.sub('--nFiles\s*=*\d+',
+                                    '--nFiles=%s' % (nFiles-len(inputFileMap)),
+                                    fullExecString)
+        else:
+            anotherTry = False
+    # decrement crossSite counter
+    fullExecString = re.sub(' --crossSite\s*=*\d+','',fullExecString)
+    fullExecString += ' --crossSite=%s' % crossSite
+    # don't reuse site
+    match = re.search('--excludedSite\s*=*[^ "]+',fullExecString)
+    if match != None:
+        # append site
+        fullExecString = re.sub(match.group(0),'%s,%s' % (match.group(0),site),fullExecString)
+    else:
+        # add option
+        fullExecString += ' --excludedSite=%s' % site
+    # remove datasets
+    if removedDS != []:
+        match = re.search('--removedDS\s*=*[^ "]+',fullExecString)
+        if match != None:
+            # remove the option
+            fullExecString = re.sub('"*--removedDS\s*=*[^ "]+"*','',fullExecString)
+        # add option
+        tmpDsStr = ''
+        for tmpItem in removedDS:
+            tmpDsStr += '%s,' % tmpItem
+        tmpDsStr = tmpDsStr[:-1]    
+        fullExecString += ' --removedDS=%s' % tmpDsStr
+    # set list of input files
+    inputTmpfile = '%s/intmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
+    iFile = open(inputTmpfile,'w')
+    for tmpMiss in missList:
+        iFile.write(tmpMiss+'\n')
+    iFile.close()
+    fullExecString = re.sub(' "*--inputFileList\s*=*[^ "]+"*','',fullExecString)
+    fullExecString += ' --inputFileList=%s' % inputTmpfile
+    # source name
+    if archiveName != '' and not '--panda_srcName' in fullExecString:
+        fullExecString += ' --panda_srcName=%s' % archiveName
+    # server URL
+    if not '--panda_srvURL' in fullExecString:
+        fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
+    # run prun
+    if anotherTry:
+        tmpLog.info("trying other sites for the missing files")
+        com = 'prun ' + fullExecString
+        if verbose:
+            tmpLog.debug(com)
+        status = os.system(com)
+        # delete tmp files
+        commands.getoutput('\rm -f %s' % inputTmpfile)
+        # exit
+        sys.exit(status)
+    # exit
+    sys.exit(0)
+
+    
