@@ -17,6 +17,8 @@ pathena -h
 current
   * updated pathena/prun to send jobs to multiple sites when input dataset container
     splits over multiple sites and an output dataset container is used as --outDS
+  * fixed outputPath for T3  
+  * fixed libDS for T3
 
 0.2.16 (3/1/2010)
   * fixed for analysis projects
