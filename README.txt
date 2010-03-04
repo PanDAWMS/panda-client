@@ -14,6 +14,55 @@ pathena -h
 
 ** Release Note
 
+0.2.17 (3/4/2010)
+  * updated pathena/prun to send jobs to multiple sites when the input dataset container
+    splits over multiple sites and an output dataset container is used as --outDS
+  * fixed outputPath for T3  
+  * fixed libDS for T3
+
+0.2.16 (3/1/2010)
+  * fixed for analysis projects
+
+0.2.15 (2/26/2010)
+  * added --dbRelease=LATEST to pathena  	
+  * updated pbook for canceled state
+  * added --excludeFile to pathena/prun
+
+0.2.14 (2/11/2010)
+  * added warning message for busy sites
+  * check production role for group production
+
+0.2.13 (2/3/2010)
+  * changed max input size to a site parameter
+
+0.2.12 (1/28/2010)
+  * removed cloud constraint using VOMS attributes from brokerage
+
+0.2.11 (1/27/2010)
+  * fixed the default value in getCloudUsingFQAN
+  * fixed the brokerage to check DBRelease locations
+
+0.2.10 (1/22/2010)
+  * set cmtConfig for old releases for SL5 sites
+
+0.2.9 (1/21/2010)
+  * added killAndRetry to pbook
+  * fixed error message in pathena for wrong DBR filename
+  * set cmtConfig for 15.6.3 or higher for now
+  * added retry in database sessions in pbook
+
+0.2.8 (1/12/2010)
+  * fixed prun to allow submission with unready libDS
+
+0.2.7 (1/9/2010)
+  * fixed the brokerage to check minBias/CavernBeamGas/Halo DSs
+
+0.2.6 (1/8/2010)
+  * removed strict number checking on output dataset name
+
+0.2.5 (1/3/2010)
+  * added --nGBPerJob to pathena
+
 0.2.4 (12/17/2009)
   * fixed --excludedSite to treat composite sites properly
   * supported TAGCOMM in pathena

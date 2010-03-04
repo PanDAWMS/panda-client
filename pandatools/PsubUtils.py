@@ -4,6 +4,8 @@ import sys
 import time
 import random
 import commands
+import urllib
+import pickle
 
 import Client
 import MyproxyUtils
@@ -102,7 +104,7 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
 
 
 # get cloud according to country FQAN
-def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=False):
+def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=[]):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # get FQAN
@@ -148,13 +150,14 @@ def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=False):
     if randomCloud != []:
         # choose one cloud from the list
         cloud = random.choice(randomCloud)
-        tmpLog.info("use %s as default cloud" % cloud)
-    elif cloud == None or randomCloud:
+        #tmpLog.info("use %s as default cloud" % cloud)
+    elif cloud == None:
         # use a cloud randomly
         cloud = random.choice(Client.PandaClouds.keys())
-        tmpLog.info("use %s as default cloud" % cloud)
+        #tmpLog.info("use %s as default cloud" % cloud)
     else:
-        tmpLog.info("use %s as default cloud due to VOMS:%s" % (cloud,countryAttStr))
+        #tmpLog.info("use %s as default cloud due to VOMS:%s" % (cloud,countryAttStr))
+        pass
     # return
     return cloud
 
@@ -243,7 +246,7 @@ def checkValidCloud(cloud):
 
 
 # check name of output dataset
-def checkOutDsName(outDS,distinguishedName,official,nickName='',site=''):
+def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN=''):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # don't check if DQ2-free
@@ -251,20 +254,41 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site=''):
         return True
     # official dataset
     if official:
+        # extract production role
+        prodGroups = []
+        for tmpLine in vomsFQAN.split('\n'):
+            match = re.search('/([^/]+)/Role=production',tmpLine)
+            if match != None:
+                # ignore atlas production role
+                if not match.group(1) in ['atlas']:
+                    prodGroups.append(match.group(1))
+        # no production role
+        if prodGroups == []:
+            errStr  = "The --official option requires production role. Please use the --voms option to set production role;\n"
+            errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
+            errStr += "If you don't have production role for the group please request it in ATLAS VO first"                        
+            tmpLog.error(errStr)
+            return False
+        # loop over all prefixes    
         allowedPrefix = ['group']
         for tmpPrefix in allowedPrefix:
-            if outDS.startswith(tmpPrefix):
-                return True
+            for tmpGroup in prodGroups:
+                tmpPatt = '^'+tmpPrefix+'\d{2}'+'\.'+tmpGroup+'\.'
+                if re.search(tmpPatt,outDS):
+                    return True
         # didn't match
-        errStr  = "End-users are allowed to produce official datasets\n"
+        errStr  = "Your proxy is allowed to produce official datasets\n"
         errStr += "        with the following prefix\n"
         for tmpPrefix in allowedPrefix:
-            errStr += "          %s%s\n" % (tmpPrefix,time.strftime('%y',time.gmtime()))
-        errStr += "If you need to use another prefix please request it to Panda Savannah"
+            for tmpGroup in prodGroups:
+                tmpPatt = '%s%s.%s' % (tmpPrefix,time.strftime('%y',time.gmtime()),tmpGroup)
+                errStr += "          %s\n" % tmpPatt
+        errStr += "If you have production role for another group please use the --voms option to set the role\n"
+        errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
         tmpLog.error(errStr)
         return False
     # check output dataset format
-    matStr = '^user' + ('%s' % time.strftime('%y',time.gmtime())) + '\.' + distinguishedName + '\.'
+    matStr = '^user' + '\d{2}' + '\.' + distinguishedName + '\.'
     if re.match(matStr,outDS) == None and (nickName == '' or re.match('^user\.'+nickName+'\.',outDS) == None):
         if nickName == '':
             outDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
@@ -653,3 +677,153 @@ def checkDestSE(destSE):
         return False
     # return
     return True
+
+
+# run pathena recursively
+def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,removedDS,verbose):
+    anotherTry = True
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # keep original args
+    if not '--panda_origFullExecString=' in fullExecString:
+        fullExecString += (" --panda_origFullExecString=" + urllib.quote(fullExecString))
+    # nfiles
+    if nfiles != 0:
+        if nfiles > len(inputFileMap):
+            fullExecString = re.sub('--nFiles\s*=*\d+',
+                                    '--nFiles=%s' % (nfiles-len(inputFileMap)),
+                                    fullExecString)
+        else:
+            anotherTry = False
+    # decrement crossSite counter
+    fullExecString = re.sub(' --crossSite\s*=*\d+','',fullExecString)
+    fullExecString += ' --crossSite=%s' % crossSite
+    # don't reuse site
+    match = re.search('--excludedSite\s*=*[^ "]+',fullExecString)
+    if match != None:
+        # append site
+        fullExecString = re.sub(match.group(0),'%s,%s' % (match.group(0),site),fullExecString)
+    else:
+        # add option
+        fullExecString += ' --excludedSite=%s' % site
+    # remove datasets
+    if removedDS != []:
+        match = re.search('--removedDS\s*=*[^ "]+',fullExecString)
+        if match != None:
+            # remove the option
+            fullExecString = re.sub('"*--removedDS\s*=*[^ "]+"*','',fullExecString)
+        # add option
+        tmpDsStr = ''
+        for tmpItem in removedDS:
+            tmpDsStr += '%s,' % tmpItem
+        tmpDsStr = tmpDsStr[:-1]    
+        fullExecString += ' --removedDS=%s' % tmpDsStr
+    # remove --fileList
+    fullExecString = re.sub('"*--fileList\s*=*[^ "]+"*','',fullExecString)
+    # set list of input files
+    inputTmpfile = '%s/intmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
+    iFile = open(inputTmpfile,'w')
+    for tmpMiss in missList:
+        iFile.write(tmpMiss+'\n')
+    iFile.close()
+    fullExecString = re.sub(' "*--inputFileList\s*=*[^ "]+"*','',fullExecString)
+    fullExecString += ' --inputFileList=%s' % inputTmpfile
+    # source name
+    if not '--panda_srcName' in fullExecString:
+        fullExecString += ' --panda_srcName=%s' % archiveName
+    # server URL
+    if not '--panda_srvURL' in fullExecString:
+        fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
+    # run config
+    conTmpfile = ''
+    if not '--panda_runConfig' in fullExecString:
+        conTmpfile = '%s/conftmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
+        cFile = open(conTmpfile,'w')
+        pickle.dump(runConfig,cFile)
+        cFile.close()
+        fullExecString += ' --panda_runConfig=%s' % conTmpfile
+
+    # run pathena
+    if anotherTry:
+        tmpLog.info("trying other sites for the missing files")
+        com = 'pathena ' + fullExecString
+        if verbose:
+            tmpLog.debug(com)
+        status = os.system(com)
+        # delete tmp files
+        commands.getoutput('\rm -f %s' % inputTmpfile)
+        commands.getoutput('\rm -f %s' % conTmpfile)            
+        # exit
+        sys.exit(status)
+    # exit
+    sys.exit(0)
+    
+    
+# run prun recursively
+def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite,archiveName,removedDS,verbose):
+    anotherTry = True
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # keep original args
+    if not '--panda_origFullExecString=' in fullExecString:
+        fullExecString += (" --panda_origFullExecString=" + urllib.quote(fullExecString))
+    # nfiles
+    if nFiles != 0:
+        if nFiles > len(inputFileMap):
+            fullExecString = re.sub('--nFiles\s*=*\d+',
+                                    '--nFiles=%s' % (nFiles-len(inputFileMap)),
+                                    fullExecString)
+        else:
+            anotherTry = False
+    # decrement crossSite counter
+    fullExecString = re.sub(' --crossSite\s*=*\d+','',fullExecString)
+    fullExecString += ' --crossSite=%s' % crossSite
+    # don't reuse site
+    match = re.search('--excludedSite\s*=*[^ "]+',fullExecString)
+    if match != None:
+        # append site
+        fullExecString = re.sub(match.group(0),'%s,%s' % (match.group(0),site),fullExecString)
+    else:
+        # add option
+        fullExecString += ' --excludedSite=%s' % site
+    # remove datasets
+    if removedDS != []:
+        match = re.search('--removedDS\s*=*[^ "]+',fullExecString)
+        if match != None:
+            # remove the option
+            fullExecString = re.sub('"*--removedDS\s*=*[^ "]+"*','',fullExecString)
+        # add option
+        tmpDsStr = ''
+        for tmpItem in removedDS:
+            tmpDsStr += '%s,' % tmpItem
+        tmpDsStr = tmpDsStr[:-1]    
+        fullExecString += ' --removedDS=%s' % tmpDsStr
+    # set list of input files
+    inputTmpfile = '%s/intmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
+    iFile = open(inputTmpfile,'w')
+    for tmpMiss in missList:
+        iFile.write(tmpMiss+'\n')
+    iFile.close()
+    fullExecString = re.sub(' "*--inputFileList\s*=*[^ "]+"*','',fullExecString)
+    fullExecString += ' --inputFileList=%s' % inputTmpfile
+    # source name
+    if archiveName != '' and not '--panda_srcName' in fullExecString:
+        fullExecString += ' --panda_srcName=%s' % archiveName
+    # server URL
+    if not '--panda_srvURL' in fullExecString:
+        fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
+    # run prun
+    if anotherTry:
+        tmpLog.info("trying other sites for the missing files")
+        com = 'prun ' + fullExecString
+        if verbose:
+            tmpLog.debug(com)
+        status = os.system(com)
+        # delete tmp files
+        commands.getoutput('\rm -f %s' % inputTmpfile)
+        # exit
+        sys.exit(status)
+    # exit
+    sys.exit(0)
+
+    
