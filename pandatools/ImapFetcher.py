@@ -95,9 +95,12 @@ class ImapFetcher:
                 continue
             # get folder name
             lastStr = item.split()[-1]
-            if lastStr.endswith('"') or lastStr.endswith("'"):
-                # change " to '
-                item = re.sub('"',"'",item)
+            if lastStr.endswith('"'):
+                # extract "folder name"
+                match = re.search('"([^"]+)"$',item)
+                if match != None:
+                    dirs.append(match.group(1))
+            elif lastStr.endswith("'"):
                 # extract 'folder name'
                 match = re.search("'([^']+)'$",item)
                 if match != None:
