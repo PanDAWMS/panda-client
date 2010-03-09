@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added sequencer.mail_dirs to panda.cfg
+
 0.2.18 (3/5/2010)
   * fixed ImapFetcher for apostrophe in directory names
 
