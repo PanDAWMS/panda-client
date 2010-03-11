@@ -1530,7 +1530,7 @@ def getJobStatusFromMon(id,verbose=False):
 
 
 # run brokerage
-def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer=''):
+def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType=''):
     if sites == []:
         return 0,'ERROR : no candidate'
     # choose at most 20 sites randomly to avoid too many lookup
@@ -1559,6 +1559,9 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
             cacheVer = '%s-%s' % (match.group(1),match.group(2))
         # use cache for brokerage
         data['atlasRelease'] = cacheVer
+    if processingType != '':
+        # set processingType mainly for HC
+        data['processingType'] = processingType
     return curl.get(url,data)
 
 
