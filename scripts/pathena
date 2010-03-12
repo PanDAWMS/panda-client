@@ -78,6 +78,14 @@ optP.add_option('--nCav',  action='store', dest='nCav',  default=-1,
                 type='int', help='Number of cavern files per one signal file')
 optP.add_option('--libDS', action='store', dest='libDS', default='',
                 type='string', help='Name of a library dataset')
+optP.add_option('--goodRunListXML', action='store', dest='goodRunListXML', default='',
+                type='string', help='Good Run List XML which will be converted to datasets by AMI')
+optP.add_option('--goodRunListDataType', action='store', dest='goodRunDataType', default='',
+                type='string', help='specify data type when converting Good Run List XML to datasets, e.g, AOD (default)')
+optP.add_option('--goodRunListProdStep', action='store', dest='goodRunProdStep', default='',
+                type='string', help='specify production step when converting Good Run List to datasets, e.g, merge (default)')
+optP.add_option('--goodRunListDS', action='store', dest='goodRunListDS', default='',
+                type='string', help='A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used')
 optP.add_option('--useCommonHalo', action='store_const', const=False, dest='useCommonHalo',  default=True,
                 help="use an integrated DS for BeamHalo")
 optP.add_option('--beamHaloDS',  action='store', dest='beamHaloDS',  default='',
@@ -166,8 +174,8 @@ optP.add_option('--workingGroup', action='store', dest='workingGroup',  default=
                 help="set workingGroup")
 optP.add_option('--generalInput', action='store_const', const=True, dest='generalInput',  default=False,
                 help='Read input files with general format except POOL,ROOT,ByteStream')
-optP.add_option('--crossSite',action='store',dest='crossSite',default=3,
-                type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=3 by default)')
+optP.add_option('--crossSite',action='store',dest='crossSite',default=5,
+                type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=5 by default)')
 optP.add_option('--tmpDir', action='store', dest='tmpDir', default='',
                 type='string', help='Temporary directory in which an archive file is created')
 optP.add_option('--shipInput', action='store_const', const=True, dest='shipinput',  default=False,
@@ -243,6 +251,8 @@ optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='
 optP.add_option('--panda_runConfig', action='store', dest='panda_runConfig', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_srcName', action='store', dest='panda_srcName', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_inDS', action='store', dest='panda_inDS', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
                 type='string', help='internal parameter')
@@ -327,6 +337,11 @@ original_outDS_Name = options.outDS
 if not original_outDS_Name.endswith('/'):
     options.crossSite = 0
 
+# set inDS for recursive goodRunListXML
+if options.panda_inDS != '':
+    options.inDS = options.panda_inDS
+    options.goodRunListXML = ''
+
 # error
 if options.outDS == '':
     tmpLog.error("no outDS is given\n pathena [--inDS input] --outDS output myJobO.py")
@@ -404,6 +419,11 @@ if options.nGBPerJob != -1:
 # check DBRelease
 if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
     tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")  
+    sys.exit(EC_Config)
+
+# Good Run List
+if options.goodRunListXML != '' and options.inDS != '':
+    tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")
     sys.exit(EC_Config)
     
 # additinal files
@@ -595,6 +615,21 @@ elif runDir.startswith('/'):
     runDir = runDir[1:]
 runDir = runDir+'/'
 
+# good run list
+if options.goodRunListXML != '':
+    # look for pyAMI
+    status,options.inDS = AthenaUtils.convertGoodRunListXMLtoDS(options.goodRunListXML,
+                                                                options.goodRunDataType,
+                                                                options.goodRunProdStep,
+								options.goodRunListDS,
+                                                                options.verbose)
+    if not status:
+        tmpLog.error("failed to convert GoodRunListXML")
+        sys.exit(EC_Config)
+    if options.inDS == '':
+        tmpLog.error("no datasets were extracted from AMI using %s" % options.goodRunListXML)
+        sys.exit(EC_Config)
+    
 # get job options
 jobO = ''
 if options.trf:
@@ -1419,7 +1454,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                     if missList != []:
                         PsubUtils.runPathenaRec(runConfig,missList,tmpDir,fullExecString,options.nfiles,inputFileMap,
-                                                options.site,options.crossSite,archiveName,options.removedDS,options.verbose)
+                                                options.site,options.crossSite,archiveName,options.removedDS,
+                                                options.inDS,options.goodRunListXML,                                                
+                                                options.verbose)
                 # exit        
                 sys.exit(0)
         # make list
@@ -2939,6 +2976,8 @@ options.crossSite -= 1
 if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
     if missList != []:
         PsubUtils.runPathenaRec(runConfig,missList,tmpDir,fullExecString,options.nfiles,inputFileMap,
-                                options.site,options.crossSite,archiveName,options.removedDS,options.verbose)
+                                options.site,options.crossSite,archiveName,options.removedDS,
+                                options.inDS,options.goodRunListXML,                                
+                                options.verbose)
 # succeeded
 sys.exit(0)

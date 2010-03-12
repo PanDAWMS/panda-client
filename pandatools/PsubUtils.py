@@ -680,7 +680,8 @@ def checkDestSE(destSE):
 
 
 # run pathena recursively
-def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,removedDS,verbose):
+def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,
+                  removedDS,inDS,goodRunListXML,verbose):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -728,6 +729,9 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     iFile.close()
     fullExecString = re.sub(' "*--inputFileList\s*=*[^ "]+"*','',fullExecString)
     fullExecString += ' --inputFileList=%s' % inputTmpfile
+    # set inDS to avoid redundant AMI lookup for GRL
+    if inDS != '' and goodRunListXML != '' and not '--panda_inDS' in fullExecString:
+        fullExecString += ' --panda_inDS=%s' % inDS
     # source name
     if not '--panda_srcName' in fullExecString:
         fullExecString += ' --panda_srcName=%s' % archiveName
@@ -760,7 +764,8 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     
     
 # run prun recursively
-def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite,archiveName,removedDS,verbose):
+def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite,archiveName,
+               removedDS,inDS,goodRunListXML,verbose):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -806,6 +811,9 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
     iFile.close()
     fullExecString = re.sub(' "*--inputFileList\s*=*[^ "]+"*','',fullExecString)
     fullExecString += ' --inputFileList=%s' % inputTmpfile
+    # set inDS to avoid redundant AMI lookup for GRL
+    if inDS != '' and goodRunListXML != '' and not '--panda_inDS' in fullExecString:
+        fullExecString += ' --panda_inDS=%s' % inDS
     # source name
     if archiveName != '' and not '--panda_srcName' in fullExecString:
         fullExecString += ' --panda_srcName=%s' % archiveName

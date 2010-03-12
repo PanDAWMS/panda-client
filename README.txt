@@ -14,8 +14,11 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.19 (3/12/2010)
+  * added --goodRunListXML,goodRunListDataType,goodRunListDataType,goodRunListDS to pathena/prun
+  * added processingType to runBrokerage for HC	
   * added sequencer.mail_dirs to panda.cfg
+  * increased the default value of --crossSite to 5
 
 0.2.18 (3/5/2010)
   * fixed ImapFetcher for apostrophe in directory names

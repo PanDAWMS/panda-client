@@ -1566,3 +1566,93 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
     except:
         return None
     
+
+# convert GoodRunListXML to datasets
+def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep='',
+                              goodRunListDS='',verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    tmpLog.info('trying to convert GoodRunListXML to list of datasets')  
+    # look for pyAMI since it is an alias
+    pyAMI = '' 
+    out = commands.getoutput('cmt show projects')
+    lines = out.split('\n')
+    for line in lines:
+        # ignore warning
+        if line.startswith('#'):
+            continue
+        # invalid format
+        items = line.strip().split()
+        if len(items) < 4:
+            continue
+        # look for AtlasCore
+        if items[0] == 'AtlasCore':
+            pyAMI = items[3][:-1]+'/Database/Bookkeeping/AMIClients/pyAMI/python/pyAMI.py'
+    # failed
+    if pyAMI == '':
+        tmpLog.error('cannot find pyAMI')
+        return False,''
+    # read XML
+    try:
+        gl_xml = open(goodRunListXML)
+    except:
+        tmpLog.error('cannot open %s' % goodRunListXML)
+        return False,''        
+    # make command
+    com = 'python %s GetGoodDatasetList -goodRunList="%s"' % \
+          (pyAMI,gl_xml.read().replace('"','\\"').replace('\n',' '))
+    gl_xml.close()
+    if goodRunDataType != '':
+        com += ' -dataType=%s' % goodRunDataType
+    if goodRunProdStep != '':    
+        com += ' -prodStep=%s' % goodRunProdStep
+    if verbose:
+        tmpLog.debug(com)
+    # convert for wildcard
+    goodRunListDS = goodRunListDS.replace('*','.*')
+    # list of datasets
+    if goodRunListDS == '':
+        goodRunListDS = []
+    else:
+        goodRunListDS = goodRunListDS.split(',')
+    # execute    
+    status,out = commands.getstatusoutput(com)
+    if status != 0:
+        print out
+        tmpLog.error('pyAMI failed with %s' % status)
+        return False,''
+    if verbose:
+        tmpLog.debug(out)
+    # parse
+    import Client    
+    datasets = ''
+    for line in out.split('\n'):
+        match = re.search('logicalDatasetName = (\S+)',line)
+        if match != None:
+            dsName = match.group(1)
+            # check with DQ2 since AMI doesn't store /
+            dsmap = {}
+            try:
+                dsmap = Client.getDatasets(dsName+'*',verbose,True)
+            except:
+                pass
+            if dsmap.has_key(dsName+'/'):
+                dsName += '/'
+            # check dataset names
+            if goodRunListDS == []:    
+                matchFlag = True
+            else:
+                matchFlag = False
+                for tmpPatt in goodRunListDS:
+                    if re.search(tmpPatt,dsName) != None:
+                        matchFlag = True
+            # append
+            if matchFlag:
+                datasets += '%s,' % dsName
+    datasets = datasets[:-1]
+    if verbose:
+        tmpLog.debug('converted to %s' % datasets)
+    # return        
+    return True,datasets
+        
+            

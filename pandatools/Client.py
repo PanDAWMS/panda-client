@@ -1019,7 +1019,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 else:
                     allOut[tmpOutKey] = [{'found':tmpNfound}]
                 if tmpOutVar[0].has_key('useddatasets'):
-                    allOut[tmpOutKey][0]['useddatasets'] = tmpOutVar[0]['useddatasets']    
+                    if not allOut[tmpOutKey][0].has_key('useddatasets'):
+                        allOut[tmpOutKey][0]['useddatasets'] = []
+                    allOut[tmpOutKey][0]['useddatasets'] += tmpOutVar[0]['useddatasets']    
         # replace
         out = allOut
         if verbose:

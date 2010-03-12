@@ -40,6 +40,14 @@ optP.add_option('--version',action='store_const',const=True,dest='version',defau
                 help='Displays version')
 optP.add_option('--inDS',action='store',dest='inDS',default='',type='string',
                 help='Name of an input dataset or dataset container')
+optP.add_option('--goodRunListXML', action='store', dest='goodRunListXML', default='',
+                type='string', help='Good Run List XML which will be converted to datasets by AMI')
+optP.add_option('--goodRunListDataType', action='store', dest='goodRunDataType', default='',
+                type='string', help='specify data type when converting Good Run List XML to datasets, e.g, AOD (default)')
+optP.add_option('--goodRunListProdStep', action='store', dest='goodRunProdStep', default='',
+                type='string', help='specify production step when converting Good Run List to datasets, e.g, merge (default)')
+optP.add_option('--goodRunListDS', action='store', dest='goodRunListDS', default='',
+                type='string', help='A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used')
 optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
                 help='Name of an output dataset. OUTDS will contain all output files')
 optP.add_option('--destSE',action='store', dest='destSE',default='',type='string',
@@ -84,8 +92,8 @@ optP.add_option('--excludeFile',action='store',dest='excludeFile',default='',
                 help='specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C')
 optP.add_option('--inputFileList', action='store', dest='inputFileListName', default='',
                 type='string', help='name of file which contains a list of files to be run in the input dataset')
-optP.add_option('--crossSite',action='store',dest='crossSite',default=3,
-                type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=3 by default)')
+optP.add_option('--crossSite',action='store',dest='crossSite',default=5,
+                type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=5 by default)')
 optP.add_option('--outputs',action='store',dest='outputs',default='',type='string',
                 help='Names of output files. Comma separated. e.g., --outputs out1.dat,out2.txt')
 optP.add_option('--excludedSite', action='store', dest='excludedSite',  default='',
@@ -124,6 +132,8 @@ optP.add_option('--outputPath',action='store',dest='outputPath', default='',
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_srcName', action='store', dest='panda_srcName', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_inDS', action='store', dest='panda_inDS', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
                 type='string', help='internal parameter')
@@ -208,6 +218,11 @@ original_outDS_Name = options.outDS
 if not original_outDS_Name.endswith('/'):
     options.crossSite = 0
 
+# set inDS for recursive goodRunListXML
+if options.panda_inDS != '':
+    options.inDS = options.panda_inDS
+    options.goodRunListXML = ''
+
 # libDS
 libds_file = '%s/libds_prun.dat' % os.environ['PANDA_CONFIG_ROOT']
 if options.libDS == 'LAST':
@@ -222,6 +237,11 @@ if options.libDS == 'LAST':
     tmpLibDS = tmpLibDS.replace('\n','')
     # set
     options.libDS = tmpLibDS
+
+# Good Run List
+if options.goodRunListXML != '' and options.inDS != '':
+    tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")
+    sys.exit(EC_Config)
     
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
@@ -324,6 +344,21 @@ elif options.athenaTag != '':
     # check cache
     if re.search('^-.+_.+$',cacheVer) == None:
         cacheVer = ''
+
+# good run list
+if options.goodRunListXML != '':
+    # look for pyAMI
+    status,options.inDS = AthenaUtils.convertGoodRunListXMLtoDS(options.goodRunListXML,
+                                                                options.goodRunDataType,
+                                                                options.goodRunProdStep,
+								options.goodRunListDS,
+                                                                options.verbose)
+    if not status:
+        tmpLog.error("failed to convert GoodRunListXML")
+        sys.exit(EC_Config)
+    if options.inDS == '':
+        tmpLog.error("no datasets were extracted from AMI using %s" % options.goodRunListXML)
+        sys.exit(EC_Config)
 
 
 # additinal files
@@ -737,6 +772,7 @@ if options.inDS != '':
                 if missList != []:
                     PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
                                          options.site,options.crossSite,"",options.removedDS,
+					 options.inDS,options.goodRunListXML,
                                          options.verbose)
             # succeeded
             sys.exit(0)
@@ -1596,6 +1632,7 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
     if missList != []:
 	PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
                              options.site,options.crossSite,archiveName,options.removedDS,
+			     options.inDS,options.goodRunListXML,
                              options.verbose)
 # succeeded
 sys.exit(0)
