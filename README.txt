@@ -14,6 +14,11 @@ pathena -h
 
 ** Release Note
 
+0.2.20 (3/15/2010)
+  * fixed --supStream
+  * added siteType to getSiteSpecs
+  * added --useAMIAutoConf to pathena
+
 0.2.19 (3/12/2010)
   * added --goodRunListXML,goodRunListDataType,goodRunListDataType,goodRunListDS to pathena/prun
   * added processingType to runBrokerage for HC	

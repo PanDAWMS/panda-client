@@ -256,12 +256,15 @@ public methods
 '''
 
 # get site specs
-def getSiteSpecs():
+def getSiteSpecs(siteType=None):
     # instantiate curl
     curl = _Curl()
     # execute
     url = baseURL + '/getSiteSpecs'
-    status,output = curl.get(url,{})
+    data = {}
+    if siteType != None:
+        data['siteType'] = siteType
+    status,output = curl.get(url,data)
     try:
         return status,pickle.loads(output)
     except:

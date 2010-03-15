@@ -144,6 +144,8 @@ optP.add_option('--individualOutDS', action='store_const', const=True, dest='ind
                 help='Create individual output dataset for each data-type. By default, all output files are added to one output dataset')
 optP.add_option('--noRandom', action='store_const', const=True, dest='norandom',  default=False,
                 help='Enter random seeds manually')
+optP.add_option('--useAMIAutoConf',action='store_const',const=True,dest='useAMIAutoConf',default=False,
+                help='Use AMI for AutoConfiguration')
 optP.add_option('--memory', action='store', dest='memory',  default=-1,
                 type='int',    help='Required memory size')
 optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=-1, type='int',
@@ -591,6 +593,22 @@ if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official
 # save current dir
 currentDir = os.path.realpath(os.getcwd())
 
+# create tmp dir
+if options.tmpDir == '':
+    tmpDir = '%s/%s' % (currentDir,commands.getoutput('uuidgen'))
+else:
+    tmpDir = '%s/%s' % (options.tmpDir,commands.getoutput('uuidgen'))    
+os.makedirs(tmpDir)
+
+# set tmp dir in Client
+Client.setGlobalTmpDir(tmpDir)
+
+# exit action
+def _onExit(dir):
+    commands.getoutput('rm -rf %s' % dir)
+atexit.register(_onExit,tmpDir)
+
+
 # get Athena versions
 stA,retA = AthenaUtils.getAthenaVer()
 # failed
@@ -667,7 +685,9 @@ if options.panda_runConfig == '':
     tmpLog.info('extracting run configuration')
     # run ConfigExtractor for normal jobO 
     ret,runConfig = AthenaUtils.extractRunConfig(jobO,options.supStream,options.useAIDA,options.shipinput,
-                                                 options.trf,verbose=options.verbose)
+                                                 options.trf,verbose=options.verbose,
+						 useAMI=options.useAMIAutoConf,inDS=options.inDS,
+						 tmpDir=tmpDir)
 else:
     # load from file
     ret = True
@@ -862,20 +882,6 @@ else:
     # set -1 to disable G4 Random Seeds
     runConfig.other.G4RandomSeeds = -1
     
-# create tmp dir
-if options.tmpDir == '':
-    tmpDir = '%s/%s' % (currentDir,commands.getoutput('uuidgen'))
-else:
-    tmpDir = '%s/%s' % (options.tmpDir,commands.getoutput('uuidgen'))    
-os.makedirs(tmpDir)
-
-# set tmp dir in Client
-Client.setGlobalTmpDir(tmpDir)
-
-# exit action
-def _onExit(dir):
-    commands.getoutput('rm -rf %s' % dir)
-atexit.register(_onExit,tmpDir)
 
 
 #####################################################################

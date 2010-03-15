@@ -287,7 +287,8 @@ class ConfigAttr(dict):
                         
 
 # extract run configuration
-def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False):
+def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=False,
+                     inDS='',tmpDir='.'):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     outputConfig = ConfigAttr()
@@ -297,9 +298,13 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False):
     if trf:
         pass
     else:
+        # use AMI
+        amiJobO = ''
+        if useAMI:
+            amiJobO = getJobOtoUseAmiForAutoConf(inDS,tmpDir)
         baseName = os.environ['PANDA_SYS'] + "/etc/panda/share"
-        com = 'athena.py %s/FakeAppMgr.py %s %s/ConfigExtractor.py' % \
-              (baseName,jobO,baseName)
+        com = 'athena.py %s %s/FakeAppMgr.py %s %s/ConfigExtractor.py' % \
+              (amiJobO,baseName,jobO,baseName)
         if verbose:
             tmpLog.debug(com)
         # run ConfigExtractor for normal jobO
@@ -311,8 +316,17 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False):
             if len(match):
                 # suppress some streams
                 if match[0].startswith("Output="):
-                    tmpSt = match[0].replace('=',' ').split()[-1]
-                    if tmpSt.upper() in supStream:
+                    tmpSt0 = "None"
+                    tmpSt1 = "None"
+                    try:
+                        tmpSt0 = match[0].replace('=',' ').split()[1]
+                    except:
+                        pass
+                    try:
+                        tmpSt1 = match[0].replace('=',' ').split()[-1]
+                    except:
+                        pass
+                    if tmpSt0.upper() in supStream or tmpSt1.upper() in supStream:
                         tmpLog.info('%s is suppressed' % line)
                         continue
                 failExtractor = False
@@ -1655,4 +1669,51 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
     # return        
     return True,datasets
         
+
+
+# use AMI for AutoConf
+def getJobOtoUseAmiForAutoConf(inDS,tmpDir):
+    # no input
+    if inDS == '':
+        return ''
+    # use first one
+    amiURL = 'ami://%s' % inDS.split(',')[0]
+    # remove /
+    if amiURL.endswith('/'):
+        amiURL = amiURL[:-1]
+    inputFiles = [amiURL]
+    # create jobO fragment
+    optFileName = tmpDir + '/' + commands.getoutput('uuidgen 2>/dev/null') + '.py'
+    oFile = open(optFileName,'w')
+    oFile.write("""
+try:
+    import AthenaCommon.AthenaCommonFlags
+    
+    def _dummyFilesInput(*argv):
+        return %s
+
+    AthenaCommon.AthenaCommonFlags.FilesInput.__call__ = _dummyFilesInput
+except:
+    pass
+
+try:
+    import AthenaCommon.AthenaCommonFlags
+    
+    def _dummyGet_Value(*argv):
+        return %s
+
+    for tmpAttr in dir (AthenaCommon.AthenaCommonFlags):
+        import re
+        if re.search('^(Pool|BS).*Input$',tmpAttr) != None:
+            try:
+                getattr(AthenaCommon.AthenaCommonFlags,tmpAttr).get_Value = _dummyGet_Value
+            except:
+                pass
+except:
+    pass
+""" % (inputFiles,inputFiles))
+    oFile.close()
+    # reutrn file name
+    return optFileName
+
             
