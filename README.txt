@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.21 (3/16/2010)
+  * fixed --secondaryDSs in prun
+
 0.2.20 (3/15/2010)
   * fixed --supStream
   * added siteType to getSiteSpecs

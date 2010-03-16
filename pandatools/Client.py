@@ -2016,7 +2016,7 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
     if dsStringFlag:
         inputFileMap,inputDsString = queryFilesInDataset(inDS,verbose,getDsString=True)
     else:
-        inputFileMap,inputDsString = queryFilesInDataset(inDS,verbose)
+        inputFileMap = queryFilesInDataset(inDS,verbose)
     # read list of files to be used
     filesToBeUsed = []
     if inputFileListName != '':
