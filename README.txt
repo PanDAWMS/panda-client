@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * updated --secondaryDSs in prun for nFiles=0 to use all files
+
 0.2.21 (3/16/2010)
   * fixed --secondaryDSs in prun
 

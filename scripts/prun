@@ -616,6 +616,9 @@ if options.inDS != '':
             options.secondaryDSs[tmpDsName]['files'].append(tmpSecFileMap[tmpSecFile])
         # skip files    
         options.secondaryDSs[tmpDsName]['files'] = options.secondaryDSs[tmpDsName]['files'][options.secondaryDSs[tmpDsName]['nSkip']:]
+        # change nFiles=0 to the real size 
+        if options.secondaryDSs[tmpDsName]['nFiles'] == 0:
+            options.secondaryDSs[tmpDsName]['nFiles'] = len(options.secondaryDSs[tmpDsName]['files'])
     # get locations
     if inputFileList != []:
         if options.site == "AUTO":
