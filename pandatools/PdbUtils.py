@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import types
+import time
 import datetime
 import commands
 
@@ -46,8 +47,16 @@ class PdbProxy:
         if self.verbose:
             tmpLog.debug("DB Req : " + com)
         # execute
-        status,output = commands.getstatusoutput(com)
-        status %= 255
+        nTry = 5
+        for iTry in range(nTry):
+            if self.verbose:
+                tmpLog.debug("   Try : %s/%s" % (iTry,nTry))
+            status,output = commands.getstatusoutput(com)
+            status %= 255
+            if status == 0:
+                break
+            if iTry+1 < nTry:
+                time.sleep(2)
         # return
         if status != 0:
             tmpLog.error(status)
