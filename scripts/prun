@@ -122,6 +122,12 @@ optP.add_option('--bexec',action='store',dest='bexec',default='',type='string',
                 help='execution string for build stage. e.g., --bexec "make"')
 optP.add_option('--myproxy',action='store',dest='myproxy',default='myproxy.cern.ch',type='string',
                 help='Name of the myproxy server')
+optP.add_option('--dbRelease',action='store',dest='dbRelease',default='',
+                type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used. Most likely the --useAthenaPackages or --athenaTag option is required to setup Athena runtime on WN')
+optP.add_option('--dbRunNumber',action='store',dest='dbRunNumber', default='',
+                type='string', help='RunNumber for DBRelease or CDRelease. If this option is used some redundant files are removed to save disk usage when unpacking DBRelease tarball. e.g., 0091890')
+optP.add_option('--notExpandDBR',action='store_const',const=True,dest='notExpandDBR',default=False,
+                help='By default, DBRelease.tar.gz is expanded on WN and gets deleted after changing environment variables accordingly. If you need tar.gz, use this option')
 optP.add_option('-v',action='store_const',const=True,dest='verbose',default=False,
                 help='Verbose')
 optP.add_option('--long', action='store_const',const=True,dest='long',default=False,
@@ -237,6 +243,11 @@ if options.libDS == 'LAST':
     tmpLibDS = tmpLibDS.replace('\n','')
     # set
     options.libDS = tmpLibDS
+
+# check DBRelease
+if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
+    tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")  
+    sys.exit(EC_Config)
 
 # Good Run List
 if options.goodRunListXML != '' and options.inDS != '':
@@ -459,6 +470,10 @@ if options.site != 'AUTO':
 if options.destSE != '':
     if not PsubUtils.checkDestSE(options.destSE):
         sys.exit(EC_Config)
+
+# get the latest of DBRelease
+if options.dbRelease == 'LATEST':
+    options.dbRelease = Client.getLatestDBRelease(options.verbose)
 
 # get DN
 distinguishedName = PsubUtils.getDN()
@@ -1291,6 +1306,24 @@ if options.inDS != '':
         tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
 
+# get DB datasets
+dbrFiles  = {}
+dbrDsList = []
+if options.dbRelease != '':
+    tmpDbrDS,tmpDbrLFN  = options.dbRelease.split(':')
+    # get files in the dataset
+    if not tmpDbrDS in dbrDsList:
+        tmpLog.info("query files in %s" % tmpDbrDS)
+        tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
+        # append
+        for tmpLFN,tmpVal in tmpList.iteritems():
+            dbrFiles[tmpLFN] = tmpVal
+    # check
+    if not dbrFiles.has_key(tmpDbrLFN):
+        tmpLog.error("%s is not in %s" % (tmpDbrLFN,tmpDbrDS))
+        sys.exit(EC_Dataset)
+                                                
+
 # disp datasetname to identify inputs
 commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
 
@@ -1443,6 +1476,32 @@ for iJob in range(options.nJobs):
         jobR.jobParameters += '-i "%s" ' % inList
 	if options.secondaryDSs != {}:
 	    jobR.jobParameters += '--inMap "%s" ' % tmpInputMap
+    # DBRelease
+    if options.dbRelease != '':
+        tmpItems = options.dbRelease.split(':')
+        tmpDbrDS  = tmpItems[0]
+        tmpDbrLFN = tmpItems[1]
+        # instantiate  FileSpec
+        fileName = tmpDbrLFN
+        vals     = dbrFiles[tmpDbrLFN]
+        file = FileSpec()
+        file.lfn            = fileName
+        file.GUID           = vals['guid']
+        file.fsize          = vals['fsize']
+        file.md5sum         = vals['md5sum']
+        file.dataset        = tmpDbrDS
+        file.prodDBlock     = tmpDbrDS
+        file.dispatchDBlock = tmpDbrDS
+        file.type       = 'input'
+        file.status     = 'ready'
+        jobR.addFile(file)
+        # set DBRelease parameter
+        jobR.jobParameters += '--dbrFile %s ' % file.lfn
+        if options.dbRunNumber != '':
+            jobR.jobParameters += '--dbrRun %s ' % options.dbRunNumber
+        # expansion
+        if options.notExpandDBR:
+            jobR.jobParameters += '--notExpandDBR '
     # output files
     outMap = {}
     if options.outputs != '':

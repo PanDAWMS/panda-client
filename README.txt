@@ -14,8 +14,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.22 (3/23/2010)
   * updated --secondaryDSs in prun for nFiles=0 to use all files
+  * added --dbRelease,dbRunNumber,notExpandDBR to prun
 
 0.2.21 (3/16/2010)
   * fixed --secondaryDSs in prun
