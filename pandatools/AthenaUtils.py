@@ -233,7 +233,12 @@ def getAthenaVer():
                       tmpLog.error("unsupported nightly %s" % line)
                       return False,{}
                 break
-            elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT']:
+            # cache or analysis projects
+            elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT'] or \
+                 items[1].count('.') >= 4:  
+                # tailside cache is used
+                if cacheVer != '':
+                    continue
                 # production cache
                 cacheTag = os.path.basename(res.group(1))
                 # doesn't use when it is a base release since it is not installed in EGEE
@@ -282,7 +287,8 @@ class ConfigAttr(dict):
                         
 
 # extract run configuration
-def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
+def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=False,
+                     inDS='',tmpDir='.'):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     outputConfig = ConfigAttr()
@@ -292,9 +298,15 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
     if trf:
         pass
     else:
+        # use AMI
+        amiJobO = ''
+        if useAMI:
+            amiJobO = getJobOtoUseAmiForAutoConf(inDS,tmpDir)
         baseName = os.environ['PANDA_SYS'] + "/etc/panda/share"
-        com = 'athena.py %s/FakeAppMgr.py %s %s/ConfigExtractor.py' % \
-              (baseName,jobO,baseName)          
+        com = 'athena.py %s %s/FakeAppMgr.py %s %s/ConfigExtractor.py' % \
+              (amiJobO,baseName,jobO,baseName)
+        if verbose:
+            tmpLog.debug(com)
         # run ConfigExtractor for normal jobO
         out = commands.getoutput(com)
         failExtractor = True
@@ -304,8 +316,17 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf):
             if len(match):
                 # suppress some streams
                 if match[0].startswith("Output="):
-                    tmpSt = match[0].replace('=',' ').split()[-1]
-                    if tmpSt.upper() in supStream:
+                    tmpSt0 = "None"
+                    tmpSt1 = "None"
+                    try:
+                        tmpSt0 = match[0].replace('=',' ').split()[1]
+                    except:
+                        pass
+                    try:
+                        tmpSt1 = match[0].replace('=',' ').split()[-1]
+                    except:
+                        pass
+                    if tmpSt0.upper() in supStream or tmpSt1.upper() in supStream:
                         tmpLog.info('%s is suppressed' % line)
                         continue
                 failExtractor = False
@@ -510,8 +531,30 @@ def setExtFile(v_extFile):
     global extFile
     extFile = v_extFile
 
+
+# set excludeFile
+excludeFile = []
+def setExcludeFile(strExcludeFile):
+    # empty
+    if strExcludeFile == '':
+        return
+    # convert to list
+    global excludeFile
+    for tmpItem in strExcludeFile.split(','):
+        # change . to \. for regexp
+        tmpItem = tmpItem.replace('.','\.')        
+        # change * to .* for regexp
+        tmpItem = tmpItem.replace('*','.*')
+        # append
+        excludeFile.append(tmpItem)
+    
+                
 # matching for extFiles
 def matchExtFile(fileName):
+    # check exclude files
+    for tmpPatt in excludeFile:
+        if re.search(tmpPatt,fileName) != None:
+            return False
     # gather files with special extensions
     for tmpExtention in ['.py','.dat','.C','.xml','Makefile',
                          '.cc','.cxx','.h','.hh','.sh']:
@@ -672,6 +715,14 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                 # ignore libraries
                 if item.startswith('i686') or item.startswith('i386') or item.startswith('x86_64') \
                        or item=='dict' or item=='pool' or item =='pool_plugins':
+                    continue
+                # check exclude files
+                excludeFileFlag = False
+                for tmpPatt in excludeFile:
+                    if re.search(tmpPatt,'%s/%s' % (pack,item)) != None:
+                        excludeFileFlag = True
+                        break
+                if excludeFileFlag:
                     continue
                 # run dir
                 if item=='run':
@@ -910,6 +961,14 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
         # archive files if they are under the area
         for file in files+cmtFiles:
             relPath = re.sub(sString+'/','',os.path.realpath(file))
+            # check exclude files
+            excludeFileFlag = False
+            for tmpPatt in excludeFile:
+                if re.search(tmpPatt,relPath) != None:
+                    excludeFileFlag = True
+                    break
+            if excludeFileFlag:
+                continue
             if not relPath.startswith('/'):
                 # use files in private InstallArea instead of group InstallArea
                 if not file in allFiles:
@@ -1495,3 +1554,166 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
         pass
     file.destinationSE = jobR.destinationSE
     jobR.addFile(file)
+
+
+# get CMTCONFIG
+def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
+    try:
+        if athenaVer != None:
+            # remove prefix
+            verStr = re.sub('^[^-]+-','',athenaVer)
+            # extract version numbers
+            match = re.search('(\d+)\.(\d+)\.(\d+)',verStr)
+            if match == None:
+                return None
+            # major,miner,rev
+            maVer = int(match.group(1))
+            miVer = int(match.group(2))
+            reVer = int(match.group(3))
+            # use i686-slc5-gcc43-opt for 15.6.3 or higher
+            # FIXME once the pilot sets cmtconfig properly
+            if maVer >= 15 and miVer >= 6 and reVer >= 3:
+                return 'i686-slc5-gcc43-opt'
+            # use i686-slc4-gcc34-opt by default
+            return 'i686-slc4-gcc34-opt'
+        return None
+    except:
+        return None
+    
+
+# convert GoodRunListXML to datasets
+def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep='',
+                              goodRunListDS='',verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    tmpLog.info('trying to convert GoodRunListXML to list of datasets')  
+    # look for pyAMI since it is an alias
+    pyAMI = '' 
+    out = commands.getoutput('cmt show projects')
+    lines = out.split('\n')
+    for line in lines:
+        # ignore warning
+        if line.startswith('#'):
+            continue
+        # invalid format
+        items = line.strip().split()
+        if len(items) < 4:
+            continue
+        # look for AtlasCore
+        if items[0] == 'AtlasCore':
+            pyAMI = items[3][:-1]+'/Database/Bookkeeping/AMIClients/pyAMI/python/pyAMI.py'
+    # failed
+    if pyAMI == '':
+        tmpLog.error('cannot find pyAMI')
+        return False,''
+    # read XML
+    try:
+        gl_xml = open(goodRunListXML)
+    except:
+        tmpLog.error('cannot open %s' % goodRunListXML)
+        return False,''        
+    # make command
+    com = 'python %s GetGoodDatasetList -goodRunList="%s"' % \
+          (pyAMI,gl_xml.read().replace('"','\\"').replace('\n',' '))
+    gl_xml.close()
+    if goodRunDataType != '':
+        com += ' -dataType=%s' % goodRunDataType
+    if goodRunProdStep != '':    
+        com += ' -prodStep=%s' % goodRunProdStep
+    if verbose:
+        tmpLog.debug(com)
+    # convert for wildcard
+    goodRunListDS = goodRunListDS.replace('*','.*')
+    # list of datasets
+    if goodRunListDS == '':
+        goodRunListDS = []
+    else:
+        goodRunListDS = goodRunListDS.split(',')
+    # execute    
+    status,out = commands.getstatusoutput(com)
+    if status != 0:
+        print out
+        tmpLog.error('pyAMI failed with %s' % status)
+        return False,''
+    if verbose:
+        tmpLog.debug(out)
+    # parse
+    import Client    
+    datasets = ''
+    for line in out.split('\n'):
+        match = re.search('logicalDatasetName = (\S+)',line)
+        if match != None:
+            dsName = match.group(1)
+            # check with DQ2 since AMI doesn't store /
+            dsmap = {}
+            try:
+                dsmap = Client.getDatasets(dsName+'*',verbose,True)
+            except:
+                pass
+            if dsmap.has_key(dsName+'/'):
+                dsName += '/'
+            # check dataset names
+            if goodRunListDS == []:    
+                matchFlag = True
+            else:
+                matchFlag = False
+                for tmpPatt in goodRunListDS:
+                    if re.search(tmpPatt,dsName) != None:
+                        matchFlag = True
+            # append
+            if matchFlag:
+                datasets += '%s,' % dsName
+    datasets = datasets[:-1]
+    if verbose:
+        tmpLog.debug('converted to %s' % datasets)
+    # return        
+    return True,datasets
+        
+
+
+# use AMI for AutoConf
+def getJobOtoUseAmiForAutoConf(inDS,tmpDir):
+    # no input
+    if inDS == '':
+        return ''
+    # use first one
+    amiURL = 'ami://%s' % inDS.split(',')[0]
+    # remove /
+    if amiURL.endswith('/'):
+        amiURL = amiURL[:-1]
+    inputFiles = [amiURL]
+    # create jobO fragment
+    optFileName = tmpDir + '/' + commands.getoutput('uuidgen 2>/dev/null') + '.py'
+    oFile = open(optFileName,'w')
+    oFile.write("""
+try:
+    import AthenaCommon.AthenaCommonFlags
+    
+    def _dummyFilesInput(*argv):
+        return %s
+
+    AthenaCommon.AthenaCommonFlags.FilesInput.__call__ = _dummyFilesInput
+except:
+    pass
+
+try:
+    import AthenaCommon.AthenaCommonFlags
+    
+    def _dummyGet_Value(*argv):
+        return %s
+
+    for tmpAttr in dir (AthenaCommon.AthenaCommonFlags):
+        import re
+        if re.search('^(Pool|BS).*Input$',tmpAttr) != None:
+            try:
+                getattr(AthenaCommon.AthenaCommonFlags,tmpAttr).get_Value = _dummyGet_Value
+            except:
+                pass
+except:
+    pass
+""" % (inputFiles,inputFiles))
+    oFile.close()
+    # reutrn file name
+    return optFileName
+
+            
