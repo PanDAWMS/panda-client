@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.23 (3/27/2010)
+  * fixed for DQ2 DNS change
+
 0.2.22 (3/23/2010)
   * updated --secondaryDSs in prun for nFiles=0 to use all files
   * added --dbRelease,dbRunNumber,notExpandDBR to prun

@@ -29,8 +29,8 @@ try:
 except:
     baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
 
-baseURLDQ2     = 'http://atlascc.cern.ch/dq2'
-baseURLDQ2SSL  = 'https://atlascc.cern.ch:443/dq2'
+baseURLDQ2     = 'http://atlddmcat-reader.cern.ch/dq2'
+baseURLDQ2SSL  = 'https://atlddmcat-writer.cern.ch:443/dq2'
 baseURLSUBHome = "http://www.usatlas.bnl.gov/svn/panda/pathena"
 baseURLSUB     = baseURLSUBHome+'/trf'
 baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
