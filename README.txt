@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.24 (3/31/2010)
+  * fixed pathena for --minDS
+
 0.2.23 (3/27/2010)
   * fixed for DQ2 DNS change
 

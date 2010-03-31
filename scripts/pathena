@@ -2377,7 +2377,8 @@ for iSubJob in range(options.split):
                     file.prodDBlockToken = 'local'
                 jobR.addFile(file)
                 minList.append(fileName)
-            # Cavern
+        # Cavern
+        if runConfig.input.inCavern:
             if indexCavern+options.nCav*divF >= len(cavernList):
                 # re-use files when Cavern files are not enough   
                 indexCavern = 0   
