@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.25 (4/2/2010)
+  * fixed file duplication check when --supStream is used
+
 0.2.24 (3/31/2010)
   * fixed pathena for --minDS
 
