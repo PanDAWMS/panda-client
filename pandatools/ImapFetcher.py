@@ -80,30 +80,39 @@ class ImapFetcher:
         # start session
         self.startSession(verbose)
         # get directories
-        status,out = self.imap.list()
-        if verbose:
-            print status,out
-        if status != 'OK':
-            # end session
-            self.endSession(verbose)
-            raise RuntimeError,"invalid responce when list from mail server %s %s" % (status,out)
+        global seqConf
         dirs = []
-        for item in out:
-            # skip Noselect
-            match = re.search('\([^\)]*\\Noselect[^\)]*\)',item)
-            if match != None:
-                continue
-            # get folder name
-            lastStr = item.split()[-1]
-            if lastStr.endswith('"') or lastStr.endswith("'"):
-                # change " to '
-                item = re.sub('"',"'",item)
-                # extract 'folder name'
-                match = re.search("'([^']+)'$",item)
+        if hasattr(seqConf,'mail_dirs'):
+            # use dirs in config
+            dirs = seqConf.mail_dirs.split(',')
+        else:
+            # get list of dirs from imap server
+            status,out = self.imap.list()
+            if verbose:
+                print status,out
+            if status != 'OK':
+                # end session
+                self.endSession(verbose)
+                raise RuntimeError,"invalid responce when list from mail server %s %s" % (status,out)
+            for item in out:
+                # skip Noselect
+                match = re.search('\([^\)]*\\Noselect[^\)]*\)',item)
                 if match != None:
-                    dirs.append(match.group(1))
-            else:
-                dirs.append(lastStr)
+                    continue
+                # get folder name
+                lastStr = item.split()[-1]
+                if lastStr.endswith('"'):
+                    # extract "folder name"
+                    match = re.search('"([^"]+)"$',item)
+                    if match != None:
+                        dirs.append(match.group(1))
+                elif lastStr.endswith("'"):
+                    # extract 'folder name'
+                    match = re.search("'([^']+)'$",item)
+                    if match != None:
+                        dirs.append(match.group(1))
+                else:
+                    dirs.append(lastStr)
         # fetch mails
         highUIDs = {}
         notList  = []
@@ -191,7 +200,6 @@ class ImapFetcher:
                 strUIDs += '%s,%s,' % (dir,uid)
             strUIDs = strUIDs[:-1]
             # set uid
-            global seqConf
             seqConf.imap_uid = strUIDs
             # update config
             SeqConfig.updateConfig(seqConf)

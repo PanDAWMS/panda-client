@@ -40,12 +40,22 @@ optP.add_option('--version',action='store_const',const=True,dest='version',defau
                 help='Displays version')
 optP.add_option('--inDS',action='store',dest='inDS',default='',type='string',
                 help='Name of an input dataset or dataset container')
+optP.add_option('--goodRunListXML', action='store', dest='goodRunListXML', default='',
+                type='string', help='Good Run List XML which will be converted to datasets by AMI')
+optP.add_option('--goodRunListDataType', action='store', dest='goodRunDataType', default='',
+                type='string', help='specify data type when converting Good Run List XML to datasets, e.g, AOD (default)')
+optP.add_option('--goodRunListProdStep', action='store', dest='goodRunProdStep', default='',
+                type='string', help='specify production step when converting Good Run List to datasets, e.g, merge (default)')
+optP.add_option('--goodRunListDS', action='store', dest='goodRunListDS', default='',
+                type='string', help='A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used')
 optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
                 help='Name of an output dataset. OUTDS will contain all output files')
 optP.add_option('--destSE',action='store', dest='destSE',default='',type='string',
                 help='Destination strorage element')
 optP.add_option('--libDS',action='store',dest='libDS',default='',type='string',
                 help='Name of a library dataset')
+optP.add_option('--removedDS', action='store', dest='removedDS', default='',
+                type='string', help="don't use datasets in the input dataset container")
 optP.add_option('--noBuild', action='store_const',const=True,dest='nobuild',default=False,
                 help='Skip buildGen')
 optP.add_option('--secondaryDSs',action='store',dest='secondaryDSs',default='',type='string',
@@ -56,6 +66,10 @@ optP.add_option('--cloud',action='store',dest='cloud',default=None,type='string'
                 help='Cloud where jobs are submitted. default is set according to your VOMS country group')
 optP.add_option('--match',action='store',dest='match',default='',type='string',
                 help='Use only files matching with given pattern')
+optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
+                help='Required memory size')
+optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type='int',
+                help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--official',action='store_const',const=True,dest='official',default=False,
                 help='Produce official dataset')
 optP.add_option('--useAthenaPackages',action='store_const',const=True,dest='useAthenaPackages',default=False,
@@ -78,10 +92,12 @@ optP.add_option('--workDir',action='store',dest='workDir',default='.',type='stri
                 help='All files under WORKDIR will be transfered to WNs (default=./)')
 optP.add_option('--extFile',action='store',dest='extFile',default='',
                 help='root or large files under WORKDIR are not sent to WNs by default. If you want to send some skipped files, specify their names, e.g., data.root,data.tgz')
+optP.add_option('--excludeFile',action='store',dest='excludeFile',default='',
+                help='specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C')
 optP.add_option('--inputFileList', action='store', dest='inputFileListName', default='',
                 type='string', help='name of file which contains a list of files to be run in the input dataset')
-optP.add_option('--crossSite',action='store',dest='crossSite',default=3,
-                type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=3 by default)')
+optP.add_option('--crossSite',action='store',dest='crossSite',default=5,
+                type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=5 by default)')
 optP.add_option('--outputs',action='store',dest='outputs',default='',type='string',
                 help='Names of output files. Comma separated. e.g., --outputs out1.dat,out2.txt')
 optP.add_option('--excludedSite', action='store', dest='excludedSite',  default='',
@@ -110,6 +126,12 @@ optP.add_option('--bexec',action='store',dest='bexec',default='',type='string',
                 help='execution string for build stage. e.g., --bexec "make"')
 optP.add_option('--myproxy',action='store',dest='myproxy',default='myproxy.cern.ch',type='string',
                 help='Name of the myproxy server')
+optP.add_option('--dbRelease',action='store',dest='dbRelease',default='',
+                type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used. Most likely the --useAthenaPackages or --athenaTag option is required to setup Athena runtime on WN')
+optP.add_option('--dbRunNumber',action='store',dest='dbRunNumber', default='',
+                type='string', help='RunNumber for DBRelease or CDRelease. If this option is used some redundant files are removed to save disk usage when unpacking DBRelease tarball. e.g., 0091890')
+optP.add_option('--notExpandDBR',action='store_const',const=True,dest='notExpandDBR',default=False,
+                help='By default, DBRelease.tar.gz is expanded on WN and gets deleted after changing environment variables accordingly. If you need tar.gz, use this option')
 optP.add_option('-v',action='store_const',const=True,dest='verbose',default=False,
                 help='Verbose')
 optP.add_option('--long', action='store_const',const=True,dest='long',default=False,
@@ -120,6 +142,10 @@ optP.add_option('--outputPath',action='store',dest='outputPath', default='',
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_srcName', action='store', dest='panda_srcName', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_inDS', action='store', dest='panda_inDS', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
                 type='string', help='internal parameter')
 
 # parse options
@@ -146,6 +172,9 @@ if options.update:
 	sys.exit(0)
     else:
 	sys.exit(1)
+
+# full execution string
+fullExecString = PsubUtils.convSysArgv()
 
 # set dummy CMTSITE
 if not os.environ.has_key('CMTSITE'):
@@ -184,6 +213,14 @@ siteSpecified = True
 if options.site == 'AUTO':
     siteSpecified = False
 
+# use outputPath as outDS
+if Client.isDQ2free(options.site):
+    if options.outDS != '':
+	options.outputPath = options.outDS
+    else:
+	options.outputPath = './'
+    options.outDS = options.outputPath
+
 # keep original outDS
 original_outDS_Name = options.outDS
      
@@ -191,15 +228,10 @@ original_outDS_Name = options.outDS
 if not original_outDS_Name.endswith('/'):
     options.crossSite = 0
 
-# use outputPath as outDS
-if Client.isDQ2free(options.site):
-    # change empty to outDS or ./
-    if options.outputPath == '':
-        if options.outDS != '':
-            options.outputPath = options.outDS
-        else:
-            options.outputPath = './'
-    options.outDS = options.outputPath
+# set inDS for recursive goodRunListXML
+if options.panda_inDS != '':
+    options.inDS = options.panda_inDS
+    options.goodRunListXML = ''
 
 # libDS
 libds_file = '%s/libds_prun.dat' % os.environ['PANDA_CONFIG_ROOT']
@@ -215,6 +247,16 @@ if options.libDS == 'LAST':
     tmpLibDS = tmpLibDS.replace('\n','')
     # set
     options.libDS = tmpLibDS
+
+# check DBRelease
+if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
+    tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")  
+    sys.exit(EC_Config)
+
+# Good Run List
+if options.goodRunListXML != '' and options.inDS != '':
+    tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")
+    sys.exit(EC_Config)
     
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
@@ -225,6 +267,12 @@ if not siteSpecified:
     if not tmpSt:
         tmpLog.error("Failed to get allowed site list")
         sys.exit(EC_Config)
+
+# removed datasets
+if options.removedDS == '':
+    options.removedDS = []
+else:
+    options.removedDS = options.removedDS.split(',')
 
 # save current dir
 curDir = os.path.realpath(os.getcwd())
@@ -241,6 +289,18 @@ if curDir != options.workDir:
     # remove special characters
     wDirString=re.sub('[\+]','.',options.workDir)
     runDir = re.sub('^'+wDirString+'/','',curDir)
+
+# create tmp dir
+if options.tmpDir == '':
+    tmpDir = '%s/%s' % (curDir,commands.getoutput('uuidgen'))
+else:
+    tmpDir = '%s/%s' % (options.tmpDir,commands.getoutput('uuidgen'))    
+os.makedirs(tmpDir)
+
+# exit action
+def _onExit(dir):
+    commands.getoutput('rm -rf %s' % dir)
+atexit.register(_onExit,tmpDir)
 
 # parse tag
 athenaVer = ''
@@ -300,6 +360,21 @@ elif options.athenaTag != '':
     if re.search('^-.+_.+$',cacheVer) == None:
         cacheVer = ''
 
+# good run list
+if options.goodRunListXML != '':
+    # look for pyAMI
+    status,options.inDS = AthenaUtils.convertGoodRunListXMLtoDS(options.goodRunListXML,
+                                                                options.goodRunDataType,
+                                                                options.goodRunProdStep,
+								options.goodRunListDS,
+                                                                options.verbose)
+    if not status:
+        tmpLog.error("failed to convert GoodRunListXML")
+        sys.exit(EC_Config)
+    if options.inDS == '':
+        tmpLog.error("no datasets were extracted from AMI using %s" % options.goodRunListXML)
+        sys.exit(EC_Config)
+
 
 # additinal files
 if options.extFile == '':
@@ -317,6 +392,10 @@ try:
     options.gluePackages.remove('')
 except:
     pass
+
+# set excludeFile
+if options.excludeFile != '':
+    AthenaUtils.setExcludeFile(options.excludeFile)
 
 # LFN matching
 if options.match != '':
@@ -396,6 +475,10 @@ if options.destSE != '':
     if not PsubUtils.checkDestSE(options.destSE):
         sys.exit(EC_Config)
 
+# get the latest of DBRelease
+if options.dbRelease == 'LATEST':
+    options.dbRelease = Client.getLatestDBRelease(options.verbose)
+
 # get DN
 distinguishedName = PsubUtils.getDN()
 
@@ -406,7 +489,7 @@ if distinguishedName == '' and nickName == '':
     sys.exit(EC_Config)
 
 # check outDS format
-if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site):
+if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site,vomsFQAN):
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
 
@@ -476,7 +559,7 @@ if outputDSexist and options.destSE == '':
 	    options.destSE = outDSlocations[0]
 	    tmpLog.info("set destSE:%s because outDS:%s already exists there" % \
 		(options.destSE,options.outDS))
-if checkLibDS and options.libDS != '':
+if checkLibDS and options.libDS != '' and not Client.isDQ2free(options.site):
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
     # get locations for libDS    
@@ -523,7 +606,7 @@ if not PsubUtils.checkValidCloud(options.cloud):
 if options.inDS != '':
     # query files in shadow dataset
     shadowList = []
-    if shadowDSexist:
+    if shadowDSexist and not outputContExist:
 	for tmpItem in Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose):
             shadowList.append(tmpItem)
         # query files in PandaDB
@@ -539,6 +622,7 @@ if options.inDS != '':
     # sort
     inputFileList = inputFileMap.keys()
     inputFileList.sort()
+    missList = []
     # query files in secondary datasets
     for tmpDsName,tmpValMap in options.secondaryDSs.iteritems():
         tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose)
@@ -551,6 +635,9 @@ if options.inDS != '':
             options.secondaryDSs[tmpDsName]['files'].append(tmpSecFileMap[tmpSecFile])
         # skip files    
         options.secondaryDSs[tmpDsName]['files'] = options.secondaryDSs[tmpDsName]['files'][options.secondaryDSs[tmpDsName]['nSkip']:]
+        # change nFiles=0 to the real size 
+        if options.secondaryDSs[tmpDsName]['nFiles'] == 0:
+            options.secondaryDSs[tmpDsName]['nFiles'] = len(options.secondaryDSs[tmpDsName]['files'])
     # get locations
     if inputFileList != []:
         if options.site == "AUTO":
@@ -562,9 +649,11 @@ if options.inDS != '':
             dsLocationMap = None
             dsLocationMapBack = None
             for tmpDsForLookUp in tmpDsForLookUpList:
-                tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites = Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
-                                                                                        options.verbose,expCloud=expCloudFlag,
-                                                                                        getReserved=True,getTapeSites=True)
+                tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites,dsUsedDsMap = Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
+                                                                                                    options.verbose,expCloud=expCloudFlag,
+                                                                                                    getReserved=True,getTapeSites=True,
+                                                                                                    removeDS=True,
+                                                                                                    removedDatasets=options.removedDS)
                 # no location
                 if tmpDsLocationMap == {} and tmpDsLocationMapBack == {}:
                     if expCloudFlag:
@@ -652,6 +741,11 @@ if options.inDS != '':
             # set site/cloud
             options.site  = out
             options.cloud = Client.PandaSites[options.site]['cloud']
+            # update used the list of used datasets
+            for tmpDsUsedDsMapKey,tmpDsUsedDsVal in dsUsedDsMap.iteritems():
+                if options.site in [tmpDsUsedDsMapKey,Client.convertToLong(tmpDsUsedDsMapKey)]:
+                    options.removedDS += tmpDsUsedDsVal
+                    break
         # scan local replica catalog
         dsLocation = Client.PandaSites[options.site]['ddm']
         if Client.getLFC(dsLocation) != None:
@@ -670,10 +764,6 @@ if options.inDS != '':
             missList = []
         if options.verbose:
             tmpLog.debug("%s holds %s files" % (options.site,len(inputFileList)-len(missList)))
-        # No files available
-        if len(inputFileList) == len(missList):
-            tmpLog.error("No files available on disk at %s" % options.site)
-            sys.exit(EC_Dataset)
         # remove missing files
         newInputFiles = []
         for inputFile in inputFileList:
@@ -684,11 +774,30 @@ if options.inDS != '':
     inputFileList = inputFileList[options.nSkipFiles:]
     # no available input files
     if inputFileList == []:
-        tmpStr  = "all input files had already been used in %s\n" % options.inDS
-        tmpStr += "  prun runs on files which were failed or were not used in\n"
+        if options.site == 'AUTO':
+            # no lookup was made
+            tmpStr  = "all input files had already been used"
+        else:
+            tmpStr  = "all input files at %s had already been used" % options.site
+        tmpStr += "\n  prun runs on files which were failed or were not used in\n"
         tmpStr += "  previous submissions if it runs with the same inDS and outDS"
-        tmpLog.error(tmpStr)
-        sys.exit(EC_Dataset)
+        if options.crossSite == 0:
+            tmpLog.error(tmpStr)
+            sys.exit(EC_Dataset)
+        else:
+            tmpLog.info(tmpStr)
+            # go back to current dir
+            os.chdir(curDir)
+            # try another site if input files remain
+            options.crossSite -= 1
+            if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
+                if missList != []:
+                    PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
+                                         options.site,options.crossSite,"",options.removedDS,
+					 options.inDS,options.goodRunListXML,
+                                         options.verbose)
+            # succeeded
+            sys.exit(0)
     # truncate
     if options.nFiles != 0:
         inputFileList = inputFileList[:options.nFiles]
@@ -706,8 +815,8 @@ else:
                 # convert to long
                 if options.long:
                     tmpID = Client.convertToLong(tmpID)
-                # check cloud    
-		if spec['cloud']==options.cloud:
+                # check cloud if it is specified   
+		if spec['cloud']==options.cloud or not expCloudFlag:
 		    tmpPriSites.append(tmpID)
 		elif not expCloudFlag:
 		    tmpSecSites.append(tmpID)
@@ -753,18 +862,6 @@ if options.long and not options.site.startswith('ANALY_LONG_'):
 
 #####################################################################
 # archive sources and send it to HTTP-reachable location
-
-# create tmp dir
-if options.tmpDir == '':
-    tmpDir = '%s/%s' % (curDir,commands.getoutput('uuidgen'))
-else:
-    tmpDir = '%s/%s' % (options.tmpDir,commands.getoutput('uuidgen'))    
-os.makedirs(tmpDir)
-
-# exit action
-def _onExit(dir):
-    commands.getoutput('rm -rf %s' % dir)
-atexit.register(_onExit,tmpDir)
 
 # create archive
 if options.panda_srcName != '':
@@ -816,6 +913,14 @@ else:
                     if options.verbose:
                         type,value,traceBack = sys.exc_info()
                         print "  Ignore : %s:%s" % (type,value)
+                    continue
+                # check exclude files
+                excludeFileFlag = False
+                for tmpPatt in AthenaUtils.excludeFile:
+                    if re.search(tmpPatt,tmpPath) != None:
+                        excludeFileFlag = True
+                        break
+                if excludeFileFlag:
                     continue
                 # skipped extension
                 isSkippedExt = False
@@ -940,7 +1045,9 @@ from taskbuffer.FileSpec import FileSpec
 
 
 # max total filesize on each WN
-maxTotalSize = long(10*1024*1024*1024)
+maxTotalSize = Client.PandaSites[options.site]['maxinputsize'] * 1024*1024
+if maxTotalSize in [0,'']:
+    maxTotalSize = Client.maxTotalSize
 
 # set number of files per job
 if options.inDS != '' and options.nFilesPerJob == None:
@@ -1031,9 +1138,6 @@ if options.verbose:
     print "exec       : %s" % options.jobParams
 
 
-# full execution string
-fullExecString = PsubUtils.convSysArgv()
-
 # job name
 jobName = 'prun.%s' % commands.getoutput('uuidgen')
 
@@ -1047,12 +1151,16 @@ elif options.libDS == '':
     jobB = JobSpec()
     jobB.jobDefinitionID   = jobDefinitionID
     jobB.jobName           = jobName
-    jobB.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version 
-    jobB.metadata          = fullExecString
+    jobB.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
+    if options.panda_origFullExecString == '':    
+        jobB.metadata = fullExecString
+    else:
+        jobB.metadata = urllib.unquote(options.panda_origFullExecString)        
     if athenaVer != '':
         jobB.AtlasRelease  = athenaVer
         jobB.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobB.transformation    = '%s/buildGen-00-00-01' % Client.baseURLSUB
+    jobB.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
     if nickName == '':
         # old convention
         tmpDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
@@ -1125,8 +1233,12 @@ elif options.libDS == '':
     jobList.append(jobB)
 else:
     # query files in lib dataset to reuse libraries
-    tmpLog.info("query files in libDS:%s" % options.libDS)
-    tmpList = Client.queryFilesInDataset(options.libDS,options.verbose)
+    if not Client.isDQ2free(options.site):
+        tmpLog.info("query files in libDS:%s" % options.libDS)
+        tmpList = Client.queryFilesInDataset(options.libDS,options.verbose)
+    else:
+        # don't check for DQ2 free sites
+        tmpList = {}
     tmpFileList = []
     tmpGUIDmap = {}
     for fileName in tmpList.keys():
@@ -1150,8 +1262,14 @@ else:
             tmpGUIDmap[fileName] = None
     # incomplete libDS
     if tmpFileList == []:
-        tmpLog.error("dataset %s is empty" % (options.libDS))
-        sys.exit(EC_Dataset)
+        if not Client.isDQ2free(options.site):
+            tmpLog.error("dataset %s is empty" % (options.libDS))
+            sys.exit(EC_Dataset)
+        else:
+            # try lib.tgz for DQ2 free sites as this might be in ArchivedDB 
+            fileName = "%s.lib.tgz" % options.libDS
+            tmpFileList.append(fileName)
+            tmpGUIDmap[fileName] = commands.getoutput('uuidgen')
     # check file list                
     if len(tmpFileList) != 1:
         tmpLog.error("dataset %s contains multiple lib files %s" % (options.libDS,tmpFileList))
@@ -1162,8 +1280,8 @@ else:
     fileBO.GUID = tmpGUIDmap[fileBO.lfn]
     fileBO.dataset = options.libDS
     fileBO.destinationDBlock = options.libDS
-    fileBO.status = 'ready'
-
+    if fileBO.GUID != 'NULL':
+        fileBO.status = 'ready'
 
 # modify outDS name when container is used for output
 if original_outDS_Name.endswith('/'):
@@ -1186,8 +1304,29 @@ if options.outputs != '' and outputDSexist:
             existingFilesInOutDS[tmpLFN] = None
 
 if options.inDS != '':
-    tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
+    if len(missList) == 0:
+	tmpLog.info("all files are available at %s" % options.site)
+    else:
+        tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
+
+# get DB datasets
+dbrFiles  = {}
+dbrDsList = []
+if options.dbRelease != '':
+    tmpDbrDS,tmpDbrLFN  = options.dbRelease.split(':')
+    # get files in the dataset
+    if not tmpDbrDS in dbrDsList:
+        tmpLog.info("query files in %s" % tmpDbrDS)
+        tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
+        # append
+        for tmpLFN,tmpVal in tmpList.iteritems():
+            dbrFiles[tmpLFN] = tmpVal
+    # check
+    if not dbrFiles.has_key(tmpDbrLFN):
+        tmpLog.error("%s is not in %s" % (tmpDbrLFN,tmpDbrDS))
+        sys.exit(EC_Dataset)
+                                                
 
 # disp datasetname to identify inputs
 commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
@@ -1202,12 +1341,22 @@ for iJob in range(options.nJobs):
     jobR.jobDefinitionID   = jobDefinitionID
     jobR.jobName           = jobName
     jobR.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
-    jobR.metadata          = fullExecString
+    if options.panda_origFullExecString == '':
+        jobR.metadata = fullExecString
+    else:
+        jobR.metadata = urllib.unquote(options.panda_origFullExecString)
     if athenaVer != '':
         jobR.AtlasRelease  = athenaVer
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
-    jobR.destinationDBlock = options.outDS
+    jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
+    # memory
+    if options.memory != -1:
+        jobR.minRamCount = options.memory
+    # CPU count
+    if options.maxCpuCount != -1:
+        jobR.maxCpuCount = options.maxCpuCount
+    jobR.destinationDBlock = original_outDS_Name
     if Client.isDQ2free(options.site):
         # flag to use non-DQ2 output
         jobR.destinationSE = 'local'
@@ -1337,6 +1486,32 @@ for iJob in range(options.nJobs):
         jobR.jobParameters += '-i "%s" ' % inList
 	if options.secondaryDSs != {}:
 	    jobR.jobParameters += '--inMap "%s" ' % tmpInputMap
+    # DBRelease
+    if options.dbRelease != '':
+        tmpItems = options.dbRelease.split(':')
+        tmpDbrDS  = tmpItems[0]
+        tmpDbrLFN = tmpItems[1]
+        # instantiate  FileSpec
+        fileName = tmpDbrLFN
+        vals     = dbrFiles[tmpDbrLFN]
+        file = FileSpec()
+        file.lfn            = fileName
+        file.GUID           = vals['guid']
+        file.fsize          = vals['fsize']
+        file.md5sum         = vals['md5sum']
+        file.dataset        = tmpDbrDS
+        file.prodDBlock     = tmpDbrDS
+        file.dispatchDBlock = tmpDbrDS
+        file.type       = 'input'
+        file.status     = 'ready'
+        jobR.addFile(file)
+        # set DBRelease parameter
+        jobR.jobParameters += '--dbrFile %s ' % file.lfn
+        if options.dbRunNumber != '':
+            jobR.jobParameters += '--dbrRun %s ' % options.dbRunNumber
+        # expansion
+        if options.notExpandDBR:
+            jobR.jobParameters += '--notExpandDBR '
     # output files
     outMap = {}
     if options.outputs != '':
@@ -1352,39 +1527,39 @@ for iJob in range(options.nJobs):
                 idxOffset = 0
                 getOffset = True
             # new LFN
-            tmpNewLFN = '%s._%05d.%s' % (jobR.destinationDBlock,idxOffset+iJob+1,tmpLFN)
+            tmpNewLFN = '%s._%05d.%s' % (options.outDS,idxOffset+iJob+1,tmpLFN)
             # change * to XYZ and add .tgz
 	    if tmpNewLFN.find('*') != -1:
 		tmpNewLFN = tmpNewLFN.replace('*','XYZ')
 		tmpNewLFN = '%s.tgz' % tmpNewLFN
             # get offset
             if getOffset:
-                oldHead = '%s._%05d.' % (jobR.destinationDBlock,idxOffset+iJob+1)
-                filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % jobR.destinationDBlock)
+                oldHead = '%s._%05d.' % (options.outDS,idxOffset+iJob+1)
+                filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % options.outDS)
                 idxOffset = PsubUtils.getMaxIndex(existingFilesInOutDS,filePatt)
                 # append
                 existingFilesInOutDS[tmpLFN] = idxOffset
                 # correct
-                newHead = '%s._%05d.' % (jobR.destinationDBlock,idxOffset+iJob+1)
+                newHead = '%s._%05d.' % (options.outDS,idxOffset+iJob+1)
                 tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)
             # set file spec
             file = FileSpec()
             file.lfn               = tmpNewLFN              
             file.type              = 'output'
-            file.dataset           = jobR.destinationDBlock        
+            file.dataset           = options.outDS        
             file.destinationSE     = jobR.destinationSE
-            file.destinationDBlock = jobR.destinationDBlock
+            file.destinationDBlock = options.outDS
             jobR.addFile(file)
             outMap[tmpLFN] = file.lfn
         # set parameter
         jobR.jobParameters += '-o "%s" ' % str(outMap)
     # log
     file = FileSpec()
-    file.lfn               = '%s._$PANDAID.log.tgz' % jobR.destinationDBlock
+    file.lfn               = '%s._$PANDAID.log.tgz' % options.outDS
     file.type              = 'log'
-    file.dataset           = jobR.destinationDBlock    
+    file.dataset           = options.outDS    
     file.destinationSE     = jobR.destinationSE
-    file.destinationDBlock = jobR.destinationDBlock
+    file.destinationDBlock = options.outDS
     jobR.addFile(file)
     jobR.jobParameters += '-r %s ' % runDir
     # set space token
@@ -1415,12 +1590,13 @@ if not options.nosubmit:
             sys.exit(EC_MyProxy)
 
     # upload sources via HTTP POST
-    tmpLog.info("upload source files")
-    status,out = Client.putFile(archiveName,options.verbose)
-    if out != 'True':
-        print out
-        tmpLog.error("failed to upload source files with %s" % status)
-        sys.exit(EC_Post)
+    if options.panda_srcName == '':
+        tmpLog.info("upload source files")
+        status,out = Client.putFile(archiveName,options.verbose)
+        if out != 'True':
+            print out
+            tmpLog.error("failed to upload source files with %s" % status)
+            sys.exit(EC_Post)
 
     # dataset location
     tmpOutDsLocation = Client.PandaSites[options.site]['ddm']
@@ -1518,56 +1694,17 @@ if not options.nosubmit:
 # go back to current dir
 os.chdir(curDir)
 
+# check site occupancy
+if siteSpecified or expCloudFlag:
+    Client.checkQueuedAnalJobs(options.site,options.verbose)
+
 # try another site if input files remain
 options.crossSite -= 1
 if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
     if missList != []:
-        anotherTry = True
-        # nfiles
-        if options.nFiles != 0:
-            if options.nFiles > len(inputFileMap):
-                fullExecString = re.sub('--nFiles\s*=*\d+',
-                                        '--nFiles=%s' % (options.nFiles-len(inputFileMap)),
-                                        fullExecString)
-            else:
-                anotherTry = False
- 	# decrement crossSite counter
-        fullExecString = re.sub(' --crossSite\s*=*\d+','',fullExecString)
-        fullExecString += ' --crossSite=%s' % options.crossSite
-        # don't reuse site
-        match = re.search('--excludedSite\s*=*\S+',fullExecString)
-        if match != None:
-            # append site
-            fullExecString = re.sub(match.group(0),'%s,%s' % (match.group(0),options.site),fullExecString)
-        else:
-            # add option
-            fullExecString += ' --excludedSite=%s' % options.site
-        # set list of input files
-        inputTmpfile = '%s/intmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
-        iFile = open(inputTmpfile,'w')
-        for tmpMiss in missList:
-            iFile.write(tmpMiss+'\n')
-        iFile.close()
-        fullExecString = re.sub(' --inputFileList\s*=*\S+','',fullExecString)
-        fullExecString += ' --inputFileList=%s' % inputTmpfile
-        # source name
-        if not '--panda_srcName' in fullExecString:
-            fullExecString += ' --panda_srcName=%s' % archiveName
-        # server URL
-        if not '--panda_srvURL' in fullExecString:
-            fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
-
-        # run prun
-        if anotherTry:
-            tmpLog.info("trying other sites for the missing files")
-            com = 'prun ' + fullExecString
-            if options.verbose:
-                tmpLog.debug(com)
-            status = os.system(com)
-            # delete tmp files
-            commands.getoutput('\rm -f %s' % inputTmpfile)
-            # exit
-            sys.exit(status)
-
+	PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
+                             options.site,options.crossSite,archiveName,options.removedDS,
+			     options.inDS,options.goodRunListXML,
+                             options.verbose)
 # succeeded
 sys.exit(0)
