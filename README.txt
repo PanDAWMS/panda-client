@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.26 (4/6/2010)
+  * added --maxCpuCount and --memory to prun
+
 0.2.25 (4/2/2010)
   * fixed file duplication check when --supStream is used
 

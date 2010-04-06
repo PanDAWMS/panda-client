@@ -66,6 +66,10 @@ optP.add_option('--cloud',action='store',dest='cloud',default=None,type='string'
                 help='Cloud where jobs are submitted. default is set according to your VOMS country group')
 optP.add_option('--match',action='store',dest='match',default='',type='string',
                 help='Use only files matching with given pattern')
+optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
+                help='Required memory size')
+optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type='int',
+                help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--official',action='store_const',const=True,dest='official',default=False,
                 help='Produce official dataset')
 optP.add_option('--useAthenaPackages',action='store_const',const=True,dest='useAthenaPackages',default=False,
@@ -1346,6 +1350,12 @@ for iJob in range(options.nJobs):
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
     jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
+    # memory
+    if options.memory != -1:
+        jobR.minRamCount = options.memory
+    # CPU count
+    if options.maxCpuCount != -1:
+        jobR.maxCpuCount = options.maxCpuCount
     jobR.destinationDBlock = original_outDS_Name
     if Client.isDQ2free(options.site):
         # flag to use non-DQ2 output
