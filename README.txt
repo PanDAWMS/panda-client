@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.27 (4/9/2010)
+  * fixed --gui of pbook
+
 0.2.26 (4/6/2010)
   * added --maxCpuCount and --memory to prun
 
