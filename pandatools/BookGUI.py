@@ -253,7 +253,7 @@ class PSumView:
                        }
         self.firstJump = True
         # sizes
-        self.nLines = 17+1
+        self.nLines = 18+1
         self.nColumns = 4
         # resize
         self.sumView.resize(self.nLines,self.nColumns)
@@ -400,11 +400,14 @@ class PSumView:
                 if line.strip().startswith('jobStatus'):
                     jobStatusRows = True
                     jobStatusIdx = iLine +1
-                    # get textbuffer
-                    textbuf = self.allBufList[iLine+1][1]
-                    # delete
-                    textbuf.delete(textbuf.get_start_iter(),
-                                   textbuf.get_end_iter())
+                    try:
+                        # get textbuffer
+                        textbuf = self.allBufList[iLine+1][1]
+                        # delete
+                        textbuf.delete(textbuf.get_start_iter(),
+                                       textbuf.get_end_iter())
+                    except:
+                        pass
             else:
                 # get textbuffer
                 textbuf = self.allBufList[jobStatusIdx][1]

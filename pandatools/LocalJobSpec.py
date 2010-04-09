@@ -52,7 +52,7 @@ class LocalJobSpec(object):
                 statusMap[tmpStatus] += tmpCount
         statusStr = self.dbStatus
         for tmpStatus,tmpCount in statusMap.iteritems():
-            statusStr += '\n%8s   %8s : %s' % ('',tmpStatus,tmpCount)
+            statusStr += '\n%8s   %10s : %s' % ('',tmpStatus,tmpCount)
         # number of jobs
         nJobs = len(self.PandaID.split(','))
         if self.buildStatus != '':
@@ -253,7 +253,7 @@ class LocalJobSpec(object):
         toBeFrozen = True
         for tmpStatus in self.jobStatus.split(','):
             # check if is should be frozen
-            if toBeFrozen and not tmpStatus in ['finished','failed','partial']:
+            if toBeFrozen and not tmpStatus in ['finished','failed','partial','cancelled']:
                 toBeFrozen = False
             # set start status
             if sStatus == None:
