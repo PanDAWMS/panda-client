@@ -2025,6 +2025,10 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             line = re.sub('\n','',line)
             filesToBeUsed.append(line)
         rFile.close()
+    # get list of filters
+    filters = []
+    if filter != '':
+        filters = filter.split(',')
     # remove redundant files
     tmpKeys = inputFileMap.keys()
     for tmpLFN in tmpKeys:
@@ -2035,7 +2039,12 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             continue
         # filename matching
         if filter != '':
-            if re.search(filter,tmpLFN) == None:
+            matchFlag = False
+            for tmpFilter in filters:
+                if re.search(tmpFilter,tmpLFN) != None:
+                    matchFlag = True
+                    break
+            if not matchFlag:    
                 del inputFileMap[tmpLFN]
                 continue
         # files in shadow
@@ -2055,6 +2064,15 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             # doesn't match
             if not matchFlag:
                 del inputFileMap[tmpLFN]
+    # no files in filelist are available
+    if inputFileMap == {} and (filter != '' or inputFileListName != ''):
+        if inputFileListName != '':
+            errStr =  "No files in %s are available in %s. " % (inputFileListName,inDS)
+        else:
+            errStr =  "%s are not available in %s. " % (filters,inDS)
+        errStr += "Make sure if you specify correct LFNs"            
+        tmpLog.error(errStr)
+        sys.exit(EC_Failed)
     # return
     if dsStringFlag:
         return inputFileMap,inputDsString

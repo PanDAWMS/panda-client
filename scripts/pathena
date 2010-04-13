@@ -1266,6 +1266,15 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 # doesn't match
                 if not matchFlag:
                     del inputFileMap[fileName]
+        # no files in filelist are available
+        if options.filelist != [] and inputFileMap == {}:
+            if options.inputFileList != '':
+                errStr =  "No files in %s are available in %s. " % (options.inputFileList,options.inDS)
+            else:
+                errStr =  "%s are not available in %s. " % (options.filelist,options.inDS)
+            errStr += "Make sure if you specify correct LFNs"
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
         # get locations when site==AUTO
         if options.site == "AUTO":
             if inputDsString == '':

@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added error message when wrong LFNs are given for input
+ 
 0.2.27 (4/9/2010)
   * fixed --gui of pbook
 
