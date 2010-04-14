@@ -14,7 +14,8 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.28 (4/14/2010)
+  * fixed --goodRunListXML to use pyAMI module	
   * added error message when wrong LFNs are given for input
  
 0.2.27 (4/9/2010)

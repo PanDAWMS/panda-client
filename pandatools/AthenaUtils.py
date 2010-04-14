@@ -1594,24 +1594,11 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
     # get logger
     tmpLog = PLogger.getPandaLogger()
     tmpLog.info('trying to convert GoodRunListXML to list of datasets')  
-    # look for pyAMI since it is an alias
-    pyAMI = '' 
-    out = commands.getoutput('cmt show projects')
-    lines = out.split('\n')
-    for line in lines:
-        # ignore warning
-        if line.startswith('#'):
-            continue
-        # invalid format
-        items = line.strip().split()
-        if len(items) < 4:
-            continue
-        # look for AtlasCore
-        if items[0] == 'AtlasCore':
-            pyAMI = items[3][:-1]+'/Database/Bookkeeping/AMIClients/pyAMI/python/pyAMI.py'
-    # failed
-    if pyAMI == '':
-        tmpLog.error('cannot find pyAMI')
+    # import pyAMI
+    try:
+        from pyAMI import pyAMI
+    except:
+        tmpLog.error('cannot import pyAMI module')
         return False,''
     # read XML
     try:
@@ -1619,16 +1606,17 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
     except:
         tmpLog.error('cannot open %s' % goodRunListXML)
         return False,''        
-    # make command
-    com = 'python %s GetGoodDatasetList -goodRunList="%s"' % \
-          (pyAMI,gl_xml.read().replace('"','\\"').replace('\n',' '))
+    # make arguments
+    amiArgv = []
+    amiArgv.append("GetGoodDatasetList")
+    amiArgv.append("goodRunList="+gl_xml.read())
     gl_xml.close()
     if goodRunDataType != '':
-        com += ' -dataType=%s' % goodRunDataType
+        amiArgv.append('dataType=%s' % goodRunDataType)
     if goodRunProdStep != '':    
-        com += ' -prodStep=%s' % goodRunProdStep
+        amiArgv.append('prodStep=%s' % goodRunProdStep)
     if verbose:
-        tmpLog.debug(com)
+        tmpLog.debug(amiArgv)
     # convert for wildcard
     goodRunListDS = goodRunListDS.replace('*','.*')
     # list of datasets
@@ -1636,21 +1624,29 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
         goodRunListDS = []
     else:
         goodRunListDS = goodRunListDS.split(',')
-    # execute    
-    status,out = commands.getstatusoutput(com)
-    if status != 0:
-        print out
-        tmpLog.error('pyAMI failed with %s' % status)
+    # execute
+    try:
+        amiclient=pyAMI.AMI()
+        amiOut = amiclient.execute(amiArgv)
+    except:
+        errType,errValue = sys.exc_info()[:2]
+        tmpLog.error("%s %s" % (errType,errValue))
+        tmpLog.error('pyAMI failed')
         return False,''
+    # get dataset map
+    amiOutDict = amiOut.getDict()
     if verbose:
-        tmpLog.debug(out)
+        tmpLog.debug(amiOutDict)
+    if not amiOutDict.has_key('goodDatasetList'):
+        tmpLog.error("output from pyAMI doesn't contain goodDatasetList")
+        return False,''
+    amiDsDict = amiOutDict['goodDatasetList']
     # parse
     import Client    
     datasets = ''
-    for line in out.split('\n'):
-        match = re.search('logicalDatasetName = (\S+)',line)
-        if match != None:
-            dsName = match.group(1)
+    for tmpKey,tmpVal in amiDsDict.iteritems():
+        if tmpVal.has_key('logicalDatasetName'):
+            dsName = str(tmpVal['logicalDatasetName'])
             # check with DQ2 since AMI doesn't store /
             dsmap = {}
             try:
