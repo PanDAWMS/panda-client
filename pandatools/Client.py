@@ -29,8 +29,8 @@ try:
 except:
     baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
 
-baseURLDQ2     = 'http://atlascc.cern.ch/dq2'
-baseURLDQ2SSL  = 'https://atlascc.cern.ch:443/dq2'
+baseURLDQ2     = 'http://atlddmcat-reader.cern.ch/dq2'
+baseURLDQ2SSL  = 'https://atlddmcat-writer.cern.ch:443/dq2'
 baseURLSUBHome = "http://www.usatlas.bnl.gov/svn/panda/pathena"
 baseURLSUB     = baseURLSUBHome+'/trf'
 baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
@@ -38,6 +38,8 @@ baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
 # exit code
 EC_Failed = 255
 
+# default max size per job
+maxTotalSize = long(14*1024*1024*1024)
 
 # retrieve pathena config
 try:
@@ -254,12 +256,15 @@ public methods
 '''
 
 # get site specs
-def getSiteSpecs():
+def getSiteSpecs(siteType=None):
     # instantiate curl
     curl = _Curl()
     # execute
     url = baseURL + '/getSiteSpecs'
-    status,output = curl.get(url,{})
+    data = {}
+    if siteType != None:
+        data['siteType'] = siteType
+    status,output = curl.get(url,data)
     try:
         return status,pickle.loads(output)
     except:
@@ -909,7 +914,8 @@ def convSrmV2ID(tmpSite):
 
 # get locations
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
-                 getTapeSites=False,getDQ2IDs=False,locCandidates=None):
+                 getTapeSites=False,getDQ2IDs=False,locCandidates=None,removeDS=False,
+                 removedDatasets=[]):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -930,6 +936,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         countSite     = {}
         allOut        = {}
         iLookUp       = 0
+        resUsedDsMap  = {}
         # convert candidates for SRM v2
         if locCandidates != None:
             locCandidatesSrmV2 = []
@@ -950,10 +957,13 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                     'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
             status,out = curl.get(url,data)
             if status != 0 or out == '\x00' or (not checkDatasetInMap(tmpName,out)):
+                errStr = "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
+                         % tmpName
+                if getReserved and getTapeSites:
+                    sys.exit(EC_Failed)
                 if verbose:
-                    print "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
-                          % tmpName
-                    return retSites
+                    print errStr
+                return retSites
             # get real datasetname
             tmpName = getDatasetValueInMap(tmpName,out)
             # parse
@@ -975,13 +985,30 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             if containerFlag:
                 # count number of complete elements
                 for tmpEleName,tmpEleVal in out.iteritems():
+                    # ignore removed datasets
+                    if tmpEleName in removedDatasets:
+                        continue
                     for tmpEleVUID,tmpEleLocs in tmpEleVal.iteritems():
                         # get complete locations
                         for tmpEleLoc in tmpEleLocs[1]:
                             if not outTmp.has_key(tmpEleLoc):
-                                outTmp[tmpEleLoc] = [{'found':0}]
+                                outTmp[tmpEleLoc] = [{'found':0,'useddatasets':[]}]
                             # increment    
                             outTmp[tmpEleLoc][0]['found'] += 1
+                            # append list
+                            if not tmpEleName in outTmp[tmpEleLoc][0]['useddatasets']:
+                                outTmp[tmpEleLoc][0]['useddatasets'].append(tmpEleName)
+                        # use incomplete locations for user container if no complete replicas
+                        if tmpEleLocs[1] == [] and (tmpEleName.startswith('user') or \
+                                                    tmpEleName.startswith('group')):
+                            for tmpEleLoc in tmpEleLocs[0]:
+                                if not outTmp.has_key(tmpEleLoc):
+                                    outTmp[tmpEleLoc] = [{'found':0,'useddatasets':[]}]
+                                # increment
+                                outTmp[tmpEleLoc][0]['found'] += 1
+                                # append list
+                                if not tmpEleName in outTmp[tmpEleLoc][0]['useddatasets']:
+                                    outTmp[tmpEleLoc][0]['useddatasets'].append(tmpEleName)
                 # replace
                 out = outTmp
             # sum
@@ -994,6 +1021,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                     allOut[tmpOutKey][0]['found'] += tmpNfound
                 else:
                     allOut[tmpOutKey] = [{'found':tmpNfound}]
+                if tmpOutVar[0].has_key('useddatasets'):
+                    if not allOut[tmpOutKey][0].has_key('useddatasets'):
+                        allOut[tmpOutKey][0]['useddatasets'] = []
+                    allOut[tmpOutKey][0]['useddatasets'] += tmpOutVar[0]['useddatasets']    
         # replace
         out = allOut
         if verbose:
@@ -1062,9 +1093,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                     # just collect locations when file check is disabled
                     if woFileCheck:    
                         break
-                    # append site to return if in the cloud, otherwise reserved
+                    # append site
                     if tmpSpec['status'] == 'online':
-                        if tmpSpec['cloud'] == cloud:
+                        # return sites in a cloud when it is specified or all sites
+                        if tmpSpec['cloud'] == cloud or (not expCloud):
                             appendMap = retSiteMap
                         else:
                             appendMap = resRetSiteMap
@@ -1073,6 +1105,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             appendMap[tmpSite] = []
                         if not tmpID in appendMap[tmpSite]:
                             appendMap[tmpSite].append(tmpID)
+                        if not tmpID in resUsedDsMap and origTmpInfo[0].has_key('useddatasets'):
+                            resUsedDsMap[tmpID] = origTmpInfo[0]['useddatasets']
                     else:
                         # not interested in another cloud
                         if tmpSpec['cloud'] != cloud and expCloud:
@@ -1111,8 +1145,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             return retSiteMap
         elif not getTapeSites:
             return retSiteMap,resRetSiteMap
+        elif not removeDS:
+            return retSiteMap,resRetSiteMap,resTapeSites
         else:
-            return retSiteMap,resRetSiteMap,resTapeSites            
+            return retSiteMap,resRetSiteMap,resTapeSites,resUsedDsMap            
     except:
         print status,out
         if errStr != '':
@@ -1499,7 +1535,7 @@ def getJobStatusFromMon(id,verbose=False):
 
 
 # run brokerage
-def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer=''):
+def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType=''):
     if sites == []:
         return 0,'ERROR : no candidate'
     # choose at most 20 sites randomly to avoid too many lookup
@@ -1523,11 +1559,14 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
     if cacheVer != '':
         # change format if needed
         cacheVer = re.sub('^-','',cacheVer)
-        match = re.search('^([^_]+)_(\d+\.\d+\.\d+\.\d+)$',cacheVer)
+        match = re.search('^([^_]+)_(\d+\.\d+\.\d+\.\d+\.*\d*)$',cacheVer)
         if match != None:
             cacheVer = '%s-%s' % (match.group(1),match.group(2))
         # use cache for brokerage
         data['atlasRelease'] = cacheVer
+    if processingType != '':
+        # set processingType mainly for HC
+        data['processingType'] = processingType
     return curl.get(url,data)
 
 
@@ -1977,7 +2016,7 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
     if dsStringFlag:
         inputFileMap,inputDsString = queryFilesInDataset(inDS,verbose,getDsString=True)
     else:
-        inputFileMap,inputDsString = queryFilesInDataset(inDS,verbose)
+        inputFileMap = queryFilesInDataset(inDS,verbose)
     # read list of files to be used
     filesToBeUsed = []
     if inputFileListName != '':
@@ -1986,6 +2025,10 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             line = re.sub('\n','',line)
             filesToBeUsed.append(line)
         rFile.close()
+    # get list of filters
+    filters = []
+    if filter != '':
+        filters = filter.split(',')
     # remove redundant files
     tmpKeys = inputFileMap.keys()
     for tmpLFN in tmpKeys:
@@ -1996,7 +2039,12 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             continue
         # filename matching
         if filter != '':
-            if re.search(filter,tmpLFN) == None:
+            matchFlag = False
+            for tmpFilter in filters:
+                if re.search(tmpFilter,tmpLFN) != None:
+                    matchFlag = True
+                    break
+            if not matchFlag:    
                 del inputFileMap[tmpLFN]
                 continue
         # files in shadow
@@ -2016,6 +2064,15 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             # doesn't match
             if not matchFlag:
                 del inputFileMap[tmpLFN]
+    # no files in filelist are available
+    if inputFileMap == {} and (filter != '' or inputFileListName != ''):
+        if inputFileListName != '':
+            errStr =  "No files in %s are available in %s. " % (inputFileListName,inDS)
+        else:
+            errStr =  "%s are not available in %s. " % (filters,inDS)
+        errStr += "Make sure if you specify correct LFNs"            
+        tmpLog.error(errStr)
+        sys.exit(EC_Failed)
     # return
     if dsStringFlag:
         return inputFileMap,inputDsString
@@ -2027,3 +2084,117 @@ def isDQ2free(site):
     if PandaSites.has_key(site) and PandaSites[site]['ddm'] == 'local':
         return True
     return False
+
+
+# check queued analysis jobs at a site
+def checkQueuedAnalJobs(site,verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/getQueuedAnalJobs'
+    data = {'site':site}
+    status,output = curl.post(url,data)
+    try:
+        # get queued analysis
+        queuedMap = pickle.loads(output)
+        if queuedMap.has_key('running') and queuedMap.has_key('queued'):
+            if queuedMap['running'] > 20 and queuedMap['queued'] > 2 * queuedMap['running']:
+                warStr  = 'Your job might be delayed since %s is busy. ' % site
+                warStr += 'There are %s jobs already queued by other users while %s jobs are running. ' \
+                          % (queuedMap['queued'],queuedMap['running'])
+                warStr += 'Please consider replicating the input dataset to a free site '
+                warStr += 'or avoiding the --site/--cloud option so that the brokerage will '
+                warStr += 'find a free site'
+                tmpLog.warning(warStr)
+    except:
+        type, value, traceBack = sys.exc_info()
+        tmpLog.error("checkQueuedAnalJobs %s %s" % (type,value))
+
+
+# get latest DBRelease
+def getLatestDBRelease(verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    tmpLog.info('trying to get the latest version number for DBRelease=LATEST')
+    # get ddo datasets
+    ddoDatasets = getDatasets('ddo.*',verbose,True)
+    if ddoDatasets == {}:
+        tmpLog.error('failed to get a list of DBRelease datasets from DQ2')
+        sys.exit(EC_Failed)
+    # reverse sort to avoid redundant lookup   
+    ddoDatasets = ddoDatasets.keys()
+    ddoDatasets.sort()
+    ddoDatasets.reverse()
+    # extract version number
+    latestVerMajor = 0
+    latestVerMinor = 0
+    latestVerBuild = 0
+    latestVerRev   = 0
+    latestDBR = ''
+    for tmpName in ddoDatasets:
+        match = re.search('\.v(\d+)_*[^\.]*$',tmpName)
+        if match == None:
+            tmpLog.warning('cannot extract version number from %s' % tmpName)
+            continue
+        # get major,minor,build,revision numbers
+        tmpVerStr = match.group(1)
+        tmpVerMajor = 0
+        tmpVerMinor = 0
+        tmpVerBuild = 0
+        tmpVerRev   = 0
+        try:
+            tmpVerMajor = int(tmpVerStr[0:2])
+        except:
+            pass
+        try:
+            tmpVerMinor = int(tmpVerStr[2:4])
+        except:
+            pass
+        try:
+            tmpVerBuild = int(tmpVerStr[4:6])
+        except:
+            pass
+        try:
+            tmpVerRev = int(tmpVerStr[6:])
+        except:
+            pass
+        # compare
+        if latestVerMajor > tmpVerMajor:
+            continue
+        elif latestVerMajor == tmpVerMajor:
+            if latestVerMinor > tmpVerMinor:
+                continue
+            elif latestVerMinor == tmpVerMinor:
+                if latestVerBuild > tmpVerBuild:
+                    continue
+                elif latestVerBuild == tmpVerBuild:
+                    if latestVerRev > tmpVerRev:
+                        continue
+        # check replica locations to use well distributed DBRelease. i.e. to avoid DBR just created
+        tmpLocations = getLocations(tmpName,[],'',False,verbose,getDQ2IDs=True)
+        if len(tmpLocations) < 10:
+            continue
+        # higher or equal version
+        latestVerMajor = tmpVerMajor
+        latestVerMinor = tmpVerMinor
+        latestVerBuild = tmpVerBuild
+        latestVerRev   = tmpVerRev
+        latestDBR = tmpName
+    # failed
+    if latestDBR == '':
+        tmpLog.error('failed to get the latest version of DBRelease dataset from DQ2')
+        sys.exit(EC_Failed)
+    # get DBRelease file name
+    tmpList = queryFilesInDataset(latestDBR,verbose)
+    if len(tmpList) == 0:
+        tmpLog.error('DBRelease=%s is empty' % latestDBR)
+        sys.exit(EC_Failed)
+    # retrun dataset:file
+    retVal = '%s:%s' % (latestDBR,tmpList.keys()[0])
+    tmpLog.info('use %s' % retVal)
+    return retVal
