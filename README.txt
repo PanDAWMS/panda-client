@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added scrollbar to summary window of pbook --gui
+
 0.2.28 (4/14/2010)
   * fixed --goodRunListXML to use pyAMI module	
   * added error message when wrong LFNs are given for input
