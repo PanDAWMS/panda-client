@@ -2179,6 +2179,10 @@ def getLatestDBRelease(verbose=False):
         tmpLocations = getLocations(tmpName,[],'',False,verbose,getDQ2IDs=True)
         if len(tmpLocations) < 10:
             continue
+        # check contents to exclude reprocessing DBR
+        tmpDbrFileMap = queryFilesInDataset(tmpName,verbose)
+        if len(tmpDbrFileMap) != 1 or not tmpDbrFileMap.keys()[0].startswith('DBRelease'):
+            continue
         # higher or equal version
         latestVerMajor = tmpVerMajor
         latestVerMinor = tmpVerMinor

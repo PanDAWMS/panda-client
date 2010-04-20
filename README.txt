@@ -14,8 +14,9 @@ pathena -h
 
 ** Release Note
 
-current
-  * added scrollbar to summary window of pbook --gui
+0.2.29 (4/20/2010)
+  * fixed --dbRelease=LATEST to exclude reprocessing DBR
+  * added an automatic scrollbar to summary window in pbook --gui
 
 0.2.28 (4/14/2010)
   * fixed --goodRunListXML to use pyAMI module	
