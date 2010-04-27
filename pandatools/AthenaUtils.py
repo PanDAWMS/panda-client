@@ -712,6 +712,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
 
     # archive files
     def archiveFiles(_workArea,_packages,_archiveFullName):
+        excludePattern = '.svn'
         _curdir = os.getcwd()
         # change dir
         os.chdir(_workArea)
@@ -721,7 +722,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
             for item in list:
                 # ignore libraries
                 if item.startswith('i686') or item.startswith('i386') or item.startswith('x86_64') \
-                       or item=='dict' or item=='pool' or item =='pool_plugins':
+                       or item=='dict' or item=='pool' or item =='pool_plugins' or item == 'doc' or item == '.svn':
                     continue
                 # check exclude files
                 excludeFileFlag = False
@@ -754,16 +755,19 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                                 sString=re.sub('[\+]','.',workArea)
                                 relPath = re.sub(sString+'/','',iFile)
                             if os.path.islink(iFile):
-                                out = commands.getoutput('tar -rh %s -f %s' % (relPath,_archiveFullName))                
+                                cmd = 'tar -rh %s -f %s ---exclude %s' % (relPath,_archiveFullName,excludePattern)
+                                out = commands.getoutput(cmd)
                             else:
-                                out = commands.getoutput('tar rf %s %s' % (_archiveFullName,relPath))                
+                                cmd = 'tar rf %s %s --exclude %s' % (_archiveFullName,relPath,excludePattern)
+                                out = commands.getoutput(cmd)
                             if verbose:
                                 print relPath
                                 if out != '':    
                                     print out
                     continue
                 # else
-                out = commands.getoutput('tar rf %s %s/%s' % (_archiveFullName,pack,item))
+                cmd = 'tar rf %s %s/%s --exclude %s' % (_archiveFullName,pack,item,excludePattern)
+                out = commands.getoutput(cmd)
                 if verbose:
                     print "%s/%s" % (pack,item)
                     if out != '':    

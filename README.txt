@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * removed .svn from archiving
+
 0.2.29 (4/20/2010)
   * fixed --dbRelease=LATEST to exclude reprocessing DBR
   * added an automatic scrollbar to summary window in pbook --gui
