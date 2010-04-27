@@ -16,6 +16,7 @@ pathena -h
 
 current
   * removed .svn from archiving
+  * ignore CERN-PROD_TZERO and CERN-PROD_DAQ to avoid tape access
 
 0.2.29 (4/20/2010)
   * fixed --dbRelease=LATEST to exclude reprocessing DBR

@@ -1038,7 +1038,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 # check status
                 if PandaSites.has_key(tmpPandaSite) and PandaSites[tmpPandaSite]['status'] == 'online':
                     # don't use TAPE
-                    if re.search('TAPE$',origTmpSite) != None:
+                    if re.search('TAPE$',origTmpSite) != None or \
+                           re.search('_TZERO$',origTmpSite) != None or \
+                           re.search('_DAQ$',origTmpSite) != None:
                         if not origTmpSite in resTapeSites:
                             resTapeSites.append(origTmpSite)
                         continue
