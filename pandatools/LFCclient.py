@@ -61,7 +61,9 @@ def _getPFNsLFC(guids,lfcHost,storages,nFiles,verbose=False):
                             continue
                         # skip tape
                         onTapeFlag = False
-                        for tapePath in ['/MCTAPE/','/BNLT1D0/','/atlasmctape/','/atlasdatatape/']:
+                        for tapePath in ['/MCTAPE/','/BNLT1D0/','/atlasmctape/','/atlasdatatape/',
+                                         '/castor/cern.ch/grid/atlas/tzero/',
+                                         '/castor/cern.ch/grid/atlas/DAQ/']:
                             if re.search(tapePath,fr.sfn) != None:
                                 onTapeFlag = True
                                 break

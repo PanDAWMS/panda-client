@@ -1038,7 +1038,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 # check status
                 if PandaSites.has_key(tmpPandaSite) and PandaSites[tmpPandaSite]['status'] == 'online':
                     # don't use TAPE
-                    if re.search('TAPE$',origTmpSite) != None:
+                    if re.search('TAPE$',origTmpSite) != None or \
+                           re.search('_TZERO$',origTmpSite) != None or \
+                           re.search('_DAQ$',origTmpSite) != None:
                         if not origTmpSite in resTapeSites:
                             resTapeSites.append(origTmpSite)
                         continue
@@ -2178,6 +2180,10 @@ def getLatestDBRelease(verbose=False):
         # check replica locations to use well distributed DBRelease. i.e. to avoid DBR just created
         tmpLocations = getLocations(tmpName,[],'',False,verbose,getDQ2IDs=True)
         if len(tmpLocations) < 10:
+            continue
+        # check contents to exclude reprocessing DBR
+        tmpDbrFileMap = queryFilesInDataset(tmpName,verbose)
+        if len(tmpDbrFileMap) != 1 or not tmpDbrFileMap.keys()[0].startswith('DBRelease'):
             continue
         # higher or equal version
         latestVerMajor = tmpVerMajor

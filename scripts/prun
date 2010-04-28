@@ -940,6 +940,8 @@ else:
                         break
                 # regular files
                 if not isExtra:
+		    # unset emptyFlag even if all files are skipped
+		    emptyFlag = False
                     # skipped extensions
                     if isSkippedExt:
                         print "  skip %s %s" % (str(skippedExt),tmpPath)
