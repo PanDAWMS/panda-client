@@ -14,9 +14,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.30 (4/28/2010)
   * removed .svn from archiving
   * ignore CERN-PROD_TZERO and CERN-PROD_DAQ to avoid tape access
+  * fixed archiving in prun to skip pseudo empty dirs
 
 0.2.29 (4/20/2010)
   * fixed --dbRelease=LATEST to exclude reprocessing DBR
