@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.32 (4/29/2010)
+  * fixed fakeAppMgr for allConfigurables access
+
 0.2.31 (4/29/2010)
   * fixed site lookup for composit sites when outDS/libDS is reused
 
