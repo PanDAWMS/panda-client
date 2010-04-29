@@ -834,4 +834,23 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
     # exit
     sys.exit(0)
 
+
+
+# run brokerage for composite site
+def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # run brokerage
+    status,out = Client.runBrokerage(siteIDs,releaseVer,verbose=verbose,trustIS=True,cacheVer=cacheVer)
+    if status != 0:
+        tmpLog.error('failed to run brokerage for composite site: %s' % out)
+        sys.exit(EC_Config)
+    if out.startswith('ERROR :'):
+        tmpLog.error(out + '\nbrokerage failed')
+        sys.exit(EC_Config)
+    if not Client.PandaSites.has_key(out):
+        tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
+        sys.exit(EC_Config)
+    return out
+
     
