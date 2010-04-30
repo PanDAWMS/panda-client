@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.33 (4/30/2010)
+  * to follow new DQ2 naming convention
+
 0.2.32 (4/29/2010)
   * fixed fakeAppMgr for allConfigurables access
 
