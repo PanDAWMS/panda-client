@@ -14,6 +14,15 @@ pathena -h
 
 ** Release Note
 
+0.2.33 (4/30/2010)
+  * to follow new DQ2 naming convention
+
+0.2.32 (4/29/2010)
+  * fixed fakeAppMgr for allConfigurables access
+
+0.2.31 (4/29/2010)
+  * fixed site lookup for composit sites when outDS/libDS is reused
+
 0.2.30 (4/28/2010)
   * removed .svn from archiving
   * ignore CERN-PROD_TZERO and CERN-PROD_DAQ to avoid tape access

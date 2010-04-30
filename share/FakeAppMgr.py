@@ -46,6 +46,11 @@ class fakeAppMgr(fakeProperty):
             self._streams = self.origTheApp._streams 
         except:
             self._streams = []
+        # for https://savannah.cern.ch/bugs/index.php?66675
+        try:
+            self.allConfigurables = self.origTheApp.allConfigurables
+        except:
+            pass
 
     def service(self,name):
         return fakeProperty(name)

@@ -231,9 +231,7 @@ def getNickname():
         wMessage += 'Then you can use the new naming convention "user.nickname" '
         wMessage += 'which should be shorter than "userXY.FirstnameLastname".'
         #tmpLog.warning(wMessage)
-    # FIXME
-    #return nickName
-    return ''
+    return nickName
         
 
 # check if valid cloud
@@ -273,29 +271,36 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
         allowedPrefix = ['group']
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
-                tmpPatt = '^'+tmpPrefix+'\d{2}'+'\.'+tmpGroup+'\.'
-                if re.search(tmpPatt,outDS):
+                tmpPattO = '^'+tmpPrefix+'\d{2}'+'\.'+tmpGroup+'\.'
+                tmpPattN = '^'+tmpPrefix+'\.'+tmpGroup+'\.'                
+                if re.search(tmpPattO,outDS) != None or re.search(tmpPattN,outDS) != None:
                     return True
         # didn't match
         errStr  = "Your proxy is allowed to produce official datasets\n"
         errStr += "        with the following prefix\n"
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
-                tmpPatt = '%s%s.%s' % (tmpPrefix,time.strftime('%y',time.gmtime()),tmpGroup)
-                errStr += "          %s\n" % tmpPatt
+                tmpPattO = '%s%s.%s' % (tmpPrefix,time.strftime('%y',time.gmtime()),tmpGroup)
+                errStr += "          %s\n" % tmpPattO
+                tmpPattN = '%s.%s' % (tmpPrefix,tmpGroup)
+                errStr += "          %s\n" % tmpPattN
         errStr += "If you have production role for another group please use the --voms option to set the role\n"
         errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
         tmpLog.error(errStr)
         return False
     # check output dataset format
-    matStr = '^user' + '\d{2}' + '\.' + distinguishedName + '\.'
-    if re.match(matStr,outDS) == None and (nickName == '' or re.match('^user\.'+nickName+'\.',outDS) == None):
-        if nickName == '':
-            outDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
-        else:
-            outDsPrefix = 'user.%s' % nickName
-        errStr  = "outDS must be '%s.<user-controlled string...'\n" % outDsPrefix
-        errStr += "        e.g., %s.test1234" % outDsPrefix
+    matStrO = '^user' + '\d{2}' + '\.' + distinguishedName + '\.'
+    matStrN = '^user\.'+nickName+'\.'
+    if re.match(matStrO,outDS) == None and (nickName == '' or re.match(matStrN,outDS) == None):
+        outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
+        if nickName != '':
+            outDsPrefixN = 'user.%s' % nickName
+        errStr  = "outDS must be '%s.<user-controlled string...'\n" % outDsPrefixO
+        if nickName != '':
+            errStr += "           or '%s.<user-controlled string...'\n" % outDsPrefixN
+        errStr += "        e.g., %s.test1234" % outDsPrefixO
+        if nickName != '':        
+            errStr += "\n              %s.test1234" % outDsPrefixN        
         tmpLog.error(errStr)
         return False
     # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
@@ -833,5 +838,24 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
         sys.exit(status)
     # exit
     sys.exit(0)
+
+
+
+# run brokerage for composite site
+def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # run brokerage
+    status,out = Client.runBrokerage(siteIDs,releaseVer,verbose=verbose,trustIS=True,cacheVer=cacheVer)
+    if status != 0:
+        tmpLog.error('failed to run brokerage for composite site: %s' % out)
+        sys.exit(EC_Config)
+    if out.startswith('ERROR :'):
+        tmpLog.error(out + '\nbrokerage failed')
+        sys.exit(EC_Config)
+    if not Client.PandaSites.has_key(out):
+        tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
+        sys.exit(EC_Config)
+    return out
 
     
