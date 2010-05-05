@@ -571,11 +571,6 @@ if options.burstSubmit == '':
         tmpLog.error("unsupported cloud:%s" % options.cloud)
         sys.exit(EC_Config)
 
-# check destSE
-if options.destSE != '':
-    if not PsubUtils.checkDestSE(options.destSE):
-        sys.exit(EC_Config)
-
 # get DN
 distinguishedName = PsubUtils.getDN()
 
@@ -589,6 +584,11 @@ if distinguishedName == '' and nickName == '':
 if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site,vomsFQAN):
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
+
+# check destSE
+if options.destSE != '':
+    if not PsubUtils.checkDestSE(options.destSE,options.outDS,options.verbose):
+        sys.exit(EC_Config)
 
 # save current dir
 currentDir = os.path.realpath(os.getcwd())

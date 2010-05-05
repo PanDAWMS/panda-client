@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.2.34 (5/5/2010)
+  * added warning message for missing nicknames
+  * enabled --destSE for any DQ2 destination
+
 0.2.33 (4/30/2010)
   * to follow new DQ2 naming convention
 

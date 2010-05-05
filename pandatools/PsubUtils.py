@@ -228,9 +228,11 @@ def getNickname():
         wMessage += 'Please register nickname to ATLAS VO via\n\n'
         wMessage += '   https://lcg-voms.cern.ch:8443/vo/atlas/vomrs\n'
         wMessage += '      [Member Info] -> [Edit Personal Info]\n\n'
-        wMessage += 'Then you can use the new naming convention "user.nickname" '
-        wMessage += 'which should be shorter than "userXY.FirstnameLastname".'
-        #tmpLog.warning(wMessage)
+        wMessage += 'Then you can use new naming convention "user.nickname" for --outDS. '
+        wMessage += 'Note that as of May 31st 2010 old convention '
+        wMessage += '"userXY.FirstLastname" will be terminated.\n'
+        wMessage += 'See the announcement : https://savannah.cern.ch/forum/forum.php?forum_id=1259\n'
+        tmpLog.warning(wMessage)
     return nickName
         
 
@@ -651,35 +653,33 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
 
 
 # check destination SE
-def checkDestSE(destSE):
+def checkDestSE(destSE,dsName,verbose):
     # check destSE
     if destSE == '':
         return True
     # get logger
     tmpLog = PLogger.getPandaLogger()
-    # loop over allowed SEs
-    okDestSE = False
-    destSEpatt = ['SCRATCHDISK','USERDISK','GROUPDISK']
-    for tmpDestSE in destSEpatt:
-        if destSE.endswith(tmpDestSE):
-            okDestSE = True
-            break
-    if not okDestSE:
-        tmpLog.error("invalid destSE:%s which must be one of %s" % (destSE,str(destSEpatt)))
-        return False
-    # get SiteID to check LFC
-    destPandaSite = convertDQ2toPandaID(destSE)
-    if not Client.PandaSites.has_key(destPandaSite):
-        tmpLog.error("failed to find corresponding SiteID for destSE:%s" % destSE)
-        return False
-    # check LFC to allow only T3s for now
-    destAllowedLFCs = ['t3lfcv01.usatlas.bnl.gov']
-    destLFC = Client.PandaSites[destPandaSite]['lfchost']
-    if not destLFC in destAllowedLFCs:
-        errMsg  = "destSE:%s is hosted by LFC:%s. " % (destSE,destLFC)
-        errMsg += "Currently destination is allowed only for sites that are hosted by one of %s, to avoid chaotic data flow" % str(destAllowedLFCs)
+    # get DN
+    tmpDN = commands.getoutput('%s grid-proxy-info -identity' % Client._getGridSrc())
+    # set X509_CERT_DIR
+    if not os.environ.has_key('X509_CERT_DIR') or os.environ['X509_CERT_DIR'] == '':
+        os.environ['X509_CERT_DIR'] = Client._x509_CApath() 
+    # check with DaTRI
+    from datriHandler import datriHandler
+    tmpDaHandler = datriHandler(type='pathena')
+    tmpDaHandler.setParameters(data_pattern=dsName,
+                               site=destSE,
+                               userid=tmpDN)
+    tmpLog.info("checking with DaTRI for --destSE=%s" % destSE)
+    sStat,dOut = tmpDaHandler.checkData()
+    if sStat != 0:
+        errMsg  = "%s\n" % dOut
+        errMsg += "ErrorCode=%s parameters=(DS:%s,site:%s,DN:%s)" % \
+                  (sStat,dsName,destSE,tmpDN)
         tmpLog.error(errMsg)
         return False
+    if verbose:
+        tmpLog.debug("%s %s" % (sStat,dOut))
     # return
     return True
 
