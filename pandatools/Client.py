@@ -378,6 +378,34 @@ def convertDQ2toPandaID(site):
     return keptSite
 
 
+# convert DQ2 ID to Panda site IDs 
+def convertDQ2toPandaIDList(site):
+    sites = []
+    sitesOff = []
+    for tmpID,tmpSpec in PandaSites.iteritems():
+        # # exclude long,xrootd,local queues
+        if isExcudedSite(tmpID):
+            continue
+        # get list of DQ2 IDs
+        srmv2ddmList = []
+        for tmpDdmID in tmpSpec['setokens'].values():
+            srmv2ddmList.append(convSrmV2ID(tmpDdmID))
+        # use Panda sitename
+        if convSrmV2ID(site) in srmv2ddmList:
+            # append
+            if tmpSpec['status']=='online':
+                if not tmpID in sites:
+                    sites.append(tmpID)
+            else:
+                # keep non-online site just in case
+                if not tmpID in sitesOff:
+                    sitesOff.append(tmpID)
+    # return
+    if sites != []:
+        return sites
+    return sitesOff
+
+
 # convert to long queue
 def convertToLong(site):
     tmpsite = re.sub('ANALY_','ANALY_LONG_',site)

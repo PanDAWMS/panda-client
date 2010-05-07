@@ -470,11 +470,6 @@ if options.site != 'AUTO':
     # set cloud
     options.cloud = Client.PandaSites[options.site]['cloud']
 
-# check destSE
-if options.destSE != '':
-    if not PsubUtils.checkDestSE(options.destSE):
-        sys.exit(EC_Config)
-
 # get the latest of DBRelease
 if options.dbRelease == 'LATEST':
     options.dbRelease = Client.getLatestDBRelease(options.verbose)
@@ -492,6 +487,11 @@ if distinguishedName == '' and nickName == '':
 if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site,vomsFQAN):
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
+
+# check destSE
+if options.destSE != '':
+    if not PsubUtils.checkDestSE(options.destSE,options.outDS,options.verbose):
+        sys.exit(EC_Config)
 
 # check if output dataset already exists
 outputDSexist = False
@@ -543,22 +543,27 @@ if outputDSexist and options.destSE == '':
         pass
     else:
         # convert DQ2ID to Panda siteID
-        fFlag = False
+	tmpConvIDs = []
         for outDSlocation in outDSlocations:
-            convID = PsubUtils.convertDQ2toPandaID(outDSlocation)
-            if convID != '':
-                options.site  = convID
-                options.cloud = Client.PandaSites[convID]['cloud']
-                fFlag = True
-                tmpLog.info("set site:%s cloud:%s because outDS:%s already exists at %s" % \
-                            (options.site,options.cloud,options.outDS,outDSlocations))                
-                break
+            tmpConvIDs += Client.convertDQ2toPandaIDList(outDSlocation)
         # not found
-        if not fFlag:
+        if tmpConvIDs == []:
 	    checkLibDS = True
 	    options.destSE = outDSlocations[0]
 	    tmpLog.info("set destSE:%s because outDS:%s already exists there" % \
 		(options.destSE,options.outDS))
+	# chose one
+	if len(tmpConvIDs) == 1:
+	    convID = tmpConvIDs[0]
+        else:
+            # run brokerage to be sent to free site
+            convID = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,options.verbose)
+        # set    
+        options.site  = convID
+        options.cloud = Client.PandaSites[convID]['cloud']
+        tmpLog.info("set site:%s cloud:%s because outDS:%s already exists at %s" % \
+                    (options.site,options.cloud,options.outDS,outDSlocations))                
+
 if checkLibDS and options.libDS != '' and not Client.isDQ2free(options.site):
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
@@ -574,21 +579,24 @@ if checkLibDS and options.libDS != '' and not Client.isDQ2free(options.site):
         pass
     else:
         # convert DQ2ID to Panda siteID
-        fFlag = False
+	tmpConvIDs = []
         for libDSlocation in libDSlocations:
-            convID = PsubUtils.convertDQ2toPandaID(libDSlocation)
-            if convID != '':
-                options.site  = convID
-                options.cloud = Client.PandaSites[convID]['cloud']
-                fFlag = True
-                tmpLog.info("set site:%s cloud:%s because libDS:%s exists at %s" % \
-                            (options.site,options.cloud,options.libDS,libDSlocations))                
-                break
+            tmpConvIDs += Client.convertDQ2toPandaIDList(libDSlocation)
         # not found
-        if not fFlag:
+        if tmpConvIDs == []:
             tmpLog.error("cannot find supported sites for existing lib datasete:%s" % options.libDS)
             sys.exit(EC_Config)
-
+	# chose one
+	if len(tmpConvIDs) == 1:
+	    convID = tmpConvIDs[0]
+        else:
+            # run brokerage to be sent to free site
+            convID = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,options.verbose)
+        # set    
+        options.site  = convID
+        options.cloud = Client.PandaSites[convID]['cloud']
+        tmpLog.info("set site:%s cloud:%s because libDS:%s exists at %s" % \
+                    (options.site,options.cloud,options.libDS,libDSlocations))                
         
 # set cloud for brokerage
 expCloudFlag = False
