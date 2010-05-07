@@ -249,6 +249,13 @@ def checkValidCloud(cloud):
 def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN=''):
     # get logger
     tmpLog = PLogger.getPandaLogger()
+    # check NG chars for SE
+    for tmpChar in ['%','|',';','>','<','?','\'','"','(',')','$','@','*',':',
+                    '=','&','^','#','\\','@','[',']','{','}','`']:
+        if tmpChar in outDS:
+            errStr = 'invalid character "%s" is used in --outDS' % tmpChar
+            tmpLog.error(errStr)
+            return False
     # don't check if DQ2-free
     if Client.isDQ2free(site):
         return True

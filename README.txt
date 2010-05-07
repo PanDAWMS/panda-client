@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.2.35 (5/7/2010)
+  * added protection against invalid characters in --outDS
+  * fixed --goodRunListXML to remove duplicated datasets for the same run number
+  
 0.2.34 (5/5/2010)
   * added warning message for missing nicknames
   * enabled --destSE for any DQ2 destination
