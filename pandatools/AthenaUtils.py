@@ -85,8 +85,10 @@ def getGUIDfromColl(athenaVer,inputColls,directory,refName='Token',verbose=False
             # confirm GUID format
             guid = items[-1]
             if re.search('^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$',guid):
-                refs[guid] = inputColl
-                allrefs.append(guid)
+                if not refs.has_key(guid):
+                    refs[guid] = inputColl
+                if not guid in allrefs:
+                    allrefs.append(guid)
     # return
     return refs,allrefs
 
@@ -1592,6 +1594,50 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
         return None
     
 
+# check configuration tag
+def checkConfigTag(oldDSs,newDS):
+    try:
+        extPatt = '([a-zA-Z]+)(\d+)(_)*([a-zA-Z]+)*(\d+)*'
+        # extract new tag 
+        newTag = newDS.split('.')[5]
+        matchN = re.search(extPatt,newTag)
+        # loop over all DSs
+        for oldDS in oldDSs:
+            # extract old tag
+            oldTag = oldDS.split('.')[5]
+            matchO = re.search(extPatt,oldTag)
+            # check tag consistency beforehand
+            if matchO.group(1) != matchN.group(1):
+                return None
+            if matchO.group(4) != matchN.group(4):
+                return None
+        # use the first DS since they have the same tag        
+        oldTag = oldDSs[0].split('.')[5]
+        matchO = re.search(extPatt,oldTag)
+        # check version
+        verO = int(matchO.group(2))
+        verN = int(matchN.group(2))
+        if verO > verN:
+            return False
+        if verO < verN:
+            return True
+        # check next tag
+        if matchO.group(3) == None:
+            # no next tag 
+            return None
+        # check version
+        verO = int(matchO.group(5))
+        verN = int(matchN.group(5))
+        if verO > verN:
+            return False
+        if verO < verN:
+            return True
+        # same tag
+        return None
+    except:
+        return None
+
+
 # convert GoodRunListXML to datasets
 def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep='',
                               goodRunListDS='',verbose=False):
@@ -1647,18 +1693,11 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
     amiDsDict = amiOutDict['goodDatasetList']
     # parse
     import Client    
-    datasets = ''
+    datasetMapFromAMI = {}
     for tmpKey,tmpVal in amiDsDict.iteritems():
         if tmpVal.has_key('logicalDatasetName'):
             dsName = str(tmpVal['logicalDatasetName'])
-            # check with DQ2 since AMI doesn't store /
-            dsmap = {}
-            try:
-                dsmap = Client.getDatasets(dsName+'*',verbose,True)
-            except:
-                pass
-            if dsmap.has_key(dsName+'/'):
-                dsName += '/'
+            runNumber = tmpVal['runNumber']
             # check dataset names
             if goodRunListDS == []:    
                 matchFlag = True
@@ -1667,9 +1706,41 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
                 for tmpPatt in goodRunListDS:
                     if re.search(tmpPatt,dsName) != None:
                         matchFlag = True
-            # append
+            if not matchFlag:
+                continue
+            # check with DQ2 since AMI doesn't store /
+            dsmap = {}
+            try:
+                dsmap = Client.getDatasets(dsName+'*',verbose,True)
+            except:
+                pass
+            if dsmap.has_key(dsName+'/'):
+                dsName += '/'
+            # check duplication for the run number
             if matchFlag:
-                datasets += '%s,' % dsName
+                newFlag = True
+                if datasetMapFromAMI.has_key(runNumber):
+                    # check configuration tag to use new one
+                    newConfigTag = checkConfigTag(datasetMapFromAMI[runNumber],
+                                                  dsName)
+                    if newConfigTag == True:
+                        del datasetMapFromAMI[runNumber]
+                    elif newConfigTag == False:
+                        # keep existing one
+                        newFlag = False
+                # append        
+                if newFlag:
+                    if not datasetMapFromAMI.has_key(runNumber):
+                        datasetMapFromAMI[runNumber] = []
+                    datasetMapFromAMI[runNumber].append(dsName)
+    # make string
+    amiRunNumList = datasetMapFromAMI.keys()
+    amiRunNumList.sort()
+    datasets = ''
+    for tmpRunNum in amiRunNumList:
+        datasetListFromAMI = datasetMapFromAMI[tmpRunNum]
+        for dsName in datasetListFromAMI:
+            datasets += '%s,' % dsName
     datasets = datasets[:-1]
     if verbose:
         tmpLog.debug('converted to %s' % datasets)

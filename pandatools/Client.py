@@ -378,6 +378,34 @@ def convertDQ2toPandaID(site):
     return keptSite
 
 
+# convert DQ2 ID to Panda site IDs 
+def convertDQ2toPandaIDList(site):
+    sites = []
+    sitesOff = []
+    for tmpID,tmpSpec in PandaSites.iteritems():
+        # # exclude long,xrootd,local queues
+        if isExcudedSite(tmpID):
+            continue
+        # get list of DQ2 IDs
+        srmv2ddmList = []
+        for tmpDdmID in tmpSpec['setokens'].values():
+            srmv2ddmList.append(convSrmV2ID(tmpDdmID))
+        # use Panda sitename
+        if convSrmV2ID(site) in srmv2ddmList:
+            # append
+            if tmpSpec['status']=='online':
+                if not tmpID in sites:
+                    sites.append(tmpID)
+            else:
+                # keep non-online site just in case
+                if not tmpID in sitesOff:
+                    sitesOff.append(tmpID)
+    # return
+    if sites != []:
+        return sites
+    return sitesOff
+
+
 # convert to long queue
 def convertToLong(site):
     tmpsite = re.sub('ANALY_','ANALY_LONG_',site)
@@ -746,6 +774,106 @@ def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
     return fileList
     
 
+# list datasets by GUIDs
+def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.verbose = verbose
+    # get filter
+    dsFilters = []
+    if dsFilter != '':
+        dsFilters = dsFilter.split(',')
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    retMap = {}
+    iLookUp = 0
+    guidLfnMap = {}
+    checkedDSList = []
+    # loop over all GUIDs
+    for guid in guids:
+        # check existing map to avid redundant lookup
+        if guidLfnMap.has_key(guid):
+            retMap[guid] = guidLfnMap[guid]
+            continue
+        iLookUp += 1
+        if iLookUp % 20 == 0:
+            time.sleep(1)
+        # get vuids
+        url = baseURLDQ2 + '/ws_content/rpc'
+        data = {'operation': 'queryDatasetsWithFileByGUID','guid':guid,
+                'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+        status,out =  curl.get(url,data)
+        # failed
+        if status != 0:
+            if not verbose:
+                print status,out
+            errStr = "could not get dataset vuids for %s" % guid
+            tmpLog.error(errStr)
+            sys.exit(EC_Failed)
+        # empty
+        if out == '\x00' or out == ():
+            errStr = "DQ2 gave an empty list for %s" % guid
+            tmpLog.error(errStr)
+            sys.exit(EC_Failed)
+        tmpVUIDs = list(out)
+        # get dataset name
+        url = baseURLDQ2 + '/ws_repository/rpc'
+        data = {'operation':'queryDatasetByVUIDs','vuids':tmpVUIDs,
+                'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+        status,out = curl.post(url,data)
+        # failed
+        if status != 0:
+            if not verbose:
+                print status,out
+            errStr = "could not get dataset name for %s" % guid
+            tmpLog.error(errStr)
+            sys.exit(EC_Failed)
+        # empty
+        if out == '\x00' or out == {}:
+            errStr = "DQ2 gave an empty list for %s" % tmpVUIDs
+            tmpLog.error(errStr)
+            sys.exit(EC_Failed)
+        # check with filter
+        tmpDsNames = []
+        if dsFilters != []:
+            for tmpDsName in out.keys():
+                flagMatch = False
+                for tmpFilter in dsFilters:
+                    if re.search(tmpFilter,tmpDsName) != None:
+                        flagMatch = True
+                        break
+                # append
+                if flagMatch:
+                    tmpDsNames.append(tmpDsName)
+        else:
+            tmpDsNames = out.keys()
+        # empty
+        if tmpDsNames == []:
+            errStr = '--eventPickDS="%s" doesn\'t match with any of %s' % (dsFilter,str(out.keys()))
+            tmpLog.error(errStr)
+            sys.exit(EC_Failed)
+        # duplicated
+        if len(tmpDsNames) != 1:
+            errStr = "there are multiple datasets %s for GUID:%s. Please set --eventPickDS to choose one dataset"\
+                     % (str(out.keys()),guid)
+            tmpLog.error(errStr)
+            sys.exit(EC_Failed)
+        # get LFN
+        if not tmpDsNames[0] in checkedDSList:
+            tmpMap = queryFilesInDataset(tmpDsNames[0],verbose,tmpVUIDs)
+            for tmpLFN,tmpVal in tmpMap.iteritems():
+                guidLfnMap[tmpVal['guid']] = (tmpDsNames[0],tmpLFN)
+            checkedDSList.append(tmpDsNames[0])
+        # append
+        if not guidLfnMap.has_key(guid):
+            errStr = "LFN for %s in not found in %s" % (guid,tmpDsNames[0])
+            tmpLog.error(errStr)
+            sys.exit(EC_Failed)
+        retMap[guid] = guidLfnMap[guid]
+    # return
+    return retMap
+
+                                
 # register dataset
 def addDataset(name,verbose=False,location=''):
     # generate DUID/VUID
