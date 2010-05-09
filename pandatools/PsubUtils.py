@@ -693,7 +693,7 @@ def checkDestSE(destSE,dsName,verbose):
 
 # run pathena recursively
 def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,
-                  removedDS,inDS,goodRunListXML,verbose):
+                  removedDS,inDS,goodRunListXML,eventPickEvtList,verbose):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -744,6 +744,9 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # set inDS to avoid redundant AMI lookup for GRL
     if inDS != '' and goodRunListXML != '' and not '--panda_inDS' in fullExecString:
         fullExecString += ' --panda_inDS=%s' % inDS
+    # set inDS to avoid redundant ELSSI lookup for event picking
+    if inDS != '' and eventPickEvtList != '' and not '--panda_inDSForEP' in fullExecString:
+        fullExecString += ' --panda_inDSForEP=%s' % inDS
     # source name
     if not '--panda_srcName' in fullExecString:
         fullExecString += ' --panda_srcName=%s' % archiveName
@@ -866,3 +869,91 @@ def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose):
     return out
 
     
+# get list of datasets and files by list of runs/events
+def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # set 
+    from eventLookup import pyELSSI
+    elssiIF = pyELSSI()
+    # set X509_USER_PROXY
+    if not os.environ.has_key('X509_USER_PROXY') or os.environ['X509_USER_PROXY'] == '':
+        os.environ['X509_USER_PROXY'] = Client._x509()
+    # open run/event txt
+    if '/' in runEventTxt:
+        tmpLog.error('%s must be in the current directory' % runEventTxt.split('/')[-1])
+        sys.exit(EC_Config)
+    runevttxt = open('%s/%s' % (curDir,runEventTxt))
+    # convert dsType to Athena stream ref
+    if dsType == 'AOD':
+        streamRef = 'StreamAOD_ref'
+    elif dsType == 'ESD':
+        streamRef = 'StreamESD_ref'
+    elif dsType == 'RAW':
+        streamRef = 'StreamRAW_ref'
+    else:
+        errStr  = 'invalid data type %s for event picking. ' % dsType
+        errStr += ' Must be one of AOD,ESD,RAW'
+        tmpLog.error(errStr)
+        sys.exit(EC_Config)
+    tmpLog.info('getting dataset names and LFNs from ELSSI for event picking')
+    # read
+    runEvtList = []
+    guids = []
+    guidRunEvtMap = {}
+    for line in runevttxt:
+        items = line.split()
+        if len(items) != 2:
+            continue
+        runNr,evtNr = items
+        paramStr = 'Run:%s Evt:%s Stream:%s' % (runNr,evtNr,streamName)
+        if verbose:
+            tmpLog.debug(paramStr)
+        else:
+            sys.stdout.write('.')
+            sys.stdout.flush()
+        # check with ELSSI
+        if streamName == '':
+            guidListELSSI = elssiIF.eventLookup(runNr,evtNr,[streamRef],verbose=verbose)
+        else:
+            guidListELSSI = elssiIF.eventLookup(runNr,evtNr,[streamRef],streamName,verbose=verbose)            
+        if guidListELSSI == []:
+            if not verbose:
+                print
+            errStr = "GUID was not found in ELSSI for %s" % paramStr    
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
+        # check duplication
+        tmpguids = []
+        for tmpGuid, in guidListELSSI:
+            if tmpGuid == 'NOATTRIB':
+                continue
+            if not tmpGuid in tmpguids:
+                tmpguids.append(tmpGuid)
+        if tmpguids == []:
+            if not verbose:
+                print
+            errStr = "no GUIDs were found in ELSSI for %s" % paramStr
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
+        if len(tmpguids) != 1:        
+            if not verbose:
+                print
+            errStr = "multiple GUIDs %s were found in ELSSI for %s. Please set --eventPickStreamName" % (str(),paramStr)
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
+        # append
+        if not tmpguids[0] in guids:
+            guids.append(tmpguids[0])
+            guidRunEvtMap[tmpguids[0]] = []
+        guidRunEvtMap[tmpguids[0]].append((runNr,evtNr))
+    # close
+    runevttxt.close()
+    # convert to dataset names and LFNs
+    dsLFNs = Client.listDatasetsByGUIDs(guids,dsPatt,verbose)
+    if not verbose:
+        print
+    else:
+        tmpLog.debug(dsLFNs)
+    # return
+    return dsLFNs,guidRunEvtMap

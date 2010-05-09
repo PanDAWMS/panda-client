@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.2.36 (5/9/2010)
+  * fixed CollListFileGUID to remove duplication
+  * added EP stuff experimentally
+
 0.2.35 (5/7/2010)
   * added protection against invalid characters in --outDS
   * fixed --goodRunListXML to remove duplicated datasets for the same run number

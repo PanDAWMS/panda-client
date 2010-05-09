@@ -85,8 +85,10 @@ def getGUIDfromColl(athenaVer,inputColls,directory,refName='Token',verbose=False
             # confirm GUID format
             guid = items[-1]
             if re.search('^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$',guid):
-                refs[guid] = inputColl
-                allrefs.append(guid)
+                if not refs.has_key(guid):
+                    refs[guid] = inputColl
+                if not guid in allrefs:
+                    allrefs.append(guid)
     # return
     return refs,allrefs
 
