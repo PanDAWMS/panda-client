@@ -456,7 +456,7 @@ if options.eventPickEvtList != '':
     if options.eventPickStreamName == '':
         tmpLog.error("--eventPickStreamName must be specified")
         sys.exit(EC_Config)
-    if options.trf != '':
+    if options.trf != False:
         tmpLog.error("--eventPickEvtList doesn't work with --trf until official transformations support event picking")
         sys.exit(EC_Config)
         

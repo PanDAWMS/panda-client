@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed warning for eventPick + trf
+
 0.2.36 (5/9/2010)
   * fixed CollListFileGUID to remove duplication
   * added EP stuff experimentally
