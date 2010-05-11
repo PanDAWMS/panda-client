@@ -300,6 +300,7 @@ fullExecString = PsubUtils.convSysArgv()
 
 # max size per job
 maxTotalSize = Client.maxTotalSize
+safetySize   = Client.safetySize
 
 # set grid source file
 globalConf = GlobalConfig.getConfig()
@@ -1171,6 +1172,42 @@ if options.parentDS != '':
         tmpLog.error("could not find replica locations for %s" % options.parentDS)
         sys.exit(EC_Dataset)
 
+
+# get DB datasets
+dbrFiles  = {}
+dbrDsList = []
+dbrDsSize = 0
+if options.trf or options.dbRelease != '':
+    if options.trf:
+        # parse jobO for TRF
+        tmpItems = jobO.split()
+    else:
+	tmpItems = []
+    if options.dbRelease != '':    
+        # mimic a trf parameter to reuse following algorithm
+        tmpItems += ['%DB='+options.dbRelease]
+    # look for DBRelease
+    for tmpItem in tmpItems:
+        match = re.search('%DB=([^:]+):(.+)$',tmpItem)
+        if match:
+            tmpDbrDS  = match.group(1)
+            tmpDbrLFN = match.group(2)
+            # get files in the dataset
+            if not tmpDbrDS in dbrDsList:
+                tmpLog.info("query files in %s" % tmpDbrDS)
+                tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
+                # append
+                for tmpLFN,tmpVal in tmpList.iteritems():
+                    dbrFiles[tmpLFN] = tmpVal
+                dbrDsList.append(tmpDbrDS)
+            # check
+            if not dbrFiles.has_key(tmpDbrLFN):
+                tmpLog.error("%s is not in %s" % (tmpDbrLFN,tmpDbrDS))
+		sys.exit(EC_Dataset)
+            # DBR size
+            dbrDsSize += long(dbrFiles[tmpDbrLFN]['fsize'])	
+
+
 # input datasets    
 if options.inDS != '' or options.shipinput or options.pfnList != '':
     # minimum bias dataset
@@ -1646,9 +1683,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             if tmpMod != 0:
                 tmpNSplit += 1
             # check size limit
-            if totalSize/tmpNSplit > maxTotalSize:
+            if totalSize/tmpNSplit > maxTotalSize-dbrDsSize-safetySize:
                 # reset to meet the size limit
-                tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize)
+                tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize-dbrDsSize-safetySize)
                 if tmpMod != 0:
                     tmpNSplit += 1
                 # calculate N files
@@ -1671,7 +1708,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     iDiv += 1
                     if iDiv >= divF:
                         # check
-                        if subTotal > maxTotalSize:
+                        if subTotal > maxTotalSize-dbrDsSize-safetySize:
                             # recalcurate
                             if divF != 1:
                                 divF -= 1
@@ -1702,7 +1739,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 vals = inputFileMap[fileName]
                 tmpSize = long(vals['fsize'])
                 singleLargeFile = False
-                if tmpSubTotal + tmpSize > options.nGBPerJob:
+                if tmpSubTotal+tmpSize > options.nGBPerJob-dbrDsSize:
                     options.split += 1
                     # single large file uses one job
                     if tmpSubTotal == 0:
@@ -1939,39 +1976,6 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 else:
     if options.split <= 0:
         options.split = 1
-
-# get DB datasets
-dbrFiles  = {}
-dbrDsList = []
-if options.trf or options.dbRelease != '':
-    if options.trf:
-        # parse jobO for TRF
-        tmpItems = jobO.split()
-    else:
-	tmpItems = []
-    if options.dbRelease != '':    
-        # mimic a trf parameter to reuse following algorithm
-        tmpItems += ['%DB='+options.dbRelease]
-    # look for DBRelease
-    for tmpItem in tmpItems:
-        match = re.search('%DB=([^:]+):(.+)$',tmpItem)
-        if match:
-            tmpDbrDS  = match.group(1)
-            tmpDbrLFN = match.group(2)
-            # get files in the dataset
-            if not tmpDbrDS in dbrDsList:
-                tmpLog.info("query files in %s" % tmpDbrDS)
-                tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
-                # append
-                for tmpLFN,tmpVal in tmpList.iteritems():
-                    dbrFiles[tmpLFN] = tmpVal
-                dbrDsList.append(tmpDbrDS)
-            # check
-            if not dbrFiles.has_key(tmpDbrLFN):
-                tmpLog.error("%s is not in %s" % (tmpDbrLFN,tmpDbrDS))
-		sys.exit(EC_Dataset)
-
-
 
 
 # choose site automatically when it is still AUTO
@@ -2390,7 +2394,7 @@ for iSubJob in range(options.split):
             for fileName in inputFileList[indexFiles:]:
                 vals = inputFileMap[fileName]
                 tmpSize = long(vals['fsize'])
-                if tmpSubTotal + tmpSize > options.nGBPerJob:
+                if tmpSubTotal+tmpSize > options.nGBPerJob-dbrDsSize:
                     break
                 divF += 1
                 tmpSubTotal += tmpSize
@@ -2427,13 +2431,15 @@ for iSubJob in range(options.split):
                 except:
                     pass
             # size check    
-            if (not isDirectAccess) and totalSize > maxTotalSize and len(tmpList) > 1:
-                tmpStr  = "A subjob has %s input files and requires %sMB of disk space.\n" \
-                          % (len(tmpList), (totalSize >> 20))
-                tmpStr += "  It must be less than %sMB to avoid overflowing the remote disk.\n" \
+            if (not isDirectAccess) and totalSize > maxTotalSize-dbrDsSize and len(tmpList) > 1:
+                tmpStr  = "A subjob has %s input files and requires %sMB of disk space " \
+                          % (len(tmpList), ((totalSize+dbrDsSize) >> 20))
+                if dbrDsSize != 0:
+                    tmpStr += "(DBRelease=%sMB)" % (dbrDsSize>>20)
+                tmpStr += ". It must be less than %sMB to avoid overflowing the remote disk. " \
                           % (maxTotalSize >> 20)
-                tmpStr += "  Please split the job using --nFilesPerJob. If file sizes vary in large range\n"
-                tmpStr += "  --nGBPerJob may help"                
+                tmpStr += "Please split the job using --nFilesPerJob. If file sizes vary in large range "
+                tmpStr += "--nGBPerJob may help. e.g., --nGBPerJob=MAX"                
                 tmpLog.error(tmpStr)
                 sys.exit(EC_Split)
         else:        

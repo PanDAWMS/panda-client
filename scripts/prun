@@ -613,6 +613,26 @@ if not PsubUtils.checkValidCloud(options.cloud):
     sys.exit(EC_Config)
 
 
+# get DB datasets
+dbrFiles  = {}
+dbrDsList = []
+dbrDsSize = 0
+if options.dbRelease != '':
+    tmpDbrDS,tmpDbrLFN  = options.dbRelease.split(':')
+    # get files in the dataset
+    if not tmpDbrDS in dbrDsList:
+        tmpLog.info("query files in %s" % tmpDbrDS)
+        tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
+        # append
+        for tmpLFN,tmpVal in tmpList.iteritems():
+            dbrFiles[tmpLFN] = tmpVal
+    # check
+    if not dbrFiles.has_key(tmpDbrLFN):
+        tmpLog.error("%s is not in %s" % (tmpDbrLFN,tmpDbrDS))
+        sys.exit(EC_Dataset)
+    # DBR size                                                                                                                          
+    dbrDsSize += long(dbrFiles[tmpDbrLFN]['fsize'])
+
 # get files in input dataset
 if options.inDS != '':
     # query files in shadow dataset
@@ -1061,6 +1081,7 @@ from taskbuffer.FileSpec import FileSpec
 maxTotalSize = Client.PandaSites[options.site]['maxinputsize'] * 1024*1024
 if maxTotalSize in [0,'']:
     maxTotalSize = Client.maxTotalSize
+safetySize   = Client.safetySize
 
 # set number of files per job
 if options.inDS != '' and options.nFilesPerJob == None:
@@ -1073,7 +1094,7 @@ if options.inDS != '' and options.nFilesPerJob == None:
         except:
             pass
     # the number of files per max total
-    tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize)
+    tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize-dbrDsSize-safetySize)
     if tmpMod != 0:
         tmpNSplit += 1
     tmpNFiles,tmpMod = divmod(len(inputFileList),tmpNSplit)
@@ -1093,7 +1114,7 @@ if options.inDS != '' and options.nFilesPerJob == None:
         iDiv += 1
         if iDiv >= tmpNFiles:
             # check
-            if subTotal > maxTotalSize:
+            if subTotal > maxTotalSize-dbrDsSize-safetySize:
                 # decrement
                 tmpNFiles -= 1
                 break
@@ -1323,23 +1344,6 @@ if options.inDS != '':
         tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
 
-# get DB datasets
-dbrFiles  = {}
-dbrDsList = []
-if options.dbRelease != '':
-    tmpDbrDS,tmpDbrLFN  = options.dbRelease.split(':')
-    # get files in the dataset
-    if not tmpDbrDS in dbrDsList:
-        tmpLog.info("query files in %s" % tmpDbrDS)
-        tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
-        # append
-        for tmpLFN,tmpVal in tmpList.iteritems():
-            dbrFiles[tmpLFN] = tmpVal
-    # check
-    if not dbrFiles.has_key(tmpDbrLFN):
-        tmpLog.error("%s is not in %s" % (tmpDbrLFN,tmpDbrDS))
-        sys.exit(EC_Dataset)
-                                                
 
 # disp datasetname to identify inputs
 commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
@@ -1487,12 +1491,14 @@ for iJob in range(options.nJobs):
             # append to map    
             tmpInputMap[tmpSecVal['streamName']] = tmpSecLfnList
         # size check    
-        if (not isDirectAccess) and totalSize > maxTotalSize:
-            errStr  = "A subjob has %s input files and requires %sMB of disk space." \
-                  % (len(inList), (totalSize >> 20))
-            errStr += "   It must be less than %sMB to avoid overflowing the remote disk." \
+        if (not isDirectAccess) and totalSize > maxTotalSize-dbrDsSize:
+            errStr  = "A subjob has %s input files and requires %sMB of disk space " \
+                  % (len(inList), ((totalSize+dbrDsSize) >> 20))
+            if dbrDsSize != 0:
+                errStr += "(DBRelease=%sMB)" % (dbrDsSize>>20)
+            errStr += ". It must be less than %sMB to avoid overflowing the remote disk. " \
                   % (maxTotalSize >> 20)
-            errStr += "   Please split the job using --nFilesPerJob."
+            errStr += "Please split the job using --nFilesPerJob."
             tmpLog.error(errStr)            
             sys.exit(EC_Split)
         # set parameter

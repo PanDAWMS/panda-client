@@ -41,6 +41,9 @@ EC_Failed = 255
 # default max size per job
 maxTotalSize = long(14*1024*1024*1024)
 
+# safety size for input size calculation
+safetySize = long(500*1024*1024)
+
 # retrieve pathena config
 try:
     # get default timeout

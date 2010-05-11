@@ -19,6 +19,7 @@ pathena -h
   * ignore panda internal datasets from for event-picking 
   * added warning for unmerged dataset usage
   * fixed site lookup for TRIG-DAQ
+  * fixed input size calculation to take DBR into account
 
 0.2.36 (5/9/2010)
   * fixed CollListFileGUID to remove duplication
