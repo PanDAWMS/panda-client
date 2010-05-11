@@ -253,6 +253,9 @@ if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.db
     tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")  
     sys.exit(EC_Config)
 
+# check unmerge dataset
+PsubUtils.checkUnmergedDataset(options.inDS,options.secondaryDSs)
+
 # Good Run List
 if options.goodRunListXML != '' and options.inDS != '':
     tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")

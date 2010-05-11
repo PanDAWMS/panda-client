@@ -14,12 +14,15 @@ pathena -h
 
 ** Release Note
 
-current
-  * fixed warning for eventPick + trf
+0.2.37 (5/11/2010)
+  * fixed warning for event-picking + trf
+  * ignore panda internal datasets from for event-picking 
+  * added warning for unmerged dataset usage
+  * fixed site lookup for TRIG-DAQ
 
 0.2.36 (5/9/2010)
   * fixed CollListFileGUID to remove duplication
-  * added EP stuff experimentally
+  * added event-picking stuff
 
 0.2.35 (5/7/2010)
   * added protection against invalid characters in --outDS

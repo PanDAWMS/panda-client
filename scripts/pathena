@@ -669,6 +669,9 @@ elif runDir.startswith('/'):
     runDir = runDir[1:]
 runDir = runDir+'/'
 
+# check unmerge dataset
+PsubUtils.checkUnmergedDataset(options.inDS,options.parentDS)
+
 # good run list
 if options.goodRunListXML != '':
     # look for pyAMI

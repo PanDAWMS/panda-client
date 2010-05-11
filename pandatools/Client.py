@@ -846,7 +846,14 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
                 if flagMatch:
                     tmpDsNames.append(tmpDsName)
         else:
-            tmpDsNames = out.keys()
+            for tmpDsName in out.keys():
+                # ignore junk datasets
+                if tmpDsName.startswith('panda') or \
+                       tmpDsName.startswith('user') or \
+                       re.search('_sub\d+$',tmpDsName) != None or \
+                       re.search('_dis\d+$',tmpDsName) != None:
+                    continue
+                tmpDsNames.append(tmpDsName) 
         # empty
         if tmpDsNames == []:
             errStr = '--eventPickDS="%s" doesn\'t match with any of %s' % (dsFilter,str(out.keys()))
@@ -1006,12 +1013,14 @@ def convSrmV2ID(tmpSite):
             tmpSite = re.sub('_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
             tmpSite = re.sub('_PHYS-[A-Z,0-9]+$','DISK',tmpSite)
             tmpSite = re.sub('_PERF-[A-Z,0-9]+$','DISK',tmpSite)
+            tmpSite = re.sub('_TRIG-DAQ$','DISK',tmpSite)            
             return tmpSite
     # patch for SRM v2
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_PHYS-[A-Z,0-9]+$','DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_PERF-[A-Z,0-9]+$','DISK',tmpSite)
+    tmpSite = re.sub('-[^-_]+_TRIG-DAQ$','DISK',tmpSite)    
     # SHOULD BE REMOVED Once all sites and DQ2 migrate to srmv2
     # patch for BNL
     if tmpSite in ['BNLDISK','BNLTAPE']:
@@ -1167,8 +1176,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 if PandaSites.has_key(tmpPandaSite) and PandaSites[tmpPandaSite]['status'] == 'online':
                     # don't use TAPE
                     if re.search('TAPE$',origTmpSite) != None or \
-                           re.search('_TZERO$',origTmpSite) != None or \
-                           re.search('_DAQ$',origTmpSite) != None:
+                           re.search('PROD_TZERO$',origTmpSite) != None or \
+                           re.search('PROD_DAQ$',origTmpSite) != None:
                         if not origTmpSite in resTapeSites:
                             resTapeSites.append(origTmpSite)
                         continue

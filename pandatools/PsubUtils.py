@@ -949,11 +949,37 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
         guidRunEvtMap[tmpguids[0]].append((runNr,evtNr))
     # close
     runevttxt.close()
-    # convert to dataset names and LFNs
-    dsLFNs = Client.listDatasetsByGUIDs(guids,dsPatt,verbose)
     if not verbose:
         print
-    else:
+    # convert to dataset names and LFNs
+    dsLFNs = Client.listDatasetsByGUIDs(guids,dsPatt,verbose)
+    if verbose:
         tmpLog.debug(dsLFNs)
     # return
     return dsLFNs,guidRunEvtMap
+
+
+# check unmerge dataset
+def checkUnmergedDataset(inDS,secDS):
+    dsList = []
+    if inDS != '':
+        dsList += inDS.split(',')
+    if secDS != '':
+        dsList += secDS.split(',')
+    # pattern for unmerged datasets
+    unPatt = '^mc.+\.recon\.AOD\.'
+    unMergedDs = ''
+    for tmpDs in dsList:
+        # check dataset name
+        if re.search(unPatt,tmpDs) != None:
+            unMergedDs += '%s,' % tmpDs
+    unMergedDs = unMergedDs[:-1]
+    # return
+    if unMergedDs != '':
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        msg = "%s is unmerged AOD dataset which is not distributed. Please use mc*.merge.AOD.* instead\n" % unMergedDs
+        print
+        tmpLog.warning(msg)
+    return 
+
