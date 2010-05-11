@@ -86,6 +86,14 @@ optP.add_option('--goodRunListProdStep', action='store', dest='goodRunProdStep',
                 type='string', help='specify production step when converting Good Run List to datasets, e.g, merge (default)')
 optP.add_option('--goodRunListDS', action='store', dest='goodRunListDS', default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used')
+optP.add_option('--eventPickEvtList',action='store',dest='eventPickEvtList',default='',
+                type='string', help='a file name which contains a list of runs/events for event picking')
+optP.add_option('--eventPickDataType',action='store',dest='eventPickDataType',default='',
+                type='string', help='type of data for event picking. one of AOD,ESD,RAW')
+optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName',default='',
+                type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
+optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
+                type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used')
 optP.add_option('--useCommonHalo', action='store_const', const=False, dest='useCommonHalo',  default=True,
                 help="use an integrated DS for BeamHalo")
 optP.add_option('--beamHaloDS',  action='store', dest='beamHaloDS',  default='',
@@ -256,6 +264,8 @@ optP.add_option('--panda_srcName', action='store', dest='panda_srcName', default
                 type='string', help='internal parameter')
 optP.add_option('--panda_inDS', action='store', dest='panda_inDS', default='',
                 type='string', help='internal parameter')
+optP.add_option('--panda_inDSForEP', action='store', dest='panda_inDSForEP', default='',
+                type='string', help='internal parameter')
 optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
                 type='string', help='internal parameter')
 
@@ -344,6 +354,11 @@ if options.panda_inDS != '':
     options.inDS = options.panda_inDS
     options.goodRunListXML = ''
 
+# set inDS for recursive event picking
+if options.panda_inDSForEP != '':
+    options.inDS = options.panda_inDSForEP
+    options.eventPickEvtList = ''
+
 # error
 if options.outDS == '':
     tmpLog.error("no outDS is given\n pathena [--inDS input] --outDS output myJobO.py")
@@ -427,6 +442,24 @@ if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.db
 if options.goodRunListXML != '' and options.inDS != '':
     tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")
     sys.exit(EC_Config)
+
+# event picking
+if options.eventPickEvtList != '' and options.inDS != '':
+    tmpLog.error("cannnot use --eventPickEvtList and --inDS at the same time")
+    sys.exit(EC_Config)
+
+# param check for event picking
+if options.eventPickEvtList != '':
+    if options.eventPickDataType == '':
+        tmpLog.error("--eventPickDataType must be specified")
+        sys.exit(EC_Config)
+    if options.eventPickStreamName == '':
+        tmpLog.error("--eventPickStreamName must be specified")
+        sys.exit(EC_Config)
+    if options.trf != False:
+        tmpLog.error("--eventPickEvtList doesn't work with --trf until official transformations support event picking")
+        sys.exit(EC_Config)
+        
     
 # additinal files
 options.extFile = options.extFile.split(',')
@@ -571,11 +604,6 @@ if options.burstSubmit == '':
         tmpLog.error("unsupported cloud:%s" % options.cloud)
         sys.exit(EC_Config)
 
-# check destSE
-if options.destSE != '':
-    if not PsubUtils.checkDestSE(options.destSE):
-        sys.exit(EC_Config)
-
 # get DN
 distinguishedName = PsubUtils.getDN()
 
@@ -589,6 +617,11 @@ if distinguishedName == '' and nickName == '':
 if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site,vomsFQAN):
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
+
+# check destSE
+if options.destSE != '':
+    if not PsubUtils.checkDestSE(options.destSE,options.outDS,options.verbose):
+        sys.exit(EC_Config)
 
 # save current dir
 currentDir = os.path.realpath(os.getcwd())
@@ -604,9 +637,12 @@ os.makedirs(tmpDir)
 Client.setGlobalTmpDir(tmpDir)
 
 # exit action
-def _onExit(dir):
+delFilesOnExit = []
+def _onExit(dir,files):
+    for tmpFile in files:
+        commands.getoutput('rm -rf %s' % tmpFile)        
     commands.getoutput('rm -rf %s' % dir)
-atexit.register(_onExit,tmpDir)
+atexit.register(_onExit,tmpDir,delFilesOnExit)
 
 
 # get Athena versions
@@ -633,6 +669,9 @@ elif runDir.startswith('/'):
     runDir = runDir[1:]
 runDir = runDir+'/'
 
+# check unmerge dataset
+PsubUtils.checkUnmergedDataset(options.inDS,options.parentDS)
+
 # good run list
 if options.goodRunListXML != '':
     # look for pyAMI
@@ -647,7 +686,44 @@ if options.goodRunListXML != '':
     if options.inDS == '':
         tmpLog.error("no datasets were extracted from AMI using %s" % options.goodRunListXML)
         sys.exit(EC_Config)
+
+# event picking
+if options.eventPickEvtList != '':
+    # convert run/evt list to dataset/LFN list
+    epDsLFNs,epGuidEvtMap = PsubUtils.getDSsFilesByRunsEvents(currentDir,
+                                                              options.eventPickEvtList,
+                                                              options.eventPickDataType,
+                                                              options.eventPickStreamName,
+                                                              options.eventPickDS,
+                                                              options.verbose)
+    # set param
+    options.inDS = ''
+    options.filelist = []
+    tmpDsNameList = []
+    tmpLFNList = []    
+    for tmpGUID,tmpDsLFNs in epDsLFNs.iteritems():
+        tmpDsName,tmpLFN = tmpDsLFNs
+        # set fileFist
+        if not tmpLFN in tmpLFNList:
+            tmpLFNList.append(tmpLFN)
+            options.filelist.append(tmpLFN)
+        # set inDS    
+        if not tmpDsName in tmpDsNameList:
+            tmpDsNameList.append(tmpDsName)
+            options.inDS += '%s,' % tmpDsName
+    options.inDS = options.inDS[:-1]
+    # make run/event list
+    eventPickRunEvtDat = '%s/ep_%s.dat' % (currentDir,commands.getoutput('uuidgen'))
+    evFH = open(eventPickRunEvtDat,'w') 
+    for tmpGUID,tmpRunEvtList in epGuidEvtMap.iteritems():
+        for tmpRunNr,rmpEvtNr in tmpRunEvtList:
+            evFH.write('%s %s\n' % (tmpRunNr,rmpEvtNr))
+    # close        
+    evFH.close()
+    # add to be deleted on exit
+    delFilesOnExit.append(eventPickRunEvtDat)
     
+        
 # get job options
 jobO = ''
 if options.trf:
@@ -1032,22 +1108,27 @@ if outputDSexist and options.destSE == '':
         pass
     else:
         # convert DQ2ID to Panda siteID
-        fFlag = False
+	tmpConvIDs = []
         for outDSlocation in outDSlocations:
-            convID = PsubUtils.convertDQ2toPandaID(outDSlocation)
-            if convID != '':
-                options.site  = convID
-                options.cloud = Client.PandaSites[convID]['cloud']
-                fFlag = True
-                tmpLog.info("set site:%s cloud:%s because outDS:%s already exists at %s" % \
-                            (options.site,options.cloud,options.outDS,outDSlocations))                
-                break
+            tmpConvIDs += Client.convertDQ2toPandaIDList(outDSlocation)
         # not found
-        if not fFlag:
+        if tmpConvIDs == []:
 	    checkLibDS = True
 	    options.destSE = outDSlocations[0]
 	    tmpLog.info("set destSE:%s because outDS:%s already exists there" % \
 		(options.destSE,options.outDS))
+	# chose one
+	if len(tmpConvIDs) == 1:
+	    convID = tmpConvIDs[0]
+        else:
+            # run brokerage to be sent to free site
+            convID = PsubUtils.runBrokerageForCompSite(tmpConvIDs,'Atlas-%s' % athenaVer,cacheVer,options.verbose)
+        # set    
+        options.site  = convID
+        options.cloud = Client.PandaSites[convID]['cloud']
+        tmpLog.info("set site:%s cloud:%s because outDS:%s already exists at %s" % \
+                    (options.site,options.cloud,options.outDS,outDSlocations))                
+
 if checkLibDS and options.libDS != '' and not Client.isDQ2free(options.site):
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
@@ -1062,20 +1143,24 @@ if checkLibDS and options.libDS != '' and not Client.isDQ2free(options.site):
         pass
     else:
         # convert DQ2ID to Panda siteID
-        fFlag = False
+	tmpConvIDs = []
         for libDSlocation in libDSlocations:
-            convID = PsubUtils.convertDQ2toPandaID(libDSlocation)
-            if convID != '':
-                options.site  = convID
-                options.cloud = Client.PandaSites[convID]['cloud']
-                fFlag = True
-                tmpLog.info("set site:%s cloud:%s because libDS:%s exists at %s" % \
-                            (options.site,options.cloud,options.libDS,libDSlocations))                
-                break
+            tmpConvIDs += Client.convertDQ2toPandaIDList(libDSlocation)
         # not found
-        if not fFlag:
+        if tmpConvIDs == []:
             tmpLog.error("cannot find supported sites for existing lib datasete:%s" % options.libDS)
             sys.exit(EC_Dataset)
+	# chose one
+	if len(tmpConvIDs) == 1:
+	    convID = tmpConvIDs[0]
+        else:
+            # run brokerage to be sent to free site
+            convID = PsubUtils.runBrokerageForCompSite(tmpConvIDs,'Atlas-%s' % athenaVer,cacheVer,options.verbose)
+        # set    
+        options.site  = convID
+        options.cloud = Client.PandaSites[convID]['cloud']
+        tmpLog.info("set site:%s cloud:%s because libDS:%s exists at %s" % \
+                    (options.site,options.cloud,options.libDS,libDSlocations))                
         
 # parent datasets
 parentDSlocations = None
@@ -1470,7 +1555,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     if missList != []:
                         PsubUtils.runPathenaRec(runConfig,missList,tmpDir,fullExecString,options.nfiles,inputFileMap,
                                                 options.site,options.crossSite,archiveName,options.removedDS,
-                                                options.inDS,options.goodRunListXML,                                                
+                                                options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                                 options.verbose)
                 # exit        
                 sys.exit(0)
@@ -2733,6 +2818,9 @@ for iSubJob in range(options.split):
     # use ARA 
     if options.ara:
         param += '--ara '
+    # event picking
+    if options.eventPickEvtList:
+        param += '--eventPickTxt=%s ' % eventPickRunEvtDat.split('/')[-1]
     # general input format
     if options.generalInput:
         param += '--generalInput '
@@ -2993,7 +3081,7 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
     if missList != []:
         PsubUtils.runPathenaRec(runConfig,missList,tmpDir,fullExecString,options.nfiles,inputFileMap,
                                 options.site,options.crossSite,archiveName,options.removedDS,
-                                options.inDS,options.goodRunListXML,                                
+                                options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                 options.verbose)
 # succeeded
 sys.exit(0)
