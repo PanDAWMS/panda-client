@@ -842,7 +842,9 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
             for tmpDsName in out.keys():
                 flagMatch = False
                 for tmpFilter in dsFilters:
-                    if re.search(tmpFilter,tmpDsName) != None:
+                    # replace * to .*
+                    tmpFilter = tmpFilter.replace('*','.*')
+                    if re.search('^'+tmpFilter,tmpDsName) != None:
                         flagMatch = True
                         break
                 # append
@@ -853,8 +855,10 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
                 # ignore junk datasets
                 if tmpDsName.startswith('panda') or \
                        tmpDsName.startswith('user') or \
+                       tmpDsName.startswith('group') or \
                        re.search('_sub\d+$',tmpDsName) != None or \
-                       re.search('_dis\d+$',tmpDsName) != None:
+                       re.search('_dis\d+$',tmpDsName) != None or \
+                       re.search('_shadow$',tmpDsName) != None:
                     continue
                 tmpDsNames.append(tmpDsName) 
         # empty
@@ -870,7 +874,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
             sys.exit(EC_Failed)
         # get LFN
         if not tmpDsNames[0] in checkedDSList:
-            tmpMap = queryFilesInDataset(tmpDsNames[0],verbose,tmpVUIDs)
+            tmpMap = queryFilesInDataset(tmpDsNames[0],verbose)
             for tmpLFN,tmpVal in tmpMap.iteritems():
                 guidLfnMap[tmpVal['guid']] = (tmpDsNames[0],tmpLFN)
             checkedDSList.append(tmpDsNames[0])

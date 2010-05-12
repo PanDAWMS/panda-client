@@ -14,9 +14,13 @@ pathena -h
 
 ** Release Note
 
+0.2.38 (5/12/2010)
+  * fixed --eventPickDS
+  * ignore more irrelevant datasets for event-picking 
+
 0.2.37 (5/11/2010)
   * fixed warning for event-picking + trf
-  * ignore panda internal datasets from for event-picking 
+  * ignore panda internal datasets for event-picking 
   * added warning for unmerged dataset usage
   * fixed site lookup for TRIG-DAQ
   * fixed input size calculation to take DBR into account
