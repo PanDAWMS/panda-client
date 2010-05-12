@@ -228,12 +228,12 @@ def getNickname():
         wMessage += 'Please register nickname to ATLAS VO via\n\n'
         wMessage += '   https://lcg-voms.cern.ch:8443/vo/atlas/vomrs\n'
         wMessage += '      [Member Info] -> [Edit Personal Info]\n\n'
-        wMessage += 'Then you can use the new naming convention "user.nickname" '
-        wMessage += 'which should be shorter than "userXY.FirstnameLastname".'
-        #tmpLog.warning(wMessage)
-    # FIXME
-    #return nickName
-    return ''
+        wMessage += 'Then you can use new naming convention "user.nickname" for --outDS. '
+        wMessage += 'Note that as of May 31st 2010 old convention '
+        wMessage += '"userXY.FirstLastname" will be terminated.\n'
+        wMessage += 'See the announcement : https://savannah.cern.ch/forum/forum.php?forum_id=1259\n'
+        tmpLog.warning(wMessage)
+    return nickName
         
 
 # check if valid cloud
@@ -249,6 +249,13 @@ def checkValidCloud(cloud):
 def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN=''):
     # get logger
     tmpLog = PLogger.getPandaLogger()
+    # check NG chars for SE
+    for tmpChar in ['%','|',';','>','<','?','\'','"','(',')','$','@','*',':',
+                    '=','&','^','#','\\','@','[',']','{','}','`']:
+        if tmpChar in outDS:
+            errStr = 'invalid character "%s" is used in --outDS' % tmpChar
+            tmpLog.error(errStr)
+            return False
     # don't check if DQ2-free
     if Client.isDQ2free(site):
         return True
@@ -273,29 +280,36 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
         allowedPrefix = ['group']
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
-                tmpPatt = '^'+tmpPrefix+'\d{2}'+'\.'+tmpGroup+'\.'
-                if re.search(tmpPatt,outDS):
+                tmpPattO = '^'+tmpPrefix+'\d{2}'+'\.'+tmpGroup+'\.'
+                tmpPattN = '^'+tmpPrefix+'\.'+tmpGroup+'\.'                
+                if re.search(tmpPattO,outDS) != None or re.search(tmpPattN,outDS) != None:
                     return True
         # didn't match
         errStr  = "Your proxy is allowed to produce official datasets\n"
         errStr += "        with the following prefix\n"
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
-                tmpPatt = '%s%s.%s' % (tmpPrefix,time.strftime('%y',time.gmtime()),tmpGroup)
-                errStr += "          %s\n" % tmpPatt
+                tmpPattO = '%s%s.%s' % (tmpPrefix,time.strftime('%y',time.gmtime()),tmpGroup)
+                errStr += "          %s\n" % tmpPattO
+                tmpPattN = '%s.%s' % (tmpPrefix,tmpGroup)
+                errStr += "          %s\n" % tmpPattN
         errStr += "If you have production role for another group please use the --voms option to set the role\n"
         errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
         tmpLog.error(errStr)
         return False
     # check output dataset format
-    matStr = '^user' + '\d{2}' + '\.' + distinguishedName + '\.'
-    if re.match(matStr,outDS) == None and (nickName == '' or re.match('^user\.'+nickName+'\.',outDS) == None):
-        if nickName == '':
-            outDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
-        else:
-            outDsPrefix = 'user.%s' % nickName
-        errStr  = "outDS must be '%s.<user-controlled string...'\n" % outDsPrefix
-        errStr += "        e.g., %s.test1234" % outDsPrefix
+    matStrO = '^user' + '\d{2}' + '\.' + distinguishedName + '\.'
+    matStrN = '^user\.'+nickName+'\.'
+    if re.match(matStrO,outDS) == None and (nickName == '' or re.match(matStrN,outDS) == None):
+        outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
+        if nickName != '':
+            outDsPrefixN = 'user.%s' % nickName
+        errStr  = "outDS must be '%s.<user-controlled string...'\n" % outDsPrefixO
+        if nickName != '':
+            errStr += "           or '%s.<user-controlled string...'\n" % outDsPrefixN
+        errStr += "        e.g., %s.test1234" % outDsPrefixO
+        if nickName != '':        
+            errStr += "\n              %s.test1234" % outDsPrefixN        
         tmpLog.error(errStr)
         return False
     # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
@@ -646,42 +660,40 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
 
 
 # check destination SE
-def checkDestSE(destSE):
+def checkDestSE(destSE,dsName,verbose):
     # check destSE
     if destSE == '':
         return True
     # get logger
     tmpLog = PLogger.getPandaLogger()
-    # loop over allowed SEs
-    okDestSE = False
-    destSEpatt = ['SCRATCHDISK','USERDISK','GROUPDISK']
-    for tmpDestSE in destSEpatt:
-        if destSE.endswith(tmpDestSE):
-            okDestSE = True
-            break
-    if not okDestSE:
-        tmpLog.error("invalid destSE:%s which must be one of %s" % (destSE,str(destSEpatt)))
-        return False
-    # get SiteID to check LFC
-    destPandaSite = convertDQ2toPandaID(destSE)
-    if not Client.PandaSites.has_key(destPandaSite):
-        tmpLog.error("failed to find corresponding SiteID for destSE:%s" % destSE)
-        return False
-    # check LFC to allow only T3s for now
-    destAllowedLFCs = ['t3lfcv01.usatlas.bnl.gov']
-    destLFC = Client.PandaSites[destPandaSite]['lfchost']
-    if not destLFC in destAllowedLFCs:
-        errMsg  = "destSE:%s is hosted by LFC:%s. " % (destSE,destLFC)
-        errMsg += "Currently destination is allowed only for sites that are hosted by one of %s, to avoid chaotic data flow" % str(destAllowedLFCs)
+    # get DN
+    tmpDN = commands.getoutput('%s grid-proxy-info -identity' % Client._getGridSrc())
+    # set X509_CERT_DIR
+    if not os.environ.has_key('X509_CERT_DIR') or os.environ['X509_CERT_DIR'] == '':
+        os.environ['X509_CERT_DIR'] = Client._x509_CApath() 
+    # check with DaTRI
+    from datriHandler import datriHandler
+    tmpDaHandler = datriHandler(type='pathena')
+    tmpDaHandler.setParameters(data_pattern=dsName,
+                               site=destSE,
+                               userid=tmpDN)
+    tmpLog.info("checking with DaTRI for --destSE=%s" % destSE)
+    sStat,dOut = tmpDaHandler.checkData()
+    if sStat != 0:
+        errMsg  = "%s\n" % dOut
+        errMsg += "ErrorCode=%s parameters=(DS:%s,site:%s,DN:%s)" % \
+                  (sStat,dsName,destSE,tmpDN)
         tmpLog.error(errMsg)
         return False
+    if verbose:
+        tmpLog.debug("%s %s" % (sStat,dOut))
     # return
     return True
 
 
 # run pathena recursively
 def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,
-                  removedDS,inDS,goodRunListXML,verbose):
+                  removedDS,inDS,goodRunListXML,eventPickEvtList,verbose):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -732,6 +744,9 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # set inDS to avoid redundant AMI lookup for GRL
     if inDS != '' and goodRunListXML != '' and not '--panda_inDS' in fullExecString:
         fullExecString += ' --panda_inDS=%s' % inDS
+    # set inDS to avoid redundant ELSSI lookup for event picking
+    if inDS != '' and eventPickEvtList != '' and not '--panda_inDSForEP' in fullExecString:
+        fullExecString += ' --panda_inDSForEP=%s' % inDS
     # source name
     if not '--panda_srcName' in fullExecString:
         fullExecString += ' --panda_srcName=%s' % archiveName
@@ -834,4 +849,137 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
     # exit
     sys.exit(0)
 
+
+
+# run brokerage for composite site
+def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # run brokerage
+    status,out = Client.runBrokerage(siteIDs,releaseVer,verbose=verbose,trustIS=True,cacheVer=cacheVer)
+    if status != 0:
+        tmpLog.error('failed to run brokerage for composite site: %s' % out)
+        sys.exit(EC_Config)
+    if out.startswith('ERROR :'):
+        tmpLog.error(out + '\nbrokerage failed')
+        sys.exit(EC_Config)
+    if not Client.PandaSites.has_key(out):
+        tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
+        sys.exit(EC_Config)
+    return out
+
     
+# get list of datasets and files by list of runs/events
+def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # set 
+    from eventLookup import pyELSSI
+    elssiIF = pyELSSI()
+    # set X509_USER_PROXY
+    if not os.environ.has_key('X509_USER_PROXY') or os.environ['X509_USER_PROXY'] == '':
+        os.environ['X509_USER_PROXY'] = Client._x509()
+    # open run/event txt
+    if '/' in runEventTxt:
+        tmpLog.error('%s must be in the current directory' % runEventTxt.split('/')[-1])
+        sys.exit(EC_Config)
+    runevttxt = open('%s/%s' % (curDir,runEventTxt))
+    # convert dsType to Athena stream ref
+    if dsType == 'AOD':
+        streamRef = 'StreamAOD_ref'
+    elif dsType == 'ESD':
+        streamRef = 'StreamESD_ref'
+    elif dsType == 'RAW':
+        streamRef = 'StreamRAW_ref'
+    else:
+        errStr  = 'invalid data type %s for event picking. ' % dsType
+        errStr += ' Must be one of AOD,ESD,RAW'
+        tmpLog.error(errStr)
+        sys.exit(EC_Config)
+    tmpLog.info('getting dataset names and LFNs from ELSSI for event picking')
+    # read
+    runEvtList = []
+    guids = []
+    guidRunEvtMap = {}
+    for line in runevttxt:
+        items = line.split()
+        if len(items) != 2:
+            continue
+        runNr,evtNr = items
+        paramStr = 'Run:%s Evt:%s Stream:%s' % (runNr,evtNr,streamName)
+        if verbose:
+            tmpLog.debug(paramStr)
+        else:
+            sys.stdout.write('.')
+            sys.stdout.flush()
+        # check with ELSSI
+        if streamName == '':
+            guidListELSSI = elssiIF.eventLookup(runNr,evtNr,[streamRef],verbose=verbose)
+        else:
+            guidListELSSI = elssiIF.eventLookup(runNr,evtNr,[streamRef],streamName,verbose=verbose)            
+        if guidListELSSI == []:
+            if not verbose:
+                print
+            errStr = "GUID was not found in ELSSI for %s" % paramStr    
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
+        # check duplication
+        tmpguids = []
+        for tmpGuid, in guidListELSSI:
+            if tmpGuid == 'NOATTRIB':
+                continue
+            if not tmpGuid in tmpguids:
+                tmpguids.append(tmpGuid)
+        if tmpguids == []:
+            if not verbose:
+                print
+            errStr = "no GUIDs were found in ELSSI for %s" % paramStr
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
+        if len(tmpguids) != 1:        
+            if not verbose:
+                print
+            errStr = "multiple GUIDs %s were found in ELSSI for %s. Please set --eventPickStreamName" % (str(),paramStr)
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
+        # append
+        if not tmpguids[0] in guids:
+            guids.append(tmpguids[0])
+            guidRunEvtMap[tmpguids[0]] = []
+        guidRunEvtMap[tmpguids[0]].append((runNr,evtNr))
+    # close
+    runevttxt.close()
+    if not verbose:
+        print
+    # convert to dataset names and LFNs
+    dsLFNs = Client.listDatasetsByGUIDs(guids,dsPatt,verbose)
+    if verbose:
+        tmpLog.debug(dsLFNs)
+    # return
+    return dsLFNs,guidRunEvtMap
+
+
+# check unmerge dataset
+def checkUnmergedDataset(inDS,secDS):
+    dsList = []
+    if inDS != '':
+        dsList += inDS.split(',')
+    if secDS != '':
+        dsList += secDS.split(',')
+    # pattern for unmerged datasets
+    unPatt = '^mc.+\.recon\.AOD\.'
+    unMergedDs = ''
+    for tmpDs in dsList:
+        # check dataset name
+        if re.search(unPatt,tmpDs) != None:
+            unMergedDs += '%s,' % tmpDs
+    unMergedDs = unMergedDs[:-1]
+    # return
+    if unMergedDs != '':
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        msg = "%s is unmerged AOD dataset which is not distributed. Please use mc*.merge.AOD.* instead\n" % unMergedDs
+        print
+        tmpLog.warning(msg)
+    return 
+
