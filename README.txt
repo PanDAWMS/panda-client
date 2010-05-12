@@ -14,8 +14,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.39 (5/12/2010)
   * increased the default nFilesPerJob in prun
+  * fixed for --destSE
+  * added event picking to prun
 
 0.2.38 (5/12/2010)
   * fixed --eventPickDS

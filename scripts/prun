@@ -48,6 +48,14 @@ optP.add_option('--goodRunListProdStep', action='store', dest='goodRunProdStep',
                 type='string', help='specify production step when converting Good Run List to datasets, e.g, merge (default)')
 optP.add_option('--goodRunListDS', action='store', dest='goodRunListDS', default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used')
+optP.add_option('--eventPickEvtList',action='store',dest='eventPickEvtList',default='',
+                type='string', help='a file name which contains a list of runs/events for event picking')
+optP.add_option('--eventPickDataType',action='store',dest='eventPickDataType',default='',
+                type='string', help='type of data for event picking. one of AOD,ESD,RAW')
+optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName',default='',
+                type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
+optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
+                type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
 optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
                 help='Name of an output dataset. OUTDS will contain all output files')
 optP.add_option('--destSE',action='store', dest='destSE',default='',type='string',
@@ -145,6 +153,8 @@ optP.add_option('--panda_srcName', action='store', dest='panda_srcName', default
                 type='string', help='internal parameter')
 optP.add_option('--panda_inDS', action='store', dest='panda_inDS', default='',
                 type='string', help='internal parameter')
+optP.add_option('--panda_inDSForEP', action='store', dest='panda_inDSForEP', default='',
+                type='string', help='internal parameter')
 optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
                 type='string', help='internal parameter')
 
@@ -233,6 +243,11 @@ if options.panda_inDS != '':
     options.inDS = options.panda_inDS
     options.goodRunListXML = ''
 
+# set inDS for recursive event picking
+if options.panda_inDSForEP != '':
+    options.inDS = options.panda_inDSForEP
+    options.eventPickEvtList = ''
+
 # libDS
 libds_file = '%s/libds_prun.dat' % os.environ['PANDA_CONFIG_ROOT']
 if options.libDS == 'LAST':
@@ -260,6 +275,20 @@ PsubUtils.checkUnmergedDataset(options.inDS,options.secondaryDSs)
 if options.goodRunListXML != '' and options.inDS != '':
     tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")
     sys.exit(EC_Config)
+
+# event picking
+if options.eventPickEvtList != '' and options.inDS != '':
+    tmpLog.error("cannnot use --eventPickEvtList and --inDS at the same time")
+    sys.exit(EC_Config)
+
+# param check for event picking
+if options.eventPickEvtList != '':
+    if options.eventPickDataType == '':
+        tmpLog.error("--eventPickDataType must be specified")
+        sys.exit(EC_Config)
+    if options.eventPickStreamName == '':
+        tmpLog.error("--eventPickStreamName must be specified")
+        sys.exit(EC_Config)
     
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
@@ -301,9 +330,12 @@ else:
 os.makedirs(tmpDir)
 
 # exit action
-def _onExit(dir):
+delFilesOnExit = []
+def _onExit(dir,files):
+    for tmpFile in files:
+        commands.getoutput('rm -rf %s' % tmpFile)        
     commands.getoutput('rm -rf %s' % dir)
-atexit.register(_onExit,tmpDir)
+atexit.register(_onExit,tmpDir,delFilesOnExit)
 
 # parse tag
 athenaVer = ''
@@ -378,6 +410,36 @@ if options.goodRunListXML != '':
         tmpLog.error("no datasets were extracted from AMI using %s" % options.goodRunListXML)
         sys.exit(EC_Config)
 
+# event picking
+if options.eventPickEvtList != '':
+    # convert run/evt list to dataset/LFN list
+    epDsLFNs,epGuidEvtMap = PsubUtils.getDSsFilesByRunsEvents(curDir,
+                                                              options.eventPickEvtList,
+                                                              options.eventPickDataType,
+                                                              options.eventPickStreamName,
+                                                              options.eventPickDS,
+                                                              options.verbose)
+    # set param
+    options.inDS = ''
+    options.filelist = []
+    tmpDsNameList = []
+    tmpLFNList = []    
+    options.inputFileListName = '%s/ep_%s.dat' % (curDir,commands.getoutput('uuidgen'))
+    evFH = open(options.inputFileListName,'w') 
+    for tmpGUID,tmpDsLFNs in epDsLFNs.iteritems():
+        tmpDsName,tmpLFN = tmpDsLFNs
+        # set fileFist
+        if not tmpLFN in tmpLFNList:
+            evFH.write('%s\n' % tmpLFN)
+        # set inDS    
+        if not tmpDsName in tmpDsNameList:
+            tmpDsNameList.append(tmpDsName)
+            options.inDS += '%s,' % tmpDsName
+    options.inDS = options.inDS[:-1]
+    # close        
+    evFH.close()
+    # add to be deleted on exit
+    delFilesOnExit.append(options.inputFileListName)
 
 # additinal files
 if options.extFile == '':
@@ -825,7 +887,7 @@ if options.inDS != '':
                 if missList != []:
                     PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
                                          options.site,options.crossSite,"",options.removedDS,
-					 options.inDS,options.goodRunListXML,
+					 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                          options.verbose)
             # succeeded
             sys.exit(0)
@@ -1624,9 +1686,6 @@ if not options.nosubmit:
             tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
     # always use site's SE for libDS
     tmpLibDsLocation = tmpOutDsLocation
-    # use destSE if it is defined
-    if options.destSE != '':
-        tmpOutDsLocation = options.destSE
 
     # dataset registration
     if not Client.isDQ2free(options.site):
@@ -1723,7 +1782,7 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
     if missList != []:
 	PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
                              options.site,options.crossSite,archiveName,options.removedDS,
-			     options.inDS,options.goodRunListXML,
+			     options.inDS,options.goodRunListXML,options.eventPickEvtList,
                              options.verbose)
 # succeeded
 sys.exit(0)

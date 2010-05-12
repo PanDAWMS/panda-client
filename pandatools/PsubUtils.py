@@ -780,7 +780,7 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     
 # run prun recursively
 def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite,archiveName,
-               removedDS,inDS,goodRunListXML,verbose):
+               removedDS,inDS,goodRunListXML,eventPickEvtList,verbose):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -829,6 +829,9 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
     # set inDS to avoid redundant AMI lookup for GRL
     if inDS != '' and goodRunListXML != '' and not '--panda_inDS' in fullExecString:
         fullExecString += ' --panda_inDS=%s' % inDS
+    # set inDS to avoid redundant ELSSI lookup for event picking
+    if inDS != '' and eventPickEvtList != '' and not '--panda_inDSForEP' in fullExecString:
+        fullExecString += ' --panda_inDSForEP=%s' % inDS
     # source name
     if archiveName != '' and not '--panda_srcName' in fullExecString:
         fullExecString += ' --panda_srcName=%s' % archiveName

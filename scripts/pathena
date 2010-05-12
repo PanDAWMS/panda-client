@@ -2887,9 +2887,6 @@ if not options.nosubmit:
 		tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
 	# always use site's SE for libDS
       	tmpLibDsLocation = tmpOutDsLocation
-	# use destSE if it is defined
-	if options.destSE != '':
-	    tmpOutDsLocation = options.destSE
 
         # dataset registration
         if not Client.isDQ2free(options.site):
