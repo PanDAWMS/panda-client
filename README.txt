@@ -16,7 +16,7 @@ pathena -h
 
 0.2.38 (5/12/2010)
   * fixed --eventPickDS
-  * ignore more irrelevant datasets for event-picking 
+  * ignore irrelevant datasets for event-picking more
 
 0.2.37 (5/11/2010)
   * fixed warning for event-picking + trf
