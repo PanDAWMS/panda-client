@@ -81,7 +81,7 @@ optP.add_option('--nFiles',action='store',dest='nFiles',default=0,type='int',
 optP.add_option('--nSkipFiles',action='store',dest='nSkipFiles',default=0,type='int',
                 help='Skip N files in the input dataset')
 optP.add_option('--nFilesPerJob',action='store',dest='nFilesPerJob',default=None,type='int',
-                help='Number of files on which each sub-job runs (default 20)')
+                help='Number of files on which each sub-job runs (default 50)')
 optP.add_option('--nJobs',action='store',dest='nJobs',default=-1,type='int',
                 help='Maximum number of sub-jobs. If the number of input files (N_in) is less than nJobs*nFilesPerJob, only N_in/nFilesPerJob sub-jobs will be instantiated')
 optP.add_option('--maxFileSize',action='store',dest='maxFileSize',default=1024*1024,type='int',
@@ -1099,7 +1099,7 @@ if options.inDS != '' and options.nFilesPerJob == None:
         tmpNSplit += 1
     tmpNFiles,tmpMod = divmod(len(inputFileList),tmpNSplit)
     # set upper limit
-    upperLimitOnFiles = 20
+    upperLimitOnFiles = 50
     if tmpNFiles > upperLimitOnFiles:
         tmpNFiles = upperLimitOnFiles
     # check again just in case

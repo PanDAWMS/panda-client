@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * increased the default nFilesPerJob in prun
+
 0.2.38 (5/12/2010)
   * fixed --eventPickDS
   * ignore irrelevant datasets for event-picking more
