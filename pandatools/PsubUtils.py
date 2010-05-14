@@ -986,3 +986,32 @@ def checkUnmergedDataset(inDS,secDS):
         tmpLog.warning(msg)
     return 
 
+
+# check location consistency between outDS and libDS 
+def checkLocationConsistency(outDSlocations,libDSlocations):
+    convOutDS = []
+    # convert DQ2 ID to aggregated name
+    for outDSlocation in outDSlocations:
+        tmpLocation = Client.convSrmV2ID(outDSlocation)
+        convOutDS.append(tmpLocation)
+    # loop over all libDS locations
+    for libDSlocation in libDSlocations:
+        tmpLocation = Client.convSrmV2ID(libDSlocation)
+        if tmpLocation in convOutDS:
+            return
+    # inconsistent    
+    tmpConvIDsOut = []
+    for outDSlocation in outDSlocations:
+        tmpConvIDsOut += Client.convertDQ2toPandaIDList(outDSlocation)
+    tmpConvIDsLib = []
+    for libDSlocation in libDSlocations:
+        tmpConvIDsLib += Client.convertDQ2toPandaIDList(libDSlocation)
+    tmpConvIDsOut.sort()
+    tmpConvIDsLib.sort()    
+    tmpLog = PLogger.getPandaLogger()
+    msg = "Location mismatch. outDS exists at %s while libDS exist at %s" % \
+          (tmpConvIDsOut[0],tmpConvIDsLib[0])
+    tmpLog.error(msg)
+    sys.exit(EC_Config)    
+    return 
+

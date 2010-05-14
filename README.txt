@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added a protection against location mismatch between outDS and libDS
+
 0.2.39 (5/12/2010)
   * increased the default nFilesPerJob in prun
   * fixed for --destSE

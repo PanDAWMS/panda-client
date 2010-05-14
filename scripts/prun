@@ -629,7 +629,7 @@ if outputDSexist and options.destSE == '':
         tmpLog.info("set site:%s cloud:%s because outDS:%s already exists at %s" % \
                     (options.site,options.cloud,options.outDS,outDSlocations))                
 
-if checkLibDS and options.libDS != '' and not Client.isDQ2free(options.site):
+if options.libDS != '' and not Client.isDQ2free(options.site):
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
     # get locations for libDS    
@@ -637,6 +637,9 @@ if checkLibDS and options.libDS != '' and not Client.isDQ2free(options.site):
     if libDSlocations == []:
         tmpLog.error("cannot find locations for existing lib datasete:%s" % options.libDS)
         sys.exit(EC_Config)
+    # check consistency with outDS location    
+    if not checkLibDS:
+        PsubUtils.checkLocationConsistency(outDSlocations,libDSlocations)
     # keep origianl site
     if Client.PandaSites.has_key(options.site) and \
        (Client.PandaSites[options.site]['ddm'] in libDSlocations or \
