@@ -1648,6 +1648,8 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
     try:
         from pyAMI import pyAMI
     except:
+        errType,errValue = sys.exc_info()[:2]
+        print "%s %s" % (errType,errValue)
         tmpLog.error('cannot import pyAMI module')
         return False,''
     # read XML

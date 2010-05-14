@@ -16,6 +16,7 @@ pathena -h
 
 current
   * added a protection against location mismatch between outDS and libDS
+  * improved error reporting about pyAMI import
 
 0.2.39 (5/12/2010)
   * increased the default nFilesPerJob in prun
