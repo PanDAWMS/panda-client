@@ -14,7 +14,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.40 (5/14/2010)
   * added a protection against location mismatch between outDS and libDS
   * improved error reporting about pyAMI import
 
