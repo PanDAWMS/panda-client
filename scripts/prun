@@ -48,6 +48,14 @@ optP.add_option('--goodRunListProdStep', action='store', dest='goodRunProdStep',
                 type='string', help='specify production step when converting Good Run List to datasets, e.g, merge (default)')
 optP.add_option('--goodRunListDS', action='store', dest='goodRunListDS', default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used')
+optP.add_option('--eventPickEvtList',action='store',dest='eventPickEvtList',default='',
+                type='string', help='a file name which contains a list of runs/events for event picking')
+optP.add_option('--eventPickDataType',action='store',dest='eventPickDataType',default='',
+                type='string', help='type of data for event picking. one of AOD,ESD,RAW')
+optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName',default='',
+                type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
+optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
+                type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
 optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
                 help='Name of an output dataset. OUTDS will contain all output files')
 optP.add_option('--destSE',action='store', dest='destSE',default='',type='string',
@@ -81,7 +89,7 @@ optP.add_option('--nFiles',action='store',dest='nFiles',default=0,type='int',
 optP.add_option('--nSkipFiles',action='store',dest='nSkipFiles',default=0,type='int',
                 help='Skip N files in the input dataset')
 optP.add_option('--nFilesPerJob',action='store',dest='nFilesPerJob',default=None,type='int',
-                help='Number of files on which each sub-job runs (default 20)')
+                help='Number of files on which each sub-job runs (default 50)')
 optP.add_option('--nJobs',action='store',dest='nJobs',default=-1,type='int',
                 help='Maximum number of sub-jobs. If the number of input files (N_in) is less than nJobs*nFilesPerJob, only N_in/nFilesPerJob sub-jobs will be instantiated')
 optP.add_option('--maxFileSize',action='store',dest='maxFileSize',default=1024*1024,type='int',
@@ -144,6 +152,8 @@ optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='
 optP.add_option('--panda_srcName', action='store', dest='panda_srcName', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_inDS', action='store', dest='panda_inDS', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_inDSForEP', action='store', dest='panda_inDSForEP', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
                 type='string', help='internal parameter')
@@ -233,6 +243,11 @@ if options.panda_inDS != '':
     options.inDS = options.panda_inDS
     options.goodRunListXML = ''
 
+# set inDS for recursive event picking
+if options.panda_inDSForEP != '':
+    options.inDS = options.panda_inDSForEP
+    options.eventPickEvtList = ''
+
 # libDS
 libds_file = '%s/libds_prun.dat' % os.environ['PANDA_CONFIG_ROOT']
 if options.libDS == 'LAST':
@@ -253,10 +268,27 @@ if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.db
     tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")  
     sys.exit(EC_Config)
 
+# check unmerge dataset
+PsubUtils.checkUnmergedDataset(options.inDS,options.secondaryDSs)
+
 # Good Run List
 if options.goodRunListXML != '' and options.inDS != '':
     tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")
     sys.exit(EC_Config)
+
+# event picking
+if options.eventPickEvtList != '' and options.inDS != '':
+    tmpLog.error("cannnot use --eventPickEvtList and --inDS at the same time")
+    sys.exit(EC_Config)
+
+# param check for event picking
+if options.eventPickEvtList != '':
+    if options.eventPickDataType == '':
+        tmpLog.error("--eventPickDataType must be specified")
+        sys.exit(EC_Config)
+    if options.eventPickStreamName == '':
+        tmpLog.error("--eventPickStreamName must be specified")
+        sys.exit(EC_Config)
     
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
@@ -298,9 +330,12 @@ else:
 os.makedirs(tmpDir)
 
 # exit action
-def _onExit(dir):
+delFilesOnExit = []
+def _onExit(dir,files):
+    for tmpFile in files:
+        commands.getoutput('rm -rf %s' % tmpFile)        
     commands.getoutput('rm -rf %s' % dir)
-atexit.register(_onExit,tmpDir)
+atexit.register(_onExit,tmpDir,delFilesOnExit)
 
 # parse tag
 athenaVer = ''
@@ -375,6 +410,36 @@ if options.goodRunListXML != '':
         tmpLog.error("no datasets were extracted from AMI using %s" % options.goodRunListXML)
         sys.exit(EC_Config)
 
+# event picking
+if options.eventPickEvtList != '':
+    # convert run/evt list to dataset/LFN list
+    epDsLFNs,epGuidEvtMap = PsubUtils.getDSsFilesByRunsEvents(curDir,
+                                                              options.eventPickEvtList,
+                                                              options.eventPickDataType,
+                                                              options.eventPickStreamName,
+                                                              options.eventPickDS,
+                                                              options.verbose)
+    # set param
+    options.inDS = ''
+    options.filelist = []
+    tmpDsNameList = []
+    tmpLFNList = []    
+    options.inputFileListName = '%s/ep_%s.dat' % (curDir,commands.getoutput('uuidgen'))
+    evFH = open(options.inputFileListName,'w') 
+    for tmpGUID,tmpDsLFNs in epDsLFNs.iteritems():
+        tmpDsName,tmpLFN = tmpDsLFNs
+        # set fileFist
+        if not tmpLFN in tmpLFNList:
+            evFH.write('%s\n' % tmpLFN)
+        # set inDS    
+        if not tmpDsName in tmpDsNameList:
+            tmpDsNameList.append(tmpDsName)
+            options.inDS += '%s,' % tmpDsName
+    options.inDS = options.inDS[:-1]
+    # close        
+    evFH.close()
+    # add to be deleted on exit
+    delFilesOnExit.append(options.inputFileListName)
 
 # additinal files
 if options.extFile == '':
@@ -470,11 +535,6 @@ if options.site != 'AUTO':
     # set cloud
     options.cloud = Client.PandaSites[options.site]['cloud']
 
-# check destSE
-if options.destSE != '':
-    if not PsubUtils.checkDestSE(options.destSE):
-        sys.exit(EC_Config)
-
 # get the latest of DBRelease
 if options.dbRelease == 'LATEST':
     options.dbRelease = Client.getLatestDBRelease(options.verbose)
@@ -492,6 +552,11 @@ if distinguishedName == '' and nickName == '':
 if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site,vomsFQAN):
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
+
+# check destSE
+if options.destSE != '':
+    if not PsubUtils.checkDestSE(options.destSE,options.outDS,options.verbose):
+        sys.exit(EC_Config)
 
 # check if output dataset already exists
 outputDSexist = False
@@ -543,23 +608,28 @@ if outputDSexist and options.destSE == '':
         pass
     else:
         # convert DQ2ID to Panda siteID
-        fFlag = False
+	tmpConvIDs = []
         for outDSlocation in outDSlocations:
-            convID = PsubUtils.convertDQ2toPandaID(outDSlocation)
-            if convID != '':
-                options.site  = convID
-                options.cloud = Client.PandaSites[convID]['cloud']
-                fFlag = True
-                tmpLog.info("set site:%s cloud:%s because outDS:%s already exists at %s" % \
-                            (options.site,options.cloud,options.outDS,outDSlocations))                
-                break
+            tmpConvIDs += Client.convertDQ2toPandaIDList(outDSlocation)
         # not found
-        if not fFlag:
+        if tmpConvIDs == []:
 	    checkLibDS = True
 	    options.destSE = outDSlocations[0]
 	    tmpLog.info("set destSE:%s because outDS:%s already exists there" % \
 		(options.destSE,options.outDS))
-if checkLibDS and options.libDS != '' and not Client.isDQ2free(options.site):
+	# chose one
+	if len(tmpConvIDs) == 1:
+	    convID = tmpConvIDs[0]
+        else:
+            # run brokerage to be sent to free site
+            convID = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,options.verbose)
+        # set    
+        options.site  = convID
+        options.cloud = Client.PandaSites[convID]['cloud']
+        tmpLog.info("set site:%s cloud:%s because outDS:%s already exists at %s" % \
+                    (options.site,options.cloud,options.outDS,outDSlocations))                
+
+if options.libDS != '' and not Client.isDQ2free(options.site):
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
     # get locations for libDS    
@@ -567,6 +637,9 @@ if checkLibDS and options.libDS != '' and not Client.isDQ2free(options.site):
     if libDSlocations == []:
         tmpLog.error("cannot find locations for existing lib datasete:%s" % options.libDS)
         sys.exit(EC_Config)
+    # check consistency with outDS location    
+    if not checkLibDS:
+        PsubUtils.checkLocationConsistency(outDSlocations,libDSlocations)
     # keep origianl site
     if Client.PandaSites.has_key(options.site) and \
        (Client.PandaSites[options.site]['ddm'] in libDSlocations or \
@@ -574,21 +647,24 @@ if checkLibDS and options.libDS != '' and not Client.isDQ2free(options.site):
         pass
     else:
         # convert DQ2ID to Panda siteID
-        fFlag = False
+	tmpConvIDs = []
         for libDSlocation in libDSlocations:
-            convID = PsubUtils.convertDQ2toPandaID(libDSlocation)
-            if convID != '':
-                options.site  = convID
-                options.cloud = Client.PandaSites[convID]['cloud']
-                fFlag = True
-                tmpLog.info("set site:%s cloud:%s because libDS:%s exists at %s" % \
-                            (options.site,options.cloud,options.libDS,libDSlocations))                
-                break
+            tmpConvIDs += Client.convertDQ2toPandaIDList(libDSlocation)
         # not found
-        if not fFlag:
+        if tmpConvIDs == []:
             tmpLog.error("cannot find supported sites for existing lib datasete:%s" % options.libDS)
             sys.exit(EC_Config)
-
+	# chose one
+	if len(tmpConvIDs) == 1:
+	    convID = tmpConvIDs[0]
+        else:
+            # run brokerage to be sent to free site
+            convID = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,options.verbose)
+        # set    
+        options.site  = convID
+        options.cloud = Client.PandaSites[convID]['cloud']
+        tmpLog.info("set site:%s cloud:%s because libDS:%s exists at %s" % \
+                    (options.site,options.cloud,options.libDS,libDSlocations))                
         
 # set cloud for brokerage
 expCloudFlag = False
@@ -601,6 +677,26 @@ if not PsubUtils.checkValidCloud(options.cloud):
     tmpLog.error("unsupported cloud:%s" % options.cloud)
     sys.exit(EC_Config)
 
+
+# get DB datasets
+dbrFiles  = {}
+dbrDsList = []
+dbrDsSize = 0
+if options.dbRelease != '':
+    tmpDbrDS,tmpDbrLFN  = options.dbRelease.split(':')
+    # get files in the dataset
+    if not tmpDbrDS in dbrDsList:
+        tmpLog.info("query files in %s" % tmpDbrDS)
+        tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
+        # append
+        for tmpLFN,tmpVal in tmpList.iteritems():
+            dbrFiles[tmpLFN] = tmpVal
+    # check
+    if not dbrFiles.has_key(tmpDbrLFN):
+        tmpLog.error("%s is not in %s" % (tmpDbrLFN,tmpDbrDS))
+        sys.exit(EC_Dataset)
+    # DBR size                                                                                                                          
+    dbrDsSize += long(dbrFiles[tmpDbrLFN]['fsize'])
 
 # get files in input dataset
 if options.inDS != '':
@@ -794,7 +890,7 @@ if options.inDS != '':
                 if missList != []:
                     PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
                                          options.site,options.crossSite,"",options.removedDS,
-					 options.inDS,options.goodRunListXML,
+					 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                          options.verbose)
             # succeeded
             sys.exit(0)
@@ -1050,6 +1146,7 @@ from taskbuffer.FileSpec import FileSpec
 maxTotalSize = Client.PandaSites[options.site]['maxinputsize'] * 1024*1024
 if maxTotalSize in [0,'']:
     maxTotalSize = Client.maxTotalSize
+safetySize   = Client.safetySize
 
 # set number of files per job
 if options.inDS != '' and options.nFilesPerJob == None:
@@ -1062,12 +1159,12 @@ if options.inDS != '' and options.nFilesPerJob == None:
         except:
             pass
     # the number of files per max total
-    tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize)
+    tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize-dbrDsSize-safetySize)
     if tmpMod != 0:
         tmpNSplit += 1
     tmpNFiles,tmpMod = divmod(len(inputFileList),tmpNSplit)
     # set upper limit
-    upperLimitOnFiles = 20
+    upperLimitOnFiles = 50
     if tmpNFiles > upperLimitOnFiles:
         tmpNFiles = upperLimitOnFiles
     # check again just in case
@@ -1082,7 +1179,7 @@ if options.inDS != '' and options.nFilesPerJob == None:
         iDiv += 1
         if iDiv >= tmpNFiles:
             # check
-            if subTotal > maxTotalSize:
+            if subTotal > maxTotalSize-dbrDsSize-safetySize:
                 # decrement
                 tmpNFiles -= 1
                 break
@@ -1312,23 +1409,6 @@ if options.inDS != '':
         tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
 
-# get DB datasets
-dbrFiles  = {}
-dbrDsList = []
-if options.dbRelease != '':
-    tmpDbrDS,tmpDbrLFN  = options.dbRelease.split(':')
-    # get files in the dataset
-    if not tmpDbrDS in dbrDsList:
-        tmpLog.info("query files in %s" % tmpDbrDS)
-        tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
-        # append
-        for tmpLFN,tmpVal in tmpList.iteritems():
-            dbrFiles[tmpLFN] = tmpVal
-    # check
-    if not dbrFiles.has_key(tmpDbrLFN):
-        tmpLog.error("%s is not in %s" % (tmpDbrLFN,tmpDbrDS))
-        sys.exit(EC_Dataset)
-                                                
 
 # disp datasetname to identify inputs
 commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
@@ -1476,12 +1556,14 @@ for iJob in range(options.nJobs):
             # append to map    
             tmpInputMap[tmpSecVal['streamName']] = tmpSecLfnList
         # size check    
-        if (not isDirectAccess) and totalSize > maxTotalSize:
-            errStr  = "A subjob has %s input files and requires %sMB of disk space." \
-                  % (len(inList), (totalSize >> 20))
-            errStr += "   It must be less than %sMB to avoid overflowing the remote disk." \
+        if (not isDirectAccess) and totalSize > maxTotalSize-dbrDsSize:
+            errStr  = "A subjob has %s input files and requires %sMB of disk space " \
+                  % (len(inList), ((totalSize+dbrDsSize) >> 20))
+            if dbrDsSize != 0:
+                errStr += "(DBRelease=%sMB)" % (dbrDsSize>>20)
+            errStr += ". It must be less than %sMB to avoid overflowing the remote disk. " \
                   % (maxTotalSize >> 20)
-            errStr += "   Please split the job using --nFilesPerJob."
+            errStr += "Please split the job using --nFilesPerJob."
             tmpLog.error(errStr)            
             sys.exit(EC_Split)
         # set parameter
@@ -1607,9 +1689,6 @@ if not options.nosubmit:
             tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
     # always use site's SE for libDS
     tmpLibDsLocation = tmpOutDsLocation
-    # use destSE if it is defined
-    if options.destSE != '':
-        tmpOutDsLocation = options.destSE
 
     # dataset registration
     if not Client.isDQ2free(options.site):
@@ -1706,7 +1785,7 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
     if missList != []:
 	PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
                              options.site,options.crossSite,archiveName,options.removedDS,
-			     options.inDS,options.goodRunListXML,
+			     options.inDS,options.goodRunListXML,options.eventPickEvtList,
                              options.verbose)
 # succeeded
 sys.exit(0)
