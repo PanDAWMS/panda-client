@@ -241,7 +241,9 @@ class PBookCore:
             # get one job to set computingSite which may have changed due to rebrokerage
             pandaJob = None
             if pandaIDstatus != {}:
-                status,tmpPandaJobs = Client.getFullJobStatus([pandaIDstatus.keys()[0]],verbose=self.verbose)
+                tmpPandaIDs = pandaIDstatus.keys()
+                tmpPandaIDs.sort()
+                status,tmpPandaJobs = Client.getFullJobStatus(tmpPandaIDs[:1],verbose=self.verbose)
                 if status != 0:
                     tmpLog.error("Failed to get PandaJobs for %s" % JobID)
                     return None
@@ -463,6 +465,11 @@ class PBookCore:
             for file in job.Files:
                 file.rowID = None
                 if file.type == 'input':
+                    # protection against wrong sync which doesn't update buildStatus correctly
+                    if file.lfn.endswith('.lib.tgz') and file.GUID == 'NULL':
+                        tmpLog.warning('GUID for %s is unknown. Cannot retry when corresponding buildJob failed' \
+                                       % file.lfn)
+                        return 
                     file.status = 'ready'
                 elif file.type in ('output','log'):
                     file.destinationSE = retryDestSE

@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.2.42 (5/18/2010)
+  * added a protection to pbook.retry for lib.tgz with GUID=NULL
+  * fixed status() in pbook to set buildStatus correctly
+
 0.2.41 (5/18/2010)
   * fixed error message in prun when files are on tape
   * fixed file check when outDS is reused by avoiding dirty-reading  
