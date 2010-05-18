@@ -14,6 +14,10 @@ pathena -h
 
 ** Release Note
 
+0.2.41 (5/18/2010)
+  * fixed error message in prun when files are on tape
+  * fixed file check when outDS is reused by avoiding dirty-reading  
+
 0.2.40 (5/14/2010)
   * added a protection against location mismatch between outDS and libDS
   * improved error reporting about pyAMI import

@@ -1340,13 +1340,14 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         # query files in shadow dataset
         shadowList = []
         if shadowDSexist and not outputContExist:
-            for tmpItem in Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose):
-                shadowList.append(tmpItem)
-            # query files in PandaDB
+            # query files in PandaDB first to get running/failed files + files which are being added
             tmpShadowList = Client.getFilesInUseForAnal(options.outDS,options.verbose)
             for tmpItem in tmpShadowList:
+                shadowList.append(tmpItem)
+            # query files in shadow dataset        
+            for tmpItem in Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose):
                 if not tmpItem in shadowList:
-                    shadowList.append(tmpItem)
+		    shadowList.append(tmpItem)
         elif outputContExist:
             shadowList = Client.getFilesInShadowDataset(options.outDS,suffixShadow,options.verbose)
         # query files in dataset

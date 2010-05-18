@@ -762,14 +762,14 @@ def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
         tmpDatasets = getDatasets(shadowDsName,verbose)
         if len(tmpDatasets) == 0:
             continue
-        # get files in shadow dataset
-        tmpList = queryFilesInDataset(shadowDsName,verbose)
+        # query files in PandaDB first to get running/failed files + files which are being added
+        tmpList = getFilesInUseForAnal(tmpEle,verbose)
         for tmpItem in tmpList:
             if not tmpItem in fileList:
                 # append
                 fileList.append(tmpItem)
-        # query files in PandaDB
-        tmpList = getFilesInUseForAnal(tmpEle,verbose)
+        # get files in shadow dataset
+        tmpList = queryFilesInDataset(shadowDsName,verbose)
         for tmpItem in tmpList:
             if not tmpItem in fileList:
                 # append

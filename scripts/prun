@@ -703,11 +703,12 @@ if options.inDS != '':
     # query files in shadow dataset
     shadowList = []
     if shadowDSexist and not outputContExist:
-	for tmpItem in Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose):
-            shadowList.append(tmpItem)
-        # query files in PandaDB
+        # query files in PandaDB first to get running/failed files + files which are being added
         tmpShadowList = Client.getFilesInUseForAnal(options.outDS,options.verbose)
         for tmpItem in tmpShadowList:
+            shadowList.append(tmpItem)
+        # query files in shadow dataset                        
+	for tmpItem in Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose):
             if not tmpItem in shadowList:
                 shadowList.append(tmpItem)
     elif outputContExist:
@@ -860,6 +861,10 @@ if options.inDS != '':
             missList = []
         if options.verbose:
             tmpLog.debug("%s holds %s files" % (options.site,len(inputFileList)-len(missList)))
+        # no files available
+        if len(inputFileList) == len(missList):
+            tmpLog.error("No files available on disk at %s" % options.site)
+            sys.exit(EC_Dataset)
         # remove missing files
         newInputFiles = []
         for inputFile in inputFileList:
