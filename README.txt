@@ -14,7 +14,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.43 (5/20/2010)
   * changed TRF URLs for SVN repository migration
 
 0.2.42 (5/18/2010)
