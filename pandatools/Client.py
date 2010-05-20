@@ -31,8 +31,7 @@ except:
 
 baseURLDQ2     = 'http://atlddmcat-reader.cern.ch/dq2'
 baseURLDQ2SSL  = 'https://atlddmcat-writer.cern.ch:443/dq2'
-baseURLSUBHome = "http://www.usatlas.bnl.gov/svn/panda/pathena"
-baseURLSUB     = baseURLSUBHome+'/trf'
+baseURLSUB     = "http://pandaserver.cern.ch:25080/trf/user"
 baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
 
 # exit code

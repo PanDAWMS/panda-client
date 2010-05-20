@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * changed TRF URLs for SVN repository migration
+
 0.2.42 (5/18/2010)
   * added a protection to pbook.retry for lib.tgz with GUID=NULL
   * fixed status() in pbook to set buildStatus correctly
