@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.45 (5/21/2010)
+  * added safety margin to --nGBPerJob in pathena
+
 0.2.44 (5/21/2010)
   * fixed insufficient skipping of CERN-PROD_TZERO and CERN-PROD_DAQ
 
