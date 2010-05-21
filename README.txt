@@ -14,6 +14,12 @@ pathena -h
 
 ** Release Note
 
+0.2.44 (5/21/2010)
+  * fixed insufficient skipping of CERN-PROD_TZERO and CERN-PROD_DAQ
+
+0.2.43 (5/20/2010)
+  * changed TRF URLs for SVN repository migration
+
 0.2.42 (5/18/2010)
   * added a protection to pbook.retry for lib.tgz with GUID=NULL
   * fixed status() in pbook to set buildStatus correctly
