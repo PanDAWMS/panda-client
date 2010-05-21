@@ -1199,7 +1199,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         tmpFirstDump = True
         for origTmpSite,origTmpInfo in out.iteritems():
             # don't use TAPE
-            if re.search('TAPE$',origTmpSite) != None:
+            if re.search('TAPE$',origTmpSite) != None or \
+                   re.search('PROD_TZERO$',origTmpSite) != None or \
+                   re.search('PROD_DAQ$',origTmpSite) != None:
                 if not origTmpSite in resTapeSites:
                     resTapeSites.append(origTmpSite)
                 continue
