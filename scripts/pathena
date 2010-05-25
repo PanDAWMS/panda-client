@@ -1553,7 +1553,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose)
                 else:
                     missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
-                                                         options.nfiles+options.nSkipFiles)
+                                                         options.nfiles+options.nSkipFiles,shadowList)
             elif Client.getLRC(dsLocation) != None:
 		tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
                 # LRC
@@ -1565,7 +1565,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             if options.verbose:
                 tmpLog.debug("%s holds %s files" % (dsLocation,len(inputFileMap)-len(missList)))
         # No files available
-        if len(inputFileMap) == len(missList):
+        if len(inputFileMap) == len(missList) and shadowList == []:
             tmpLog.error("No files available on disk at %s" % options.site)
             sys.exit(EC_Dataset)
         # remove missing
@@ -1580,9 +1580,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 del inputFileMap[fileName]
         # no input
         if len(inputFileMap) == 0:
-            tmpStr  = "all input files at %s had already been used" % options.site
-	    tmpStr += "\n  pathena runs on files which were failed or were not used in\n"
-	    tmpStr += "  previous submissions if it runs with the same inDS and outDS"
+            tmpStr  = "all input files at %s had already been used or remaining files are unavailable on disk. " % options.site
+	    tmpStr += "pathena runs on files which were failed or were not used in "
+	    tmpStr += "previous submissions if it runs with the same inDS and outDS"
             if options.crossSite == 0:
 		tmpLog.error(tmpStr)
 		sys.exit(EC_Dataset)
@@ -1743,7 +1743,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 vals = inputFileMap[fileName]
                 tmpSize = long(vals['fsize'])
                 singleLargeFile = False
-                if tmpSubTotal+tmpSize > options.nGBPerJob-dbrDsSize:
+                if tmpSubTotal+tmpSize > options.nGBPerJob-dbrDsSize-safetySize:
                     options.split += 1
                     # single large file uses one job
                     if tmpSubTotal == 0:
@@ -2398,7 +2398,7 @@ for iSubJob in range(options.split):
             for fileName in inputFileList[indexFiles:]:
                 vals = inputFileMap[fileName]
                 tmpSize = long(vals['fsize'])
-                if tmpSubTotal+tmpSize > options.nGBPerJob-dbrDsSize:
+                if tmpSubTotal+tmpSize > options.nGBPerJob-dbrDsSize-safetySize:
                     break
                 divF += 1
                 tmpSubTotal += tmpSize
