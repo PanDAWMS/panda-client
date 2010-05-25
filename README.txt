@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.46 (5/25/2010)
+  * fixed unused file check when --nFiles is used in pathena
+
 0.2.45 (5/21/2010)
   * added safety margin to --nGBPerJob in pathena
 

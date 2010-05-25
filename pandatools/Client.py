@@ -1503,10 +1503,18 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
 
 
 # get list of missing LFNs from LFC
-def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
+def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList=[]):
     missList = []
+    # ignore files in shadow
+    if shadowList != []:
+        tmpFileMap = {}
+        for lfn,vals in fileMap.iteritems():
+            if not lfn in shadowList:
+                tmpFileMap[lfn] = vals
+    else:
+        tmpFileMap = fileMap
     # get PFNS
-    pfnMap = _getPFNsLFC(fileMap,site,explicitSE,verbose,nFiles)
+    pfnMap = _getPFNsLFC(tmpFileMap,site,explicitSE,verbose,nFiles)
     for lfn,vals in fileMap.iteritems():
         if not vals['guid'] in pfnMap.keys():
             missList.append(lfn)
