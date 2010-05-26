@@ -1078,20 +1078,6 @@ if not Client.isDQ2free(options.site):
     if len(tmpDatasets) != 0:
         shadowDSexist = True
 
-# check destSE
-if outputDSexist and options.destSE != '':
-    if options.verbose:
-        tmpLog.debug("get locations for outDS:%s" % options.outDS)
-    destSElocations = Client.getLocations(options.outDS,[],options.cloud,True,options.verbose,getDQ2IDs=True)
-    if destSElocations == []:
-        tmpLog.error("cannot find locations for existing output dataset:%s" % options.outDS)
-        sys.exit(EC_Dataset)
-    # set destSE
-    if not options.destSE in destSElocations:
-        options.destSE = destSElocations[0]
-        tmpLog.info("set destSE:%s because outDS:%s already exists there" % \
-                    (options.destSE,options.outDS))
-
 # set location when outDS or libDS already exists
 checkLibDS = True
 if outputDSexist and options.destSE == '':
@@ -2896,16 +2882,16 @@ if not options.nosubmit:
         if not Client.isDQ2free(options.site):
             # register output dataset
             tmpIdvOutDsList = []
-            if not outputDSexist:
+            if (not outputDSexist) or options.destSE != '':
                 if not options.individualOutDS:
-                    Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation)
+                    Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
                     tmpIdvOutDsList.append(options.outDS)
             if options.individualOutDS:        
                 # register individual datasets
                 for tmpFile in jobList[-1].Files:
                     if tmpFile.type in ['output','log']:
                         if (not outputIndvDSlist.has_key(tmpFile.dataset)) and (not tmpFile.dataset in tmpIdvOutDsList):
-                            Client.addDataset(tmpFile.dataset,options.verbose,location=tmpOutDsLocation)
+                            Client.addDataset(tmpFile.dataset,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
                             tmpIdvOutDsList.append(tmpFile.dataset)
 
             # register output dataset container

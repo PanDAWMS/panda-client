@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.47 (5/26/2010)
+  * fixed replica registration when --destSE is used for existing outDS
+
 0.2.46 (5/25/2010)
   * fixed unused file check when --nFiles is used in pathena
 

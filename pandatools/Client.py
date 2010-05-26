@@ -888,7 +888,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
 
                                 
 # register dataset
-def addDataset(name,verbose=False,location=''):
+def addDataset(name,verbose=False,location='',dsExist=False):
     # generate DUID/VUID
     duid = commands.getoutput("uuidgen")
     vuid = commands.getoutput("uuidgen")
@@ -900,13 +900,29 @@ def addDataset(name,verbose=False,location=''):
     try:
         errStr = ''
         # add
-        url = baseURLDQ2SSL + '/ws_repository/rpc'
-        data = {'operation':'addDataset','dsn': name,'duid': duid,'vuid':vuid,
-                'API':'0_3_0','tuid':commands.getoutput('uuidgen'),'update':'yes'}
-        status,out = curl.post(url,data)
-        if status != 0 or (out != None and re.search('Exception',out) != None):
-            errStr = "ERROR : could not add dataset to DQ2 repository"
-            sys.exit(EC_Failed)
+        if not dsExist:
+            url = baseURLDQ2SSL + '/ws_repository/rpc'
+            data = {'operation':'addDataset','dsn': name,'duid': duid,'vuid':vuid,
+                    'API':'0_3_0','tuid':commands.getoutput('uuidgen'),'update':'yes'}
+            status,out = curl.post(url,data)
+            if status != 0 or (out != None and re.search('Exception',out) != None):
+                errStr = "ERROR : could not add dataset to DQ2 repository"
+                sys.exit(EC_Failed)
+        else:
+            # check location
+            tmpLocations = getLocations(name,[],'',False,verbose,getDQ2IDs=True)
+            if location in tmpLocations:
+                return
+            # get VUID
+            url = baseURLDQ2 + '/ws_repository/rpc'
+            data = {'operation':'queryDatasetByName','dsn':name,'version':0,
+                    'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+            status,out = curl.get(url,data)
+            if status != 0:
+                errStr = "ERROR : could not get VUID from DQ2"
+                sys.exit(EC_Failed)
+            # parse
+            vuid = out[name]['vuids'][0]
         # add replica
         if re.search('SCRATCHDISK$',location) != None or re.search('USERDISK$',location) != None \
            or re.search('LOCALGROUPDISK$',location) != None:
