@@ -31,8 +31,7 @@ except:
 
 baseURLDQ2     = 'http://atlddmcat-reader.cern.ch/dq2'
 baseURLDQ2SSL  = 'https://atlddmcat-writer.cern.ch:443/dq2'
-baseURLSUBHome = "http://www.usatlas.bnl.gov/svn/panda/pathena"
-baseURLSUB     = baseURLSUBHome+'/trf'
+baseURLSUB     = "http://pandaserver.cern.ch:25080/trf/user"
 baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
 
 # exit code
@@ -889,7 +888,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
 
                                 
 # register dataset
-def addDataset(name,verbose=False,location=''):
+def addDataset(name,verbose=False,location='',dsExist=False):
     # generate DUID/VUID
     duid = commands.getoutput("uuidgen")
     vuid = commands.getoutput("uuidgen")
@@ -901,13 +900,29 @@ def addDataset(name,verbose=False,location=''):
     try:
         errStr = ''
         # add
-        url = baseURLDQ2SSL + '/ws_repository/rpc'
-        data = {'operation':'addDataset','dsn': name,'duid': duid,'vuid':vuid,
-                'API':'0_3_0','tuid':commands.getoutput('uuidgen'),'update':'yes'}
-        status,out = curl.post(url,data)
-        if status != 0 or (out != None and re.search('Exception',out) != None):
-            errStr = "ERROR : could not add dataset to DQ2 repository"
-            sys.exit(EC_Failed)
+        if not dsExist:
+            url = baseURLDQ2SSL + '/ws_repository/rpc'
+            data = {'operation':'addDataset','dsn': name,'duid': duid,'vuid':vuid,
+                    'API':'0_3_0','tuid':commands.getoutput('uuidgen'),'update':'yes'}
+            status,out = curl.post(url,data)
+            if status != 0 or (out != None and re.search('Exception',out) != None):
+                errStr = "ERROR : could not add dataset to DQ2 repository"
+                sys.exit(EC_Failed)
+        else:
+            # check location
+            tmpLocations = getLocations(name,[],'',False,verbose,getDQ2IDs=True)
+            if location in tmpLocations:
+                return
+            # get VUID
+            url = baseURLDQ2 + '/ws_repository/rpc'
+            data = {'operation':'queryDatasetByName','dsn':name,'version':0,
+                    'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+            status,out = curl.get(url,data)
+            if status != 0:
+                errStr = "ERROR : could not get VUID from DQ2"
+                sys.exit(EC_Failed)
+            # parse
+            vuid = out[name]['vuids'][0]
         # add replica
         if re.search('SCRATCHDISK$',location) != None or re.search('USERDISK$',location) != None \
            or re.search('LOCALGROUPDISK$',location) != None:
@@ -1200,7 +1215,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         tmpFirstDump = True
         for origTmpSite,origTmpInfo in out.iteritems():
             # don't use TAPE
-            if re.search('TAPE$',origTmpSite) != None:
+            if re.search('TAPE$',origTmpSite) != None or \
+                   re.search('PROD_TZERO$',origTmpSite) != None or \
+                   re.search('PROD_DAQ$',origTmpSite) != None:
                 if not origTmpSite in resTapeSites:
                     resTapeSites.append(origTmpSite)
                 continue
@@ -1502,10 +1519,18 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
 
 
 # get list of missing LFNs from LFC
-def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
+def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList=[]):
     missList = []
+    # ignore files in shadow
+    if shadowList != []:
+        tmpFileMap = {}
+        for lfn,vals in fileMap.iteritems():
+            if not lfn in shadowList:
+                tmpFileMap[lfn] = vals
+    else:
+        tmpFileMap = fileMap
     # get PFNS
-    pfnMap = _getPFNsLFC(fileMap,site,explicitSE,verbose,nFiles)
+    pfnMap = _getPFNsLFC(tmpFileMap,site,explicitSE,verbose,nFiles)
     for lfn,vals in fileMap.iteritems():
         if not vals['guid'] in pfnMap.keys():
             missList.append(lfn)
