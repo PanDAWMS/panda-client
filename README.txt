@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed --match in prun so that . matchs \.
+
 0.2.47 (5/26/2010)
   * fixed replica registration when --destSE is used for existing outDS
 

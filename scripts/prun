@@ -464,6 +464,8 @@ if options.excludeFile != '':
 
 # LFN matching
 if options.match != '':
+    # convert . to \.
+    options.match = options.match.replace('.','\.')
     # convert * to .*
     options.match = options.match.replace('*','.*')
 
