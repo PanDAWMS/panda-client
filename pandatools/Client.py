@@ -788,6 +788,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     retMap = {}
+    allMap = {}
     iLookUp = 0
     guidLfnMap = {}
     checkedDSList = []
@@ -837,38 +838,42 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
             sys.exit(EC_Failed)
         # check with filter
         tmpDsNames = []
-        if dsFilters != []:
-            for tmpDsName in out.keys():
+        tmpAllDsNames = []
+        for tmpDsName in out.keys():
+            # ignore junk datasets
+            if tmpDsName.startswith('panda') or \
+                   tmpDsName.startswith('user') or \
+                   tmpDsName.startswith('group') or \
+                   re.search('_sub\d+$',tmpDsName) != None or \
+                   re.search('_dis\d+$',tmpDsName) != None or \
+                   re.search('_shadow$',tmpDsName) != None:
+                continue
+            tmpAllDsNames.append(tmpDsName)
+            # check with filter            
+            if dsFilters != []:
                 flagMatch = False
                 for tmpFilter in dsFilters:
+                    # replace . to \.                    
+                    tmpFilter = tmpFilter.replace('.','\.')                    
                     # replace * to .*
                     tmpFilter = tmpFilter.replace('*','.*')
                     if re.search('^'+tmpFilter,tmpDsName) != None:
                         flagMatch = True
                         break
-                # append
-                if flagMatch:
-                    tmpDsNames.append(tmpDsName)
-        else:
-            for tmpDsName in out.keys():
-                # ignore junk datasets
-                if tmpDsName.startswith('panda') or \
-                       tmpDsName.startswith('user') or \
-                       tmpDsName.startswith('group') or \
-                       re.search('_sub\d+$',tmpDsName) != None or \
-                       re.search('_dis\d+$',tmpDsName) != None or \
-                       re.search('_shadow$',tmpDsName) != None:
+                # not match
+                if not flagMatch:
                     continue
-                tmpDsNames.append(tmpDsName) 
+            # append    
+            tmpDsNames.append(tmpDsName)
         # empty
         if tmpDsNames == []:
-            errStr = '--eventPickDS="%s" doesn\'t match with any of %s' % (dsFilter,str(out.keys()))
-            tmpLog.error(errStr)
-            sys.exit(EC_Failed)
+            # there may be multiple GUIDs for the same event, and some may be filtered by --eventPickDS
+            allMap[guid] = tmpAllDsNames
+            continue
         # duplicated
         if len(tmpDsNames) != 1:
             errStr = "there are multiple datasets %s for GUID:%s. Please set --eventPickDS to choose one dataset"\
-                     % (str(out.keys()),guid)
+                     % (str(tmpAllDsNames),guid)
             tmpLog.error(errStr)
             sys.exit(EC_Failed)
         # get LFN
@@ -884,7 +889,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
             sys.exit(EC_Failed)
         retMap[guid] = guidLfnMap[guid]
     # return
-    return retMap
+    return retMap,allMap
 
                                 
 # register dataset
