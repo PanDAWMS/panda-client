@@ -1044,3 +1044,21 @@ def getRealDatasetName(outDS,tmpDatasets):
         if outDS.lower() == tmpDataset.lower():
             return tmpDataset
     return outDS    
+
+
+# check job spec
+def checkJobSpec(job):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # check the number of input files
+    nInputFiles = 0
+    for tmpFile in job.Files:
+        if tmpFile.type == 'input' and (not tmpFile.lfn.endswith('.lib.tgz')):
+            nInputFiles += 1
+    maxNumInputs = 200        
+    if nInputFiles > maxNumInputs:
+        errMsg =  "Too many input files (%s files) in a sub job. " % nInputFiles
+        errMsg += "Please reduce that to less than %s" % maxNumInputs 
+        tmpLog.error(errMsg)
+        sys.exit(EC_Config)    
+

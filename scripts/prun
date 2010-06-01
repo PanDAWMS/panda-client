@@ -1652,6 +1652,8 @@ for iJob in range(options.nJobs):
             else:
                 defaulttoken = Client.PandaSites[options.site]['defaulttoken']
                 file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
+    # check job spec
+    PsubUtils.checkJobSpec(jobR)
     # append
     if options.verbose:    
         tmpLog.debug(jobR.jobParameters)

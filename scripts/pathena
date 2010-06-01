@@ -2843,6 +2843,8 @@ for iSubJob in range(options.split):
     # set destinationDBlock to associate jobs with the same output container
     # do it here since destinationDBock is used for output file naming
     jobR.destinationDBlock = original_outDS_Name
+    # check job spec
+    PsubUtils.checkJobSpec(jobR)
     # append
     jobList.append(jobR)
 

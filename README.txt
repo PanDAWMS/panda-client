@@ -14,10 +14,11 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.48 (6/1/2010)
   * fixed --match in prun so that . matches \.
   * fixed LFN duplication check for event picking
   * added a protection for wrong case in outDS
+  * added a protection against too many input files for ANALY_ARC
 
 0.2.47 (5/26/2010)
   * fixed replica registration when --destSE is used for existing outDS
