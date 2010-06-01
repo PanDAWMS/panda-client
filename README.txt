@@ -1,6 +1,6 @@
 ** How to install
 
-svn co http://svn.usatlas.bnl.gov/svn/panda/panda-client/current panda-client
+svn co svn+ssh://svn.cern.ch/reps/panda/panda-client/current panda-client
 cd panda-client
 python setup.py install --prefix=/path/to/install/dir
 
@@ -13,6 +13,12 @@ pathena -h
 
 
 ** Release Note
+
+0.2.48 (6/1/2010)
+  * fixed --match in prun so that . matches \.
+  * fixed LFN duplication check for event picking
+  * added a protection for wrong case in outDS
+  * added a protection against too many input files for ANALY_ARC
 
 0.2.47 (5/26/2010)
   * fixed replica registration when --destSE is used for existing outDS

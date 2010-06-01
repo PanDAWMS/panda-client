@@ -464,6 +464,8 @@ if options.excludeFile != '':
 
 # LFN matching
 if options.match != '':
+    # convert . to \.
+    options.match = options.match.replace('.','\.')
     # convert * to .*
     options.match = options.match.replace('*','.*')
 
@@ -568,6 +570,8 @@ if not Client.isDQ2free(options.site):
             outputContExist = True
         else:
             outputDSexist = True
+        # get real datasetname for case sensitivity    
+        options.outDS = PsubUtils.getRealDatasetName(options.outDS,tmpDatasets)
 
 # check if shadow dataset exists
 shadowDSexist = False
@@ -616,6 +620,9 @@ if outputDSexist and options.destSE == '':
                     (options.site,options.cloud,options.outDS,outDSlocations))                
 
 if options.libDS != '' and not Client.isDQ2free(options.site):
+    # get real datasetname for case sensitivity    
+    tmpDatasets = Client.getDatasets(options.libDS,options.verbose)
+    options.libDS = PsubUtils.getRealDatasetName(options.libDS,tmpDatasets)
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
     # get locations for libDS    
@@ -1645,6 +1652,8 @@ for iJob in range(options.nJobs):
             else:
                 defaulttoken = Client.PandaSites[options.site]['defaulttoken']
                 file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
+    # check job spec
+    PsubUtils.checkJobSpec(jobR)
     # append
     if options.verbose:    
         tmpLog.debug(jobR.jobParameters)
