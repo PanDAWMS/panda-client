@@ -1037,3 +1037,10 @@ def checkLocationConsistency(outDSlocations,libDSlocations):
     sys.exit(EC_Config)    
     return 
 
+
+# get real dataset name by ignoring case sensitivty
+def getRealDatasetName(outDS,tmpDatasets):
+    for tmpDataset in tmpDatasets.keys():
+        if outDS.lower() == tmpDataset.lower():
+            return tmpDataset
+    return outDS    

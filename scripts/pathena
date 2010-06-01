@@ -1067,6 +1067,8 @@ if not Client.isDQ2free(options.site):
             outputContExist = True
         else:
             outputDSexist = True
+        # get real datasetname for case sensitivity    
+        options.outDS = PsubUtils.getRealDatasetName(options.outDS,tmpDatasets)
 # get exsisting individualOutDS
 if (outputDSexist or outputContExist) and options.individualOutDS:
     outputIndvDSlist = Client.getDatasets("%s*" % options.outDS,options.verbose,True)    
@@ -1117,6 +1119,10 @@ if outputDSexist and options.destSE == '':
                     (options.site,options.cloud,options.outDS,outDSlocations))                
 
 if options.libDS != '' and not Client.isDQ2free(options.site):
+    # get real datasetname for case sensitivity    
+    tmpDatasets = Client.getDatasets(options.libDS,options.verbose)
+    options.libDS = PsubUtils.getRealDatasetName(options.libDS,tmpDatasets)
+    # get location for libDS
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
     libDSlocations = Client.getLocations(options.libDS,[],options.cloud,True,options.verbose)

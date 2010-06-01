@@ -16,7 +16,8 @@ pathena -h
 
 current
   * fixed --match in prun so that . matches \.
-  * fixed duplicated LFN check for event picking
+  * fixed LFN duplication check for event picking
+  * added a protection for wrong case in outDS
 
 0.2.47 (5/26/2010)
   * fixed replica registration when --destSE is used for existing outDS
