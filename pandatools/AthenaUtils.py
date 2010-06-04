@@ -1657,7 +1657,20 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
         gl_xml = open(goodRunListXML)
     except:
         tmpLog.error('cannot open %s' % goodRunListXML)
-        return False,''        
+        return False,''
+    # parse XML to get run/lumi
+    runLumiMap = {}
+    import xml.dom.minidom
+    rootDOM = xml.dom.minidom.parse(goodRunListXML)
+    for tmpLumiBlock in rootDOM.getElementsByTagName('LumiBlockCollection'):
+        tmpRunNum  = long(tmpLumiBlock.getElementsByTagName('Run')[0].firstChild.data)
+        tmpLBRange = tmpLumiBlock.getElementsByTagName('LBRange')[0]
+        tmpLBStart = long(tmpLBRange.getAttribute('Start'))
+        tmpLBEnd   = long(tmpLBRange.getAttribute('End'))        
+        # append
+        if not runLumiMap.has_key(tmpRunNum):
+            runLumiMap[tmpRunNum] = []
+        runLumiMap[tmpRunNum].append((tmpLBStart,tmpLBEnd))
     # make arguments
     amiArgv = []
     amiArgv.append("GetGoodDatasetList")
@@ -1699,7 +1712,7 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
     for tmpKey,tmpVal in amiDsDict.iteritems():
         if tmpVal.has_key('logicalDatasetName'):
             dsName = str(tmpVal['logicalDatasetName'])
-            runNumber = tmpVal['runNumber']
+            runNumber = long(tmpVal['runNumber'])
             # check dataset names
             if goodRunListDS == []:    
                 matchFlag = True
@@ -1713,10 +1726,10 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
             # check with DQ2 since AMI doesn't store /
             dsmap = {}
             try:
-                dsmap = Client.getDatasets(dsName+'*',verbose,True)
+                dsmap = Client.getDatasets(dsName,verbose,True,onlyNames=True)
             except:
                 pass
-            if dsmap.has_key(dsName+'/'):
+            if not dsmap.has_key(dsName):
                 dsName += '/'
             # check duplication for the run number
             if matchFlag:
@@ -1739,15 +1752,55 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
     amiRunNumList = datasetMapFromAMI.keys()
     amiRunNumList.sort()
     datasets = ''
+    filesStr = []
     for tmpRunNum in amiRunNumList:
         datasetListFromAMI = datasetMapFromAMI[tmpRunNum]
         for dsName in datasetListFromAMI:
             datasets += '%s,' % dsName
+            # get files in the dataset
+            tmpFilesStr = []
+            tmpFileList = Client.queryFilesInDataset(dsName,verbose)
+            tmpLFNList = tmpFileList.keys()
+            tmpLFNList.sort()
+            for tmpLFN in tmpLFNList:
+                # extract LBs
+                tmpItems = tmpLFN.split('.')
+                # sort format
+                if len(tmpItems) < 7:
+                    tmpFilesStr.append(tmpLFN)
+                    continue
+                tmpLBmatch = re.search('_lb(\d+)-lb(\d+)',tmpLFN)
+                # _lbXXX-lbYYY not found
+                if tmpLBmatch == None:
+                    tmpFilesStr.append(tmpLFN)                    
+                    continue
+                LBstart_LFN = long(tmpLBmatch.group(1))
+                LBend_LFN   = long(tmpLBmatch.group(2))
+                # check range
+                if not runLumiMap.has_key(tmpRunNum):
+                    tmpLog.error('AMI gives a wrong run number (%s) which is not contained in %s' % \
+                                 (tmpRunNum,goodRunListXML))
+                    return False,''
+                inRange = False
+                for LBstartXML,LBendXML in runLumiMap[tmpRunNum]:
+                    if (LBstart_LFN >= LBstartXML and LBstart_LFN <= LBendXML) or \
+                       (LBend_LFN >= LBstartXML and LBend_LFN <= LBendXML) or \
+                       (LBstart_LFN >= LBstartXML and LBend_LFN <= LBendXML) or \
+                       (LBstart_LFN <= LBstartXML and LBend_LFN >= LBendXML):
+                        inRange = True
+                        break
+                if inRange:
+                    tmpFilesStr.append(tmpLFN)
+            # check if files are found
+            if tmpFilesStr == '':
+                tmpLog.error('found no files with corresponding LBs in %s' % dsName)
+                return False,''
+            filesStr += tmpFilesStr    
     datasets = datasets[:-1]
     if verbose:
-        tmpLog.debug('converted to %s' % datasets)
+        tmpLog.debug('converted to DS:%s LFN:%s' % (datasets,str(filesStr)))
     # return        
-    return True,datasets
+    return True,datasets,filesStr
         
 
 
