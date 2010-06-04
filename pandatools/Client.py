@@ -1079,7 +1079,7 @@ def convSrmV2ID(tmpSite):
 # get locations
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
                  getTapeSites=False,getDQ2IDs=False,locCandidates=None,removeDS=False,
-                 removedDatasets=[]):
+                 removedDatasets=[],useOutContainer=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1097,7 +1097,6 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         resBadStSites = {}
         resTapeSites  = []
         retDQ2IDs     = []
-        countSite     = {}
         allOut        = {}
         iLookUp       = 0
         resUsedDsMap  = {}
@@ -1108,6 +1107,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 locCandidatesSrmV2.append(convSrmV2ID(locTmp))
         # loop over all names        
         for tmpName in names:
+            # ignore removed datasets
+            if tmpName in removedDatasets:
+                continue
             iLookUp += 1
             if iLookUp % 20 == 0:
                 time.sleep(1)
@@ -1185,10 +1187,12 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                     allOut[tmpOutKey][0]['found'] += tmpNfound
                 else:
                     allOut[tmpOutKey] = [{'found':tmpNfound}]
-                if tmpOutVar[0].has_key('useddatasets'):
-                    if not allOut[tmpOutKey][0].has_key('useddatasets'):
-                        allOut[tmpOutKey][0]['useddatasets'] = []
-                    allOut[tmpOutKey][0]['useddatasets'] += tmpOutVar[0]['useddatasets']    
+                if not tmpOutVar[0].has_key('useddatasets'):
+                    # add dataset as a container element
+                    tmpOutVar[0]['useddatasets'] = [tmpName]
+                if not allOut[tmpOutKey][0].has_key('useddatasets'):
+                    allOut[tmpOutKey][0]['useddatasets'] = []
+                allOut[tmpOutKey][0]['useddatasets'] += tmpOutVar[0]['useddatasets']    
         # replace
         out = allOut
         if verbose:
@@ -1214,7 +1218,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             # remove sites
             for origTmpSite in out.keys():
                 if out[origTmpSite][0]['found'] < tmpMaxFiles:
-                    del out[origTmpSite]
+                    # use sites where most files are avaialble if output container is not used
+                    if not useOutContainer:
+                        del out[origTmpSite]
             if verbose:
                 print out
         tmpFirstDump = True
@@ -1229,10 +1235,6 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             # collect DQ2 IDs
             if not origTmpSite in retDQ2IDs:
                 retDQ2IDs.append(origTmpSite)
-            # count number of available files
-            if not countSite.has_key(origTmpSite):
-                countSite[origTmpSite] = 0
-            countSite[origTmpSite] += origTmpInfo[0]['found']
             # patch for SRM v2
             tmpSite = convSrmV2ID(origTmpSite)
             # if candidates are limited
@@ -2184,11 +2186,14 @@ def getPandaClientVer(verbose):
 
 
 # get files in dataset with filte
-def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose,dsStringFlag=False):
+def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose,dsStringFlag=False,isRecursive=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # query files in dataset
-    tmpLog.info("query files in %s" % inDS)
+    if not isRecursive or verbose:
+        tmpLog.info("query files in %s" % inDS)
+    else:
+        tmpLog.info("query files with DQ2")
     if dsStringFlag:
         inputFileMap,inputDsString = queryFilesInDataset(inDS,verbose,getDsString=True)
     else:

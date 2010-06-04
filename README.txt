@@ -14,6 +14,11 @@ pathena -h
 
 ** Release Note
 
+0.2.48 (6/4/2010)
+  * use LBs for the range check in --goodRunList if they are available in LFN
+  * changed the brokerage policy when container is used for output, to send
+    jobs to the site where many CPUs are available rather than many files
+
 0.2.48 (6/1/2010)
   * fixed --match in prun so that . matches \.
   * fixed LFN duplication check for event picking
