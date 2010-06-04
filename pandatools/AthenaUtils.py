@@ -1726,7 +1726,7 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
             # check with DQ2 since AMI doesn't store /
             dsmap = {}
             try:
-                dsmap = Client.getDatasets(dsName,verbose,True)
+                dsmap = Client.getDatasets(dsName,verbose,True,onlyNames=True)
             except:
                 pass
             if not dsmap.has_key(dsName):

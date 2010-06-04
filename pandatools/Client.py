@@ -712,7 +712,7 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False):
 
 
 # get datasets
-def getDatasets(name,verbose=False,withWC=False):
+def getDatasets(name,verbose=False,withWC=False,onlyNames=False):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
@@ -722,6 +722,9 @@ def getDatasets(name,verbose=False,withWC=False):
         url = baseURLDQ2 + '/ws_repository/rpc'
         data = {'operation':'queryDatasetByName','dsn':name,'version':0,
                 'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+        if onlyNames:
+            data['API'] = '30'
+            data['onlyNames'] = int(onlyNames)
         status,out = curl.get(url,data)
         if status != 0:
             errStr = "ERROR : could not access DQ2 server"
@@ -731,6 +734,8 @@ def getDatasets(name,verbose=False,withWC=False):
         if out == '\x00' or ((not withWC) and (not checkDatasetInMap(name,out))):
             # no datasets
             return datasets
+        # get names only
+        return out
         # get VUIDs
         for dsname,idMap in out.iteritems():
             # check format
@@ -2303,7 +2308,7 @@ def getLatestDBRelease(verbose=False):
     tmpLog = PLogger.getPandaLogger()
     tmpLog.info('trying to get the latest version number for DBRelease=LATEST')
     # get ddo datasets
-    ddoDatasets = getDatasets('ddo.*',verbose,True)
+    ddoDatasets = getDatasets('ddo.*',verbose,True,onlyNames=True)
     if ddoDatasets == {}:
         tmpLog.error('failed to get a list of DBRelease datasets from DQ2')
         sys.exit(EC_Failed)
