@@ -2226,7 +2226,8 @@ elif options.libDS == '':
     for file in jobB.Files:
         if file.type in ['output','log']:
             if options.spaceToken != '':
-                file.destinationDBlockToken = options.spaceToken
+		if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+		    file.destinationDBlockToken = options.spaceToken
             else:
                 if options.burstSubmit == '':
                     defaulttoken = Client.PandaSites[options.site]['defaulttoken']
@@ -2638,7 +2639,8 @@ for iSubJob in range(options.split):
     for file in jobR.Files:
         if file.type in ['output','log']:
             if options.spaceToken != '':
-                file.destinationDBlockToken = options.spaceToken
+		if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+		    file.destinationDBlockToken = options.spaceToken
             else:
                 if options.burstSubmit == '':                
                     defaulttoken = Client.PandaSites[options.site]['defaulttoken']

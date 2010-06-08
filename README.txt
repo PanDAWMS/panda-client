@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * verify spaceToken for ANALY_ARC
+
 0.2.50 (6/4/2010)
   * fixed slow DQ2 lookup for --dbRelease=LATEST
 

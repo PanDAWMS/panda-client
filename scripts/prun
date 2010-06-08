@@ -1339,7 +1339,8 @@ elif options.libDS == '':
     for file in jobB.Files:
         if file.type in ['output','log']:
             if options.spaceToken != '':
-                file.destinationDBlockToken = options.spaceToken
+		if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+		    file.destinationDBlockToken = options.spaceToken
             else:
                 defaulttoken = Client.PandaSites[options.site]['defaulttoken']
                 file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
@@ -1667,7 +1668,8 @@ for iJob in range(options.nJobs):
     for file in jobR.Files:
         if file.type in ['output','log']:
             if options.spaceToken != '':
-                file.destinationDBlockToken = options.spaceToken
+		if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+		    file.destinationDBlockToken = options.spaceToken
             else:
                 defaulttoken = Client.PandaSites[options.site]['defaulttoken']
                 file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
