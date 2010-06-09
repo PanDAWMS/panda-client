@@ -757,7 +757,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                                 sString=re.sub('[\+]','.',workArea)
                                 relPath = re.sub(sString+'/','',iFile)
                             if os.path.islink(iFile):
-                                cmd = 'tar -rh %s -f %s ---exclude %s' % (relPath,_archiveFullName,excludePattern)
+                                cmd = 'tar -rh %s -f %s --exclude %s' % (relPath,_archiveFullName,excludePattern)
                                 out = commands.getoutput(cmd)
                             else:
                                 cmd = 'tar rf %s %s --exclude %s' % (_archiveFullName,relPath,excludePattern)
