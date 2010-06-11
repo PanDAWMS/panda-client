@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.52 (6/11/2010)
+  * added protection for quotes in --trf of pathena
+
 0.2.51 (6/9/2010)
   * verify spaceToken for ANALY_ARC
   * fixed a wrong option in tar archiving

@@ -873,7 +873,7 @@ else:
     tmpString = re.sub(';',' ',jobO)
     # look for %OUT
     for tmpItem in tmpString.split():
-        match = re.search('\%OUT\.(.+)',tmpItem)
+        match = re.search('\%OUT\.([^ \"\',]+)',tmpItem)
         if match:
             # append basenames to extOutFile
             tmpOutName = match.group(1)
