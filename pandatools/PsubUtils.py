@@ -904,6 +904,7 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
     runEvtList = []
     guids = []
     guidRunEvtMap = {}
+    runEvtGuidMap = {}    
     for line in runevttxt:
         items = line.split()
         if len(items) != 2:
@@ -939,25 +940,46 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
             errStr = "no GUIDs were found in ELSSI for %s" % paramStr
             tmpLog.error(errStr)
             sys.exit(EC_Config)
-        if len(tmpguids) != 1:        
-            if not verbose:
-                print
-            errStr = "multiple GUIDs %s were found in ELSSI for %s. Please set --eventPickStreamName" % (str(),paramStr)
-            tmpLog.error(errStr)
-            sys.exit(EC_Config)
         # append
-        if not tmpguids[0] in guids:
-            guids.append(tmpguids[0])
-            guidRunEvtMap[tmpguids[0]] = []
-        guidRunEvtMap[tmpguids[0]].append((runNr,evtNr))
+        for tmpguid in tmpguids:
+            if not tmpguid in guids:
+                guids.append(tmpguid)
+                guidRunEvtMap[tmpguid] = []
+            guidRunEvtMap[tmpguid].append((runNr,evtNr))
+        runEvtGuidMap[(runNr,evtNr)] = tmpguids
     # close
     runevttxt.close()
     if not verbose:
         print
     # convert to dataset names and LFNs
-    dsLFNs = Client.listDatasetsByGUIDs(guids,dsPatt,verbose)
+    dsLFNs,allDSMap = Client.listDatasetsByGUIDs(guids,dsPatt,verbose)
     if verbose:
         tmpLog.debug(dsLFNs)
+    # check duplication
+    for runNr,evtNr in runEvtGuidMap.keys():
+        tmpLFNs = []
+        tmpAllDSs = {}
+        for tmpguid in runEvtGuidMap[(runNr,evtNr)]:
+            if dsLFNs.has_key(tmpguid):
+                tmpLFNs.append(dsLFNs[tmpguid])
+            else:
+                tmpAllDSs[tmpguid] = allDSMap[tmpguid]
+                del guidRunEvtMap[tmpguid]
+        # empty        
+        if tmpLFNs == []:
+            paramStr = 'Run:%s Evt:%s Stream:%s' % (runNr,evtNr,streamName)                        
+            errStr = "--eventPickDS='%s' didn't pick up a file for %s\n" % (dsPatt,paramStr)
+            for tmpguid,tmpAllDS in tmpAllDSs.iteritems():
+                errStr += "    GUID:%s dataset:%s\n" % (tmpguid,str(tmpAllDS))
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
+        # duplicated    
+        if len(tmpLFNs) != 1:
+            paramStr = 'Run:%s Evt:%s Stream:%s' % (runNr,evtNr,streamName)            
+            errStr = "multiple LFNs %s were found in ELSSI for %s. Please set --eventPickDS correctly" \
+                     % (str(tmpLFNs),paramStr)
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
     # return
     return dsLFNs,guidRunEvtMap
 
@@ -1014,4 +1036,29 @@ def checkLocationConsistency(outDSlocations,libDSlocations):
     tmpLog.error(msg)
     sys.exit(EC_Config)    
     return 
+
+
+# get real dataset name by ignoring case sensitivty
+def getRealDatasetName(outDS,tmpDatasets):
+    for tmpDataset in tmpDatasets.keys():
+        if outDS.lower() == tmpDataset.lower():
+            return tmpDataset
+    return outDS    
+
+
+# check job spec
+def checkJobSpec(job):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # check the number of input files
+    nInputFiles = 0
+    for tmpFile in job.Files:
+        if tmpFile.type == 'input' and (not tmpFile.lfn.endswith('.lib.tgz')):
+            nInputFiles += 1
+    maxNumInputs = 200        
+    if nInputFiles > maxNumInputs:
+        errMsg =  "Too many input files (%s files) in a sub job. " % nInputFiles
+        errMsg += "Please reduce that to less than %s" % maxNumInputs 
+        tmpLog.error(errMsg)
+        sys.exit(EC_Config)    
 
