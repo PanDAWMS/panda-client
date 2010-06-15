@@ -2,7 +2,14 @@
 
 svn co svn+ssh://svn.cern.ch/reps/panda/panda-client/current panda-client
 cd panda-client
+
 python setup.py install --prefix=/path/to/install/dir
+
+or 
+
+echo "%_unpackaged_files_terminate_build 0" >> ~/.rpmmacros
+python setup.py bdist_rpm
+rm ~/.rpmmacros
 
 
 ** How to use
