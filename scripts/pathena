@@ -43,6 +43,8 @@ defaultCloud = None
 # suffix for shadow dataset
 suffixShadow = "_shadow"
 
+# max lookup for cross site option
+maxCrossSite = 10
 
 usage = """%prog [options] <jobOption1.py> [<jobOption2.py> [...]]
 
@@ -184,8 +186,8 @@ optP.add_option('--workingGroup', action='store', dest='workingGroup',  default=
                 help="set workingGroup")
 optP.add_option('--generalInput', action='store_const', const=True, dest='generalInput',  default=False,
                 help='Read input files with general format except POOL,ROOT,ByteStream')
-optP.add_option('--crossSite',action='store',dest='crossSite',default=5,
-                type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=5 by default)')
+optP.add_option('--crossSite',action='store',dest='crossSite',default=maxCrossSite,
+                type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=%s by default)' % maxCrossSite)
 optP.add_option('--tmpDir', action='store', dest='tmpDir', default='',
                 type='string', help='Temporary directory in which an archive file is created')
 optP.add_option('--shipInput', action='store_const', const=True, dest='shipinput',  default=False,
@@ -349,6 +351,8 @@ original_outDS_Name = options.outDS
 # reset crossSite unless container is used for output 
 if not original_outDS_Name.endswith('/'):
     options.crossSite = 0
+
+usingContainerForOut = original_outDS_Name.endswith('/')
 
 # set inDS for recursive goodRunListXML
 if options.panda_inDS != '':
@@ -676,18 +680,20 @@ PsubUtils.checkUnmergedDataset(options.inDS,options.parentDS)
 # good run list
 if options.goodRunListXML != '':
     # look for pyAMI
-    status,options.inDS = AthenaUtils.convertGoodRunListXMLtoDS(options.goodRunListXML,
-                                                                options.goodRunDataType,
-                                                                options.goodRunProdStep,
-								options.goodRunListDS,
-                                                                options.verbose)
+    status,options.inDS,tmpAmiFileList = AthenaUtils.convertGoodRunListXMLtoDS(options.goodRunListXML,
+                                                                               options.goodRunDataType,
+                                                                               options.goodRunProdStep,
+                                                                               options.goodRunListDS,
+                                                                               options.verbose)
     if not status:
         tmpLog.error("failed to convert GoodRunListXML")
         sys.exit(EC_Config)
     if options.inDS == '':
         tmpLog.error("no datasets were extracted from AMI using %s" % options.goodRunListXML)
         sys.exit(EC_Config)
-
+    if options.filelist == []:    
+        options.filelist = tmpAmiFileList
+        
 # event picking
 if options.eventPickEvtList != '':
     # convert run/evt list to dataset/LFN list
@@ -867,7 +873,7 @@ else:
     tmpString = re.sub(';',' ',jobO)
     # look for %OUT
     for tmpItem in tmpString.split():
-        match = re.search('\%OUT\.(.+)',tmpItem)
+        match = re.search('\%OUT\.([^ \"\',]+)',tmpItem)
         if match:
             # append basenames to extOutFile
             tmpOutName = match.group(1)
@@ -1067,6 +1073,8 @@ if not Client.isDQ2free(options.site):
             outputContExist = True
         else:
             outputDSexist = True
+        # get real datasetname for case sensitivity    
+        options.outDS = PsubUtils.getRealDatasetName(options.outDS,tmpDatasets)
 # get exsisting individualOutDS
 if (outputDSexist or outputContExist) and options.individualOutDS:
     outputIndvDSlist = Client.getDatasets("%s*" % options.outDS,options.verbose,True)    
@@ -1117,6 +1125,10 @@ if outputDSexist and options.destSE == '':
                     (options.site,options.cloud,options.outDS,outDSlocations))                
 
 if options.libDS != '' and not Client.isDQ2free(options.site):
+    # get real datasetname for case sensitivity    
+    tmpDatasets = Client.getDatasets(options.libDS,options.verbose)
+    options.libDS = PsubUtils.getRealDatasetName(options.libDS,tmpDatasets)
+    # get location for libDS
     if options.verbose:
         tmpLog.debug("get locations for libDS:%s" % options.libDS)
     libDSlocations = Client.getLocations(options.libDS,[],options.cloud,True,options.verbose)
@@ -1156,7 +1168,7 @@ if options.libDS != '' and not Client.isDQ2free(options.site):
 parentDSlocations = None
 if options.parentDS != '':
     parentDSlocations = Client.getLocations(options.parentDS,[],options.cloud,False,options.verbose,
-                                            getDQ2IDs=True)
+                                            getDQ2IDs=True,useOutContainer=usingContainerForOut)
     if parentDSlocations == []:
         tmpLog.error("could not find replica locations for %s" % options.parentDS)
         sys.exit(EC_Dataset)
@@ -1337,7 +1349,10 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         elif outputContExist:
             shadowList = Client.getFilesInShadowDataset(options.outDS,suffixShadow,options.verbose)
         # query files in dataset
-        tmpLog.info("query files in %s" % options.inDS)
+        if options.crossSite in [0,maxCrossSite] or options.verbose:
+            tmpLog.info("query files in %s" % options.inDS)
+        else:
+            tmpLog.info("query files with DQ2")
         inputFileMap,inputDsString  = Client.queryFilesInDataset(options.inDS,options.verbose,getDsString=True)
         # remove files
         for tmpKey in inputFileMap.keys():
@@ -1441,7 +1456,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                                                           getTapeSites=True,
                                                                                           locCandidates=parentDSlocations,
                                                                                           removeDS=True,
-                                                                                          removedDatasets=options.removedDS)
+                                                                                          removedDatasets=options.removedDS,
+                                                                                          useOutContainer=usingContainerForOut)
             # get locations for DBR
             if dbrDsString != '':
                 dbrDsLocationMap,dbrDsLocationMapBack,dbrDsTapeSites = Client.getLocations(dbrDsString,{},options.cloud,
@@ -1518,7 +1534,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             options.cloud = Client.PandaSites[options.site]['cloud']
             if options.verbose:
                 tmpLog.debug("chosen site=%s" % options.site)
-            # update used the list of used datasets
+            # update the list of used datasets
             for tmpDsUsedDsMapKey,tmpDsUsedDsVal in dsUsedDsMap.iteritems():
                 if options.site in [tmpDsUsedDsMapKey,Client.convertToLong(tmpDsUsedDsMapKey)]:
                     options.removedDS += tmpDsUsedDsVal
@@ -2210,7 +2226,8 @@ elif options.libDS == '':
     for file in jobB.Files:
         if file.type in ['output','log']:
             if options.spaceToken != '':
-                file.destinationDBlockToken = options.spaceToken
+		if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+		    file.destinationDBlockToken = options.spaceToken
             else:
                 if options.burstSubmit == '':
                     defaulttoken = Client.PandaSites[options.site]['defaulttoken']
@@ -2299,13 +2316,6 @@ for iSubJob in range(options.split):
     jobR.homepackage       = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runAthena-00-00-11' % Client.baseURLSUB
     jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
-    if options.inDS == '':
-        jobR.prodDBlock     = 'NULL'
-    else:
-        if re.search(',',options.inDS) != None:
-            jobR.prodDBlock = options.inDS.split(',')[0]
-        else:
-            jobR.prodDBlock = options.inDS
     jobR.destinationDBlock = options.outDS
     if Client.isDQ2free(options.site):
         # flag to use DQ2-free output 
@@ -2622,7 +2632,8 @@ for iSubJob in range(options.split):
     for file in jobR.Files:
         if file.type in ['output','log']:
             if options.spaceToken != '':
-                file.destinationDBlockToken = options.spaceToken
+		if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+		    file.destinationDBlockToken = options.spaceToken
             else:
                 if options.burstSubmit == '':                
                     defaulttoken = Client.PandaSites[options.site]['defaulttoken']
@@ -2834,9 +2845,13 @@ for iSubJob in range(options.split):
 
     if options.verbose:
         tmpLog.debug(param)
+    # set prodDBlock
+    jobR.prodDBlock = PsubUtils.getProdDBlock(jobR,options.inDS)
     # set destinationDBlock to associate jobs with the same output container
     # do it here since destinationDBock is used for output file naming
     jobR.destinationDBlock = original_outDS_Name
+    # check job spec
+    PsubUtils.checkJobSpec(jobR)
     # append
     jobList.append(jobR)
 
