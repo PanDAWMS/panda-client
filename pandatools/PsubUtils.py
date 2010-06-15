@@ -1062,3 +1062,44 @@ def checkJobSpec(job):
         tmpLog.error(errMsg)
         sys.exit(EC_Config)    
 
+# get prodDBlock
+def getProdDBlock(job,inDS):
+    # no input
+    if inDS == '':
+        return 'NULL'
+    # single dataset
+    if re.search(',',inDS) == None:
+        return inDS
+    # max lenght
+    maxLength = 200
+    # less than max
+    if len(inDS) < maxLength:
+        return inDS
+    # get real input datasets
+    inDSList = []
+    for tmpFile in job.Files:
+        # only input
+        if tmpFile.type != 'input':
+            continue
+        # ignore lib.tgz
+        if tmpFile.lfn.endswith('.lib.tgz'):
+            continue
+        # ignore DBR
+        if tmpFile.lfn.startswith('DBRelease'):
+            continue
+        # append
+        if not tmpFile.dataset in inDSList:
+            inDSList.append(tmpFile.dataset)
+    # concatenate
+    strInDS = ''
+    for tmpInDS in inDSList:
+        strInDS += "%s," % tmpInDS
+    strInDS = strInDS[:-1]    
+    # truncate    
+    if len(strInDS) > maxLength:
+        strInDS = strInDS[:maxLength] + '...'
+    # empty
+    if strInDS == '':
+        return 'NULL'
+    return strInDS
+

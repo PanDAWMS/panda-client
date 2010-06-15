@@ -14,6 +14,9 @@ pathena -h
 
 ** Release Note
 
+0.2.53 (6/15/2010)
+  * set prodDBlock appropriately for GRL
+
 0.2.52 (6/11/2010)
   * added protection for quotes in --trf of pathena
 

@@ -1465,11 +1465,6 @@ for iJob in range(options.nJobs):
         jobR.destinationSE = options.destSE
     else:                
         jobR.destinationSE = options.site
-    if options.inDS != '':
-        if re.search(',',options.inDS) != None:
-            jobR.prodDBlock = options.inDS.split(',')[0]
-        else:
-            jobR.prodDBlock = options.inDS
     jobR.prodSourceLabel   = 'user'
     if options.processingType != '':
         jobR.processingType = options.processingType
@@ -1673,6 +1668,8 @@ for iJob in range(options.nJobs):
             else:
                 defaulttoken = Client.PandaSites[options.site]['defaulttoken']
                 file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
+    # set prodDBlock
+    jobR.prodDBlock = PsubUtils.getProdDBlock(jobR,options.inDS)
     # check job spec
     PsubUtils.checkJobSpec(jobR)
     # append

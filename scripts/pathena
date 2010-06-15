@@ -2316,13 +2316,6 @@ for iSubJob in range(options.split):
     jobR.homepackage       = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runAthena-00-00-11' % Client.baseURLSUB
     jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
-    if options.inDS == '':
-        jobR.prodDBlock     = 'NULL'
-    else:
-        if re.search(',',options.inDS) != None:
-            jobR.prodDBlock = options.inDS.split(',')[0]
-        else:
-            jobR.prodDBlock = options.inDS
     jobR.destinationDBlock = options.outDS
     if Client.isDQ2free(options.site):
         # flag to use DQ2-free output 
@@ -2852,6 +2845,8 @@ for iSubJob in range(options.split):
 
     if options.verbose:
         tmpLog.debug(param)
+    # set prodDBlock
+    jobR.prodDBlock = PsubUtils.getProdDBlock(jobR,options.inDS)
     # set destinationDBlock to associate jobs with the same output container
     # do it here since destinationDBock is used for output file naming
     jobR.destinationDBlock = original_outDS_Name
