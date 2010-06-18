@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.2.54 (6/18/2010)
+  * added newSite option to pbook.retry()	
+  * send .cpp and .hpp to WN by default
+
 0.2.53 (6/15/2010)
   * set prodDBlock appropriately for GRL
 

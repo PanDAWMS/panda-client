@@ -566,7 +566,8 @@ def matchExtFile(fileName):
             return False
     # gather files with special extensions
     for tmpExtention in ['.py','.dat','.C','.xml','Makefile',
-                         '.cc','.cxx','.h','.hh','.sh']:
+                         '.cc','.cxx','.h','.hh','.sh','.cpp',
+                         '.hpp']:
         if fileName.endswith(tmpExtention):
             return True
     # check filename

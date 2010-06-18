@@ -138,6 +138,8 @@ optP.add_option('--nFiles', '--nfiles', action='store', dest='nfiles',  default=
                 type='int',    help='Use an limited number of files in the input dataset')
 optP.add_option('--nSkipFiles', action='store', dest='nSkipFiles',  default=0,
                 type='int',    help='Skip N files in the input dataset')
+optP.add_option('--provenanceID',action='store',dest='provenanceID',default=-1,type='int',
+                help='provenanceID')
 optP.add_option('-v', action='store_const', const=True, dest='verbose',  default=False,
                 help='Verbose')
 optP.add_option('-l', '--long', action='store_const', const=True, dest='long',  default=False,
@@ -2162,6 +2164,8 @@ elif options.libDS == '':
     jobB.homepackage       = 'AnalysisTransforms'+cacheVer+nightVer
     jobB.transformation    = '%s/buildJob-00-00-03' % Client.baseURLSUB
     jobB.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
+    if options.provenanceID != -1:
+        jobB.jobExecutionID = options.provenanceID
     hostName = commands.getoutput('hostname').split('.')[0]
     if nickName == '':
         # old convention
@@ -2325,6 +2329,8 @@ for iSubJob in range(options.split):
         jobR.destinationSE = options.destSE
     else:
         jobR.destinationSE = options.site
+    if options.provenanceID != -1:
+        jobR.jobExecutionID = options.provenanceID
     if options.prodSourceLabel != '':
         jobR.prodSourceLabel = options.prodSourceLabel
     else:

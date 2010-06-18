@@ -143,6 +143,8 @@ optP.add_option('--dbRunNumber',action='store',dest='dbRunNumber', default='',
                 type='string', help='RunNumber for DBRelease or CDRelease. If this option is used some redundant files are removed to save disk usage when unpacking DBRelease tarball. e.g., 0091890')
 optP.add_option('--notExpandDBR',action='store_const',const=True,dest='notExpandDBR',default=False,
                 help='By default, DBRelease.tar.gz is expanded on WN and gets deleted after changing environment variables accordingly. If you need tar.gz, use this option')
+optP.add_option('--provenanceID',action='store',dest='provenanceID',default=-1,type='int',
+                help='provenanceID')
 optP.add_option('-v',action='store_const',const=True,dest='verbose',default=False,
                 help='Verbose')
 optP.add_option('--long', action='store_const',const=True,dest='long',default=False,
@@ -1268,6 +1270,8 @@ elif options.libDS == '':
     jobB.jobDefinitionID   = jobDefinitionID
     jobB.jobName           = jobName
     jobB.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
+    if options.provenanceID != -1:
+        jobB.jobExecutionID = options.provenanceID
     if options.panda_origFullExecString == '':    
         jobB.metadata = fullExecString
     else:
@@ -1441,6 +1445,8 @@ for iJob in range(options.nJobs):
     jobR.jobDefinitionID   = jobDefinitionID
     jobR.jobName           = jobName
     jobR.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
+    if options.provenanceID != -1:
+        jobR.jobExecutionID = options.provenanceID
     if options.panda_origFullExecString == '':
         jobR.metadata = fullExecString
     else:

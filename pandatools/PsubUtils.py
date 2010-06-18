@@ -1103,3 +1103,78 @@ def getProdDBlock(job,inDS):
         return 'NULL'
     return strInDS
 
+
+# execute pathena/prun with modify command-line paramters
+def execWithModifiedParams(jobs,newOpts,verbose):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # remove --
+    tmpOpts = {}
+    for tmpKey in newOpts.keys():
+        newKey = re.sub('^--','',tmpKey)
+        tmpOpts[newKey] = newOpts[tmpKey]
+    newOpts = tmpOpts
+    # set excludedSite
+    if newOpts.has_key('excludedSite'):
+        newOpts['excludedSite'] += ',%s' % jobs[0].computingSite
+    else:
+        newOpts['excludedSite'] = '%s' % jobs[0].computingSite
+    # set provenanceID
+    newOpts['provenanceID'] = jobs[0].jobExecutionID
+    # get inputs
+    inDSs = []
+    inFiles = []
+    for job in jobs:
+        for tmpFile in job.Files:
+            if tmpFile.type == 'input' and not tmpFile.lfn.endswith('.lib.tgz'):
+                if not tmpFile.dataset in inDSs:
+                    inDSs.append(tmpFile.dataset)
+                if not tmpFile.lfn in inFiles:
+                    inFiles.append(tmpFile.lfn)
+    # modify command-line params
+    commandOps = jobs[0].metadata
+    # remove opts which comflict with --inDS
+    for removedOpt in ['goodRunListXML','eventPickEvtList','inputFileList',
+                       'inDS','retryID']:
+        commandOps = re.sub("--%s[ =].( )*[^ ]+" % removedOpt," ",commandOps)
+    # set inDS
+    inputTmpfileName = ''
+    if inDSs != []:
+        strInDS = ''
+        for inDS in inDSs:
+            strInDS += '%s,' % inDS
+        strInDS = strInDS[:-1]    
+        commandOps += ' --inDS %s' % strInDS
+        # set inputFileList
+        if not newOpts.has_key('inputFileList'):
+            inputTmpfileName = 'intmp.%s' % (commands.getoutput('uuidgen'))
+            inputTmpfile = open(inputTmpfileName,'w')
+            for inFile in inFiles:
+                inputTmpfile.write(inFile+'\n')
+            inputTmpfile.close()
+            commandOps += ' --inputFileList %s' % inputTmpfileName
+    # modify options
+    for tmpOpt,tmpArg in newOpts.iteritems():
+        if tmpArg in ['',None]:
+            if len(tmpOpt) == 1:
+                commandOps += ' -%s' % tmpOpt
+            else:
+                commandOps += ' --%s' % tmpOpt
+        elif re.search("--%s( |$)" % tmpOpt,commandOps) == None:
+            commandOps += ' --%s %s' % (tmpOpt,tmpArg)
+        else:    
+            commandOps = re.sub("--%s[ =].( )*[^ ]+" % tmpOpt,"--%s %s" % (tmpOpt,tmpArg),commandOps)
+    if verbose:
+        commandOps += ' -v'
+    newCommand = "%s %s" %  (jobs[0].processingType,commandOps)
+    if verbose:
+        tmpLog.debug(newCommand)
+    # execute    
+    comStat = os.system(newCommand)
+    # remove
+    if inputTmpfileName != '':
+        commands.getoutput('rm -f %s' % inputTmpfileName)
+    # return
+    return comStat
+                
+
