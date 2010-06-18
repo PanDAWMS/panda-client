@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.55 (6/18/2010)
+  * fixed cmtConfig
+
 0.2.54 (6/18/2010)
   * added newSite option to pbook.retry()	
   * send .cpp and .hpp to WN by default

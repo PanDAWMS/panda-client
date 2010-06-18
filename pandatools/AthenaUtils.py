@@ -1586,7 +1586,7 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
             reVer = int(match.group(3))
             # use i686-slc5-gcc43-opt for 15.6.3 or higher
             # FIXME once the pilot sets cmtconfig properly
-            if maVer >= 15 and miVer >= 6 and reVer >= 3:
+            if maVer > 15 or (maVer == 15 and miVer > 6) or (maVer == 15 and miVer == 6 and reVer >= 3):
                 return 'i686-slc5-gcc43-opt'
             # use i686-slc4-gcc34-opt by default
             return 'i686-slc4-gcc34-opt'
