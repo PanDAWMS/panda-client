@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.56 (6/23/2010)
+  * fixed unsupport cloud error due to OSG
+
 0.2.55 (6/18/2010)
   * fixed cmtConfig
 

@@ -124,7 +124,14 @@ def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=[]):
     cloud = None
     countryAttStr = ''
     # check countries
+    validCloudList = []
     for tmpCloud,spec in Client.PandaClouds.iteritems():
+        # remove cloud not used for analysis
+        for tmpSiteID,tmpSiteSpec in Client.PandaSites.iteritems():
+            if tmpCloud == tmpSiteSpec['cloud']:
+                if not tmpCloud in validCloudList:
+                    validCloudList.append(tmpCloud)
+                break        
         # loop over all FQANs
         for tmpFQAN in vomsFQAN.split('\n'):
             # look for matching country
@@ -153,7 +160,7 @@ def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=[]):
         #tmpLog.info("use %s as default cloud" % cloud)
     elif cloud == None:
         # use a cloud randomly
-        cloud = random.choice(Client.PandaClouds.keys())
+        cloud = random.choice(validCloudList)
         #tmpLog.info("use %s as default cloud" % cloud)
     else:
         #tmpLog.info("use %s as default cloud due to VOMS:%s" % (cloud,countryAttStr))
