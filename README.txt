@@ -21,8 +21,11 @@ pathena -h
 
 ** Release Note
 
+0.2.57 (6/24/2010)
+  * made --dbRelease=LATEST the default in pathena
+
 0.2.56 (6/23/2010)
-  * fixed unsupport cloud error due to OSG
+  * fixed unsupported cloud error due to OSG
 
 0.2.55 (6/18/2010)
   * fixed cmtConfig
