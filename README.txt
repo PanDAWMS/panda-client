@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.58 (6/25/2010)
+  * use non-certificate authentication in pyAMI
+
 0.2.57 (6/24/2010)
   * made --dbRelease=LATEST the default in pathena
 

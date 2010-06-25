@@ -162,7 +162,8 @@ def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=[]):
         cloud = random.choice(validCloudList)
     else:
         pass
-    tmpLog.debug("use %s as default cloud" % cloud)
+    if verbose:    
+        tmpLog.debug("use %s as default cloud" % cloud)
     # return
     return cloud
 

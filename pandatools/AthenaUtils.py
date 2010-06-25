@@ -1692,7 +1692,7 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
         goodRunListDS = goodRunListDS.split(',')
     # execute
     try:
-        amiclient=pyAMI.AMI()
+        amiclient=pyAMI.AMI(False)
         amiOut = amiclient.execute(amiArgv)
     except:
         errType,errValue = sys.exc_info()[:2]
