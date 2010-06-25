@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.59 (6/25/2010)
+  * changed --eventPickStreamName to be optional for MC
+
 0.2.58 (6/25/2010)
   * use non-certificate authentication in pyAMI
 

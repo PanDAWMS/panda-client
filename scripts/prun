@@ -293,9 +293,6 @@ if options.eventPickEvtList != '':
     if options.eventPickDataType == '':
         tmpLog.error("--eventPickDataType must be specified")
         sys.exit(EC_Config)
-    if options.eventPickStreamName == '':
-        tmpLog.error("--eventPickStreamName must be specified")
-        sys.exit(EC_Config)
     
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)

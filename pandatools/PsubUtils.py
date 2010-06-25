@@ -982,7 +982,7 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
         # duplicated    
         if len(tmpLFNs) != 1:
             paramStr = 'Run:%s Evt:%s Stream:%s' % (runNr,evtNr,streamName)            
-            errStr = "multiple LFNs %s were found in ELSSI for %s. Please set --eventPickDS correctly" \
+            errStr = "multiple LFNs %s were found in ELSSI for %s. Please set --eventPickDS and/or --eventPickStreamName correctly" \
                      % (str(tmpLFNs),paramStr)
             tmpLog.error(errStr)
             sys.exit(EC_Config)
