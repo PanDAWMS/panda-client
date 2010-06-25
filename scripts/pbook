@@ -341,7 +341,7 @@ class PBookCore:
 
 
     # kill and retry
-    def killAndRetry(self,JobID):
+    def killAndRetry(self,JobID,newSite=False,newOpts={}):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # kill
@@ -369,12 +369,12 @@ class PBookCore:
                 tmpLog.info('Max attempts exceeded. Please try later')
                 return False
         # retry
-        self.retry(JobID)
+        self.retry(JobID,newSite=newSite,newOpts=newOpts)
         return
                         
 
     # retry
-    def retry(self,JobID):
+    def retry(self,JobID,newSite=False,newOpts={}):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
@@ -397,6 +397,11 @@ class PBookCore:
             tmpLog.warning('Cannot retry when status of buildJob %s is %s (!= finished)' \
                            % (localJob.PandaID.split(',')[0],localJob.buildStatus))
             return
+	# check opts for newSite
+        if newSite:
+            if not newOpts.has_key('outDS') and not newOpts.has_key('--outDS'):
+                tmpLog.warning('You need to specify --outDS in newOpts to retry at new site')
+                return
         # get list of failed jobs
         pandaIDs  = localJob.PandaID.split(',')
         statusList= localJob.jobStatus.split(',')
@@ -489,6 +494,17 @@ class PBookCore:
                         job.jobParameters = job.jobParameters.replace(match.group(0),newName+match.group(2))
             # append
             retryJobs.append(job)
+        # invoke pathena/prun to send job to new site
+        if newSite:
+            tmpLog.info("Constrcuting job spec again to be sent to another site. Make sure you have the same runtime env as before ...")
+            comStat= PsubUtils.execWithModifiedParams(retryJobs,newOpts,self.verbose)
+            if comStat == 0:
+                # update database
+                time.sleep(2)
+                self.sync()
+            else:
+                tmpLog.error("Failed to submit jobs to Panda server")                
+            return
         # submit
         tmpLog.info("Submitting job ...")            
         status,out = Client.submitJobs(retryJobs,verbose=self.verbose)
@@ -617,12 +633,13 @@ For more info, do help(show) for example."""
 
 
     # retry
-    def retry(JobID,upperJobID=None):
-        """Retry failed subJobs in JobID. Jobs between JobID and UpperJobID will be retried if upperJobID is given
+    def retry(JobID,upperJobID=None,newSite=False,newOpts={}):
+        """Retry failed/cancelled subJobs in JobID. Jobs between JobID and UpperJobID will be retried if upperJobID is given. Set newSite=True and specify newOpts when you want to retry at new site. newOpts is a map of options and new arguments which is passed to pathena/prun
 
          example:
            >>> retry(15)
            >>> retry(15,20)
+           >>> retry(15,newSite=True,newOpts={'outDS':'user.nickname.blah'})
         """
         if upperJobID != None:
             # check range
@@ -632,9 +649,9 @@ For more info, do help(show) for example."""
             else:
                 # retry jobs between the range
                 for tmpJobID in range(JobID,upperJobID+1):
-                    pbookCore.retry(tmpJobID)
+                    pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts)
         else:            
-            pbookCore.retry(JobID)
+            pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts)
 
 
     # rebrokerage
@@ -659,13 +676,13 @@ For more info, do help(show) for example."""
 
 
     # kill and retry
-    def killAndRetry(JobID):
-        """Kill JobID and then retry failed sub-jobs
+    def killAndRetry(JobID,newSite=False,newOpts={}):
+        """Kill JobID and then retry failed/cancelled sub-jobs. Concerning newSite and newOpts, see help(retry)
 
          example:
            >>> killAndRetry(15)
         """
-	ret = pbookCore.killAndRetry(JobID)
+	ret = pbookCore.killAndRetry(JobID,newSite=newSite,newOpts=newOpts)
 
 
     # synchronize local repository

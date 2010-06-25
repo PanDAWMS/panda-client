@@ -712,7 +712,7 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False):
 
 
 # get datasets
-def getDatasets(name,verbose=False,withWC=False):
+def getDatasets(name,verbose=False,withWC=False,onlyNames=False):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
@@ -722,6 +722,9 @@ def getDatasets(name,verbose=False,withWC=False):
         url = baseURLDQ2 + '/ws_repository/rpc'
         data = {'operation':'queryDatasetByName','dsn':name,'version':0,
                 'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+        if onlyNames:
+            data['API'] = '30'
+            data['onlyNames'] = int(onlyNames)
         status,out = curl.get(url,data)
         if status != 0:
             errStr = "ERROR : could not access DQ2 server"
@@ -731,6 +734,8 @@ def getDatasets(name,verbose=False,withWC=False):
         if out == '\x00' or ((not withWC) and (not checkDatasetInMap(name,out))):
             # no datasets
             return datasets
+        # get names only
+        return out
         # get VUIDs
         for dsname,idMap in out.iteritems():
             # check format
@@ -788,6 +793,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     retMap = {}
+    allMap = {}
     iLookUp = 0
     guidLfnMap = {}
     checkedDSList = []
@@ -837,38 +843,42 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
             sys.exit(EC_Failed)
         # check with filter
         tmpDsNames = []
-        if dsFilters != []:
-            for tmpDsName in out.keys():
+        tmpAllDsNames = []
+        for tmpDsName in out.keys():
+            # ignore junk datasets
+            if tmpDsName.startswith('panda') or \
+                   tmpDsName.startswith('user') or \
+                   tmpDsName.startswith('group') or \
+                   re.search('_sub\d+$',tmpDsName) != None or \
+                   re.search('_dis\d+$',tmpDsName) != None or \
+                   re.search('_shadow$',tmpDsName) != None:
+                continue
+            tmpAllDsNames.append(tmpDsName)
+            # check with filter            
+            if dsFilters != []:
                 flagMatch = False
                 for tmpFilter in dsFilters:
+                    # replace . to \.                    
+                    tmpFilter = tmpFilter.replace('.','\.')                    
                     # replace * to .*
                     tmpFilter = tmpFilter.replace('*','.*')
                     if re.search('^'+tmpFilter,tmpDsName) != None:
                         flagMatch = True
                         break
-                # append
-                if flagMatch:
-                    tmpDsNames.append(tmpDsName)
-        else:
-            for tmpDsName in out.keys():
-                # ignore junk datasets
-                if tmpDsName.startswith('panda') or \
-                       tmpDsName.startswith('user') or \
-                       tmpDsName.startswith('group') or \
-                       re.search('_sub\d+$',tmpDsName) != None or \
-                       re.search('_dis\d+$',tmpDsName) != None or \
-                       re.search('_shadow$',tmpDsName) != None:
+                # not match
+                if not flagMatch:
                     continue
-                tmpDsNames.append(tmpDsName) 
+            # append    
+            tmpDsNames.append(tmpDsName)
         # empty
         if tmpDsNames == []:
-            errStr = '--eventPickDS="%s" doesn\'t match with any of %s' % (dsFilter,str(out.keys()))
-            tmpLog.error(errStr)
-            sys.exit(EC_Failed)
+            # there may be multiple GUIDs for the same event, and some may be filtered by --eventPickDS
+            allMap[guid] = tmpAllDsNames
+            continue
         # duplicated
         if len(tmpDsNames) != 1:
             errStr = "there are multiple datasets %s for GUID:%s. Please set --eventPickDS to choose one dataset"\
-                     % (str(out.keys()),guid)
+                     % (str(tmpAllDsNames),guid)
             tmpLog.error(errStr)
             sys.exit(EC_Failed)
         # get LFN
@@ -884,7 +894,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
             sys.exit(EC_Failed)
         retMap[guid] = guidLfnMap[guid]
     # return
-    return retMap
+    return retMap,allMap
 
                                 
 # register dataset
@@ -1074,7 +1084,7 @@ def convSrmV2ID(tmpSite):
 # get locations
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
                  getTapeSites=False,getDQ2IDs=False,locCandidates=None,removeDS=False,
-                 removedDatasets=[]):
+                 removedDatasets=[],useOutContainer=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1092,7 +1102,6 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         resBadStSites = {}
         resTapeSites  = []
         retDQ2IDs     = []
-        countSite     = {}
         allOut        = {}
         iLookUp       = 0
         resUsedDsMap  = {}
@@ -1103,6 +1112,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 locCandidatesSrmV2.append(convSrmV2ID(locTmp))
         # loop over all names        
         for tmpName in names:
+            # ignore removed datasets
+            if tmpName in removedDatasets:
+                continue
             iLookUp += 1
             if iLookUp % 20 == 0:
                 time.sleep(1)
@@ -1180,10 +1192,12 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                     allOut[tmpOutKey][0]['found'] += tmpNfound
                 else:
                     allOut[tmpOutKey] = [{'found':tmpNfound}]
-                if tmpOutVar[0].has_key('useddatasets'):
-                    if not allOut[tmpOutKey][0].has_key('useddatasets'):
-                        allOut[tmpOutKey][0]['useddatasets'] = []
-                    allOut[tmpOutKey][0]['useddatasets'] += tmpOutVar[0]['useddatasets']    
+                if not tmpOutVar[0].has_key('useddatasets'):
+                    # add dataset as a container element
+                    tmpOutVar[0]['useddatasets'] = [tmpName]
+                if not allOut[tmpOutKey][0].has_key('useddatasets'):
+                    allOut[tmpOutKey][0]['useddatasets'] = []
+                allOut[tmpOutKey][0]['useddatasets'] += tmpOutVar[0]['useddatasets']    
         # replace
         out = allOut
         if verbose:
@@ -1209,7 +1223,9 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             # remove sites
             for origTmpSite in out.keys():
                 if out[origTmpSite][0]['found'] < tmpMaxFiles:
-                    del out[origTmpSite]
+                    # use sites where most files are avaialble if output container is not used
+                    if not useOutContainer:
+                        del out[origTmpSite]
             if verbose:
                 print out
         tmpFirstDump = True
@@ -1224,10 +1240,6 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             # collect DQ2 IDs
             if not origTmpSite in retDQ2IDs:
                 retDQ2IDs.append(origTmpSite)
-            # count number of available files
-            if not countSite.has_key(origTmpSite):
-                countSite[origTmpSite] = 0
-            countSite[origTmpSite] += origTmpInfo[0]['found']
             # patch for SRM v2
             tmpSite = convSrmV2ID(origTmpSite)
             # if candidates are limited
@@ -2179,11 +2191,14 @@ def getPandaClientVer(verbose):
 
 
 # get files in dataset with filte
-def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose,dsStringFlag=False):
+def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose,dsStringFlag=False,isRecursive=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # query files in dataset
-    tmpLog.info("query files in %s" % inDS)
+    if not isRecursive or verbose:
+        tmpLog.info("query files in %s" % inDS)
+    else:
+        tmpLog.info("query files with DQ2")
     if dsStringFlag:
         inputFileMap,inputDsString = queryFilesInDataset(inDS,verbose,getDsString=True)
     else:
@@ -2293,7 +2308,7 @@ def getLatestDBRelease(verbose=False):
     tmpLog = PLogger.getPandaLogger()
     tmpLog.info('trying to get the latest version number for DBRelease=LATEST')
     # get ddo datasets
-    ddoDatasets = getDatasets('ddo.*',verbose,True)
+    ddoDatasets = getDatasets('ddo.*',verbose,True,onlyNames=True)
     if ddoDatasets == {}:
         tmpLog.error('failed to get a list of DBRelease datasets from DQ2')
         sys.exit(EC_Failed)
