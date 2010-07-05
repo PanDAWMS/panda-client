@@ -970,7 +970,8 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
                 tmpLFNs.append(dsLFNs[tmpguid])
             else:
                 tmpAllDSs[tmpguid] = allDSMap[tmpguid]
-                del guidRunEvtMap[tmpguid]
+                if guidRunEvtMap.has_key(tmpguid):
+                    del guidRunEvtMap[tmpguid]
         # empty        
         if tmpLFNs == []:
             paramStr = 'Run:%s Evt:%s Stream:%s' % (runNr,evtNr,streamName)                        
