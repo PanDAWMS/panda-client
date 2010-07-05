@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.60 (7/5/2010)
+  * added a protection to DS lookup against unmapped GUID in eventPicking 
+
 0.2.59 (6/25/2010)
   * changed --eventPickStreamName to be optional for MC
 
