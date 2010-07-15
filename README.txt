@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.62 (7/15/2010)
+  * fixed --nGBPerJob of pathena to take the number of files into account
+
 0.2.61 (7/7/2010)
   * added a protection against deleted DS lookup in eventPicking 
 
