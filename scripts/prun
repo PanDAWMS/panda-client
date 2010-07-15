@@ -874,8 +874,12 @@ if options.inDS != '':
             tmpLog.debug("%s holds %s files" % (options.site,len(inputFileList)-len(missList)))
         # no files available
         if len(inputFileList) == len(missList):
-            tmpLog.error("No files available on disk at %s" % options.site)
-            sys.exit(EC_Dataset)
+            tmpStr = "No files available on disk at %s" % options.site
+	    if options.crossSite == 0:
+		tmpLog.error(tmpStr)
+		sys.exit(EC_Dataset)
+            else:
+                tmpLog.info(tmpStr)
         # remove missing files
         newInputFiles = []
         for inputFile in inputFileList:
@@ -897,11 +901,9 @@ if options.inDS != '':
             tmpLog.error(tmpStr)
             sys.exit(EC_Dataset)
         else:
-            tmpLog.info(tmpStr)
             # go back to current dir
             os.chdir(curDir)
             # try another site if input files remain
-            options.crossSite -= 1
             if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                 if missList != []:
                     PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
