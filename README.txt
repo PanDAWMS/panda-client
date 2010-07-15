@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.63 (7/15/2010)
+  * added a protection against looping on empty datasets for input/output containers
+
 0.2.62 (7/15/2010)
   * fixed --nGBPerJob of pathena to take the number of files into account
 
