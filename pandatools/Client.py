@@ -820,7 +820,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
             sys.exit(EC_Failed)
         # empty
         if out == '\x00' or out == ():
-            errStr = "DQ2 gave an empty list for %s" % guid
+            errStr = "DQ2 gave an empty list for GUID=%s" % guid
             tmpLog.error(errStr)
             sys.exit(EC_Failed)
         tmpVUIDs = list(out)
@@ -837,10 +837,14 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
             tmpLog.error(errStr)
             sys.exit(EC_Failed)
         # empty
-        if out == '\x00' or out == {}:
-            errStr = "DQ2 gave an empty list for %s" % tmpVUIDs
+        if out == '\x00':
+            errStr = "DQ2 gave an empty list for VUID=%s" % tmpVUIDs
             tmpLog.error(errStr)
             sys.exit(EC_Failed)
+        # datasets are deleted
+        if out == {}:
+            allMap[guid] = []
+            continue
         # check with filter
         tmpDsNames = []
         tmpAllDsNames = []

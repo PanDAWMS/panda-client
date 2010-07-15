@@ -970,7 +970,8 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
                 tmpLFNs.append(dsLFNs[tmpguid])
             else:
                 tmpAllDSs[tmpguid] = allDSMap[tmpguid]
-                del guidRunEvtMap[tmpguid]
+                if guidRunEvtMap.has_key(tmpguid):
+                    del guidRunEvtMap[tmpguid]
         # empty        
         if tmpLFNs == []:
             paramStr = 'Run:%s Evt:%s Stream:%s' % (runNr,evtNr,streamName)                        
@@ -1052,6 +1053,8 @@ def getRealDatasetName(outDS,tmpDatasets):
     return outDS    
 
 
+limit_maxNumInputs = 200
+
 # check job spec
 def checkJobSpec(job):
     # get logger
@@ -1059,9 +1062,10 @@ def checkJobSpec(job):
     # check the number of input files
     nInputFiles = 0
     for tmpFile in job.Files:
-        if tmpFile.type == 'input' and (not tmpFile.lfn.endswith('.lib.tgz')):
+        if tmpFile.type == 'input' and (not tmpFile.lfn.endswith('.lib.tgz')) \
+               and re.search('DBRelease-.*\.tar\.gz$',tmpFile.lfn) == None:
             nInputFiles += 1
-    maxNumInputs = 200        
+    maxNumInputs = limit_maxNumInputs
     if nInputFiles > maxNumInputs:
         errMsg =  "Too many input files (%s files) in a sub job. " % nInputFiles
         errMsg += "Please reduce that to less than %s" % maxNumInputs 
