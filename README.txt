@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added more warning for migration of naming convention
+
 0.2.64 (7/16/2010)
   * fixed --goodRunListXML to parse multiple LBRange items in a single LumiBlockCollection
 

@@ -238,7 +238,9 @@ def getNickname():
         wMessage += 'Note that as of May 31st 2010 old convention '
         wMessage += '"userXY.FirstLastname" will be terminated.\n'
         wMessage += 'See the announcement : https://savannah.cern.ch/forum/forum.php?forum_id=1259\n'
+        print
         tmpLog.warning(wMessage)
+        print
     return nickName
         
 
@@ -318,6 +320,16 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
             errStr += "\n              %s.test1234" % outDsPrefixN        
         tmpLog.error(errStr)
         return False
+    # check convention
+    if re.match(matStrO,outDS) != None:
+        outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)        
+        tmpStr  = "You are still using the old naming convention for --outDS (%s.XYZ). " % outDsPrefixO
+        tmpStr += "DQ2 will enforce the new convention and refuse the old one as of 2nd Aug 2010. "
+        tmpStr += "Please use user.nickname.XYZ instead. If you don't know your nickname, "
+        tmpStr += "see https://savannah.cern.ch/forum/forum.php?forum_id=1259"
+        print
+        tmpLog.warning(tmpStr)
+        print
     # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
     maxLength = 200
     if len(outDS) > maxLength:
