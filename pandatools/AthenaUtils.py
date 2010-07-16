@@ -1664,14 +1664,15 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
     import xml.dom.minidom
     rootDOM = xml.dom.minidom.parse(goodRunListXML)
     for tmpLumiBlock in rootDOM.getElementsByTagName('LumiBlockCollection'):
-        tmpRunNum  = long(tmpLumiBlock.getElementsByTagName('Run')[0].firstChild.data)
-        tmpLBRange = tmpLumiBlock.getElementsByTagName('LBRange')[0]
-        tmpLBStart = long(tmpLBRange.getAttribute('Start'))
-        tmpLBEnd   = long(tmpLBRange.getAttribute('End'))        
-        # append
-        if not runLumiMap.has_key(tmpRunNum):
-            runLumiMap[tmpRunNum] = []
-        runLumiMap[tmpRunNum].append((tmpLBStart,tmpLBEnd))
+        for tmpRunNode in tmpLumiBlock.getElementsByTagName('Run'):
+            tmpRunNum  = long(tmpRunNode.firstChild.data)
+            for tmpLBRange in tmpLumiBlock.getElementsByTagName('LBRange'):
+                tmpLBStart = long(tmpLBRange.getAttribute('Start'))
+                tmpLBEnd   = long(tmpLBRange.getAttribute('End'))        
+                # append
+                if not runLumiMap.has_key(tmpRunNum):
+                    runLumiMap[tmpRunNum] = []
+                runLumiMap[tmpRunNum].append((tmpLBStart,tmpLBEnd))
     # make arguments
     amiArgv = []
     amiArgv.append("GetGoodDatasetList")

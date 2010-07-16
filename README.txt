@@ -21,6 +21,21 @@ pathena -h
 
 ** Release Note
 
+0.2.64 (7/16/2010)
+  * fixed --goodRunListXML to parse multiple LBRange items in a single LumiBlockCollection
+
+0.2.63 (7/15/2010)
+  * added a protection against looping on empty datasets for input/output containers
+
+0.2.62 (7/15/2010)
+  * fixed --nGBPerJob of pathena to take the number of files into account
+
+0.2.61 (7/7/2010)
+  * added a protection against deleted DS lookup in eventPicking 
+
+0.2.60 (7/5/2010)
+  * added a protection to DS lookup against unmapped GUID in eventPicking 
+
 0.2.59 (6/25/2010)
   * changed --eventPickStreamName to be optional for MC
 
