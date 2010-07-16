@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.64 (7/16/2010)
+  * fixed --goodRunListXML to parse multiple LBRange items in a single LumiBlockCollection
+
 0.2.63 (7/15/2010)
   * added a protection against looping on empty datasets for input/output containers
 
