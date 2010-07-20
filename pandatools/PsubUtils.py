@@ -678,12 +678,17 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
 
 
 # check destination SE
-def checkDestSE(destSE,dsName,verbose):
+def checkDestSE(destSEs,dsName,verbose):
     # check destSE
-    if destSE == '':
+    if destSEs == '':
         return True
     # get logger
     tmpLog = PLogger.getPandaLogger()
+    # check length
+    maxLength = 250
+    if len(destSEs) > maxLength:
+        tmpLog.error("destSE is too long (%s) and must be less than %s" % (len(destSEs),maxLength))
+        return False
     # get DN
     tmpDN = commands.getoutput('%s grid-proxy-info -identity' % Client._getGridSrc())
     # set X509_CERT_DIR
@@ -692,19 +697,20 @@ def checkDestSE(destSE,dsName,verbose):
     # check with DaTRI
     from datriHandler import datriHandler
     tmpDaHandler = datriHandler(type='pathena')
-    tmpDaHandler.setParameters(data_pattern=dsName,
-                               site=destSE,
-                               userid=tmpDN)
-    tmpLog.info("checking with DaTRI for --destSE=%s" % destSE)
-    sStat,dOut = tmpDaHandler.checkData()
-    if sStat != 0:
-        errMsg  = "%s\n" % dOut
-        errMsg += "ErrorCode=%s parameters=(DS:%s,site:%s,DN:%s)" % \
-                  (sStat,dsName,destSE,tmpDN)
-        tmpLog.error(errMsg)
-        return False
-    if verbose:
-        tmpLog.debug("%s %s" % (sStat,dOut))
+    for destSE in destSEs.split(','):
+        tmpDaHandler.setParameters(data_pattern=dsName,
+                                   site=destSE,
+                                   userid=tmpDN)
+        tmpLog.info("checking with DaTRI for --destSE=%s" % destSE)
+        sStat,dOut = tmpDaHandler.checkData()
+        if sStat != 0:
+            errMsg  = "%s\n" % dOut
+            errMsg += "ErrorCode=%s parameters=(DS:%s,site:%s,DN:%s)" % \
+                      (sStat,dsName,destSE,tmpDN)
+            tmpLog.error(errMsg)
+            return False
+        if verbose:
+            tmpLog.debug("%s %s" % (sStat,dOut))
     # return
     return True
 
