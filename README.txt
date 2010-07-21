@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed misleading errors when inDS is empty
+
 0.2.65 (7/20/2010)
   * added more warning for migration of naming convention
   * updated --destSE to accept a list of destinations

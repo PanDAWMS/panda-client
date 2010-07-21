@@ -2260,7 +2260,7 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             errStr =  "No files in %s are available in %s. " % (inputFileListName,inDS)
         else:
             errStr =  "%s are not available in %s. " % (filters,inDS)
-        errStr += "Make sure if you specify correct LFNs"            
+        errStr += "Make sure that you specify correct LFNs or matching pattern"            
         tmpLog.error(errStr)
         sys.exit(EC_Failed)
     # return

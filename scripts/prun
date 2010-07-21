@@ -726,6 +726,16 @@ if options.inDS != '':
         recursiveFlag = False
     inputFileMap,inputDsString = Client.getFilesInDatasetWithFilter(options.inDS,options.match,shadowList,options.inputFileListName,
                                                                     options.verbose,dsStringFlag=True,isRecursive=recursiveFlag)
+    # empty
+    if inputFileMap == {} and shadowList == []:
+        errStr = "No files were found in %s (log.tgz was ignored). " % options.inDS
+        if options.match != '':
+            errStr += "Make sure that you specify a correct string in --match"
+	else:
+            errStr += "The dataset is empty"
+        tmpLog.error(errStr)
+        sys.exit(EC_Config)
+
     # sort
     inputFileList = inputFileMap.keys()
     inputFileList.sort()
@@ -829,7 +839,10 @@ if options.inDS != '':
                 if out.startswith('ERROR :'):
 		    if idxDsLocationMap == 0:
 			tmpBrokerErr += out
-			tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+                        if expCloudFlag:
+                            tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+                        else:
+                            tmpBrokerErr += " Could not find sites\n"
 		    else:
 			if tmpBrokerErr != '':
 			    tmpBrokerErr += out
