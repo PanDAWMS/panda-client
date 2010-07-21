@@ -1058,8 +1058,11 @@ else:
 # datasets 
 
 # get the latest of DBRelease
-if options.dbRelease == 'LATEST':
+if options.dbRelease == 'LATEST' or "%DB=LATEST" in jobO:
     options.dbRelease = Client.getLatestDBRelease(options.verbose)
+    # replace
+    if "%DB=LATEST" in jobO:
+        jobO = jobO.replace("%DB=LATEST","%DB=" + options.dbRelease) 
 
 # check if output dataset is unique
 outputDSexist = False
@@ -1398,7 +1401,16 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 errStr =  "No files in %s are available in %s. " % (options.inputFileList,options.inDS)
             else:
                 errStr =  "%s are not available in %s. " % (options.filelist,options.inDS)
-            errStr += "Make sure if you specify correct LFNs"
+            errStr += "Make sure that you specify correct LFNs"
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
+        # empty
+        if inputFileMap == {}:
+            errStr = "No files were found in %s (log.tgz was ignored). " % options.inDS
+            if options.inputType != []:
+                errStr += "Make sure that you specify correct types in --inputType"
+            else:
+		errStr += "The dataset is empty"
             tmpLog.error(errStr)
             sys.exit(EC_Config)
         # get locations when site==AUTO
@@ -1511,7 +1523,10 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 if out.startswith('ERROR :'):
 		    if idxDsLocationMap == 0:
 			tmpBrokerErr += out
-			tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+                        if expCloudFlag:
+                            tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+                        else:
+                            tmpBrokerErr += " Could not find sites.\n"
 		    else:
 			if tmpBrokerErr != '':
 			    tmpBrokerErr += out
