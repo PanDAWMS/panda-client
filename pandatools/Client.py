@@ -818,11 +818,13 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
             errStr = "could not get dataset vuids for %s" % guid
             tmpLog.error(errStr)
             sys.exit(EC_Failed)
-        # empty
+        # GUID was not registered in DQ2
         if out == '\x00' or out == ():
-            errStr = "DQ2 gave an empty list for GUID=%s" % guid
-            tmpLog.error(errStr)
-            sys.exit(EC_Failed)
+            if verbose:            
+                errStr = "DQ2 gave an empty list for GUID=%s" % guid
+                tmpLog.debug(errStr)
+            allMap[guid] = []
+            continue
         tmpVUIDs = list(out)
         # get dataset name
         url = baseURLDQ2 + '/ws_repository/rpc'

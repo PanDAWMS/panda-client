@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.67 (7/21/2010)
+  * added a protection against unregistered GUID lookup in eventPicking 
+
 0.2.66 (7/21/2010)
   * fixed --trf of pathena and --exec of prun to allow %DB:LATEST 	
   * fixed misleading errors when inDS is empty
