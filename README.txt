@@ -22,7 +22,9 @@ pathena -h
 ** Release Note
 
 current
+  * fixed --trf of pathena and --exec of prun to allow %DB:LATEST 	
   * fixed misleading errors when inDS is empty
+  * fixed DBR lookup to ignore CDRelease
 
 0.2.65 (7/20/2010)
   * added more warning for migration of naming convention

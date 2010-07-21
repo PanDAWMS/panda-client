@@ -1058,8 +1058,11 @@ else:
 # datasets 
 
 # get the latest of DBRelease
-if options.dbRelease == 'LATEST':
+if options.dbRelease == 'LATEST' or "%DB=LATEST" in jobO:
     options.dbRelease = Client.getLatestDBRelease(options.verbose)
+    # replace
+    if "%DB=LATEST" in jobO:
+        jobO = jobO.replace("%DB=LATEST","%DB=" + options.dbRelease) 
 
 # check if output dataset is unique
 outputDSexist = False

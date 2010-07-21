@@ -552,7 +552,7 @@ if options.site != 'AUTO':
     options.cloud = Client.PandaSites[options.site]['cloud']
 
 # get the latest of DBRelease
-if options.dbRelease == 'LATEST':
+if options.dbRelease == 'LATEST' or '%DB:LATEST' in options.jobParams:
     options.dbRelease = Client.getLatestDBRelease(options.verbose)
 
 # get DN
@@ -1509,6 +1509,9 @@ for iJob in range(options.nJobs):
                 tmpRndmNum = int(match.group(1)) + iJob
                 # replace parameters
                 tmpJobO = re.sub(match.group(0),'%s%s' % (tmpRndmNum,match.group(2)),tmpJobO)
+        # DBR
+        if '%DB:LATEST' in tmpJobO and options.dbRelease != '':
+            tmpJobO = tmpJobO.replace('%DB:LATEST',options.dbRelease.split(':')[-1])
         jobR.jobParameters += '-p "%s" ' % urllib.quote(tmpJobO)
     # source files
     if not options.nobuild:

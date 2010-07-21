@@ -2327,6 +2327,9 @@ def getLatestDBRelease(verbose=False):
     latestVerRev   = 0
     latestDBR = ''
     for tmpName in ddoDatasets:
+        # ignore CDRelease
+        if ".CDRelease." in tmpName:
+            continue
         match = re.search('\.v(\d+)_*[^\.]*$',tmpName)
         if match == None:
             tmpLog.warning('cannot extract version number from %s' % tmpName)
