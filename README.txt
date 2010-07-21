@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.66 (7/21/2010)
   * fixed --trf of pathena and --exec of prun to allow %DB:LATEST 	
   * fixed misleading errors when inDS is empty
   * fixed DBR lookup to ignore CDRelease
