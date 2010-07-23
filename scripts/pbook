@@ -374,7 +374,7 @@ class PBookCore:
                         
 
     # retry
-    def retry(self,JobID,newSite=False,newOpts={}):
+    def retry(self,JobID,newSite=False,newOpts={},noSubmit=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
@@ -494,6 +494,27 @@ class PBookCore:
                         job.jobParameters = job.jobParameters.replace(match.group(0),newName+match.group(2))
             # append
             retryJobs.append(job)
+        # check voms role
+        if not retryJobs[0].workingGroup in ['NULL',None,'']:
+            # VOMS role was used 
+            if not "--workingGroup" in job.metadata:
+                # extract voms roles from metadata
+                match =  re.search("--voms( |=)[ \"]*([^ \"]+)",job.metadata)
+                if match != None:
+                    vomsRoles = match.group(2)
+                else:
+                    vomsRoles = "atlas:/atlas/%s/Role=production" % retryJobs[0].workingGroup
+                # regenerate proxy with VOMS roles
+                try:
+                    tmpLog.info("Checking proxy role to resubmit %s jobs" % retryJobs[0].workingGroup)
+                    self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,
+                                                                                 self.verbose,vomsRoles)
+                except:
+                    tmpLog.error("Failed to generate a proxy with %s" % vomsRoles)
+                    return
+        # test mode
+        if noSubmit:
+            return
         # invoke pathena/prun to send job to new site
         if newSite:
             tmpLog.info("Constrcuting job spec again to be sent to another site. Make sure you have the same runtime env as before ...")
@@ -580,14 +601,15 @@ For more info, do help(show) for example."""
         
                                         
     # show status
-    def show(JobID=None,forceUpdate=False):
-        """Print job records. All jobs will be shown if JobID is omitted. Only running jobs and last N jobs will be shown if show('running') and show(-N), respectively.
+    def show(JobID=None,forceUpdate=False,showPandaIDinState=''):
+        """Print job records. All jobs will be shown if JobID is omitted. Only running jobs and last N jobs will be shown if show('running') and show(-N), respectively. If forceUpdate=True, it will try to retrieve job infomation from the panda server. This may be useful to fix the local DB when synchronization between the local DB and the panda DB is lost somehow. showPandaIDinState takes a list of states so that PandaIDs will be shown when they are in one of those states.
         
          example:
            >>> show()
            >>> show(12)
            >>> show(-5)
            >>> show('running')
+           >>> show(15,showPandaIDinState='activated,running')
          """
         if JobID == None or JobID < 0:
             # show all local info
@@ -597,6 +619,8 @@ For more info, do help(show) for example."""
             # print
             for job in jobList:
                 print "======================================"
+                if showPandaIDinState != '':
+                    job.flag_showSubstatus = showPandaIDinState
                 print job
 	elif JobID == 'running':
             # show runnig jobs
@@ -608,6 +632,8 @@ For more info, do help(show) for example."""
             job = pbookCore.status(JobID,forceUpdate)
             # print
             print "======================================"
+            if showPandaIDinState:
+                job.flag_showSubstatus = showPandaIDinState
             print job
 
 
@@ -633,7 +659,7 @@ For more info, do help(show) for example."""
 
 
     # retry
-    def retry(JobID,upperJobID=None,newSite=False,newOpts={}):
+    def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False):
         """Retry failed/cancelled subJobs in JobID. Jobs between JobID and UpperJobID will be retried if upperJobID is given. Set newSite=True and specify newOpts when you want to retry at new site. newOpts is a map of options and new arguments which is passed to pathena/prun
 
          example:
@@ -649,9 +675,9 @@ For more info, do help(show) for example."""
             else:
                 # retry jobs between the range
                 for tmpJobID in range(JobID,upperJobID+1):
-                    pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts)
+                    pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit)
         else:            
-            pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts)
+            pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit)
 
 
     # rebrokerage

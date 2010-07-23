@@ -21,8 +21,31 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.70 (7/23/2010)
+  * fixed pbook.retry() to check VOMS role when retrying group jobs
+  * fixed local job conversion to set jobType using processingType
+  * fixed a crash in pathena when no file is available at a site
+  * added noSubmit to pbook.retry()
+
+0.2.69 (7/23/2010)
+  * fixed --trf of pathena to override DBR when DBR is explicitly specified in the argument
+
+0.2.68 (7/23/2010)
+  * improved --shipInput of pathena to find parentDS using GUIDs in TAG
+  * added --useChirpServer to pathena/prun
+
+0.2.67 (7/21/2010)
+  * added a protection against unregistered GUID lookup in eventPicking 
+
+0.2.66 (7/21/2010)
+  * fixed --trf of pathena and --exec of prun to allow %DB:LATEST 	
+  * fixed misleading errors when inDS is empty
+  * fixed DBR lookup to ignore CDRelease
+
+0.2.65 (7/20/2010)
   * added more warning for migration of naming convention
+  * updated --destSE to accept a list of destinations
+  * added showPandaIDinState to pbook.show()
 
 0.2.64 (7/16/2010)
   * fixed --goodRunListXML to parse multiple LBRange items in a single LumiBlockCollection
