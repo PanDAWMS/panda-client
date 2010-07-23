@@ -580,14 +580,15 @@ For more info, do help(show) for example."""
         
                                         
     # show status
-    def show(JobID=None,forceUpdate=False):
-        """Print job records. All jobs will be shown if JobID is omitted. Only running jobs and last N jobs will be shown if show('running') and show(-N), respectively.
+    def show(JobID=None,forceUpdate=False,showPandaIDinState=''):
+        """Print job records. All jobs will be shown if JobID is omitted. Only running jobs and last N jobs will be shown if show('running') and show(-N), respectively. If forceUpdate=True, it will try to retrieve job infomation from the panda server. This may be useful to fix the local DB when synchronization between the local DB and the panda DB is lost somehow. showPandaIDinState takes a list of states so that PandaIDs will be shown when they are in one of those states.
         
          example:
            >>> show()
            >>> show(12)
            >>> show(-5)
            >>> show('running')
+           >>> show(15,showPandaIDinState='activated,running')
          """
         if JobID == None or JobID < 0:
             # show all local info
@@ -597,6 +598,8 @@ For more info, do help(show) for example."""
             # print
             for job in jobList:
                 print "======================================"
+                if showPandaIDinState != '':
+                    job.flag_showSubstatus = showPandaIDinState
                 print job
 	elif JobID == 'running':
             # show runnig jobs
@@ -608,6 +611,8 @@ For more info, do help(show) for example."""
             job = pbookCore.status(JobID,forceUpdate)
             # print
             print "======================================"
+            if showPandaIDinState:
+                job.flag_showSubstatus = showPandaIDinState
             print job
 
 

@@ -22,7 +22,7 @@ class LocalJobSpec(object):
     
     _attributes += tuple(appended.keys())
     # slots
-    __slots__ = _attributes
+    __slots__ = _attributes + ('flag_showSubstatus',)
 
 
     # constructor
@@ -30,7 +30,8 @@ class LocalJobSpec(object):
         # install attributes
         for attr in self._attributes:
             setattr(self,attr,None)
-
+        self.flag_showSubstatus = ''
+        
 
     # string format
     def __str__(self):
@@ -50,9 +51,32 @@ class LocalJobSpec(object):
                 if not statusMap.has_key(tmpStatus):
                     statusMap[tmpStatus] = 0
                 statusMap[tmpStatus] += tmpCount
+        if self.flag_showSubstatus != '':
+            # get PandaIDs for each status 
+            pandaIDstatusMap = {}
+            tmpStatusList  = self.jobStatus.split(',')
+            tmpPandaIDList = self.PandaID.split(',')
+            for tmpIndex,tmpPandaID in enumerate(tmpPandaIDList):
+                if tmpIndex < len(tmpStatusList):
+                    tmpStatus = tmpStatusList[tmpIndex]
+                else:
+                    # use unkown for out-range
+                    tmpStatus = 'unknown'
+                # status of interest
+                if not tmpStatus in self.flag_showSubstatus.split(','):
+                    continue
+                # append    
+                if not pandaIDstatusMap.has_key(tmpStatus):
+                    pandaIDstatusMap[tmpStatus] = 'PandaID='
+                pandaIDstatusMap[tmpStatus] += '%s,' % tmpPandaID
         statusStr = self.dbStatus
         for tmpStatus,tmpCount in statusMap.iteritems():
             statusStr += '\n%8s   %10s : %s' % ('',tmpStatus,tmpCount)
+            if self.flag_showSubstatus:
+                if pandaIDstatusMap.has_key(tmpStatus):
+                    statusStr += '\n%8s   %10s   %s' % ('','',pandaIDstatusMap[tmpStatus][:-1])
+        # disable showSubstatus    
+        self.flag_showSubstatus = ''
         # number of jobs
         nJobs = len(self.PandaID.split(','))
         if self.buildStatus != '':
