@@ -151,6 +151,8 @@ optP.add_option('--long', action='store_const',const=True,dest='long',default=Fa
                 help='Send job to a long queue')
 optP.add_option('--outputPath',action='store',dest='outputPath', default='',
                 type='string', help='Physical path of output directory relative to a root path')
+optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
+                type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -1691,6 +1693,9 @@ for iJob in range(options.nJobs):
                 file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
     # set prodDBlock
     jobR.prodDBlock = PsubUtils.getProdDBlock(jobR,options.inDS)
+    # write outputs to Chirp Server
+    if options.useChirpServer != '':
+        PsubUtils.setCHIRPtokenToOutput(jobR,options.useChirpServer)
     # check job spec
     PsubUtils.checkJobSpec(jobR)
     # append

@@ -717,7 +717,7 @@ def checkDestSE(destSEs,dsName,verbose):
 
 # run pathena recursively
 def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,
-                  removedDS,inDS,goodRunListXML,eventPickEvtList,verbose):
+                  removedDS,inDS,goodRunListXML,eventPickEvtList,devidedByGUID,dbRelease,verbose,isMissing=True):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -771,12 +771,21 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # set inDS to avoid redundant ELSSI lookup for event picking
     if inDS != '' and eventPickEvtList != '' and not '--panda_inDSForEP' in fullExecString:
         fullExecString += ' --panda_inDSForEP=%s' % inDS
+    # set DBR
+    if dbRelease != '' and not '--panda_dbRelease' in fullExecString:
+        fullExecString += ' --panda_dbRelease=%s' % dbRelease
+    # suppress repetitive message
+    if not '--panda_suppressMsg' in fullExecString:
+        fullExecString += ' --panda_suppressMsg'
     # source name
     if not '--panda_srcName' in fullExecString:
         fullExecString += ' --panda_srcName=%s' % archiveName
     # server URL
     if not '--panda_srvURL' in fullExecString:
         fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
+    # devidedByGUID
+    if devidedByGUID and not '--panda_devidedByGUID' in fullExecString:
+        fullExecString += ' --panda_devidedByGUID'
     # run config
     conTmpfile = ''
     if not '--panda_runConfig' in fullExecString:
@@ -785,10 +794,10 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
         pickle.dump(runConfig,cFile)
         cFile.close()
         fullExecString += ' --panda_runConfig=%s' % conTmpfile
-
     # run pathena
     if anotherTry:
-        tmpLog.info("trying other sites for the missing files")
+        if isMissing:
+            tmpLog.info("trying other sites for the missing files")
         com = 'pathena ' + fullExecString
         if verbose:
             tmpLog.debug(com)
@@ -1090,6 +1099,7 @@ def checkJobSpec(job):
         tmpLog.error(errMsg)
         sys.exit(EC_Config)    
 
+
 # get prodDBlock
 def getProdDBlock(job,inDS):
     # no input
@@ -1132,6 +1142,32 @@ def getProdDBlock(job,inDS):
     return strInDS
 
 
+# get token for CHIRP
+tokenForCHIRP = None
+def getTokenForCHIRP(fileName,serverName,useCachedToken=True):
+    global tokenForCHIRP
+    if useCachedToken and tokenForCHIRP != None:
+        return tokenForCHIRP
+    tmpToken = 'chirp^%s^/%s^-d chirp' % (serverName,fileName.split('.')[1])
+    if useCachedToken:
+        tokenForCHIRP = tmpToken
+    return tmpToken    
+    
+
+# set CHIRP token
+def setCHIRPtokenToOutput(job,serverName):
+    if serverName == '':
+        return
+    token = None
+    for tmpFile in job.Files:
+        if tmpFile.type in ['output','log']:
+            # get token
+            if token == None:
+                token = getTokenForCHIRP(tmpFile.lfn,serverName)
+            # set token
+            tmpFile.dispatchDBlockToken = token
+            
+                          
 # execute pathena/prun with modify command-line paramters
 def execWithModifiedParams(jobs,newOpts,verbose):
     # get logger

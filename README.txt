@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.2.68 (7/23/2010)
+  * improved --shipInput of pathena to find parentDS using GUIDs in TAG
+  * added --useChirpServer to pathena/prun
+
 0.2.67 (7/21/2010)
   * added a protection against unregistered GUID lookup in eventPicking 
 

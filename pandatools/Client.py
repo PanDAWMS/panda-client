@@ -782,7 +782,7 @@ def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
     
 
 # list datasets by GUIDs
-def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
+def listDatasetsByGUIDs(guids,dsFilter,verbose=False,forColl=False):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
@@ -883,8 +883,12 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False):
             continue
         # duplicated
         if len(tmpDsNames) != 1:
-            errStr = "there are multiple datasets %s for GUID:%s. Please set --eventPickDS and/or --eventPickStreamName to choose one dataset"\
-                     % (str(tmpAllDsNames),guid)
+            if not forColl:
+                errStr = "there are multiple datasets %s for GUID:%s. Please set --eventPickDS and/or --eventPickStreamName to choose one dataset"\
+                         % (str(tmpAllDsNames),guid)
+            else:
+                errStr = "there are multiple datasets %s for GUID:%s. Please set --eventPickDS to choose one dataset"\
+                         % (str(tmpAllDsNames),guid)
             tmpLog.error(errStr)
             sys.exit(EC_Failed)
         # get LFN
