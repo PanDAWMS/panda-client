@@ -151,6 +151,8 @@ optP.add_option('--long', action='store_const',const=True,dest='long',default=Fa
                 help='Send job to a long queue')
 optP.add_option('--outputPath',action='store',dest='outputPath', default='',
                 type='string', help='Physical path of output directory relative to a root path')
+optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
+                type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -552,7 +554,7 @@ if options.site != 'AUTO':
     options.cloud = Client.PandaSites[options.site]['cloud']
 
 # get the latest of DBRelease
-if options.dbRelease == 'LATEST':
+if options.dbRelease == 'LATEST' or '%DB:LATEST' in options.jobParams:
     options.dbRelease = Client.getLatestDBRelease(options.verbose)
 
 # get DN
@@ -726,6 +728,16 @@ if options.inDS != '':
         recursiveFlag = False
     inputFileMap,inputDsString = Client.getFilesInDatasetWithFilter(options.inDS,options.match,shadowList,options.inputFileListName,
                                                                     options.verbose,dsStringFlag=True,isRecursive=recursiveFlag)
+    # empty
+    if inputFileMap == {} and shadowList == []:
+        errStr = "No files were found in %s (log.tgz was ignored). " % options.inDS
+        if options.match != '':
+            errStr += "Make sure that you specify a correct string in --match"
+	else:
+            errStr += "The dataset is empty"
+        tmpLog.error(errStr)
+        sys.exit(EC_Config)
+
     # sort
     inputFileList = inputFileMap.keys()
     inputFileList.sort()
@@ -829,7 +841,10 @@ if options.inDS != '':
                 if out.startswith('ERROR :'):
 		    if idxDsLocationMap == 0:
 			tmpBrokerErr += out
-			tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+                        if expCloudFlag:
+                            tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+                        else:
+                            tmpBrokerErr += " Could not find sites\n"
 		    else:
 			if tmpBrokerErr != '':
 			    tmpBrokerErr += out
@@ -1496,6 +1511,9 @@ for iJob in range(options.nJobs):
                 tmpRndmNum = int(match.group(1)) + iJob
                 # replace parameters
                 tmpJobO = re.sub(match.group(0),'%s%s' % (tmpRndmNum,match.group(2)),tmpJobO)
+        # DBR
+        if '%DB:LATEST' in tmpJobO and options.dbRelease != '':
+            tmpJobO = tmpJobO.replace('%DB:LATEST',options.dbRelease.split(':')[-1])
         jobR.jobParameters += '-p "%s" ' % urllib.quote(tmpJobO)
     # source files
     if not options.nobuild:
@@ -1675,6 +1693,9 @@ for iJob in range(options.nJobs):
                 file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
     # set prodDBlock
     jobR.prodDBlock = PsubUtils.getProdDBlock(jobR,options.inDS)
+    # write outputs to Chirp Server
+    if options.useChirpServer != '':
+        PsubUtils.setCHIRPtokenToOutput(jobR,options.useChirpServer)
     # check job spec
     PsubUtils.checkJobSpec(jobR)
     # append
