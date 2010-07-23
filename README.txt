@@ -21,10 +21,11 @@ pathena -h
 
 ** Release Note
 
-current
-  * added noSubmit to pbook.retry()
+0.2.70 (7/23/2010)
   * fixed pbook.retry() to check VOMS role when retrying group jobs
-  * fixed job conversion to set jobType using processingType
+  * fixed local job conversion to set jobType using processingType
+  * fixed a crash in pathena when no file is available at a site
+  * added noSubmit to pbook.retry()
 
 0.2.69 (7/23/2010)
   * fixed --trf of pathena to override DBR when DBR is explicitly specified in the argument
