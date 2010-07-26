@@ -318,18 +318,7 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
     # groupID
     ddata.groupID = 0
     # job type
-    ddata.jobType = ''
-    trfTypeMap = {
-        'prun'    : ['buildGen','runGen'],
-        'pathena' : ['buildJob','runAthena'],
-        }
-    for jobType,trfs in trfTypeMap.iteritems():
-        for trf in trfs:
-            if pandaJob.transformation.find(trf) != -1:
-                ddata.jobType = jobType
-                break
-        if ddata.jobType != '':
-            break
+    ddata.jobType = pandaJob.processingType
     # return
     return ddata
 
