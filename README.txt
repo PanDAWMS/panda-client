@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.71 (7/26/2010)
+  * added --antiMatch to prun
+     
 0.2.70 (7/23/2010)
   * fixed pbook.retry() to check VOMS role when retrying group jobs
   * fixed local job conversion to set jobType using processingType

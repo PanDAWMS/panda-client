@@ -77,6 +77,8 @@ optP.add_option('--cloud',action='store',dest='cloud',default=None,type='string'
                 help='Cloud where jobs are submitted. default is set according to your VOMS country group')
 optP.add_option('--match',action='store',dest='match',default='',type='string',
                 help='Use only files matching with given pattern')
+optP.add_option('--antiMatch',action='store',dest='antiMatch',default='',type='string',
+                help='Skip files matching with given pattern')
 optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
                 help='Required memory size')
 optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type='int',
@@ -485,6 +487,13 @@ if options.match != '':
     # convert * to .*
     options.match = options.match.replace('*','.*')
 
+# LFN anti-matching
+if options.antiMatch != '':
+    # convert . to \.
+    options.antiMatch = options.antiMatch.replace('.','\.')
+    # convert * to .*
+    options.antiMatch = options.antiMatch.replace('*','.*')
+
 # get job script
 jobScript = ''
 if options.jobParams == '':
@@ -727,14 +736,19 @@ if options.inDS != '':
     if options.crossSite in [0,maxCrossSite]:
         recursiveFlag = False
     inputFileMap,inputDsString = Client.getFilesInDatasetWithFilter(options.inDS,options.match,shadowList,options.inputFileListName,
-                                                                    options.verbose,dsStringFlag=True,isRecursive=recursiveFlag)
+                                                                    options.verbose,dsStringFlag=True,isRecursive=recursiveFlag,
+                                                                    antiFilter=options.antiMatch)
     # empty
     if inputFileMap == {} and shadowList == []:
         errStr = "No files were found in %s (log.tgz was ignored). " % options.inDS
         if options.match != '':
             errStr += "Make sure that you specify a correct string in --match"
+            if options.antiMatch != '':
+                errStr += " and/or --antiMatch"
 	else:
             errStr += "The dataset is empty"
+            if options.antiMatch != '':
+                errStr += " or --antiMatch is wrong"
         tmpLog.error(errStr)
         sys.exit(EC_Config)
 

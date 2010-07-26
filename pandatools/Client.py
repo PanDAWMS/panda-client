@@ -2201,7 +2201,8 @@ def getPandaClientVer(verbose):
 
 
 # get files in dataset with filte
-def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose,dsStringFlag=False,isRecursive=False):
+def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose,dsStringFlag=False,isRecursive=False,
+                                antiFilter=''):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # query files in dataset
@@ -2225,6 +2226,9 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
     filters = []
     if filter != '':
         filters = filter.split(',')
+    antifilters = []
+    if antiFilter != '':
+        antifilters = antiFilter.split(',')
     # remove redundant files
     tmpKeys = inputFileMap.keys()
     for tmpLFN in tmpKeys:
@@ -2241,6 +2245,16 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
                     matchFlag = True
                     break
             if not matchFlag:    
+                del inputFileMap[tmpLFN]
+                continue
+        # anti matching
+        if antiFilter != '':
+            antiMatchFlag = False
+            for tmpFilter in antifilters:
+                if re.search(tmpFilter,tmpLFN) != None:
+                    antiMatchFlag = True
+                    break
+            if antiMatchFlag:
                 del inputFileMap[tmpLFN]
                 continue
         # files in shadow
@@ -2261,12 +2275,14 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             if not matchFlag:
                 del inputFileMap[tmpLFN]
     # no files in filelist are available
-    if inputFileMap == {} and (filter != '' or inputFileListName != ''):
+    if inputFileMap == {} and (filter != '' or antiFilter != '' or inputFileListName != ''):
         if inputFileListName != '':
-            errStr =  "No files in %s are available in %s. " % (inputFileListName,inDS)
+            errStr =  "Files specified in %s are unavailable in %s. " % (inputFileListName,inDS)
+        elif filter != '':
+            errStr =  "File matching with %s are unavailable in %s. " % (filters,inDS)
         else:
-            errStr =  "%s are not available in %s. " % (filters,inDS)
-        errStr += "Make sure that you specify correct LFNs or matching pattern"            
+            errStr =  "File unmatching with %s are unavailable in %s. " % (antifilters,inDS)
+        errStr += "Make sure that you specify correct file names or matching patterns"
         tmpLog.error(errStr)
         sys.exit(EC_Failed)
     # return
