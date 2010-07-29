@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.72 (7/29/2010)
+  * fixed the range check in --goodRunList for LFNs with finer-grained LBs
+
 0.2.71 (7/26/2010)
   * added --antiMatch to prun
      
