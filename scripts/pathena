@@ -252,6 +252,8 @@ optP.add_option('--outputPath',action='store',dest='outputPath', default='./',
                 type='string', help='Physical path of output directory relative to a root path')
 optP.add_option('--useExperimental', action='store_const', const=True, dest='useExperimental',  default=False,
                 help='use experimental features')
+optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
+                type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
 # athena options
 optP.add_option('-c',action='store',dest='singleLine',type='string',default='',metavar='COMMAND',
                 help='One-liner, runs before any jobOs')
@@ -272,6 +274,12 @@ optP.add_option('--panda_inDSForEP', action='store', dest='panda_inDSForEP', def
                 type='string', help='internal parameter')
 optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
                 type='string', help='internal parameter')
+optP.add_option('--panda_dbRelease', action='store', dest='panda_dbRelease', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_devidedByGUID',action='store_const',const=True,dest='panda_devidedByGUID',default=False,
+                help='internal parameter')
+optP.add_option('--panda_suppressMsg',action='store_const',const=True,dest='panda_suppressMsg',default=False,
+                help='internal parameter')
 
 
 # parse options
@@ -796,7 +804,8 @@ if not options.trf:
             options.extFile.append(fileName)
             if not runConfig.input.shipFiles:
                 runConfig.input['shipFiles'] = []
-            runConfig.input['shipFiles'].append(fileName)
+            if not fileName in runConfig.input['shipFiles']:    
+                runConfig.input['shipFiles'].append(fileName)
     # generator files
     if runConfig.other.rndmGenFile:
         # append to extFile
@@ -819,8 +828,9 @@ if not options.trf:
             tmpLog.debug("output files : %s" % str(runConfig.output.alloutputs)) 
         for tmpExtOutFile in tuple(options.extOutFile):
             if tmpExtOutFile in runConfig.output.alloutputs:
-                tmpLog.warning("removed %s from extOutFile since it is automatically extracted from Athena. You don't need to specify it in extOutFile"
-                            % tmpExtOutFile)
+                if not options.panda_suppressMsg:
+                    tmpLog.warning("removed %s from extOutFile since it is automatically extracted from Athena. You don't need to specify it in extOutFile"
+                                   % tmpExtOutFile)
                 options.extOutFile.remove(tmpExtOutFile)
 else:
     # parse parameters for trf
@@ -940,7 +950,7 @@ if len(runConfig.other.rndmStream) != 0:
             runConfig.other.rndmNumbers.append([random.randint(1,5000000),random.randint(1,5000000)])
     if options.norandom:
         print
-if runConfig.other.G4RandomSeeds:
+if runConfig.other.G4RandomSeeds == True:
     if options.norandom:
         print
         print "Initial G4 random seeds need to be defined."
@@ -971,7 +981,8 @@ else:
 
 if options.panda_srcName != '':
     # reuse src
-    tmpLog.info('reuse source files')
+    if options.verbose:
+        tmpLog.debug('reuse source files')
     archiveName = options.panda_srcName
     # go to tmp dir
     os.chdir(tmpDir)
@@ -1054,12 +1065,23 @@ else:
             sys.exit(EC_Post)
 
 
-####################################################################3
+####################################################################
 # datasets 
 
+# override if %DB is specified in --trf
+if options.dbRelease == 'LATEST' and re.search('%DB=[^ :]+:[^ ]',jobO) != None:
+    options.dbRelease = ''
+    
 # get the latest of DBRelease
-if options.dbRelease == 'LATEST':
-    options.dbRelease = Client.getLatestDBRelease(options.verbose)
+if options.dbRelease == 'LATEST' or "%DB=LATEST" in jobO:
+    if options.panda_dbRelease == '':
+        options.dbRelease = Client.getLatestDBRelease(options.verbose)
+        options.panda_dbRelease = options.dbRelease
+    else:
+        options.dbRelease = options.panda_dbRelease
+    # replace
+    if "%DB=LATEST" in jobO:
+        jobO = jobO.replace("%DB=LATEST","%DB=" + options.dbRelease) 
 
 # check if output dataset is unique
 outputDSexist = False
@@ -1194,7 +1216,9 @@ if options.trf or options.dbRelease != '':
             tmpDbrLFN = match.group(2)
             # get files in the dataset
             if not tmpDbrDS in dbrDsList:
-                tmpLog.info("query files in %s" % tmpDbrDS)
+                tmpVerboseFlag = options.crossSite in [0,maxCrossSite] or options.verbose
+                if tmpVerboseFlag and not options.panda_suppressMsg:
+                    tmpLog.info("query files in %s" % tmpDbrDS)
                 tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
                 # append
                 for tmpLFN,tmpVal in tmpList.iteritems():
@@ -1398,7 +1422,16 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 errStr =  "No files in %s are available in %s. " % (options.inputFileList,options.inDS)
             else:
                 errStr =  "%s are not available in %s. " % (options.filelist,options.inDS)
-            errStr += "Make sure if you specify correct LFNs"
+            errStr += "Make sure that you specify correct LFNs"
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
+        # empty
+        if inputFileMap == {}:
+            errStr = "No files were found in %s (log.tgz was ignored). " % options.inDS
+            if options.inputType != []:
+                errStr += "Make sure that you specify correct types in --inputType"
+            else:
+		errStr += "The dataset is empty"
             tmpLog.error(errStr)
             sys.exit(EC_Config)
         # get locations when site==AUTO
@@ -1511,7 +1544,10 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 if out.startswith('ERROR :'):
 		    if idxDsLocationMap == 0:
 			tmpBrokerErr += out
-			tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+                        if expCloudFlag:
+                            tmpBrokerErr += " Could not find sites in the %s cloud.\n" % options.cloud
+                        else:
+                            tmpBrokerErr += " Could not find sites.\n"
 		    else:
 			if tmpBrokerErr != '':
 			    tmpBrokerErr += out
@@ -1569,7 +1605,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         if len(inputFileMap) == len(missList) and shadowList == []:
             tmpStr = "No files available on disk at %s" % options.site
             if options.crossSite == 0:
-                tmpLog.error()
+                tmpLog.error(tmpStr)
                 sys.exit(EC_Dataset)
             else:
                 tmpLog.info(tmpStr)
@@ -1600,6 +1636,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                         PsubUtils.runPathenaRec(runConfig,missList,tmpDir,fullExecString,options.nfiles,inputFileMap,
                                                 options.site,options.crossSite,archiveName,options.removedDS,
                                                 options.inDS,options.goodRunListXML,options.eventPickEvtList,
+                                                options.panda_devidedByGUID,options.panda_dbRelease,
                                                 options.verbose)
                 # exit        
                 sys.exit(0)
@@ -1632,9 +1669,62 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             inputFileList = guidCollList
             # use GUID boundaries
             devidedByGUID = True
+            # set parentDS
+            if options.parentDS == '':
+                # set inDS and missList to invoke runPathenaRec
+                options.inDS = ''
+                missList = []
+                # get DSs using GUIDs
+		tmpLog.info("extracting parent datasets from TAG")
+                tmpRetMap,tmpAllMap = Client.listDatasetsByGUIDs(guidCollList,options.eventPickDS,options.verbose,True)
+                for tmpGUID in guidCollList:
+                    if not tmpRetMap.has_key(tmpGUID):
+                        # no dataset for the GUID
+                        errStr = "cannot get dataset for GUID=%s from DQ2. " % tmpGUID
+                        if options.eventPickDS != '':
+                            errStr += "--eventPickDS doesn't match with any of %s" % str(tmpAllMap[tmpGUID])
+                        tmpLog.error(errStr)
+                        sys.exit(EC_Dataset)
+                    # get dataset name    
+                    tmpCollDS,tmpCollLFN = tmpRetMap[tmpGUID]
+                    # append
+                    if not (tmpCollDS+',') in options.inDS:
+                        options.inDS += (tmpCollDS+',')
+                    if not tmpCollLFN in missList:
+                        missList.append(tmpCollLFN)
+                options.inDS = options.inDS[:-1]
+                if options.inDS == '':
+                    tmpLog.error("GUIDs in TAG cannot be converted to datasets. Please specify --parentDS")
+                    sys.exit(EC_Dataset)                    
+                else:
+                    tmpLog.info("parent datasets : %s" % options.inDS)
+                    # go back to current dir
+                    os.chdir(currentDir)
+                    # use devidedByGUID in invoked process
+                    options.panda_devidedByGUID = True
+                    # set a dummy string to set inDS in invoked process
+                    options.goodRunListXML = 'dummy'
+                    # invoke pathena
+                    PsubUtils.runPathenaRec(runConfig,missList,tmpDir,fullExecString,options.nfiles,{},
+                                            options.site,options.crossSite,archiveName,options.removedDS,
+                                            options.inDS,options.goodRunListXML,options.eventPickEvtList,
+                                            options.panda_devidedByGUID,options.panda_dbRelease,
+                                            options.verbose,False)
+                    # exit        
+                    sys.exit(0)
+
+                    
+                    parentDSlocations = Client.getLocations(options.parentDS,[],options.cloud,False,options.verbose,
+                                                            getDQ2IDs=True,useOutContainer=usingContainerForOut)
+                    if parentDSlocations == []:
+                        tmpLog.error("could not find replica locations for %s which was extracted from TAG" % options.parentDS)
+                        sys.exit(EC_Dataset)
         else:
             # use input collections for looping
             inputFileList = runConfig.input.shipFiles
+    # set devidedByGUID which was originaly set by runPathenaRec
+    if options.panda_devidedByGUID:
+        devidedByGUID = True
     # skip files
     if options.nSkipFiles > len(inputFileList):
         tmpStr  = "the number of files in %s is less than nSkipFiles\n" % options.inDS
@@ -2415,7 +2505,7 @@ for iSubJob in range(options.split):
                 divF = 1
         # File Selector    
         tmpList = inputFileList[indexFiles:indexFiles+divF]
-        if options.inDS != '':
+        if options.inDS != '' and not options.shipinput:
             totalSize = 0
 	    for fileName in tmpList:
                 vals = inputFileMap[fileName]
@@ -2457,7 +2547,11 @@ for iSubJob in range(options.split):
         else:        
 	    for fileName in tmpList:
                 # use GUID boundaries or not
-                if devidedByGUID:
+                if options.panda_devidedByGUID:
+                    vals = inputFileMap[fileName]
+                    # collect GUID/LFNs
+                    guidBoundary.append(vals['guid'])
+                elif devidedByGUID:
                     # collect GUIDs
                     guidBoundary.append(fileName)
                     # fileName is a GUID in this case 
@@ -2466,6 +2560,11 @@ for iSubJob in range(options.split):
                         inList.append(realFileName)
                 else:
                     inList.append(fileName)
+            # use full list since mapping between input and coll GUIDs is lost by runPathenaRec
+            if options.panda_devidedByGUID:
+                for tmpShipFile in runConfig.input.shipFiles:
+                    if not tmpShipFile in inList:
+                        inList.append(tmpShipFile)
         # Minimum Bias
         if runConfig.input.inMinBias:
             if indexMin+options.nMin*divF >= len(minbiasList):
@@ -2862,6 +2961,9 @@ for iSubJob in range(options.split):
     # set destinationDBlock to associate jobs with the same output container
     # do it here since destinationDBock is used for output file naming
     jobR.destinationDBlock = original_outDS_Name
+    # write outputs to Chirp Server
+    if options.useChirpServer != '':
+        PsubUtils.setCHIRPtokenToOutput(jobR,options.useChirpServer)
     # check job spec
     PsubUtils.checkJobSpec(jobR)
     # append
@@ -3102,6 +3204,7 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
         PsubUtils.runPathenaRec(runConfig,missList,tmpDir,fullExecString,options.nfiles,inputFileMap,
                                 options.site,options.crossSite,archiveName,options.removedDS,
                                 options.inDS,options.goodRunListXML,options.eventPickEvtList,
+                                options.panda_devidedByGUID,options.panda_dbRelease,
                                 options.verbose)
 # succeeded
 sys.exit(0)

@@ -1773,11 +1773,18 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
                     continue
                 tmpLBmatch = re.search('_lb(\d+)-lb(\d+)',tmpLFN)
                 # _lbXXX-lbYYY not found
-                if tmpLBmatch == None:
-                    tmpFilesStr.append(tmpLFN)                    
-                    continue
-                LBstart_LFN = long(tmpLBmatch.group(1))
-                LBend_LFN   = long(tmpLBmatch.group(2))
+                if tmpLBmatch != None:
+                    LBstart_LFN = long(tmpLBmatch.group(1))
+                    LBend_LFN   = long(tmpLBmatch.group(2))
+                else:
+                    # try ._lbXYZ.
+                    tmpLBmatch = re.search('\._lb(\d+)\.',tmpLFN)
+                    if tmpLBmatch != None:
+                        LBstart_LFN = long(tmpLBmatch.group(1))
+                        LBend_LFN   = LBstart_LFN
+                    else:
+                        tmpFilesStr.append(tmpLFN)                    
+                        continue
                 # check range
                 if not runLumiMap.has_key(tmpRunNum):
                     tmpLog.error('AMI gives a wrong run number (%s) which is not contained in %s' % \
