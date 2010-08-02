@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.74 (8/2/2010)
   * fixed pbook.show('running')
+  * fixed string conversion error in prun
 
 0.2.73 (8/2/2010)
   * changed pathena/prun to use output container by default
