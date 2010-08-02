@@ -18,9 +18,6 @@ import copy
 defaultCloud = None
 defaultSite  = 'AUTO'
 
-# suffix for shadow dataset
-suffixShadow = "_shadow"
-
 # max lookup for cross site option
 maxCrossSite = 10
 
@@ -79,6 +76,8 @@ optP.add_option('--match',action='store',dest='match',default='',type='string',
                 help='Use only files matching with given pattern')
 optP.add_option('--antiMatch',action='store',dest='antiMatch',default='',type='string',
                 help='Skip files matching with given pattern')
+optP.add_option('--skipScan',action='store_const',const=True,dest='skipScan',default=False,
+                help='Skip LFC lookup at job submission')
 optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
                 help='Required memory size')
 optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type='int',
@@ -97,6 +96,8 @@ optP.add_option('--nFilesPerJob',action='store',dest='nFilesPerJob',default=None
                 help='Number of files on which each sub-job runs (default 50)')
 optP.add_option('--nJobs',action='store',dest='nJobs',default=-1,type='int',
                 help='Maximum number of sub-jobs. If the number of input files (N_in) is less than nJobs*nFilesPerJob, only N_in/nFilesPerJob sub-jobs will be instantiated')
+optP.add_option('--nGBPerJob',action='store',dest='nGBPerJob',default=-1,
+                help='Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value')
 optP.add_option('--maxFileSize',action='store',dest='maxFileSize',default=1024*1024,type='int',
                 help='Maximum size of files to be sent to WNs (default 1024*1024B)')
 optP.add_option('--athenaTag',action='store',dest='athenaTag',default='',type='string',
@@ -153,6 +154,8 @@ optP.add_option('--long', action='store_const',const=True,dest='long',default=Fa
                 help='Send job to a long queue')
 optP.add_option('--outputPath',action='store',dest='outputPath', default='',
                 type='string', help='Physical path of output directory relative to a root path')
+optP.add_option('--useOldStyleOutput',action='store_const',const=True,dest='useOldStyleOutput',default=False,
+                help="use output dataset and long LFN instead of output dataset container and short LFN")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
                 type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
 # internal parameters
@@ -166,6 +169,13 @@ optP.add_option('--panda_inDSForEP', action='store', dest='panda_inDSForEP', def
                 type='string', help='internal parameter')
 optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
                 type='string', help='internal parameter')
+optP.add_option('--panda_jobsetID',action='store',dest='panda_jobsetID',default=-1,
+                type='int', help='internal parameter for jobsetID')
+optP.add_option('--panda_dbRelease', action='store', dest='panda_dbRelease', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_suppressMsg',action='store_const',const=True,dest='panda_suppressMsg',default=False,
+                help='internal parameter')
+
 
 # parse options
 options,args = optP.parse_args()
@@ -218,6 +228,9 @@ if options.panda_srvURL != '':
 # version check
 PsubUtils.checkPandaClientVer(options.verbose)
 
+# suffix for shadow dataset
+suffixShadow = Client.suffixShadow
+
 # exclude sites
 if options.excludedSite != '':
     Client.excludeSite(options.excludedSite)
@@ -239,6 +252,10 @@ if Client.isDQ2free(options.site):
     else:
 	options.outputPath = './'
     options.outDS = options.outputPath
+else:
+    # enforce to use output dataset container
+    if not options.useOldStyleOutput and not options.outDS.endswith('/'):
+        options.outDS = options.outDS + '/'
 
 # keep original outDS
 original_outDS_Name = options.outDS
@@ -246,6 +263,7 @@ original_outDS_Name = options.outDS
 # reset crossSite unless container is used for output 
 if not original_outDS_Name.endswith('/'):
     options.crossSite = 0
+    options.panda_jobsetID = None
 
 usingContainerForOut = original_outDS_Name.endswith('/')
 
@@ -564,8 +582,12 @@ if options.site != 'AUTO':
 
 # get the latest of DBRelease
 if options.dbRelease == 'LATEST' or '%DB:LATEST' in options.jobParams:
-    options.dbRelease = Client.getLatestDBRelease(options.verbose)
-
+    if options.panda_dbRelease == '':
+        options.dbRelease = Client.getLatestDBRelease(options.verbose)
+        options.panda_dbRelease = options.dbRelease
+    else:
+        options.dbRelease = options.panda_dbRelease
+        
 # get DN
 distinguishedName = PsubUtils.getDN()
 
@@ -704,7 +726,9 @@ if options.dbRelease != '':
     tmpDbrDS,tmpDbrLFN  = options.dbRelease.split(':')
     # get files in the dataset
     if not tmpDbrDS in dbrDsList:
-        tmpLog.info("query files in %s" % tmpDbrDS)
+        tmpVerboseFlag = options.crossSite in [0,maxCrossSite] or options.verbose
+        if tmpVerboseFlag and not options.panda_suppressMsg:
+            tmpLog.info("query files in %s" % tmpDbrDS)
         tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
         # append
         for tmpLFN,tmpVal in tmpList.iteritems():
@@ -721,16 +745,9 @@ if options.inDS != '':
     # query files in shadow dataset
     shadowList = []
     if shadowDSexist and not outputContExist:
-        # query files in PandaDB first to get running/failed files + files which are being added
-        tmpShadowList = Client.getFilesInUseForAnal(options.outDS,options.verbose)
-        for tmpItem in tmpShadowList:
-            shadowList.append(tmpItem)
-        # query files in shadow dataset                        
-	for tmpItem in Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose):
-            if not tmpItem in shadowList:
-                shadowList.append(tmpItem)
+	shadowList = Client.getFilesInShadowDatasetOld(options.outDS,suffixShadow,options.verbose)
     elif outputContExist:
-	shadowList = Client.getFilesInShadowDataset(options.outDS,suffixShadow,options.verbose)
+	shadowList = Client.getFilesInShadowDataset(original_outDS_Name,suffixShadow,options.verbose)
     # query files in dataset
     recursiveFlag = True
     if options.crossSite in [0,maxCrossSite]:
@@ -790,12 +807,16 @@ if options.inDS != '':
                                                                                                     useOutContainer=usingContainerForOut)
                 # no location
                 if tmpDsLocationMap == {} and tmpDsLocationMapBack == {}:
-                    if expCloudFlag:
-                        tmpLog.error("could not find supported/online sites in the %s cloud for %s" % (options.cloud,tmpDsForLookUp))
+                    if options.crossSite in [0,maxCrossSite] or options.verbose:
+                        if expCloudFlag:
+                            tmpLog.error("could not find supported/online sites in the %s cloud for %s" % (options.cloud,tmpDsForLookUp))
+                        else:
+                            tmpLog.error("could not find supported/online sites for %s" % tmpDsForLookUp)
+                        if dsTapeSites != []:
+                            tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
                     else:
-                        tmpLog.error("could not find supported/online sites for %s" % tmpDsForLookUp)
-                    if dsTapeSites != []:
-                        tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
+                        errStr = "could not find supported/online sites for the missing files"
+                        tmpLog.error(errStr)
                     sys.exit(EC_Dataset)
                 # append
                 tmpDsLocationForTest[tmpDsForLookUp] = {'pri':tmpDsLocationMap,
@@ -885,7 +906,10 @@ if options.inDS != '':
                     break
         # scan local replica catalog
         dsLocation = Client.PandaSites[options.site]['ddm']
-        if Client.getLFC(dsLocation) != None:
+	if options.skipScan:
+            # skip LFC scan
+            missList = []
+        elif Client.getLFC(dsLocation) != None:
 	    tmpLog.info("scanning LFC %s for %s" % (Client.getLFC(dsLocation),options.site))
             # LFC
             if options.nFiles == 0 and options.nSkipFiles != 0:
@@ -915,7 +939,25 @@ if options.inDS != '':
             if not inputFile in missList:
                 newInputFiles.append(inputFile)
         inputFileList = newInputFiles
-    # skip files
+    # update shadow just in case since LFC scan may take long time
+    if not options.skipScan:
+        shadowUpdated = False
+        if shadowDSexist and not outputContExist:
+            # using += just in case
+            shadowList += Client.getFilesInShadowDatasetOld(options.outDS,suffixShadow,options.verbose)
+            shadowUpdated = True
+        elif outputContExist:
+            # using += just in case            
+            shadowList += Client.getFilesInShadowDataset(original_outDS_Name,suffixShadow,options.verbose)
+            shadowUpdated = True
+        # remove
+        if shadowUpdated:
+            tmpInputList = []
+            for tmpFileName in inputFileList:
+                if not tmpFileName in shadowList:
+                    tmpInputList.append(tmpFileName)
+            inputFileList = tmpInputList        
+    # truncate files
     inputFileList = inputFileList[options.nSkipFiles:]
     # no available input files
     if inputFileList == []:
@@ -938,7 +980,7 @@ if options.inDS != '':
                     PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
                                          options.site,options.crossSite,"",options.removedDS,
 					 options.inDS,options.goodRunListXML,options.eventPickEvtList,
-                                         options.verbose)
+                                         options.panda_dbRelease,jobsetID,options.verbose)
             # succeeded
             sys.exit(0)
     # truncate
@@ -1009,7 +1051,8 @@ if options.long and not options.site.startswith('ANALY_LONG_'):
 # create archive
 if options.panda_srcName != '':
     # reuse src
-    tmpLog.info('reuse source files')
+    if options.verbose:    
+        tmpLog.debug('reuse source files')
     archiveName = options.panda_srcName
     # go to tmp dir
     os.chdir(tmpDir)
@@ -1195,60 +1238,95 @@ if maxTotalSize in [0,'']:
     maxTotalSize = Client.maxTotalSize
 safetySize   = Client.safetySize
 
+# check nGBPerJob
+if options.nGBPerJob != -1:
+    if options.nGBPerJob == 'MAX':
+	# use site max value
+        options.nGBPerJob = maxTotalSize
+    else:
+        # convert to Bytes
+        options.nGBPerJob = long(int(options.nGBPerJob)*1024*1024*1024)
+        maxTotalSize = options.nGBPerJob
+
 # set number of files per job
-if options.inDS != '' and options.nFilesPerJob == None:
-    # count total size for inputs
-    totalSize = 0
-    for tmpLFN in inputFileList:
-        vals = inputFileMap[tmpLFN]
-        try:
-            totalSize += long(vals['fsize'])
-        except:
-            pass
-    # the number of files per max total
-    tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize-dbrDsSize-safetySize)
-    if tmpMod != 0:
-        tmpNSplit += 1
-    tmpNFiles,tmpMod = divmod(len(inputFileList),tmpNSplit)
-    # set upper limit
-    upperLimitOnFiles = 50
-    if tmpNFiles > upperLimitOnFiles:
-        tmpNFiles = upperLimitOnFiles
-    # check again just in case
-    iDiv = 0
-    subTotal = 0
-    for tmpLFN in inputFileList:
-        vals =inputFileMap[tmpLFN]
-        try:
-            subTotal += long(vals['fsize'])
-        except:
-            pass
-        iDiv += 1
-        if iDiv >= tmpNFiles:
-            # check
-            if subTotal > maxTotalSize-dbrDsSize-safetySize:
-                # decrement
-                tmpNFiles -= 1
-                break
-            # reset
-            iDiv = 0
-            subTotal = 0
-    # set
-    options.nFilesPerJob = tmpNFiles
-                                                            
+if options.inDS != '':
+    if options.nFilesPerJob == None and options.nGBPerJob < 0:
+        # count total size for inputs
+        totalSize = 0
+        for tmpLFN in inputFileList:
+            vals = inputFileMap[tmpLFN]
+            try:
+                totalSize += long(vals['fsize'])
+            except:
+                pass
+        # the number of files per max total
+        tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize-dbrDsSize-safetySize)
+        if tmpMod != 0:
+            tmpNSplit += 1
+        tmpNFiles,tmpMod = divmod(len(inputFileList),tmpNSplit)
+        # set upper limit
+        upperLimitOnFiles = 50
+        if tmpNFiles > upperLimitOnFiles:
+            tmpNFiles = upperLimitOnFiles
+        # check again just in case
+        iDiv = 0
+        subTotal = 0
+        for tmpLFN in inputFileList:
+            vals =inputFileMap[tmpLFN]
+            try:
+                subTotal += long(vals['fsize'])
+            except:
+                pass
+            iDiv += 1
+            if iDiv >= tmpNFiles:
+                # check
+                if subTotal > maxTotalSize-dbrDsSize-safetySize:
+                    # decrement
+                    tmpNFiles -= 1
+                    break
+                # reset
+                iDiv = 0
+                subTotal = 0
+        # set
+        options.nFilesPerJob = tmpNFiles
+    else:
+        # nGBPerJob
+        nFilesEachSubJob = []
+        subNFiles = 0
+        subTotal = dbrDsSize+safetySize
+        for tmpLFN in inputFileList:
+            vals = inputFileMap[tmpLFN]
+            fsize = long(vals['fsize'])
+            if (subTotal+fsize > maxTotalSize) or (subNFiles+1) > PsubUtils.limit_maxNumInputs:
+                if subNFiles == 0:
+                    nFilesEachSubJob.append(1)
+                    subNFiles = 0
+                else:
+                    nFilesEachSubJob.append(subNFiles)
+                    subNFiles = 1
+                    subTotal = dbrDsSize+safetySize+fsize
+            else:
+                subNFiles += 1
+                subTotal += fsize
+        # remain
+        if subNFiles != 0:
+            nFilesEachSubJob.append(subNFiles)
+        
 
 # calculate number of jobs
 if options.nJobs == -1:
     if options.inDS == '':
         options.nJobs = 1
-    else:
+    elif options.nGBPerJob < 0:
         rest = len(inputFileList) % options.nFilesPerJob
         if rest == 0:
             options.nJobs = len(inputFileList) / options.nFilesPerJob
         else:
             options.nJobs = (len(inputFileList)-rest) / options.nFilesPerJob
             options.nJobs += 1
-
+    else:
+        # nGBPerJob
+        options.nJobs = len(nFilesEachSubJob)
 
 # read jobID
 jobDefinitionID = 1
@@ -1296,6 +1374,8 @@ if options.nobuild:
 elif options.libDS == '':
     jobB = JobSpec()
     jobB.jobDefinitionID   = jobDefinitionID
+    if not options.panda_jobsetID in [None,'NULL']:
+        jobB.jobsetID      = options.panda_jobsetID
     jobB.jobName           = jobName
     jobB.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
     if options.provenanceID != -1:
@@ -1434,7 +1514,7 @@ else:
 
 # modify outDS name when container is used for output
 if original_outDS_Name.endswith('/'):
-    options.outDS = re.sub('/$','.%s' % options.site,options.outDS)
+    options.outDS = re.sub('/$','.%s' % time.strftime('%y%m%d%H%M%S'),options.outDS)
     # check outDS
     tmpDatasets = Client.getDatasets(options.outDS,options.verbose)
     if len(tmpDatasets) != 0:
@@ -1442,13 +1522,13 @@ if original_outDS_Name.endswith('/'):
 
 # get files in existing output dataset
 existingFilesInOutDS = {}
-if options.outputs != '' and outputDSexist:
+if options.outputs != '' and (outputDSexist or outputContExist):
     # query files in dataset from DDM
-    tmpLog.info("query files in %s" % options.outDS)
-    existingFilesInOutDS = Client.queryFilesInDataset(options.outDS,options.verbose)
+    tmpLog.info("query files in %s" % original_outDS_Name)
+    existingFilesInOutDS = Client.queryFilesInDataset(original_outDS_Name,options.verbose)
     # query files in dataset from Panda
-    status,tmpMap = Client.queryLastFilesInDataset([options.outDS],options.verbose)
-    for tmpLFN in tmpMap[options.outDS]:
+    status,tmpMap = Client.queryLastFilesInDataset([original_outDS_Name],options.verbose)
+    for tmpLFN in tmpMap[original_outDS_Name]:
         if not tmpLFN in existingFilesInOutDS:
             existingFilesInOutDS[tmpLFN] = None
 
@@ -1468,9 +1548,12 @@ isDirectAccess = PsubUtils.isDirectAccess(options.site)
 
 # runJobs
 indexOffsetMap = {}
+jobsetIDMapForLFN = {}
 for iJob in range(options.nJobs):
     jobR = JobSpec()
     jobR.jobDefinitionID   = jobDefinitionID
+    if not options.panda_jobsetID in [None,'NULL']:
+        jobR.jobsetID      = options.panda_jobsetID
     jobR.jobName           = jobName
     jobR.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
     if options.provenanceID != -1:
@@ -1546,8 +1629,15 @@ for iJob in range(options.nJobs):
     # input files
     if options.inDS != '':
         totalSize = 0
-        indexIn = iJob*options.nFilesPerJob
-        inList = inputFileList[indexIn:indexIn+options.nFilesPerJob]
+        if options.nGBPerJob < 0:
+            indexIn = iJob*options.nFilesPerJob
+            inList = inputFileList[indexIn:indexIn+options.nFilesPerJob]
+        else:
+            # nGBPerJob
+            indexIn = 0
+            for tmpNFiles in nFilesEachSubJob[:iJob]:
+                indexIn += tmpNFiles
+            inList = inputFileList[indexIn:indexIn+nFilesEachSubJob[iJob]]    
         if inList == []:
             break
         for tmpLFN in inList:
@@ -1613,7 +1703,8 @@ for iJob in range(options.nJobs):
                 errStr += "(DBRelease=%sMB)" % (dbrDsSize>>20)
             errStr += ". It must be less than %sMB to avoid overflowing the remote disk. " \
                   % (maxTotalSize >> 20)
-            errStr += "Please split the job using --nFilesPerJob."
+            errStr += "Please split the job using --nFilesPerJob. If file sizes vary in large range "
+	    errStr += "--nGBPerJob may help. e.g., --nGBPerJob=MAX"
             tmpLog.error(errStr)            
             sys.exit(EC_Split)
         # set parameter
@@ -1648,6 +1739,7 @@ for iJob in range(options.nJobs):
             jobR.jobParameters += '--notExpandDBR '
     # output files
     outMap = {}
+    dsNameWoSlash = re.sub('/$','',original_outDS_Name)
     if options.outputs != '':
         for tmpLFN in options.outputs.split(','):
             # set offset to 0 for fresh output dataset
@@ -1661,26 +1753,51 @@ for iJob in range(options.nJobs):
                 idxOffset = 0
                 getOffset = True
             # new LFN
-            tmpNewLFN = '%s._%05d.%s' % (options.outDS,idxOffset+iJob+1,tmpLFN)
+            matchLFN = re.search('^([^\.]+)\.([^\.]+)\.',dsNameWoSlash)
+            if matchLFN != None and original_outDS_Name.endswith('/'):
+                flagUseNewLFN = True
+                if jobsetIDMapForLFN.has_key(tmpLFN) and jobsetIDMapForLFN[tmpLFN] != None:
+                    lfnPrefix = '%s.%s.' % (matchLFN.group(1),matchLFN.group(2),jobsetIDMapForLFN[tmpLFN])
+                else:
+                    lfnPrefix = '%s.%s.$JOBSETID' % (matchLFN.group(1),matchLFN.group(2))                    
+            else:
+                flagUseNewLFN = False
+                lfnPrefix = dsNameWoSlash
+            tmpNewLFN = '%s._%05d.%s' % (lfnPrefix,idxOffset+iJob+1,tmpLFN)
             # change * to XYZ and add .tgz
 	    if tmpNewLFN.find('*') != -1:
 		tmpNewLFN = tmpNewLFN.replace('*','XYZ')
 		tmpNewLFN = '%s.tgz' % tmpNewLFN
             # get offset
             if getOffset:
-                oldHead = '%s._%05d.' % (options.outDS,idxOffset+iJob+1)
-                filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % options.outDS)
-                idxOffset = PsubUtils.getMaxIndex(existingFilesInOutDS,filePatt)
-                # append
-                existingFilesInOutDS[tmpLFN] = idxOffset
-                # correct
-                newHead = '%s._%05d.' % (options.outDS,idxOffset+iJob+1)
-                tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)
+                oldHead = '%s._%05d.' % (lfnPrefix,idxOffset+iJob+1)
+                if not flagUseNewLFN:
+                    # old LFN format : Datasetname.XYZ
+                    filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % lfnPrefix)
+                    # get offset    
+                    idxOffset = PsubUtils.getMaxIndex(existingFilesInOutDS,filePatt)
+                    # append
+                    indexOffsetMap[tmpLFN] = idxOffset
+                    # correct
+                    newHead = '%s._%05d.' % (dsNameWoSlash,idxOffset+iJob+1)
+                    tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)                    
+                else:
+                    # short LFN : user.nickname.XYZ
+                    filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % lfnPrefix.replace('$JOBSETID','(\d+)'))
+                    # get offset    
+                    idxOffset,jobsetIDinLFN = PsubUtils.getMaxIndex(existingFilesInOutDS,filePatt,shortLFN=True)
+                    # append
+                    indexOffsetMap[tmpLFN] = idxOffset
+                    jobsetIDMapForLFN[tmpLFN] = jobsetIDinLFN
+                    # correct
+                    if jobsetIDinLFN != None:
+                        newHead = '%s._%05d.' % (lfnPrefix.replace('$JOBSETID',jobsetIDinLFN),idxOffset+iJob+1)
+                        tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)                    
             # set file spec
             file = FileSpec()
             file.lfn               = tmpNewLFN              
             file.type              = 'output'
-            file.dataset           = options.outDS        
+            file.dataset           = original_outDS_Name
             file.destinationSE     = jobR.destinationSE
             file.destinationDBlock = options.outDS
             jobR.addFile(file)
@@ -1689,9 +1806,9 @@ for iJob in range(options.nJobs):
         jobR.jobParameters += '-o "%s" ' % str(outMap)
     # log
     file = FileSpec()
-    file.lfn               = '%s._$PANDAID.log.tgz' % options.outDS
+    file.lfn               = '%s._$PANDAID.log.tgz' % dsNameWoSlash
     file.type              = 'log'
-    file.dataset           = options.outDS    
+    file.dataset           = original_outDS_Name
     file.destinationSE     = jobR.destinationSE
     file.destinationDBlock = options.outDS
     jobR.addFile(file)
@@ -1717,6 +1834,8 @@ for iJob in range(options.nJobs):
         tmpLog.debug(jobR.jobParameters)
     jobList.append(jobR)
 
+# jobsetID
+jobsetID = options.panda_jobsetID
 
 # no submit 
 if not options.nosubmit:
@@ -1798,6 +1917,8 @@ if not options.nosubmit:
             if index==0:
                 # set JobID
                 jobID = o[1]
+                # set jobsetID
+                jobsetID = o[2]['jobsetID']
             if index==0 and options.libDS=='' and not options.nobuild:
                 outstr += "  > build\n"
                 outstr += "    PandaID=%s\n" % o[0]
@@ -1809,7 +1930,9 @@ if not options.nosubmit:
                 runStr = '%s' % o[0]                        
             elif index+1==len(out):
                 outstr += "-%s" % o[0]
-                runStr += '-%s' % o[0]                                    
+                runStr += '-%s' % o[0]
+    if not jobsetID in [None,'NULL']:                            
+        print ' JobsetID  : %s' % jobsetID
     print ' JobID  : %s' % jobID
     print ' Status : %d' % status
     print outstr
@@ -1844,6 +1967,6 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
 	PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
                              options.site,options.crossSite,archiveName,options.removedDS,
 			     options.inDS,options.goodRunListXML,options.eventPickEvtList,
-                             options.verbose)
+			     options.panda_dbRelease,jobsetID,options.verbose)
 # succeeded
 sys.exit(0)

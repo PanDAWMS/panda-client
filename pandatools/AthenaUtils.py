@@ -1028,6 +1028,9 @@ indexStreamG = 0
 indexMeta    = 0
 indexMS      = 0
 
+# global serial number for LFN
+globalSerialnumber = None
+
 
 # set initial index of outputs
 def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSlist,verbose):
@@ -1051,23 +1054,41 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
     global indexStreamG
     global indexMeta
     global indexMS
+    global globalSerialnumber
     # get logger
     tmpLog = PLogger.getPandaLogger()
 
+    # remove /
+    origOutDS = outDS
+    outDS = re.sub('/$','',outDS)
+    
     # get maximum index
     def getIndex(list,pattern):
         maxIndex = 0
         for item in list:
             match = re.match(pattern,item)
             if match != None:
-                tmpIndex = int(match.group(1))
+                if len(match.groups()) == 1:
+                    # old convention : FullDatasetName.XYZ
+                    tmpIndex = int(match.group(1))
+                else:
+                    # new convention : user.nick.XYZ
+                    tmpIndex = int(match.group(2))
                 if maxIndex < tmpIndex:
                     maxIndex = tmpIndex
+                    # set global serial number for LFN
+                    if len(match.groups()) == 2:
+                        global globalSerialnumber
+                        if globalSerialnumber == None or \
+                           int(globalSerialnumber) < int(match.group(1)):
+                            globalSerialnumber = match.group(1)
         return maxIndex
 
     # get files for individualOutDS
     def getFilesWithSuffix(fileMap,suffix):
         tmpDsName = "%s_%s" % (outDS,suffix)
+        if origOutDS.endswith('/'):
+            tmpDsName += '/'
         if not outputIndvDSlist.has_key(tmpDsName):
             return
         tmpLog.info("query files in %s" % tmpDsName)
@@ -1082,11 +1103,11 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
                 fileMap[tmpLFN] = None
 
     # query files in dataset from DDM
-    tmpLog.info("query files in %s" % outDS)
-    tmpList = Client.queryFilesInDataset(outDS,verbose)
+    tmpLog.info("query files in %s" % origOutDS)
+    tmpList = Client.queryFilesInDataset(origOutDS,verbose)
     # query files in dataset from Panda
-    status,tmpMap = Client.queryLastFilesInDataset([outDS],verbose)
-    for tmpLFN in tmpMap[outDS]:
+    status,tmpMap = Client.queryLastFilesInDataset([origOutDS],verbose)
+    for tmpLFN in tmpMap[origOutDS]:
         if not tmpLFN in tmpList:
             tmpList[tmpLFN] = None
     # query files for individualOutDS:
@@ -1137,39 +1158,44 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
                 getFilesWithSuffix(tmpList,sName)
                 
     # set index
-    indexHIST    = getIndex(tmpList,"%s\.hist\._(\d+)\.root" % outDS)
-    indexRDO     = getIndex(tmpList,"%s\.RDO\._(\d+)\.pool\.root" % outDS)    
-    indexESD     = getIndex(tmpList,"%s\.ESD\._(\d+)\.pool\.root" % outDS)
-    indexAOD     = getIndex(tmpList,"%s\.AOD\._(\d+)\.pool\.root" % outDS)
-    indexTAG     = getIndex(tmpList,"%s\.TAG\._(\d+)\.coll\.root" % outDS)
-    indexStream1 = getIndex(tmpList,"%s\.Stream1\._(\d+)\.pool\.root" % outDS)
-    indexStream2 = getIndex(tmpList,"%s\.Stream2\._(\d+)\.pool\.root" % outDS)
-    indexBS      = getIndex(tmpList,"%s\.BS\._(\d+)\.data" % outDS)
+    tmpMatch = re.search('^([^\.]+)\.([^\.]+)\.',outDS)
+    if tmpMatch != None and origOutDS.endswith('/'):
+        shortPrefix = '^%s\.%s\.(\d+)' % (tmpMatch.group(1),tmpMatch.group(2))
+    else:
+        shortPrefix = outDS        
+    indexHIST    = getIndex(tmpList,"%s\.hist\._(\d+)\.root" % shortPrefix)
+    indexRDO     = getIndex(tmpList,"%s\.RDO\._(\d+)\.pool\.root" % shortPrefix)    
+    indexESD     = getIndex(tmpList,"%s\.ESD\._(\d+)\.pool\.root" % shortPrefix)
+    indexAOD     = getIndex(tmpList,"%s\.AOD\._(\d+)\.pool\.root" % shortPrefix)
+    indexTAG     = getIndex(tmpList,"%s\.TAG\._(\d+)\.coll\.root" % shortPrefix)
+    indexStream1 = getIndex(tmpList,"%s\.Stream1\._(\d+)\.pool\.root" % shortPrefix)
+    indexStream2 = getIndex(tmpList,"%s\.Stream2\._(\d+)\.pool\.root" % shortPrefix)
+    indexBS      = getIndex(tmpList,"%s\.BS\._(\d+)\.data" % shortPrefix)
     if runConfig.output.outSelBS:
-        indexSelBS   = getIndex(tmpList,"%s\.%s\._(\d+)\.data" % (outDS,runConfig.output.outSelBS))
+        indexSelBS   = getIndex(tmpList,"%s\.%s\._(\d+)\.data" % (shortPrefix,runConfig.output.outSelBS))
     if runConfig.output.outNtuple:
         for sName in runConfig.output.outNtuple:
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (outDS,sName))
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (shortPrefix,sName))
             if tmpIndex > indexNT:
                 indexNT  = tmpIndex
     if runConfig.output.outTHIST:            
         for sName in runConfig.output.outTHIST:
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (outDS,sName))
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (shortPrefix,sName))
             if tmpIndex > indexTHIST:
                 indexTHIST  = tmpIndex
     if runConfig.output.outAANT:            
         for aName,sName in runConfig.output.outAANT:
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (outDS,sName))
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (shortPrefix,sName))
             if tmpIndex > indexAANT:
                 indexAANT  = tmpIndex
     if runConfig.output.outTAGX:            
         for sName,oName in runConfig.output.outTAGX:
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.%s" % (outDS,sName,oName))
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.%s" % (shortPrefix,sName,oName))
             if tmpIndex > indexTAGX:
                 indexTAGX  = tmpIndex
     if runConfig.output.outIROOT:            
         for sIndex,sName in enumerate(runConfig.output.outIROOT):
-            tmpIndex = getIndex(tmpList,"%s\.iROOT%s\._(\d+)\.%s" % (outDS,sIndex,sName))
+            tmpIndex = getIndex(tmpList,"%s\.iROOT%s\._(\d+)\.%s" % (shortPrefix,sIndex,sName))
             if tmpIndex > indexIROOT:
                 indexIROOT  = tmpIndex
     if runConfig.output.extOutFile: 
@@ -1178,32 +1204,32 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
             if sName.find('*') != -1:
                 sName = sName.replace('*','XYZ')
                 sName = '%s.tgz' % sName
-            tmpIndex = getIndex(tmpList,"%s\.EXT%s\._(\d+)\.%s" % (outDS,sIndex,sName))
+            tmpIndex = getIndex(tmpList,"%s\.EXT%s\._(\d+)\.%s" % (shortPrefix,sIndex,sName))
             if tmpIndex > indexEXT:
                 indexEXT  = tmpIndex
     if runConfig.output.outStreamG:            
         for sName in runConfig.output.outStreamG:
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (outDS,sName))
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (shortPrefix,sName))
             if tmpIndex > indexStreamG:
                 indexStreamG = tmpIndex
     if runConfig.output.outMeta:            
         for sName,sAsso in runConfig.output.outMeta:
             iMeta = 0
             if sAsso == 'None':
-                tmpIndex = getIndex(tmpList,"%s\.META%s\._(\d+)\.root" % (outDS,iMeta))
+                tmpIndex = getIndex(tmpList,"%s\.META%s\._(\d+)\.root" % (shortPrefix,iMeta))
                 iMeta += 1
                 if tmpIndex > indexMeta:
                     indexMeta = tmpIndex
     if runConfig.output.outMS:                
         for sName,sAsso in runConfig.output.outMS:
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (outDS,sName))
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (shortPrefix,sName))
             if tmpIndex > indexMS:
                 indexMS = tmpIndex
 
 
     
 # convert runConfig to outMap
-def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
+def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,original_outDS=''):
     from taskbuffer.FileSpec import FileSpec    
     # use global to increment index
     global indexHIST
@@ -1224,18 +1250,34 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
     global indexStreamG
     global indexMeta
     global indexMS
+    # remove /
+    outDSwoSlash = re.sub('/$','',original_outDS)
+    tmpMatch = re.search('^([^\.]+)\.([^\.]+)\.',original_outDS)
+    if tmpMatch != None and original_outDS.endswith('/'):
+        outDSwoSlash = '%s.%s.' % (tmpMatch.group(1),tmpMatch.group(2))
+        if globalSerialnumber == None:
+            outDSwoSlash += '$JOBSETID'
+        else:
+            outDSwoSlash += globalSerialnumber
     # start conversion
     if runConfig.output.outNtuple:
         indexNT += 1
         for sName in runConfig.output.outNtuple:
             file = FileSpec()
-            file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexNT)
             file.type = 'output'
-            file.dataset = jobR.destinationDBlock
+            if original_outDS.endswith('/'):
+                file.lfn  = '%s.%s._%05d.root' % (outDSwoSlash,sName,indexNT)                
+                file.dataset = original_outDS
+            else:
+                file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexNT)
+                file.dataset = jobR.destinationDBlock
             file.destinationDBlock = jobR.destinationDBlock
             if individualOutDS:
                 tmpSuffix = '_%s' % sName
-                file.dataset += tmpSuffix
+                if original_outDS.endswith('/'):
+                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+                else:
+                    file.dataset += tmpSuffix
                 file.destinationDBlock += tmpSuffix
             file.destinationSE = jobR.destinationSE
             jobR.addFile(file)
@@ -1245,13 +1287,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
     if runConfig.output.outHist:
         indexHIST += 1
         file = FileSpec()
-        file.lfn  = '%s.hist._%05d.root' % (jobR.destinationDBlock,indexHIST)
         file.type = 'output'
-        file.dataset = jobR.destinationDBlock        
+        if original_outDS.endswith('/'):
+            file.lfn  = '%s.hist._%05d.root' % (outDSwoSlash,indexHIST)            
+            file.dataset = original_outDS
+        else:
+            file.lfn  = '%s.hist._%05d.root' % (jobR.destinationDBlock,indexHIST)
+            file.dataset = jobR.destinationDBlock        
         file.destinationDBlock = jobR.destinationDBlock
         if individualOutDS:
             tmpSuffix = '_HIST'
-            file.dataset += tmpSuffix
+            if original_outDS.endswith('/'):
+                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+            else:                    
+                file.dataset += tmpSuffix
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
@@ -1259,13 +1308,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
     if runConfig.output.outRDO:
         indexRDO += 1        
         file = FileSpec()
-        file.lfn  = '%s.RDO._%05d.pool.root' % (jobR.destinationDBlock,indexRDO)        
         file.type = 'output'
-        file.dataset = jobR.destinationDBlock        
+        if original_outDS.endswith('/'):
+            file.lfn  = '%s.RDO._%05d.pool.root' % (outDSwoSlash,indexRDO)                    
+            file.dataset = original_outDS
+        else:
+            file.lfn  = '%s.RDO._%05d.pool.root' % (jobR.destinationDBlock,indexRDO)        
+            file.dataset = jobR.destinationDBlock        
         file.destinationDBlock = jobR.destinationDBlock
         if individualOutDS:
             tmpSuffix = '_RDO'
-            file.dataset += tmpSuffix
+            if original_outDS.endswith('/'):
+                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+            else:
+                file.dataset += tmpSuffix
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
@@ -1273,13 +1329,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
     if runConfig.output.outESD:
         indexESD += 1        
         file = FileSpec()
-        file.lfn  = '%s.ESD._%05d.pool.root' % (jobR.destinationDBlock,indexESD)        
         file.type = 'output'
-        file.dataset = jobR.destinationDBlock        
+        if original_outDS.endswith('/'):
+            file.lfn  = '%s.ESD._%05d.pool.root' % (outDSwoSlash,indexESD)        
+            file.dataset = original_outDS
+        else:
+            file.lfn  = '%s.ESD._%05d.pool.root' % (jobR.destinationDBlock,indexESD)        
+            file.dataset = jobR.destinationDBlock        
         file.destinationDBlock = jobR.destinationDBlock
         if individualOutDS:
             tmpSuffix = '_ESD'
-            file.dataset += tmpSuffix
+            if original_outDS.endswith('/'):
+                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+            else:
+                file.dataset += tmpSuffix
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
@@ -1287,13 +1350,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
     if runConfig.output.outAOD:
         indexAOD += 1                
         file = FileSpec()
-        file.lfn  = '%s.AOD._%05d.pool.root' % (jobR.destinationDBlock,indexAOD)        
         file.type = 'output'
-        file.dataset = jobR.destinationDBlock        
+        if original_outDS.endswith('/'):
+            file.lfn  = '%s.AOD._%05d.pool.root' % (outDSwoSlash,indexAOD)        
+            file.dataset = original_outDS
+        else:
+            file.lfn  = '%s.AOD._%05d.pool.root' % (jobR.destinationDBlock,indexAOD)        
+            file.dataset = jobR.destinationDBlock        
         file.destinationDBlock = jobR.destinationDBlock
         if individualOutDS:
             tmpSuffix = '_AOD'
-            file.dataset += tmpSuffix
+            if original_outDS.endswith('/'):
+                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+            else:
+                file.dataset += tmpSuffix
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
@@ -1301,13 +1371,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
     if runConfig.output.outTAG:
         indexTAG += 1                        
         file = FileSpec()
-        file.lfn  = '%s.TAG._%05d.coll.root' % (jobR.destinationDBlock,indexTAG)                
         file.type = 'output'
-        file.dataset = jobR.destinationDBlock        
+        if original_outDS.endswith('/'):
+            file.lfn  = '%s.TAG._%05d.coll.root' % (outDSwoSlash,indexTAG)                
+            file.dataset = original_outDS
+        else:
+            file.lfn  = '%s.TAG._%05d.coll.root' % (jobR.destinationDBlock,indexTAG)                
+            file.dataset = jobR.destinationDBlock        
         file.destinationDBlock = jobR.destinationDBlock
         if individualOutDS:
             tmpSuffix = '_TAG'
-            file.dataset += tmpSuffix
+            if original_outDS.endswith('/'):
+                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+            else:
+                file.dataset += tmpSuffix
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
@@ -1317,13 +1394,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
         sNameList = []
         for aName,sName in runConfig.output.outAANT:
             file = FileSpec()
-            file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexAANT)       
             file.type = 'output'
-            file.dataset = jobR.destinationDBlock        
+            if original_outDS.endswith('/'):
+                file.lfn  = '%s.%s._%05d.root' % (outDSwoSlash,sName,indexAANT)       
+                file.dataset = original_outDS
+            else:
+                file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexAANT)       
+                file.dataset = jobR.destinationDBlock        
             file.destinationDBlock = jobR.destinationDBlock
             if individualOutDS:
                 tmpSuffix = '_%s' % sName
-                file.dataset += tmpSuffix
+                if original_outDS.endswith('/'):
+                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+                else:
+                    file.dataset += tmpSuffix
                 file.destinationDBlock += tmpSuffix
             file.destinationSE = jobR.destinationSE
             if not sName in sNameList:
@@ -1336,13 +1420,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
         indexTHIST += 1
         for sName in runConfig.output.outTHIST:
             file = FileSpec()
-            file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexTHIST)
             file.type = 'output'
-            file.dataset = jobR.destinationDBlock
+            if original_outDS.endswith('/'):
+                file.lfn  = '%s.%s._%05d.root' % (outDSwoSlash,sName,indexTHIST)
+                file.dataset = original_outDS
+            else:
+                file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexTHIST)
+                file.dataset = jobR.destinationDBlock
             file.destinationDBlock = jobR.destinationDBlock
             if individualOutDS:
                 tmpSuffix = '_%s' % sName
-                file.dataset += tmpSuffix
+                if original_outDS.endswith('/'):
+                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+                else:
+                    file.dataset += tmpSuffix
                 file.destinationDBlock += tmpSuffix
             file.destinationSE = jobR.destinationSE
             jobR.addFile(file)
@@ -1353,13 +1444,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
         indexIROOT += 1
         for sIndex,sName in enumerate(runConfig.output.outIROOT):
             file = FileSpec()
-            file.lfn  = '%s.iROOT%s._%05d.%s' % (jobR.destinationDBlock,sIndex,indexIROOT,sName)
             file.type = 'output'
-            file.dataset = jobR.destinationDBlock
+            if original_outDS.endswith('/'):
+                file.lfn  = '%s.iROOT%s._%05d.%s' % (outDSwoSlash,sIndex,indexIROOT,sName)
+                file.dataset = original_outDS
+            else:
+                file.lfn  = '%s.iROOT%s._%05d.%s' % (jobR.destinationDBlock,sIndex,indexIROOT,sName)
+                file.dataset = jobR.destinationDBlock
             file.destinationDBlock = jobR.destinationDBlock
             if individualOutDS:
                 tmpSuffix = '_iROOT%s' % sIndex
-                file.dataset += tmpSuffix
+                if original_outDS.endswith('/'):
+                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+                else:
+                    file.dataset += tmpSuffix
                 file.destinationDBlock += tmpSuffix
             file.destinationSE = jobR.destinationSE
             jobR.addFile(file)
@@ -1375,13 +1473,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
                 sName = sName.replace('*','XYZ')
                 sName = '%s.tgz' % sName
             file = FileSpec()
-            file.lfn  = '%s.EXT%s._%05d.%s' % (jobR.destinationDBlock,sIndex,indexEXT,sName)
             file.type = 'output'
-            file.dataset = jobR.destinationDBlock
+            if original_outDS.endswith('/'):
+                file.lfn  = '%s.EXT%s._%05d.%s' % (outDSwoSlash,sIndex,indexEXT,sName)
+                file.dataset = original_outDS
+            else:
+                file.lfn  = '%s.EXT%s._%05d.%s' % (jobR.destinationDBlock,sIndex,indexEXT,sName)
+                file.dataset = jobR.destinationDBlock
             file.destinationDBlock = jobR.destinationDBlock
             if individualOutDS:
                 tmpSuffix = '_EXT%s' % sIndex
-                file.dataset += tmpSuffix
+                if original_outDS.endswith('/'):
+                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+                else:
+                    file.dataset += tmpSuffix
                 file.destinationDBlock += tmpSuffix
             file.destinationSE = jobR.destinationSE
             jobR.addFile(file)
@@ -1392,13 +1497,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
         indexTAGX += 1
         for sName,oName in runConfig.output.outTAGX:
             file = FileSpec()
-            file.lfn  = '%s.%s._%05d.%s' % (jobR.destinationDBlock,sName,indexTAGX,oName)
             file.type = 'output'
-            file.dataset = jobR.destinationDBlock
+            if original_outDS.endswith('/'):
+                file.lfn  = '%s.%s._%05d.%s' % (outDSwoSlash,sName,indexTAGX,oName)
+                file.dataset = original_outDS
+            else:
+                file.lfn  = '%s.%s._%05d.%s' % (jobR.destinationDBlock,sName,indexTAGX,oName)
+                file.dataset = jobR.destinationDBlock
             file.destinationDBlock = jobR.destinationDBlock
             if individualOutDS:
                 tmpSuffix = '_%s' % sName
-                file.dataset += tmpSuffix
+                if original_outDS.endswith('/'):
+                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+                else:
+                    file.dataset += tmpSuffix
                 file.destinationDBlock += tmpSuffix
             file.destinationSE = jobR.destinationSE
             jobR.addFile(file)
@@ -1408,13 +1520,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
     if runConfig.output.outStream1:
         indexStream1 += 1                                        
         file = FileSpec()
-        file.lfn  = '%s.Stream1._%05d.pool.root' % (jobR.destinationDBlock,indexStream1)
         file.type = 'output'
-        file.dataset = jobR.destinationDBlock        
+        if original_outDS.endswith('/'):
+            file.lfn  = '%s.Stream1._%05d.pool.root' % (outDSwoSlash,indexStream1)
+            file.dataset = original_outDS
+        else:
+            file.lfn  = '%s.Stream1._%05d.pool.root' % (jobR.destinationDBlock,indexStream1)
+            file.dataset = jobR.destinationDBlock        
         file.destinationDBlock = jobR.destinationDBlock
         if individualOutDS:
             tmpSuffix = '_Stream1'
-            file.dataset += tmpSuffix
+            if original_outDS.endswith('/'):
+                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+            else:
+                file.dataset += tmpSuffix
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
@@ -1422,13 +1541,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
     if runConfig.output.outStream2:
         indexStream2 += 1                                        
         file = FileSpec()
-        file.lfn  = '%s.Stream2._%05d.pool.root' % (jobR.destinationDBlock,indexStream2)
         file.type = 'output'
-        file.dataset = jobR.destinationDBlock        
+        if original_outDS.endswith('/'):
+            file.lfn  = '%s.Stream2._%05d.pool.root' % (outDSwoSlash,indexStream2)
+            file.dataset = original_outDS
+        else:
+            file.lfn  = '%s.Stream2._%05d.pool.root' % (jobR.destinationDBlock,indexStream2)
+            file.dataset = jobR.destinationDBlock        
         file.destinationDBlock = jobR.destinationDBlock
         if individualOutDS:
             tmpSuffix = '_Stream2'
-            file.dataset += tmpSuffix
+            if original_outDS.endswith('/'):
+                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+            else:
+                file.dataset += tmpSuffix
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
@@ -1436,13 +1562,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
     if runConfig.output.outBS:
         indexBS += 1                                        
         file = FileSpec()
-        file.lfn  = '%s.BS._%05d.data' % (jobR.destinationDBlock,indexBS)
         file.type = 'output'
-        file.dataset = jobR.destinationDBlock        
+        if original_outDS.endswith('/'):
+            file.lfn  = '%s.BS._%05d.data' % (outDSwoSlash,indexBS)
+            file.dataset = original_outDS
+        else:
+            file.lfn  = '%s.BS._%05d.data' % (jobR.destinationDBlock,indexBS)
+            file.dataset = jobR.destinationDBlock        
         file.destinationDBlock = jobR.destinationDBlock
         if individualOutDS:
             tmpSuffix = '_BS'
-            file.dataset += tmpSuffix
+            if original_outDS.endswith('/'):
+                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+            else:
+                file.dataset += tmpSuffix
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
@@ -1450,13 +1583,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
     if runConfig.output.outSelBS:
         indexSelBS += 1                                        
         file = FileSpec()
-        file.lfn  = '%s.%s._%05d.data' % (jobR.destinationDBlock,runConfig.output.outSelBS,indexSelBS)
         file.type = 'output'
-        file.dataset = jobR.destinationDBlock        
+        if original_outDS.endswith('/'):
+            file.lfn  = '%s.%s._%05d.data' % (outDSwoSlash,runConfig.output.outSelBS,indexSelBS)
+            file.dataset = original_outDS
+        else:
+            file.lfn  = '%s.%s._%05d.data' % (jobR.destinationDBlock,runConfig.output.outSelBS,indexSelBS)
+            file.dataset = jobR.destinationDBlock        
         file.destinationDBlock = jobR.destinationDBlock
         if individualOutDS:
             tmpSuffix = '_SelBS'
-            file.dataset += tmpSuffix
+            if original_outDS.endswith('/'):
+                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+            else:
+                file.dataset += tmpSuffix
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
@@ -1467,13 +1607,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
         indexStreamG += 1
         for sName in runConfig.output.outStreamG:
             file = FileSpec()
-            file.lfn  = '%s.%s._%05d.pool.root' % (jobR.destinationDBlock,sName,indexStreamG)
             file.type = 'output'
-            file.dataset = jobR.destinationDBlock
+            if original_outDS.endswith('/'):
+                file.lfn  = '%s.%s._%05d.pool.root' % (outDSwoSlash,sName,indexStreamG)
+                file.dataset = original_outDS
+            else:
+                file.lfn  = '%s.%s._%05d.pool.root' % (jobR.destinationDBlock,sName,indexStreamG)
+                file.dataset = jobR.destinationDBlock
             file.destinationDBlock = jobR.destinationDBlock
             if individualOutDS:
                 tmpSuffix = '_%s' % sName
-                file.dataset += tmpSuffix
+                if original_outDS.endswith('/'):
+                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+                else:
+                    file.dataset += tmpSuffix
                 file.destinationDBlock += tmpSuffix
             file.destinationSE = jobR.destinationSE
             jobR.addFile(file)
@@ -1488,13 +1635,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
             if sAsso == 'None':
                 # non-associated metadata
                 file = FileSpec()
-                file.lfn  = '%s.META%s._%05d.root' % (jobR.destinationDBlock,iMeta,indexMeta)
                 file.type = 'output'
-                file.dataset = jobR.destinationDBlock
+                if original_outDS.endswith('/'):
+                    file.lfn  = '%s.META%s._%05d.root' % (outDSwoSlash,iMeta,indexMeta)
+                    file.dataset = original_outDS
+                else:
+                    file.lfn  = '%s.META%s._%05d.root' % (jobR.destinationDBlock,iMeta,indexMeta)
+                    file.dataset = jobR.destinationDBlock
                 file.destinationDBlock = jobR.destinationDBlock
                 if individualOutDS:
                     tmpSuffix = '_META%s' % iMeta
-                    file.dataset += tmpSuffix
+                    if original_outDS.endswith('/'):
+                        file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+                    else:
+                        file.dataset += tmpSuffix
                     file.destinationDBlock += tmpSuffix
                 file.destinationSE = jobR.destinationSE
                 jobR.addFile(file)
@@ -1522,13 +1676,20 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
 	indexMS += 1
         for sName,sAsso in runConfig.output.outMS:
             file = FileSpec()
-            file.lfn  = '%s.%s._%05d.pool.root' % (jobR.destinationDBlock,sName,indexMS)
             file.type = 'output'
-            file.dataset = jobR.destinationDBlock
+            if original_outDS.endswith('/'):
+                file.lfn  = '%s.%s._%05d.pool.root' % (outDSwoSlash,sName,indexMS)
+                file.dataset = original_outDS
+            else:
+                file.lfn  = '%s.%s._%05d.pool.root' % (jobR.destinationDBlock,sName,indexMS)
+                file.dataset = jobR.destinationDBlock
             file.destinationDBlock = jobR.destinationDBlock
             if individualOutDS:
                 tmpSuffix = '_%s' % sName
-                file.dataset += tmpSuffix
+                if original_outDS.endswith('/'):
+                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
+                else:
+                    file.dataset += tmpSuffix
                 file.destinationDBlock += tmpSuffix
             file.destinationSE = jobR.destinationSE
             jobR.addFile(file)
@@ -1559,9 +1720,15 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile):
                 outMap['UserData'].append(foundLFN)
     # log
     file = FileSpec()
-    file.lfn  = '%s._$PANDAID.log.tgz' % jobR.destinationDBlock
+    if original_outDS.endswith('/'):
+        file.lfn  = '%s._$PANDAID.log.tgz' % outDSwoSlash
+    else:
+        file.lfn  = '%s._$PANDAID.log.tgz' % jobR.destinationDBlock
     file.type = 'log'
-    file.dataset = jobR.destinationDBlock    
+    if original_outDS.endswith('/'):
+        file.dataset = original_outDS
+    else:
+        file.dataset = jobR.destinationDBlock    
     file.destinationDBlock = jobR.destinationDBlock
     if individualOutDS:
         # use original outDS for log, which guarantees location registration and shadow tracing

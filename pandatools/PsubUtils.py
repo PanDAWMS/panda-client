@@ -235,7 +235,7 @@ def getNickname():
         wMessage += '   https://lcg-voms.cern.ch:8443/vo/atlas/vomrs\n'
         wMessage += '      [Member Info] -> [Edit Personal Info]\n\n'
         wMessage += 'Then you can use new naming convention "user.nickname" for --outDS. '
-        wMessage += 'Note that as of May 31st 2010 old convention '
+        wMessage += 'Note that as of Aug 2nd 2010 old convention '
         wMessage += '"userXY.FirstLastname" will be terminated.\n'
         wMessage += 'See the announcement : https://savannah.cern.ch/forum/forum.php?forum_id=1259\n'
         print
@@ -332,22 +332,46 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
         print
     # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
     maxLength = 200
-    if len(outDS) > maxLength:
-        tmpLog.error("output datasetname is too long (%s). The length must be less than %s" % \
-                     (len(outDS),maxLength))
-        return False
+    maxLengthCont = 133
+    if outDS.endswith('/'):
+        # container
+        if len(outDS) > maxLengthCont:
+            tmpErrStr  = "The name of the output dataset container is too long (%s). " % len(outDS)
+            tmpErrStr += "The length must be less than %s. " % maxLengthCont
+            tmpErrStr += "Please note that the limit on the name length is tighter for containers than datasets"
+            tmpLog.error(tmpErrStr)
+            return False
+    else:
+        # dataset
+        if len(outDS) > maxLength:
+            tmpLog.error("output datasetname is too long (%s). The length must be less than %s" % \
+                         (len(outDS),maxLength))
+            return False
     return True
 
 
 # get maximum index in a dataset
-def getMaxIndex(list,pattern):
+def getMaxIndex(list,pattern,shortLFN=False):
     maxIndex = 0
+    maxJobsetID = None
     for item in list:
         match = re.match(pattern,item)
         if match != None:
-            tmpIndex = int(match.group(1))
+            if not shortLFN:
+                # old format : Dataset.XYZ
+                tmpIndex = int(match.group(1))
+            else:
+                # short format : user.nickname.XYZ
+                tmpIndex = int(match.group(2))
+                tmpJobsetID = match.group(1)
             if maxIndex < tmpIndex:
                 maxIndex = tmpIndex
+                # check jobsetID in LFN
+                if shortLFN:
+                    if maxJobsetID == None or int(maxJobsetID) < int(tmpJobsetID):
+                        maxJobsetID = tmpJobsetID
+    if shortLFN:
+        return maxIndex,maxJobsetID
     return maxIndex
 
 
@@ -717,7 +741,8 @@ def checkDestSE(destSEs,dsName,verbose):
 
 # run pathena recursively
 def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,
-                  removedDS,inDS,goodRunListXML,eventPickEvtList,devidedByGUID,dbRelease,verbose,isMissing=True):
+                  removedDS,inDS,goodRunListXML,eventPickEvtList,devidedByGUID,dbRelease,jobsetID,verbose,
+                  isMissing=True):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -794,6 +819,9 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
         pickle.dump(runConfig,cFile)
         cFile.close()
         fullExecString += ' --panda_runConfig=%s' % conTmpfile
+    # set jobsetID
+    if not '--panda_jobsetID' in fullExecString and not jobsetID in [None,'NULL',-1]:
+        fullExecString += ' --panda_jobsetID=%s' % jobsetID
     # run pathena
     if anotherTry:
         if isMissing:
@@ -813,7 +841,7 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     
 # run prun recursively
 def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite,archiveName,
-               removedDS,inDS,goodRunListXML,eventPickEvtList,verbose):
+               removedDS,inDS,goodRunListXML,eventPickEvtList,dbRelease,jobsetID,verbose):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -865,12 +893,21 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
     # set inDS to avoid redundant ELSSI lookup for event picking
     if inDS != '' and eventPickEvtList != '' and not '--panda_inDSForEP' in fullExecString:
         fullExecString += ' --panda_inDSForEP=%s' % inDS
+    # suppress repetitive message
+    if not '--panda_suppressMsg' in fullExecString:
+        fullExecString += ' --panda_suppressMsg'
     # source name
     if archiveName != '' and not '--panda_srcName' in fullExecString:
         fullExecString += ' --panda_srcName=%s' % archiveName
     # server URL
     if not '--panda_srvURL' in fullExecString:
         fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
+    # set DBR
+    if dbRelease != '' and not '--panda_dbRelease' in fullExecString:
+        fullExecString += ' --panda_dbRelease=%s' % dbRelease
+    # set jobsetID
+    if not '--panda_jobsetID' in fullExecString and not jobsetID in [None,'NULL',-1]:
+                fullExecString += ' --panda_jobsetID=%s' % jobsetID
     # run prun
     if anotherTry:
         tmpLog.info("trying other sites for the missing files")
@@ -1081,6 +1118,7 @@ def getRealDatasetName(outDS,tmpDatasets):
 
 
 limit_maxNumInputs = 200
+limit_maxLfnLength = 150
 
 # check job spec
 def checkJobSpec(job):
@@ -1092,6 +1130,11 @@ def checkJobSpec(job):
         if tmpFile.type == 'input' and (not tmpFile.lfn.endswith('.lib.tgz')) \
                and re.search('DBRelease-.*\.tar\.gz$',tmpFile.lfn) == None:
             nInputFiles += 1
+        elif tmpFile.type == 'output' and len(tmpFile.lfn) > limit_maxLfnLength:
+            errMsg =  "Filename %s is too long (%s chars). It must be less than %s. Please use a shorter name" \
+                     % (tmpFile.lfn,len(tmpFile.lfn),limit_maxLfnLength)
+            tmpLog.error(errMsg)
+            sys.exit(EC_Config)    
     maxNumInputs = limit_maxNumInputs
     if nInputFiles > maxNumInputs:
         errMsg =  "Too many input files (%s files) in a sub job. " % nInputFiles
@@ -1240,5 +1283,35 @@ def execWithModifiedParams(jobs,newOpts,verbose):
         commands.getoutput('rm -f %s' % inputTmpfileName)
     # return
     return comStat
-                
 
+
+# read jobID
+def readJobDefID():
+    jobDefinitionID = 1
+    jobid_file = '%s/pjobid.dat' % os.environ['PANDA_CONFIG_ROOT']
+    if os.path.exists(jobid_file):
+        try:
+            # read line
+            tmpJobIdFile = open(jobid_file)
+            tmpID = tmpJobIdFile.readline()
+            tmpJobIdFile.close()
+            # remove \n
+            tmpID = tmpID.replace('\n','')
+            # convert to int
+            jobDefinitionID = long(tmpID) + 1
+        except:
+            pass
+    return jobDefinitionID
+    
+
+# write jobID
+def writeJobDefID(jobID):
+    # create dir for DB
+    dbdir = os.path.expanduser(os.environ['PANDA_CONFIG_ROOT'])
+    if not os.path.exists(dbdir):
+        os.makedirs(dbdir)
+    # record jobID
+    jobid_file = '%s/pjobid.dat' % os.environ['PANDA_CONFIG_ROOT']
+    tmpJobIdFile = open(jobid_file,'w')
+    tmpJobIdFile.write(str(jobID))
+    tmpJobIdFile.close()

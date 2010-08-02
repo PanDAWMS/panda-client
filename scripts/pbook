@@ -211,14 +211,44 @@ class PBookCore:
         return job
 
 
+    # get local job/jobset info
+    def getJobJobsetInfo(self,id):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # try to get jobset
+        job = PdbUtils.readJobsetDB(id,self.verbose)
+        # get job info from local repository
+        if job == None:
+            job = PdbUtils.readJobDB(id,self.verbose)
+        # not found
+        if job == None:
+            tmpLog.warning("JobsetID/JobID=%s not found in local repository. Synchronization may be needed" % JobID)
+            return None
+        # return
+        return job
+
+
     # get local job list
     def getLocalJobList(self):
         # get jobs
         localJobs = PdbUtils.bulkReadJobDB(self.verbose)
         # return
         return localJobs
-    
-        
+
+
+    # get JobIDs with JobsetID
+    def getJobIDsWithSetID(self,jobsetID):
+        idMap = PdbUtils.getMapJobsetIDJobIDs(self.verbose)
+        if idMap.has_key(jobsetID):
+            return idMap[jobsetID]
+        return None
+
+
+    # make JobSetSpec
+    def makeJobsetSpec(self,jobList):
+        return PdbUtils.makeJobsetSpec(jobList)
+
+
     # get status
     def status(self,JobID,forceUpdate=False):
         # get logger
@@ -261,67 +291,107 @@ class PBookCore:
         return job
 
 
+    # get status for JobSet and Job
+    def statusJobJobset(self,id,forceUpdate=False):
+        tmpJobIDList = self.getJobIDsWithSetID(id)
+        if tmpJobIDList == None:
+            # not a jobset
+            job = self.status(id,forceUpdate)
+        else:
+            # jobset
+            tmpJobs = []
+            for tmpJobID in tmpJobIDList:
+                tmpJob = self.status(tmpJobID,forceUpdate)
+                tmpJobs.append(tmpJob)
+            # make jobset
+            job = self.makeJobsetSpec(tmpJobs)
+        # return     
+        return job
+    
+
     # kill
     def kill(self,JobID):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
-        # get job info from local repository
-        job = self.getJobInfo(JobID)
-        if job == None:
-            tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)            
-            return False
-	# skip frozen job
-        if job.dbStatus == 'frozen':
-            tmpLog.info('All subJobs in JobID=%s already finished/failed' % JobID)
-            return False
-        # get PandaID list
-        killJobs = job.PandaID.split(',')
-        # kill
-        tmpLog.info('Sending kill command ...')
-        status,output = Client.killJobs(killJobs,self.verbose)
-        if status != 0:
-            tmpLog.error(output)
-            tmpLog.error("Failed to kill JobID=%s" % JobID)
-            return False
-        # update database
-        job.commandToPilot = 'tobekilled'
-        # update DB
-        try:
-            PdbUtils.updateJobDB(job,self.verbose)
-        except:
-            tmpLog.error("Failed to update local repository for JobID=%s" % JobID)
-            return False
-        # done
-        tmpLog.info('Done. JobID=%s will be killed in 30min' % JobID)
+        # get jobset
+        jobList = self.getJobIDsWithSetID(JobID)
+        if jobList == None:
+            jobList = [JobID]
+        else:
+            tmpMsg = "JobsetID=%s is composed of JobID=" % JobID
+            for tmpJobID in jobList:
+                tmpMsg += '%s,' % tmpJobID
+            tmpMsg = tmpMsg[:-1]
+            tmpLog.info(tmpMsg)
+        for tmpJobID in jobList:    
+            # get job info from local repository
+            job = self.getJobInfo(tmpJobID)
+            if job == None:
+                tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % tmpJobID)            
+                continue
+            # skip frozen job
+            if job.dbStatus == 'frozen':
+                tmpLog.info('All subJobs in JobID=%s already finished/failed' % tmpJobID)
+                continue
+            # get PandaID list
+            killJobs = job.PandaID.split(',')
+            # kill
+            tmpLog.info('Sending kill command ...')
+            status,output = Client.killJobs(killJobs,self.verbose)
+            if status != 0:
+                tmpLog.error(output)
+                tmpLog.error("Failed to kill JobID=%s" % tmpJobID)
+                return False
+            # update database
+            job.commandToPilot = 'tobekilled'
+            # update DB
+            try:
+                PdbUtils.updateJobDB(job,self.verbose)
+            except:
+                tmpLog.error("Failed to update local repository for JobID=%s" % tmpJobID)
+                return False
+            # done
+            tmpLog.info('Done. JobID=%s will be killed in 30min' % tmpJobID)
         return True
 
 
     # rebrokerage
-    def rebrokerage(self,JobID,cloud):
+    def rebrokerage(self,JobsetID,cloud):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
-        # get job info using status
-        job = self.status(JobID)
-        if job == None:
-	    # not found
-            return
-	# skip frozen job
-        if job.dbStatus == 'frozen':
-            tmpLog.info('All subJobs already finished/failed')
-            return
-        # rebrokerage
-        tmpLog.info('Sending rebrokerage request ...')
-        status,output = Client.runReBrokerage(JobID,job.libDS,cloud,self.verbose)
-        if status != 0:
-            tmpLog.error(output)
-            tmpLog.error("Failed to reassign JobID=%s" % JobID)
-            return
-        # done
-        tmpLog.info('Done')
+        # get jobset
+        jobList = self.getJobIDsWithSetID(JobsetID)
+        if jobList == None:
+            jobList = [JobsetID]
+        else:
+            tmpMsg = "JobsetID=%s is composed of JobID=" % JobsetID
+            for tmpJobID in jobList:
+                tmpMsg += '%s,' % tmpJobID
+            tmpMsg = tmpMsg[:-1]
+            tmpLog.info(tmpMsg)
+        for JobID in jobList:    
+	    # get job info using status
+	    job = self.status(JobID)
+	    if job == None:
+		# not found
+		continue
+	    # skip frozen job
+	    if job.dbStatus == 'frozen':
+		tmpLog.info('All subJobs in JobID=%s already finished/failed' % JobID)
+		continue
+	    # rebrokerage
+	    tmpLog.info('Sending rebrokerage request ...')
+	    status,output = Client.runReBrokerage(JobID,job.libDS,cloud,self.verbose)
+	    if status != 0:
+		tmpLog.error(output)
+		tmpLog.error("Failed to reassign JobID=%s" % JobID)
+		return
+            # done
+            tmpLog.info('Done for %s' % JobID)
         return
 
 
@@ -341,7 +411,7 @@ class PBookCore:
 
 
     # kill and retry
-    def killAndRetry(self,JobID,newSite=False,newOpts={}):
+    def killAndRetry(self,JobID,newSite=False,newOpts={},ignoreDuplication=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # kill
@@ -369,204 +439,312 @@ class PBookCore:
                 tmpLog.info('Max attempts exceeded. Please try later')
                 return False
         # retry
-        self.retry(JobID,newSite=newSite,newOpts=newOpts)
+        self.retry(JobID,newSite=newSite,newOpts=newOpts,ignoreDuplication=ignoreDuplication)
         return
                         
 
     # retry
-    def retry(self,JobID,newSite=False,newOpts={},noSubmit=False):
+    def retry(self,JobsetID,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
-        # get job info from local repository
-        localJob = self.getJobInfo(JobID)
-        if localJob == None:
-            tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)            
-            return None
-	# skip running job
-        if localJob.dbStatus != 'frozen':
-            tmpLog.warning('Cannot retry running jobs')
-            return
-	# skip already retried
-        if localJob.retryID != '0':
-            tmpLog.warning('This job was already retried by JobID=%s' % localJob.retryID)
-            return
-        # check status of buildJob
-        if not localJob.buildStatus in ['','finished']:
-            tmpLog.warning('Cannot retry when status of buildJob %s is %s (!= finished)' \
-                           % (localJob.PandaID.split(',')[0],localJob.buildStatus))
-            return
-	# check opts for newSite
-        if newSite:
-            if not newOpts.has_key('outDS') and not newOpts.has_key('--outDS'):
-                tmpLog.warning('You need to specify --outDS in newOpts to retry at new site')
-                return
-        # get list of failed jobs
-        pandaIDs  = localJob.PandaID.split(',')
-        statusList= localJob.jobStatus.split(',')
-        jobList = []
-        for idx in range(len(pandaIDs)):
-            # check status
-            if not statusList[idx] in ['failed','cancelled']:
-                continue
-            jobList.append(pandaIDs[idx])
-        # no failed job
-        if jobList == []:
-            tmpLog.info('No failed jobs to be retried for %s' % JobID)
-            return
-        # get full job spec
-        tmpLog.info("Retrying JobID=%s ..." % JobID)
-        tmpLog.info("Getting job info")
-        idxJL  = 0
-        nQuery = 500
-        pandaJobs = []
-        while idxJL < len(jobList):
-            # avoid burst query
-            tmpLog.info(" %5s/%s" % (idxJL,len(jobList)))                
-            status,oTmp = Client.getFullJobStatus(jobList[idxJL:idxJL+nQuery],
-                                                  verbose=self.verbose)
-            if status != 0:
-                tmpLog.error(status)
-                tmpLog.error(oTmp)
-                tmpLog.error("Cannot get job info from Panda server")
-                return
-            pandaJobs += oTmp
-            idxJL += nQuery
-            time.sleep(1)
-        tmpLog.info(" %5s/%s" % (len(jobList),len(jobList)))            
-        # reset some parameters
-        retryJobs    = []
-        retrySite    = None
-        retryElement = None
-        retryDestSE  = None
-        for idx in range(len(jobList)):
-            job = pandaJobs[idx]
-            # skip exired
-            if job == None:
-                tmpLog.warning("Could not retry jobs older than 30 days : JobID=%s (PandaID=%s) expired" \
-                               % (JobID,jobList[idxJob]))
-                return
-            # unify sitename
-            if retrySite == None:
-                retrySite    = job.computingSite
-                retryElement = job.computingElement
-                retryDestSE  = job.destinationSE
-            # reset
-            job.jobStatus           = None
-            job.commandToPilot      = None
-            job.startTime           = None
-            job.endTime             = None
-            job.attemptNr           = 1+job.attemptNr
-            for attr in job._attributes:
-                if attr.endswith('ErrorCode') or attr.endswith('ErrorDiag'):
-                    setattr(job,attr,None)
-            job.transExitCode       = None
-            job.computingSite       = retrySite
-            job.computingElement    = retryElement
-            job.destinationSE       = retryDestSE
-            job.dispatchDBlock      = None
-            job.jobExecutionID      = JobID
-            for file in job.Files:
-                file.rowID = None
-                if file.type == 'input':
-                    # protection against wrong sync which doesn't update buildStatus correctly
-                    if file.lfn.endswith('.lib.tgz') and file.GUID == 'NULL':
-                        tmpLog.warning('GUID for %s is unknown. Cannot retry when corresponding buildJob failed' \
-                                       % file.lfn)
-                        return 
-                    file.status = 'ready'
-                elif file.type in ('output','log'):
-                    file.destinationSE = retryDestSE
-                    file.destinationDBlock=file.dataset
-                    # add attempt nr
-                    oldName  = file.lfn
-                    file.lfn = re.sub("\.\d+$","",file.lfn)
-                    file.lfn = "%s.%d" % (file.lfn,job.attemptNr)
-                    newName  = file.lfn
-                    # modify jobParameters
-                    job.jobParameters = re.sub("'%s'" % oldName ,"'%s'" % newName,
-                                               job.jobParameters)
-                    # look for output in trf
-                    oldGenelicName = re.sub('\.\d+$','',oldName)
-                    match = re.search(oldGenelicName+'(\.\d+)*(%20|")',job.jobParameters)
-                    if match != None:
-                        job.jobParameters = job.jobParameters.replace(match.group(0),newName+match.group(2))
-            # append
-            retryJobs.append(job)
-        # check voms role
-        if not retryJobs[0].workingGroup in ['NULL',None,'']:
-            # VOMS role was used 
-            if not "--workingGroup" in job.metadata:
-                # extract voms roles from metadata
-                match =  re.search("--voms( |=)[ \"]*([^ \"]+)",job.metadata)
-                if match != None:
-                    vomsRoles = match.group(2)
+        # get jobset
+	newJobsetID = -1
+        jobList = self.getJobIDsWithSetID(JobsetID)
+        if jobList == None:
+            isJobset = False
+            jobList = [JobsetID]
+        else:
+            isJobset = True
+            tmpMsg = "JobsetID=%s is composed of JobID=" % JobsetID
+            for tmpJobID in jobList:
+                tmpMsg += '%s,' % tmpJobID
+            tmpMsg = tmpMsg[:-1]
+            tmpLog.info(tmpMsg)
+        for JobID in jobList:    
+            # get job info from local repository
+            localJob = self.getJobInfo(JobID)
+            if localJob == None:
+                tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)            
+                return None
+            # skip running job
+            if localJob.dbStatus != 'frozen':
+                tmpLog.warning('Cannot retry running jobs')
+                if isJobset:
+                    continue
                 else:
-                    vomsRoles = "atlas:/atlas/%s/Role=production" % retryJobs[0].workingGroup
-                # regenerate proxy with VOMS roles
-                try:
-                    tmpLog.info("Checking proxy role to resubmit %s jobs" % retryJobs[0].workingGroup)
-                    self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,
-                                                                                 self.verbose,vomsRoles)
-                except:
-                    tmpLog.error("Failed to generate a proxy with %s" % vomsRoles)
                     return
-        # test mode
-        if noSubmit:
-            return
-        # invoke pathena/prun to send job to new site
-        if newSite:
-            tmpLog.info("Constrcuting job spec again to be sent to another site. Make sure you have the same runtime env as before ...")
-            comStat= PsubUtils.execWithModifiedParams(retryJobs,newOpts,self.verbose)
-            if comStat == 0:
-                # update database
-                time.sleep(2)
-                self.sync()
-            else:
-                tmpLog.error("Failed to submit jobs to Panda server")                
-            return
-        # submit
-        tmpLog.info("Submitting job ...")            
-        status,out = Client.submitJobs(retryJobs,verbose=self.verbose)
-        if out == None or status != 0:
-            tmpLog.error(status)
-            tmpLog.error(out)
-            tmpLog.error("Failed to submit jobs to Panda server")
-            return
-        # update database
-        pandaIDstatus = {}
-        newJobID = None
-        for items in out:
-            # get newJobID
-            if newJobID == None:
-                newJobID = items[1]
-            # check PandaID
-            PandaID = items[0]
-            if PandaID == 'NULL':
-                tmpLog.error("Panda server returned wrong IDs. It may have a temporary problem")
+            # skip already retried
+            if localJob.retryID != '0':
+                if isJobset:
+                    tmpLog.info('Skip JobID=%s since already retried by JobID=%s' % (JobID,localJob.retryID))
+                    continue
+                else:
+                    tmpLog.warning('This job was already retried by JobID=%s' % localJob.retryID)
+                    return
+            # check status of buildJob
+            if not localJob.buildStatus in ['','finished']:
+                tmpLog.warning('Cannot retry since status of buildJob %s is %s (!= finished)' \
+                               % (localJob.PandaID.split(',')[0],localJob.buildStatus))
+                if isJobset:
+                    continue
+                else:
+                    return
+            # check opts for newSite
+            if newSite:
+                if not newOpts.has_key('outDS') and not newOpts.has_key('--outDS'):
+                    tmpLog.warning('You need to specify --outDS in newOpts to retry at new site')
+                    return
+            # get list of failed jobs
+            pandaIDs  = localJob.PandaID.split(',')
+            statusList= localJob.jobStatus.split(',')
+            jobList = []
+            for idx in range(len(pandaIDs)):
+                # check status
+                if not statusList[idx] in ['failed','cancelled']:
+                    continue
+                jobList.append(pandaIDs[idx])
+            # no failed job
+            if jobList == []:
+                if isJobset:
+                    tmpLog.info('Skip JobID=%s since no failed jobs' % JobID)                    
+                    continue
+                else:
+                    tmpLog.info('No failed jobs to be retried for JobID=%s' % JobID)
+                    return
+            # get full job spec
+            tmpLog.info("Retrying JobID=%s ..." % JobID)
+            tmpLog.info("Getting job info")
+            idxJL  = 0
+            nQuery = 500
+            pandaJobs = []
+            while idxJL < len(jobList):
+                # avoid burst query
+                tmpLog.info(" %5s/%s" % (idxJL,len(jobList)))                
+                status,oTmp = Client.getFullJobStatus(jobList[idxJL:idxJL+nQuery],
+                                                      verbose=self.verbose)
+                if status != 0:
+                    tmpLog.error(status)
+                    tmpLog.error(oTmp)
+                    tmpLog.error("Cannot get job info from Panda server")
+                    return
+                pandaJobs += oTmp
+                idxJL += nQuery
+                time.sleep(1)
+            tmpLog.info(" %5s/%s" % (len(jobList),len(jobList)))
+            # jobdefID
+            newJobdefID = PsubUtils.readJobDefID()
+            # reset some parameters
+            retryJobs    = []
+            retrySite    = None
+            retryElement = None
+            retryDestSE  = None
+	    outDsName    = None
+	    shadowList   = []
+            for idx in range(len(jobList)):
+                job = pandaJobs[idx]
+                # skip exired
+                if job == None:
+                    tmpLog.warning("Could not retry jobs older than 30 days : JobID=%s (PandaID=%s) expired" \
+                                   % (JobID,jobList[idxJob]))
+                    return
+                # get shadow list
+                if (not ignoreDuplication) and outDsName == None and job.prodSourceLabel == 'user':
+                    # look for dataset for log since it doesn't have suffix even when --individualOutDS is used
+                    for tmpFile in job.Files:
+                        if tmpFile.type == 'log':
+                            outDsName = tmpFile.dataset
+                            break
+                    # output dataset was not found    
+                    if outDsName == None:
+                        tmpLog.error("Could not get output dataset name for JobID=%s (PandaID=%s)" \
+                                     % (JobID,job.PandaID))
+                        return
+                    # get files in shadow
+                    if outDsName.endswith('/'):
+                        shadowList = Client.getFilesInShadowDataset(outDsName,Client.suffixShadow,self.verbose)
+                    else:
+                        # disable duplication check mainly for old overlay jobs since non-signal files are wrongly skipped
+                        #shadowList = Client.getFilesInShadowDatasetOld(outDsName,Client.suffixShadow,self.verbose)
+			pass
+                # unify sitename
+                if retrySite == None:
+                    retrySite    = job.computingSite
+                    retryElement = job.computingElement
+                    retryDestSE  = job.destinationSE
+                # reset
+                job.jobStatus           = None
+                job.commandToPilot      = None
+                job.startTime           = None
+                job.endTime             = None
+                job.attemptNr           = 1+job.attemptNr
+                for attr in job._attributes:
+                    if attr.endswith('ErrorCode') or attr.endswith('ErrorDiag'):
+                        setattr(job,attr,None)
+                job.transExitCode       = None
+                job.computingSite       = retrySite
+                job.computingElement    = retryElement
+                job.destinationSE       = retryDestSE
+                job.dispatchDBlock      = None
+                job.jobExecutionID      = JobID
+                job.jobDefinitionID     = newJobdefID
+		job.parentID            = job.PandaID
+                if job.jobsetID != ['NULL',None,-1]:
+                    job.sourceSite          = job.jobsetID
+                    job.jobsetID            = newJobsetID
+                skipInputList = []
+                numUsedFiles = 0
+                for file in job.Files:
+                    file.rowID = None
+                    if file.type == 'input':
+                        # protection against wrong sync which doesn't update buildStatus correctly
+                        if file.lfn.endswith('.lib.tgz') and file.GUID == 'NULL':
+                            tmpLog.warning('GUID for %s is unknown. Cannot retry when corresponding buildJob failed' \
+                                           % file.lfn)
+                            return 
+                        file.status = 'ready'
+                        # check with shadow for non lib.tgz/DBR 
+                        tmpDbrMatch = re.search('^DBRelease-.*\.tar\.gz$',file.lfn)
+                        if tmpDbrMatch == None and not file.lfn.endswith('.lib.tgz'):
+                            if file.lfn in shadowList:
+                                skipInputList.append(file)
+                            else:
+                                numUsedFiles += 1
+                    elif file.type in ('output','log'):
+                        file.destinationSE = retryDestSE
+                        file.destinationDBlock = re.sub('_sub\d+$','',file.destinationDBlock)
+                        # add attempt nr
+                        oldName  = file.lfn
+                        file.lfn = re.sub("\.\d+$","",file.lfn)
+                        file.lfn = "%s.%d" % (file.lfn,job.attemptNr)
+                        newName  = file.lfn
+                        # modify jobParameters
+                        job.jobParameters = re.sub("'%s'" % oldName ,"'%s'" % newName,
+                                                   job.jobParameters)
+                        # look for output in trf
+                        oldGenelicName = re.sub('\.\d+$','',oldName)
+                        match = re.search(oldGenelicName+'(\.\d+)*(%20|")',job.jobParameters)
+                        if match != None:
+                            job.jobParameters = job.jobParameters.replace(match.group(0),newName+match.group(2))
+                # all files are used by others
+                if numUsedFiles == 0 and skipInputList != []:
+                    continue
+                # remove skipped files
+                strSkipped = ''
+                for tmpFile in skipInputList:
+                    strSkipped += '%s,' % tmpFile.lfn
+                    job.Files.remove(tmpFile)
+                strSkipped = strSkipped[:-1]
+                # modify jobpar
+                if strSkipped != '':
+                    optionToSkipFiles = '--skipInputByRetry'
+                    if not optionToSkipFiles in job.jobParameters:
+                        # just append
+                        job.jobParameters += "%s=%s " % (optionToSkipFiles,strSkipped)
+                    else:
+                        # extract already skipped files
+                        tmpMatch = re.search("(%s=[^ ]+)",job.jobParameters)
+                        if tmpMatch == None:
+                            tmpLog.error("Failed to extract arg of %s for PandaID=%s" \
+                                         % (optionToSkipFiles,job.PandaID))
+                            return
+                        # replace
+                        job.jobParameters = re.sub(tmpMatch.group(1),"%s,%s" % (tmpMatch.group(1),optionToSkipFiles),
+                                                   job.jobParameters)
+                if self.verbose:
+                    tmpLog.debug(job.jobParameters)
+                # append
+                retryJobs.append(job)
+            # all input files were or are being used by other jobs
+            if retryJobs == []:
+                tmpLog.info('All input files were or are being used by other jobs for the same output. No jobs to be retried')
                 return
-            # dummy statuso
-            pandaIDstatus[PandaID] = ('defined','NULL')
-        # set retry ID
-        localJob.retryID = newJobID
-        try:
-            PdbUtils.updateJobDB(localJob,self.verbose)
-        except:
-            tmpLog.error("Failed to set retryID for JobID=%s" % JobID)
-            return
-        # set new paramers
-        newLocalJob = PdbUtils.convertPtoD(retryJobs,pandaIDstatus)
-        newLocalJob.JobID = newJobID
-        newLocalJob.creationTime = datetime.datetime.utcnow()
-        # insert to DB
-        try:
-            PdbUtils.insertJobDB(newLocalJob,self.verbose)
-        except:
-            tmpLog.error("Failed to insert JobID=%s to local repository" % newJobID)
-            return
-        # done
-        tmpLog.info('Done. New JobID=%s' % newJobID)
+	    # check voms role
+	    if not retryJobs[0].workingGroup in ['NULL',None,'']:
+		# VOMS role was used 
+		if not "--workingGroup" in job.metadata:
+		    # extract voms roles from metadata
+		    match =  re.search("--voms( |=)[ \"]*([^ \"]+)",job.metadata)
+		    if match != None:
+			vomsRoles = match.group(2)
+		    else:
+			vomsRoles = "atlas:/atlas/%s/Role=production" % retryJobs[0].workingGroup
+		    # regenerate proxy with VOMS roles
+		    try:
+			tmpLog.info("Checking proxy role to resubmit %s jobs" % retryJobs[0].workingGroup)
+			self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,
+										     self.verbose,vomsRoles)
+		    except:
+			tmpLog.error("Failed to generate a proxy with %s" % vomsRoles)
+			return
+	    # test mode
+	    if noSubmit:
+		continue
+            # invoke pathena/prun to send job to new site
+            if newSite:
+                tmpLog.info("Constrcuting job spec again to be sent to another site. Make sure you have the same runtime env as before ...")
+                comStat= PsubUtils.execWithModifiedParams(retryJobs,newOpts,self.verbose)
+                if comStat == 0:
+                    # update database
+                    time.sleep(2)
+                    self.sync()
+                else:
+                    tmpLog.error("Failed to submit jobs to Panda server")                
+                return
+            # submit
+            tmpLog.info("Submitting job ...")            
+            status,out = Client.submitJobs(retryJobs,verbose=self.verbose)
+            if out == None or status != 0:
+                tmpLog.error(status)
+                tmpLog.error(out)
+                tmpLog.error("Failed to submit jobs to Panda server")
+                return
+            # update database
+            pandaIDstatus = {}
+            newJobID = None
+            for items in out:
+                # get newJobID
+                if newJobID == None:
+                    newJobID = items[1]
+                # check PandaID
+                PandaID = items[0]
+                if PandaID == 'NULL':
+                    tmpLog.error("Panda server returned wrong IDs. It may have a temporary problem")
+                    return
+                # set newJobsetID
+                if newJobsetID in [None,-1]:
+                    newJobsetID = items[2]['jobsetID']
+                # dummy statuso
+                pandaIDstatus[PandaID] = ('defined','NULL')
+            # set retry ID
+            localJob.retryID = newJobID
+            if not newJobsetID in [None,-1,'NULL']:
+                localJob.retryJobsetID = newJobsetID
+            try:
+                PdbUtils.updateJobDB(localJob,self.verbose)
+            except:
+                tmpLog.error("Failed to set retryID for JobID=%s" % JobID)
+                return
+            # set new paramers
+            newLocalJob = PdbUtils.convertPtoD(retryJobs,pandaIDstatus)
+            newLocalJob.JobID = newJobID
+            if not newJobsetID in [None,-1,'NULL']:
+                newLocalJob.groupID = newJobsetID
+            newLocalJob.creationTime = datetime.datetime.utcnow()
+            # insert to DB
+            try:
+                PdbUtils.insertJobDB(newLocalJob,self.verbose)
+            except:
+                tmpLog.error("Failed to insert JobID=%s to local repository" % newJobID)
+                return
+            # write new jobdefID
+            PsubUtils.writeJobDefID(newJobID)
+            # done
+            tmpMsg = 'Done. New JobID=%s' % newJobID
+            if not newJobsetID in [None,-1,'NULL']:
+                tmpMsg += " JobsetID=%s" % newJobsetID
+            tmpLog.info(tmpMsg)
             
 
 
@@ -601,8 +779,8 @@ For more info, do help(show) for example."""
         
                                         
     # show status
-    def show(JobID=None,forceUpdate=False,showPandaIDinState=''):
-        """Print job records. All jobs will be shown if JobID is omitted. Only running jobs and last N jobs will be shown if show('running') and show(-N), respectively. If forceUpdate=True, it will try to retrieve job infomation from the panda server. This may be useful to fix the local DB when synchronization between the local DB and the panda DB is lost somehow. showPandaIDinState takes a list of states so that PandaIDs will be shown when they are in one of those states.
+    def show(JobID=None,forceUpdate=False,showPandaIDinState='',longFormat=False):
+        """Print job records. All jobs will be shown if JobID is omitted. Only running jobs and last N jobs will be shown if show('running') and show(-N), respectively. If forceUpdate=True, it will try to retrieve job infomation from the panda server. This may be useful to fix the local DB when synchronization between the local DB and the panda DB is lost somehow. When longFormat=True, jobs in the job set will be individually shown. showPandaIDinState takes a list of states so that PandaIDs in one of those states will be shown.
         
          example:
            >>> show()
@@ -610,6 +788,7 @@ For more info, do help(show) for example."""
            >>> show(-5)
            >>> show('running')
            >>> show(15,showPandaIDinState='activated,running')
+           >>> show(15,longFormat=True)
          """
         if JobID == None or JobID < 0:
             # show all local info
@@ -621,6 +800,8 @@ For more info, do help(show) for example."""
                 print "======================================"
                 if showPandaIDinState != '':
                     job.flag_showSubstatus = showPandaIDinState
+                if longFormat:
+                    job.flag_longFormat = True
                 print job
 	elif JobID == 'running':
             # show runnig jobs
@@ -629,11 +810,24 @@ For more info, do help(show) for example."""
                 if job.dbStatus != 'frozen':
                     show(job.JobID)
         else:
-            job = pbookCore.status(JobID,forceUpdate)
+            tmpJobIDList = pbookCore.getJobIDsWithSetID(JobID)
+            if tmpJobIDList == None:
+                # not a jobset
+                job = pbookCore.status(JobID,forceUpdate)
+            else:
+                # jobset
+                tmpJobs = []
+                for tmpJobID in tmpJobIDList:
+                    tmpJob = pbookCore.status(tmpJobID,forceUpdate)
+                    tmpJobs.append(tmpJob)
+                # make jobset
+                job = pbookCore.makeJobsetSpec(tmpJobs)
             # print
             print "======================================"
             if showPandaIDinState:
                 job.flag_showSubstatus = showPandaIDinState
+            if longFormat:
+                job.flag_longFormat = True
             print job
 
 

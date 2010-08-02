@@ -36,7 +36,12 @@ class WrappedFetcher:
         self.lock.release()
         # return
         return self.prevRet
-    
+
+    # remove old info
+    def removeOldPMail(self,jobsetID):
+        for pmail in tuple(self.prevRet):
+            if pmail.has_key('JobsetID') and pmail['JobsetID'] == jobsetID:
+                self.prevRet.remove(pmail)
         
 
 # factory class for fetchers

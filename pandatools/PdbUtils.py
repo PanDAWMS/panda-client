@@ -8,6 +8,7 @@ import commands
 
 import PLogger
 from LocalJobSpec import LocalJobSpec
+from LocalJobsetSpec import LocalJobsetSpec
 
 class PdbProxy:
 
@@ -316,7 +317,12 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
     # provenance ID
     ddata.provenanceID = pandaJob.jobExecutionID
     # groupID
-    ddata.groupID = 0
+    ddata.groupID = pandaJob.jobsetID
+    ddata.retryJobsetID = -1
+    if not pandaJob.sourceSite in ['NULL',None,'']: 
+        ddata.parentJobsetID = long(pandaJob.sourceSite)
+    else:
+        ddata.parentJobsetID = -1
     # job type
     ddata.jobType = pandaJob.processingType
     # return
@@ -363,7 +369,7 @@ def updateJobDB(job,verbose=False):
 def setRetryID(job,verbose=False):
     # make sql
     sql1  = "UPDATE %s SET " % pdbProxy.tablename
-    sql1 += "retryID=%s " % job.JobID
+    sql1 += "retryID=%s,retryJobsetID=%s " % (job.JobID,job.groupID)
     sql1 += " WHERE JobID=%s " % job.provenanceID
     status,out = pdbProxy.execute(sql1)
     if not status:
@@ -405,6 +411,68 @@ def readJobDB(JobID,verbose=False):
     return job
 
 
+# read jobset info from DB
+def readJobsetDB(JobsetID,verbose=False):
+    # make sql
+    sql1 = "SELECT %s FROM %s " % (LocalJobSpec.columnNames(),pdbProxy.tablename)
+    sql1+= "WHERE groupID=%s" % JobsetID
+    # execute
+    status,out = pdbProxy.execute(sql1)
+    if not status:
+        raise RuntimeError,"failed to get JobsetID=%s" % JobsetID
+    if len(out) == 0:
+        return None
+    # instantiate LocalJobSpec
+    tmpJobMap = {}
+    for tmpStr in out:
+        values = tmpStr.split('|')
+        job = LocalJobSpec()
+        job.pack(values)
+        # return frozen job if exists
+        if job.dbStatus == 'frozen' or not tmpJobMap.has_key(job.JobID):
+            tmpJobMap[job.JobID] = job
+    # make jobset
+    jobset = LocalJobsetSpec()
+    # set jobs
+    jobset.setJobs(tmpJobMap.values())
+    # return any
+    return jobset
+
+
+# check jobset status in DB
+def checkJobsetStatus(JobsetID,verbose=False):
+    # logger  
+    tmpLog = PLogger.getPandaLogger()    
+    # make sql
+    sql1 = "SELECT %s FROM %s " % (LocalJobSpec.columnNames(),pdbProxy.tablename)
+    sql1+= "WHERE groupID=%s" % JobsetID
+    failedRet = False,None
+    # execute
+    status,out = pdbProxy.execute(sql1)
+    if not status:
+        tmpLog.error(out)
+        tmpLog.error("failed to access local DB")
+        return failedRet
+    if len(out) == 0:
+        tmpLog.error("failed to get JobsetID=%s from local DB" % JobsetID)
+        return None
+    # instantiate LocalJobSpec
+    jobMap = {}
+    for tmpStr in out:
+        values = tmpStr.split('|')
+        job = LocalJobSpec()
+        job.pack(values)
+        # use frozen job if exists
+        if not jobMap.has_key(job.JobID) or job.dbStatus == 'frozen':
+            jobMap[job.JobID] = job
+    # check all job status
+    for tmpJobID,tmpJobSpec in jobMap.iteritems():
+        if tmpJobSpec != 'frozen':
+            return True,'running'
+    # return 
+    return True,'frozen'
+
+
 # bulk read job info from DB
 def bulkReadJobDB(verbose=False):
     # make sql
@@ -417,13 +485,27 @@ def bulkReadJobDB(verbose=False):
         return []
     # instantiate LocalJobSpec
     retMap = {}
+    jobsetMap = {}
     for tmpStr in out:
         values = tmpStr.split('|')
         job = LocalJobSpec()
         job.pack(values)
         # use frozen job if exists
         if (not retMap.has_key(job.JobID)) or job.dbStatus == 'frozen':
-            retMap[long(job.JobID)] = job
+            if job.groupID in [0,'0','NULL',-1,'-1']:
+                retMap[long(job.JobID)] = job
+            else:
+                # add jobset
+                tmpJobsetID = long(job.groupID)
+                if not retMap.has_key(tmpJobsetID):
+                    jobsetMap[tmpJobsetID] = []
+                    jobset = LocalJobsetSpec()
+                    retMap[tmpJobsetID] = jobset
+                # add job    
+                jobsetMap[tmpJobsetID].append(job)
+    # add jobs to jobset
+    for tmpJobsetID,tmpJobList in jobsetMap.iteritems():
+        retMap[tmpJobsetID].setJobs(tmpJobList)
     # sort
     ids = retMap.keys()
     ids.sort()
@@ -465,3 +547,36 @@ def getListOfJobIDs(nonFrozen=False,verbose=False):
     retVal.sort()
     # return 
     return retVal
+
+
+# get map of jobsetID and JobIDs
+def getMapJobsetIDJobIDs(verbose=False):
+    # make sql
+    sql1 = "SELECT groupID,JobID FROM %s WHERE groupID != 0" % pdbProxy.tablename
+    # execute
+    status,out = pdbProxy.execute(sql1)
+    if not status:
+        raise RuntimeError,"failed to get list of JobIDs"
+    allMap = {}
+    for item in out:
+        # JobsetID
+        tmpJobsetID = long(item.split('|')[0])
+        # JobID
+        tmpJobID = long(item.split('|')[-1])
+        # append
+        if not allMap.has_key(tmpJobsetID):
+            allMap[tmpJobsetID] = []
+        if not tmpJobID in allMap[tmpJobsetID]:
+            allMap[tmpJobsetID].append(tmpJobID)
+    # sort
+    for tmpKey in allMap.keys():
+        allMap[tmpKey].sort()
+    # return 
+    return allMap
+
+
+# make JobSetSpec
+def makeJobsetSpec(jobList):
+    jobset = LocalJobsetSpec()
+    jobset.setJobs(jobList)
+    return jobset

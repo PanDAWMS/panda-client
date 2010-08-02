@@ -15,14 +15,16 @@ class LocalJobSpec(object):
                    'commandToPilot')
     # appended attributes
     appended = {
-        'groupID'    :'INTEGER',
-        'releaseVar' :'VARCHAR(128)',
-        'cacheVar'   :'VARCHAR(128)',
+        'groupID'       : 'INTEGER',
+        'releaseVar'    : 'VARCHAR(128)',
+        'cacheVar'      : 'VARCHAR(128)',
+        'retryJobsetID' : 'INTEGER',
+        'parentJobsetID': 'INTEGER', 
         }
     
     _attributes += tuple(appended.keys())
     # slots
-    __slots__ = _attributes + ('flag_showSubstatus',)
+    __slots__ = _attributes + ('flag_showSubstatus','flag_longFormat')
 
 
     # constructor
@@ -31,7 +33,7 @@ class LocalJobSpec(object):
         for attr in self._attributes:
             setattr(self,attr,None)
         self.flag_showSubstatus = ''
-        
+        self.flag_longFormat = False
 
     # string format
     def __str__(self):
@@ -51,6 +53,7 @@ class LocalJobSpec(object):
                 if not statusMap.has_key(tmpStatus):
                     statusMap[tmpStatus] = 0
                 statusMap[tmpStatus] += tmpCount
+        # show PandaIDs in particular states        
         if self.flag_showSubstatus != '':
             # get PandaIDs for each status 
             pandaIDstatusMap = {}
@@ -117,6 +120,10 @@ class LocalJobSpec(object):
         strFormat = "%15s : %s\n"
         strOut =  ""
         strOut += strFormat % ("JobID",        self.JobID)
+        if self.groupID in ['','NULL',0,'0',-1,'-1']:
+            strOut += strFormat % ("JobsetID",     '')
+        else:
+            strOut += strFormat % ("JobsetID", self.groupID)
         strOut += strFormat % ("type",         self.jobType)
         strOut += strFormat % ("release",      relStr)
         strOut += strFormat % ("cache",        cacheStr)
@@ -235,6 +242,9 @@ class LocalJobSpec(object):
                                             minute = int(match.group(5)),
                                             second = int(match.group(6)))
                 setattr(self,attr,tmpDate)
+        # jobsetID
+        if self.groupID in ['','NULL']:
+            self.groupID = 0
 
 
     # make compact values
@@ -325,3 +335,5 @@ class LocalJobSpec(object):
             ret += attr
         return ret
     columnNames = classmethod(columnNames)
+
+#  LocalWords:  PandaIDs

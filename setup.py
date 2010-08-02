@@ -139,6 +139,7 @@ setup(
                                         'icons/red.png',
                                         'icons/green.png',
                                         'icons/yellow.png',
+                                        'icons/orange.png',                                        
                                         ]
                     ),
                    ('etc/panda/share', ['share/extPoolRefs.C',

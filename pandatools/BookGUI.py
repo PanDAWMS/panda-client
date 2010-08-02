@@ -11,6 +11,7 @@ import commands
 import Queue
 import GlobalConfig
 import PLogger
+import LocalJobSpec
 
 gobject.threads_init()
 gtk.gdk.threads_init()
@@ -73,7 +74,7 @@ class RetryWorker(threading.Thread):
         if self.pbookCore == None:
             return
         # retry
-        self.pbookCore.retry(self.jobID)
+        self.pbookCore.retry(long(self.jobID))
         # put back queue
         self.retryQueue.put(self.pbookCore)
         # reset offset
@@ -163,7 +164,10 @@ class PBookGuiGlobal:
     # update job
     def updateJob(self,job):
         lock = self.lock.get()
-        self.jobMap[job.JobID] = job
+        if isinstance(job,LocalJobSpec.LocalJobSpec):
+            self.jobMap[job.JobID] = job
+        else:
+            self.jobMap[job.JobsetID] = job            
         self.lock.put(lock)
         
 
@@ -250,10 +254,14 @@ class PSumView:
         # jumper
         self.jumper = {'retryID'      : PJumper(self.guiGlobal,self.pEmitter),
                        'provenanceID' : PJumper(self.guiGlobal,self.pEmitter),
+                       'retrySetID'   : PJumper(self.guiGlobal,self.pEmitter),
+                       'parentSetID'  : PJumper(self.guiGlobal,self.pEmitter),                       
                        }
-        self.firstJump = True
+        self.firstJump = {}
+        for tmpJumpName in self.jumper.keys():
+            self.firstJump[tmpJumpName] = True
         # sizes
-        self.nLines = 18+1
+        self.nLines = 20+1
         self.nColumns = 4
         # resize
         self.sumView.resize(self.nLines,self.nColumns)
@@ -286,6 +294,9 @@ class PSumView:
                 tag = textBuf.create_tag('skyblue')
                 tag.set_property("font", "monospace")
                 tag.set_property('foreground','darkturquoise')
+                tag = textBuf.create_tag('purple')
+                tag.set_property("font", "monospace")
+                tag.set_property('foreground','blueviolet')
                 # create textview
                 textView = gtk.TextView(textBuf)
                 self.textViewMap[textBuf] = textView
@@ -319,7 +330,7 @@ class PSumView:
                         'link'   : gtk.gdk.Cursor(gtk.gdk.HAND2)
                         }
 
-
+        
     # show summary
     def showJobInfo(self,widget):
         # get job
@@ -331,6 +342,12 @@ class PSumView:
         strJob += "\n"       
         # split to lines
         lines = strJob.split('\n')
+        # delte
+        for tmpBufList in self.allBufList:
+            for textbuf in tmpBufList:
+                # delete
+                textbuf.delete(textbuf.get_start_iter(),
+                               textbuf.get_end_iter())
         # fill
         jobStatusRows  = False
         jobStatusLines = ''
@@ -360,7 +377,7 @@ class PSumView:
                                    textbuf.get_end_iter())
                     # set color
                     tagname = 'default'
-                    if line.strip().startswith('jobStatus') and iItem != 0:
+                    if (line.strip().startswith('jobStatus') or line.strip().startswith('status')) and iItem != 0:
                         if strLabel.find('frozen') != -1:
                             tagname = 'navy'
                         elif strLabel.find('killing') != -1:
@@ -375,7 +392,7 @@ class PSumView:
                             # set jobID
                             jumper = self.jumper[realLabel]
                             jobID = strLabel.strip()
-                            if jobID == '0':
+                            if jobID in ['0','']:
                                 jumper.setJobID(None)
                                 strLabel = ''
                                 # change mouse cursor
@@ -387,17 +404,19 @@ class PSumView:
                                 # change mouse cursor
                                 self.textViewMap[textbuf].get_window(gtk.TEXT_WINDOW_TEXT).set_cursor(self.cursors['link'])
                             # setup textview
-                            if self.firstJump:
+                            if self.firstJump[realLabel]:
                                 # add connection
                                 tag = textbuf.create_tag("hyperlink",foreground='blue',
                                                          underline=pango.UNDERLINE_SINGLE)
                                 tag.connect('event',jumper.on_clicked)
+                                # disable first flag
+                                self.firstJump[realLabel] = False
                     # write
                     textbuf.insert_with_tags_by_name(textbuf.get_end_iter(),
                                                      strLabel,tagname)
                     # increment
                     iItem += 1
-                if line.strip().startswith('jobStatus'):
+                if line.strip().startswith('jobStatus') or line.strip().startswith('status'):
                     jobStatusRows = True
                     jobStatusIdx = iLine +1
                     try:
@@ -417,6 +436,8 @@ class PSumView:
                     tagname = 'green'
                 elif line.find('failed') != -1:
                     tagname = 'red'
+                elif line.find('cancelled') != -1:
+                    tagname = 'purple'
                 else:
                     tagname = 'yellow'
                 # reformat
@@ -427,9 +448,6 @@ class PSumView:
                     strLine = '\n'
                 textbuf.insert_with_tags_by_name(textbuf.get_end_iter(),
                                                  strLine,tagname)
-
-        # disable first flag
-        self.firstJump = False
         
 
 # text view for status
@@ -555,8 +573,9 @@ class PTreeView:
         # pixel buffer
         self.pbMap = {}
         for tmpStatus,tmpFname, in {'finished' : 'green.png',
-                                   'failed'   : 'red.png',
-                                   'running'  : 'yellow.png'
+                                    'failed'   : 'red.png',
+                                    'running'  : 'yellow.png',
+                                    'cancelled': 'orange.png',
                                    }.iteritems():
             pixbuf = gtk.gdk.pixbuf_new_from_file(os.environ['PANDA_SYS'] \
                                                   + "/etc/panda/icons/" + tmpFname)
@@ -573,7 +592,10 @@ class PTreeView:
             # convert to map
             jobList = {}
             for tmpJob in tmpList:
-                jobList[tmpJob.JobID] = tmpJob
+                if isinstance(tmpJob,LocalJobSpec.LocalJobSpec):
+                    jobList[tmpJob.JobID] = tmpJob
+                else:
+                    jobList[tmpJob.JobsetID] = tmpJob                    
             # set global data
             self.guiGlobal.setJobMap(jobList)
         else:
@@ -627,6 +649,8 @@ class PTreeView:
             pb = self.pbMap['running']
         elif job.jobStatus.find('failed') != -1:
             pb = self.pbMap['failed']
+        elif job.jobStatus.find('cancelled') != -1:
+            pb = self.pbMap['cancelled']
         else:
             pb = self.pbMap['finished']
         cell.set_property('pixbuf', pb)
@@ -793,7 +817,7 @@ class PUpdateButton:
             tmpLog.info('Update is not required for frozen jobs')
             return
         # get updated info
-        updatedJob = self.pbookCore.status(jobID)
+        updatedJob = self.pbookCore.statusJobJobset(long(jobID))
         # update global data
         self.guiGlobal.updateJob(updatedJob)
         # emit signal
@@ -831,9 +855,9 @@ class PKillButton:
             tmpLog.info('All subJobs already finished/failed')            
             return
         # kill
-        self.pbookCore.kill(jobID)
+        self.pbookCore.kill(long(jobID))
         # get job info
-        updatedJob = self.pbookCore.getJobInfo(jobID)
+        updatedJob = self.pbookCore.getJobJobsetInfo(jobID)
         # update global data
         self.guiGlobal.updateJob(updatedJob)
         # emit signal
@@ -870,10 +894,6 @@ class PRetryButton:
         job = self.guiGlobal.getJob(jobID)
         if job.dbStatus != 'frozen':
             tmpLog.warning('Cannot retry running jobs')
-            return
-	# skip already retried
-        if job.retryID != '0':
-            tmpLog.warning('This job was already retried by JobID=%s' % job.retryID)
             return
         # retry
         thr = RetryWorker(jobID,self.guiGlobal,self.retryQueue,self.pEmitter)

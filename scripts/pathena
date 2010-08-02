@@ -40,9 +40,6 @@ nSkips =0
 # default cloud/site
 defaultCloud = None
 
-# suffix for shadow dataset
-suffixShadow = "_shadow"
-
 # max lookup for cross site option
 maxCrossSite = 10
 
@@ -207,7 +204,7 @@ optP.add_option('--dbRunNumber', action='store', dest='dbRunNumber', default='',
 optP.add_option('--addPoolFC', action='store', dest='addPoolFC',  default='',
                 help="file names to be inserted into PoolFileCatalog.xml except input files. e.g., MyCalib1.root,MyGeom2.root") 
 optP.add_option('--skipScan', action='store_const', const=True, dest='skipScan', default=False,
-                help='Skip LRC/LFC lookup at job submission')
+                help='Skip LFC lookup at job submission')
 optP.add_option('--inputFileList', action='store', dest='inputFileList', default='',
                 type='string', help='name of file which contains a list of files to be run in the input dataset')
 optP.add_option('--removeFileList', action='store', dest='removeFileList', default='',
@@ -252,6 +249,8 @@ optP.add_option('--outputPath',action='store',dest='outputPath', default='./',
                 type='string', help='Physical path of output directory relative to a root path')
 optP.add_option('--useExperimental', action='store_const', const=True, dest='useExperimental',  default=False,
                 help='use experimental features')
+optP.add_option('--useOldStyleOutput',action='store_const',const=True,dest='useOldStyleOutput',default=False,
+                help="use output dataset and long LFN instead of output dataset container and short LFN")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
                 type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
 # athena options
@@ -274,6 +273,8 @@ optP.add_option('--panda_inDSForEP', action='store', dest='panda_inDSForEP', def
                 type='string', help='internal parameter')
 optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
                 type='string', help='internal parameter')
+optP.add_option('--panda_jobsetID',action='store',dest='panda_jobsetID',default=-1,
+                type='int', help='internal parameter for jobsetID')
 optP.add_option('--panda_dbRelease', action='store', dest='panda_dbRelease', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_devidedByGUID',action='store_const',const=True,dest='panda_devidedByGUID',default=False,
@@ -333,6 +334,9 @@ if options.panda_srvURL != '':
 # version check
 PsubUtils.checkPandaClientVer(options.verbose)
 
+# suffix for shadow dataset
+suffixShadow = Client.suffixShadow
+
 # exclude sites
 if options.excludedSite != '':
     Client.excludeSite(options.excludedSite)
@@ -354,6 +358,10 @@ if Client.isDQ2free(options.site):
     else:
 	options.outputPath = './'
     options.outDS = options.outputPath
+else:
+    # enforce to use output dataset container
+    if not options.useOldStyleOutput and not options.outDS.endswith('/'):
+        options.outDS = options.outDS + '/'
 
 # keep original outDS
 original_outDS_Name = options.outDS
@@ -361,6 +369,7 @@ original_outDS_Name = options.outDS
 # reset crossSite unless container is used for output 
 if not original_outDS_Name.endswith('/'):
     options.crossSite = 0
+    options.panda_jobsetID = None
 
 usingContainerForOut = original_outDS_Name.endswith('/')
 
@@ -1098,7 +1107,7 @@ if not Client.isDQ2free(options.site):
         options.outDS = PsubUtils.getRealDatasetName(options.outDS,tmpDatasets)
 # get exsisting individualOutDS
 if (outputDSexist or outputContExist) and options.individualOutDS:
-    outputIndvDSlist = Client.getDatasets("%s*" % options.outDS,options.verbose,True)    
+    outputIndvDSlist = Client.getDatasets("%s*" % re.sub('/$','',options.outDS),options.verbose,True)    
 
 # check if shadow dataset exists
 shadowDSexist = False
@@ -1358,19 +1367,12 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 beamGasOdataset = options.beamGasODS
     # input dataset        
     if options.inDS != '':
-        # query files in shadow dataset
+        # query files in shadow dataset. this list is used mainly to reduce the number of LFC lookup
         shadowList = []
         if shadowDSexist and not outputContExist:
-            # query files in PandaDB first to get running/failed files + files which are being added
-            tmpShadowList = Client.getFilesInUseForAnal(options.outDS,options.verbose)
-            for tmpItem in tmpShadowList:
-                shadowList.append(tmpItem)
-            # query files in shadow dataset        
-            for tmpItem in Client.queryFilesInDataset("%s%s" % (options.outDS,suffixShadow),options.verbose):
-                if not tmpItem in shadowList:
-		    shadowList.append(tmpItem)
+	    shadowList = Client.getFilesInShadowDatasetOld(options.outDS,suffixShadow,options.verbose)
         elif outputContExist:
-            shadowList = Client.getFilesInShadowDataset(options.outDS,suffixShadow,options.verbose)
+            shadowList = Client.getFilesInShadowDataset(original_outDS_Name,suffixShadow,options.verbose)
         # query files in dataset
         if options.crossSite in [0,maxCrossSite] or options.verbose:
             tmpLog.info("query files in %s" % options.inDS)
@@ -1378,9 +1380,24 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             tmpLog.info("query files with DQ2")
         inputFileMap,inputDsString  = Client.queryFilesInDataset(options.inDS,options.verbose,getDsString=True)
         # remove files
-        for tmpKey in inputFileMap.keys():
-            if tmpKey in options.removeFileList:
+        for tmpKey in options.removeFileList:
+            if inputFileMap.has_key():
                 del inputFileMap[tmpKey]
+        # separate normal input filelist and wildcard list
+        normalInPatList   = []
+        wildCardInPatList = []
+        for pattern in options.filelist:
+            if re.search('\*',pattern) != None:
+                wildCardInPatList.append(pattern)
+            else:
+                normalInPatList.append(pattern)
+        # check normal input filelist since doing the next loop is time consuming
+        if normalInPatList != []:
+            tmpInputFileMap = {}
+            for tmpPat in normalInPatList:
+                if inputFileMap.has_key(tmpPat):
+                    tmpInputFileMap[tmpPat] = inputFileMap[tmpPat]
+            inputFileMap = tmpInputFileMap        
         # remove log, and check matching
         for fileName in inputFileMap.keys():
             # ignore log file
@@ -1398,21 +1415,15 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 if not matchType:
                     del inputFileMap[fileName]                    
                     continue
-            # filename matching        
-            if options.filelist != []:
+            # filename matching with wild card       
+            if wildCardInPatList != []:
                 # check matching    
                 matchFlag = False
-                for pattern in options.filelist:
-                    if re.search('\*',pattern) != None:
-                        # wildcard matching
-			if re.search(pattern,fileName) != None:
-			    matchFlag = True
-			    break
-                    else:
-                        # normal matching
-                        if pattern == fileName:
-                            matchFlag =True
-                            break
+                for pattern in wildCardInPatList:
+                    # wildcard matching
+                    if re.search(pattern,fileName) != None:
+                        matchFlag = True
+                        break
                 # doesn't match
                 if not matchFlag:
                     del inputFileMap[fileName]
@@ -1501,26 +1512,32 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 tmpSiteKeys = dsLocationMap.keys()
                 for tmpSite in tmpSiteKeys:
                     if not tmpSite in dbrDsLocationMap and not tmpSite in dbrDsLocationMapBack:
-                        tmpLog.info("%s is unavailable at %s although input dataset exists there" % (dbrDsString,tmpSite))
+                        if options.crossSite in [0,maxCrossSite] or options.verbose:
+                            tmpLog.info("%s is unavailable at %s although input dataset exists there" % (dbrDsString,tmpSite))
                         del dsLocationMap[tmpSite]
                 tmpSiteKeys = dbrDsLocationMapBack.keys()
                 for tmpSite in tmpSiteKeys:
                     if not tmpSite in dbrDsLocationMap and not tmpSite in dbrDsLocationMapBack:
-                        tmpLog.info("%s is unavailable at %s although input datasets exist there" % (dbrDsString,tmpSite))
+                        if options.crossSite in [0,maxCrossSite] or options.verbose:
+                            tmpLog.info("%s is unavailable at %s although input datasets exist there" % (dbrDsString,tmpSite))
                         del dbrDsLocationMapBack[tmpSite]
 	    # no location
             if dsLocationMap == {} and dsLocationMapBack == {}:
-                if expCloudFlag:
-                    errStr = "could not find supported/online sites in the %s cloud for %s" % (options.cloud,options.inDS)
+                if options.crossSite in [0,maxCrossSite] or options.verbose:
+                    if expCloudFlag:
+                        errStr = "could not find supported/online sites in the %s cloud for %s" % (options.cloud,options.inDS)
+                    else:
+                        errStr = "could not find supported/online sites for %s" % options.inDS
+                    if options.parentDS != '':
+                        errStr += ' and %s' % options.parentDS
+                    if dbrDsString != '':
+                        errStr += ' and %s' % dbrDsString
+                    tmpLog.error(errStr)
+                    if dsTapeSites != []:
+                        tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
                 else:
-                    errStr = "could not find supported/online sites for %s" % options.inDS
-                if options.parentDS != '':
-                    errStr += ' and %s' % options.parentDS
-                if dbrDsString != '':
-                    errStr += ' and %s' % dbrDsString
-                tmpLog.error(errStr)
-                if dsTapeSites != []:
-                    tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
+                    errStr = "could not find supported/online sites for the missing files"
+                    tmpLog.error(errStr)
                 sys.exit(EC_Dataset)
             # run brorage
             tmpDsLocationMapList = [dsLocationMap]
@@ -1615,6 +1632,14 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             if fileName in missList:
                 del inputFileMap[fileName]                    
                 continue
+        # update shadow just in case since LFC scan may take long time
+        if not options.skipScan:
+            if shadowDSexist and not outputContExist:
+		# using += just in case
+                shadowList += Client.getFilesInShadowDatasetOld(options.outDS,suffixShadow,options.verbose)
+            elif outputContExist:
+		# using += just in case
+                shadowList += Client.getFilesInShadowDataset(original_outDS_Name,suffixShadow,options.verbose)
         # remove shadow
         for fileName in shadowList:
             if inputFileMap.has_key(fileName):
@@ -1637,7 +1662,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                 options.site,options.crossSite,archiveName,options.removedDS,
                                                 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                                 options.panda_devidedByGUID,options.panda_dbRelease,
-                                                options.verbose)
+                                                options.panda_jobsetID,options.verbose)
                 # exit        
                 sys.exit(0)
         # make list
@@ -1709,7 +1734,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                             options.site,options.crossSite,archiveName,options.removedDS,
                                             options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                             options.panda_devidedByGUID,options.panda_dbRelease,
-                                            options.verbose,False)
+                                            options.panda_jobsetID,options.verbose,False)
                     # exit        
                     sys.exit(0)
 
@@ -1747,7 +1772,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
     #@ If number of jobs is "undefined" or "not specified by user"
     #@ split dataset in number of chunsk with nFilesPerJob files per job
     #@ if nFilesPerJob are not specified by user then split AOD files list in chunks of 10 files
-    #@ split other file types in chunks of 20 files.
+    #@ split other file types in chunks of 50 files.
     #
     if options.nEventsPerJob != -1:
         if options.nEventsPerFile == 0:
@@ -1775,7 +1800,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             if options.nFilesPerJob > 0:
                 defaultNFile = options.nFilesPerJob
             else:
-                defaultNFile = 20
+                defaultNFile = 50
             tmpNSplit,tmpMod = divmod(len(inputFileList),defaultNFile)
             if tmpMod != 0:
                 tmpNSplit += 1
@@ -2158,7 +2183,7 @@ if options.long and not options.site.startswith('ANALY_LONG_'):
         
 # modify outDS name when container is used for output
 if original_outDS_Name.endswith('/'):
-    options.outDS = re.sub('/$','.%s' % options.site,options.outDS)
+    options.outDS = re.sub('/$','.%s' % time.strftime('%y%m%d%H%M%S'),options.outDS)
     # check outDS
     tmpDatasets = Client.getDatasets(options.outDS,options.verbose)
     if len(tmpDatasets) != 0:
@@ -2177,8 +2202,8 @@ indexBGasC   = 0
 indexBGasO   = 0
         
 # set index of outputs
-if outputDSexist:
-    AthenaUtils.setInitOutputIndex(runConfig,options.outDS,options.individualOutDS,options.extOutFile,outputIndvDSlist,options.verbose)
+if outputDSexist or outputContExist:
+    AthenaUtils.setInitOutputIndex(runConfig,original_outDS_Name,options.individualOutDS,options.extOutFile,outputIndvDSlist,options.verbose)
 
 # check permission
 if not Client.checkSiteAccessPermission(options.site,options.workingGroup,options.verbose):
@@ -2251,6 +2276,8 @@ if options.nobuild:
 elif options.libDS == '': 
     jobB = JobSpec()
     jobB.jobDefinitionID   = jobDefinitionID
+    if not options.panda_jobsetID in [None,'NULL']:
+        jobB.jobsetID      = options.panda_jobsetID
     jobB.jobName           = jobName
     jobB.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version 
     jobB.AtlasRelease      = 'Atlas-%s' % athenaVer
@@ -2407,6 +2434,8 @@ for iSubJob in range(options.split):
     # instantiate sub-job
     jobR = JobSpec()
     jobR.jobDefinitionID   = jobDefinitionID
+    if not options.panda_jobsetID in [None,'NULL']:
+        jobR.jobsetID      = options.panda_jobsetID
     jobR.jobName           = jobName
     jobR.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version     
     jobR.AtlasRelease      = 'Atlas-%s' % athenaVer
@@ -2584,6 +2613,7 @@ for iSubJob in range(options.split):
                 file.dispatchDBlock = commonDispName
                 file.type       = 'input'
                 file.status     = 'ready'
+                file.destinationDBlockToken = 'noshadow'                
                 if options.trf and not isDirectAccess:
                     file.prodDBlockToken = 'local'
                 jobR.addFile(file)
@@ -2607,6 +2637,7 @@ for iSubJob in range(options.split):
                 file.dispatchDBlock = commonDispName
                 file.type           = 'input'
                 file.status         = 'ready'
+                file.destinationDBlockToken = 'noshadow'                
                 if options.trf and not isDirectAccess:
                     file.prodDBlockToken = 'local'
                 jobR.addFile(file)
@@ -2657,6 +2688,7 @@ for iSubJob in range(options.split):
                         file.dispatchDBlock = commonDispName
                 file.type           = 'input'
                 file.status         = 'ready'
+                file.destinationDBlockToken = 'noshadow'                
                 if options.trf and not isDirectAccess:
                     file.prodDBlockToken = 'local'
                 jobR.addFile(file)
@@ -2717,6 +2749,7 @@ for iSubJob in range(options.split):
                         file.dispatchDBlock = commonDispName
                 file.type           = 'input'
                 file.status         = 'ready'
+                file.destinationDBlockToken = 'noshadow'
                 if options.trf and not isDirectAccess:
                     file.prodDBlockToken = 'local'
                 jobR.addFile(file)
@@ -2738,7 +2771,7 @@ for iSubJob in range(options.split):
 
     # output files
     outMap = {}
-    AthenaUtils.convertConfToOutput(runConfig,jobR,outMap,options.individualOutDS,options.extOutFile)
+    AthenaUtils.convertConfToOutput(runConfig,jobR,outMap,options.individualOutDS,options.extOutFile,original_outDS_Name)
     # set space token
     for file in jobR.Files:
         if file.type in ['output','log']:
@@ -2982,6 +3015,9 @@ if options.individualOutDS:
                 tmpIdvOutDsList.append(tmpFile.dataset)
 
 
+# jobsetID
+jobsetID = options.panda_jobsetID
+
 # no submit 
 if not options.nosubmit:
 
@@ -3019,19 +3055,33 @@ if not options.nosubmit:
                 # register individual datasets
                 for tmpFile in jobList[-1].Files:
                     if tmpFile.type in ['output','log']:
-                        if (not outputIndvDSlist.has_key(tmpFile.dataset)) and (not tmpFile.dataset in tmpIdvOutDsList):
-                            Client.addDataset(tmpFile.dataset,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
-                            tmpIdvOutDsList.append(tmpFile.dataset)
+                        if (not outputIndvDSlist.has_key(tmpFile.destinationDBlock)) and (not tmpFile.destinationDBlock in tmpIdvOutDsList):
+                            Client.addDataset(tmpFile.destinationDBlock,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
+                            tmpIdvOutDsList.append(tmpFile.destinationDBlock)
 
             # register output dataset container
             if original_outDS_Name.endswith('/'):
+                tmpDsContMap = {}
                 # create
                 if not outputContExist:
+                    tmpIdvContList = []
                     Client.createContainer(original_outDS_Name,options.verbose)
+                    tmpIdvContList.append(original_outDS_Name)
+                    if options.individualOutDS:
+                        for tmpFile in jobList[-1].Files:
+                            if tmpFile.type in ['output','log'] and tmpFile.dataset.endswith('/'):
+                                tmpDsContMap[tmpFile.destinationDBlock] = tmpFile.dataset
+                                if not tmpFile.dataset in tmpIdvContList:
+                                    Client.createContainer(tmpFile.dataset,options.verbose)
+                                    tmpIdvContList.append(tmpFile.dataset)
+                                
                 # add dataset
                 if not outputDSexist:
                     for tmpIdvOutDS in tmpIdvOutDsList:
-                        Client.addDatasetsToContainer(original_outDS_Name,[tmpIdvOutDS],options.verbose)
+                        if not options.individualOutDS:
+                            Client.addDatasetsToContainer(original_outDS_Name,[tmpIdvOutDS],options.verbose)
+                        else:
+                            Client.addDatasetsToContainer(tmpDsContMap[tmpIdvOutDS],[tmpIdvOutDS],options.verbose)                            
 
             # register shadow dataset
             if not outputDSexist:
@@ -3158,6 +3208,8 @@ if not options.nosubmit:
             if index==0:
                 # set JobID
                 jobID = o[1]
+                # set jobsetID
+                jobsetID = o[2]['jobsetID']
             if index==0 and options.libDS=='' and (not options.nobuild):
                 outstr += "  > build\n"
                 outstr += "    PandaID=%s\n" % o[0]
@@ -3169,7 +3221,9 @@ if not options.nosubmit:
                 runStr = '%s' % o[0]                        
             elif index+1==len(out):
                 outstr += "-%s" % o[0]
-                runStr += '-%s' % o[0]                                    
+                runStr += '-%s' % o[0]
+    if not jobsetID in [None,'NULL']:            
+        print ' JobsetID  : %s' % jobsetID
     print ' JobID  : %s' % jobID
     print ' Status : %d' % status
     print outstr
@@ -3205,6 +3259,8 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                                 options.site,options.crossSite,archiveName,options.removedDS,
                                 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                 options.panda_devidedByGUID,options.panda_dbRelease,
-                                options.verbose)
+                                jobsetID,options.verbose)
 # succeeded
 sys.exit(0)
+
+#  LocalWords:  LFC

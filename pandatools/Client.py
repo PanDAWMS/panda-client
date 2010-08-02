@@ -43,6 +43,9 @@ maxTotalSize = long(14*1024*1024*1024)
 # safety size for input size calculation
 safetySize = long(500*1024*1024)
 
+# suffix for shadow dataset
+suffixShadow = "_shadow"
+
 # retrieve pathena config
 try:
     # get default timeout
@@ -758,6 +761,12 @@ def getDatasets(name,verbose=False,withWC=False,onlyNames=False):
 # query files in shadow datasets associated to container
 def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
     fileList = []
+    # query files in PandaDB first to get running/failed files + files which are being added
+    tmpList = getFilesInUseForAnal(contName,verbose)
+    for tmpItem in tmpList:
+        if not tmpItem in fileList:
+            # append
+            fileList.append(tmpItem)
     # get elements in container
     elements = getElementsFromContainer(contName,verbose)
     for tmpEle in elements:
@@ -766,12 +775,6 @@ def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
         tmpDatasets = getDatasets(shadowDsName,verbose)
         if len(tmpDatasets) == 0:
             continue
-        # query files in PandaDB first to get running/failed files + files which are being added
-        tmpList = getFilesInUseForAnal(tmpEle,verbose)
-        for tmpItem in tmpList:
-            if not tmpItem in fileList:
-                # append
-                fileList.append(tmpItem)
         # get files in shadow dataset
         tmpList = queryFilesInDataset(shadowDsName,verbose)
         for tmpItem in tmpList:
@@ -780,6 +783,20 @@ def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
                 fileList.append(tmpItem)
     return fileList
     
+
+# query files in shadow dataset associated to old dataset
+def getFilesInShadowDatasetOld(outDS,suffixShadow,verbose=False):
+    shadowList = []    
+    # query files in PandaDB first to get running/failed files + files which are being added
+    tmpShadowList = Client.getFilesInUseForAnal(outDS,verbose)
+    for tmpItem in tmpShadowList:
+        shadowList.append(tmpItem)
+    # query files in shadow dataset        
+    for tmpItem in queryFilesInDataset("%s%s" % (outDS,suffixShadow),verbose):
+        if not tmpItem in shadowList:
+            shadowList.append(tmpItem)
+    return shadowList        
+
 
 # list datasets by GUIDs
 def listDatasetsByGUIDs(guids,dsFilter,verbose=False,forColl=False):
@@ -2208,8 +2225,6 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
     # query files in dataset
     if not isRecursive or verbose:
         tmpLog.info("query files in %s" % inDS)
-    else:
-        tmpLog.info("query files with DQ2")
     if dsStringFlag:
         inputFileMap,inputDsString = queryFilesInDataset(inDS,verbose,getDsString=True)
     else:
@@ -2392,7 +2407,7 @@ def getLatestDBRelease(verbose=False):
                         continue
         # check replica locations to use well distributed DBRelease. i.e. to avoid DBR just created
         tmpLocations = getLocations(tmpName,[],'',False,verbose,getDQ2IDs=True)
-        if len(tmpLocations) < 10:
+        if len(tmpLocations) < 20:
             continue
         # check contents to exclude reprocessing DBR
         tmpDbrFileMap = queryFilesInDataset(tmpName,verbose)

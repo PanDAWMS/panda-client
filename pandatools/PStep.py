@@ -99,7 +99,7 @@ class PStep:
         if matchA != None or matchR != None:
             # parse output to extract JobID 
             for line in self.output.split('\n'):
-                match = re.search('^\s*JobID\s+:\s+(\d+)',line)
+                match = re.search('^\s*JobsetID\s+:\s+(\d+)',line)
                 if match != None:
                     self.isPanda = True
                     self.JobID   = int(match.group(1))
@@ -140,7 +140,7 @@ class PStep:
         # instantiate fetcher
         fetcher = self.fetFactory.getFetcher()
         # wait notification
-        self.tmpLog.info('waiting result of JobID=%s' % self.JobID) 
+        self.tmpLog.info('waiting result of JobsetID=%s' % self.JobID) 
         while True:
             sys.stdout.write('.')
             sys.stdout.flush()
@@ -149,7 +149,7 @@ class PStep:
                 pmails = fetcher.getPMails(self.verbose)
                 for pmail in pmails:
                     # check JobID
-                    if pmail.has_key('JobID') and pmail['JobID'] == self.JobID:
+                    if pmail.has_key('JobsetID') and pmail['JobsetID'] == self.JobID:
                         # return
                         return pmail
             except:
@@ -178,7 +178,7 @@ class PStep:
             job = PdbUtils.readJobDB(self.JobID,self.verbose)
             if job == None:
                 self.status = 255
-                self.output = "ERROR : cannot find JobID=%s in local DB" % self.JobID
+                self.output = "ERROR : cannot find JobsetID=%s in local DB" % self.JobID
                 return
             # not yet retried
             if job.retryID in [0,'0']:
@@ -189,22 +189,22 @@ class PStep:
                 self.output = "ERROR : already retried %s times" % nTry
                 return
             # set JobID to get job from DB
-            self.JobID = long(job.retryID)
+            self.JobID = long(job.retryJobsetID)
         # retry
         os.system('pbook -c "retry(%s)"' % self.JobID)
         # get new job
         job = PdbUtils.readJobDB(self.JobID,self.verbose)
         if job == None:
             self.status = 255
-            self.output = "ERROR : cannot find JobID=%s in local DB after retry" % self.JobID
+            self.output = "ERROR : cannot find JobsetID=%s in local DB after retry" % self.JobID
             return
         # check new JobID
-        if job.retryID in [0,'0']:
+        if job.retryJobsetID in [0,'0']:
             self.status = 255
-            self.output = "ERROR : failed to retry JobID=%s" % self.JobID
+            self.output = "ERROR : failed to retry JobsetID=%s" % self.JobID
             return
         # set jobID
-        self.JobID = long(job.retryID)
+        self.JobID = long(job.retryJobsetID)
         # set status and output
         self.status = 0
         self.output = ''

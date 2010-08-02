@@ -28,16 +28,15 @@ def _getPFNsLFC(guids,lfcHost,storages,nFiles,verbose=False):
         print "Get file info from %s" % lfcHost
     # get PFN
     iGUID = 0
-    nGUID = 100
+    nGUID = 1000
     pfnMap   = {}
     listGUID = []
     for guid in guids:
-        if verbose:
-            sys.stdout.write('.')
-            sys.stdout.flush()
         iGUID += 1
         listGUID.append(guid)
         if iGUID % nGUID == 0 or iGUID == len(guids):
+            sys.stdout.write('.')
+            sys.stdout.flush()
             # get replica
             nTry = 3
             for iTry in range(nTry):
@@ -134,8 +133,9 @@ def main():
     ifile.close()
     # get pfns
     retFiles = _getPFNsLFC(guids,options.lfchost,options.storages,options.nFiles,options.verbose)
+    print
     if options.verbose:    
-        print "\nPFNs : %s" % retFiles
+        print "PFNs : %s" % retFiles
     # write
     ofile = open(options.outfile,'w')
     ofile.write("%s" % retFiles)

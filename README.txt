@@ -21,6 +21,19 @@ pathena -h
 
 ** Release Note
 
+0.2.73 (8/2/2010)
+  * changed pathena/prun to use output container by default
+  * changed --outDS to append / when / is missing
+  * shortened LFN format to follow new DQ2 limitation on LFN length
+  * added --useOldStyleOutput to pathena/prun to allow output dataset and old LFN convention
+  * fixed --individualOutDS of pathena to create separate containers
+  * fixed pbook to work with JobsetID instead if JobID
+  * added longFormat option to pbook.show() to show jobs individually
+  * fixed pbook.retry() to check input duplication
+  * increased the minimum number of complete replicas for the latest DBR
+  * made LFC lookup faster by increasing the number of GUIDs per cycle
+  * added --nGBPerJob to prun
+
 0.2.72 (7/29/2010)
   * fixed the range check in --goodRunList for LFNs with finer-grained LBs
 
