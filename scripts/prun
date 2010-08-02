@@ -980,7 +980,7 @@ if options.inDS != '':
                     PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
                                          options.site,options.crossSite,"",options.removedDS,
 					 options.inDS,options.goodRunListXML,options.eventPickEvtList,
-                                         options.panda_dbRelease,jobsetID,options.verbose)
+                                         options.panda_dbRelease,options.panda_jobsetID,options.verbose)
             # succeeded
             sys.exit(0)
     # truncate
@@ -1757,7 +1757,7 @@ for iJob in range(options.nJobs):
             if matchLFN != None and original_outDS_Name.endswith('/'):
                 flagUseNewLFN = True
                 if jobsetIDMapForLFN.has_key(tmpLFN) and jobsetIDMapForLFN[tmpLFN] != None:
-                    lfnPrefix = '%s.%s.' % (matchLFN.group(1),matchLFN.group(2),jobsetIDMapForLFN[tmpLFN])
+                    lfnPrefix = '%s.%s.%s' % (matchLFN.group(1),matchLFN.group(2),jobsetIDMapForLFN[tmpLFN])
                 else:
                     lfnPrefix = '%s.%s.$JOBSETID' % (matchLFN.group(1),matchLFN.group(2))                    
             else:
