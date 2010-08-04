@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added --descriptionInLFN to pathena/prun
+
 0.2.74 (8/2/2010)
   * fixed pbook.show('running')
   * fixed string conversion error in prun

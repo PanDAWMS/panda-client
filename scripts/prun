@@ -84,6 +84,8 @@ optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,typ
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--official',action='store_const',const=True,dest='official',default=False,
                 help='Produce official dataset')
+optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
+                help='LFN is user.nickname.something (e.g. user.harumaki._00001.AOD.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.description.something')
 optP.add_option('--useAthenaPackages',action='store_const',const=True,dest='useAthenaPackages',default=False,
                 help='Use Athena packages. See PandaRun wiki page for detail')
 optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
@@ -1760,6 +1762,8 @@ for iJob in range(options.nJobs):
                     lfnPrefix = '%s.%s.%s' % (matchLFN.group(1),matchLFN.group(2),jobsetIDMapForLFN[tmpLFN])
                 else:
                     lfnPrefix = '%s.%s.$JOBSETID' % (matchLFN.group(1),matchLFN.group(2))                    
+		if options.descriptionInLFN != '':
+		    lfnPrefix += '.%s' % options.descriptionInLFN
             else:
                 flagUseNewLFN = False
                 lfnPrefix = dsNameWoSlash

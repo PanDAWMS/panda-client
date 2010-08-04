@@ -1120,27 +1120,46 @@ def getRealDatasetName(outDS,tmpDatasets):
 limit_maxNumInputs = 200
 limit_maxLfnLength = 150
 
+isFirstJobSpecForCheck = True
+
 # check job spec
 def checkJobSpec(job):
     # get logger
     tmpLog = PLogger.getPandaLogger()
-    # check the number of input files
+    global isFirstJobSpecForCheck
+    # loop over all files
     nInputFiles = 0
     for tmpFile in job.Files:
+        # the number of input files
         if tmpFile.type == 'input' and (not tmpFile.lfn.endswith('.lib.tgz')) \
                and re.search('DBRelease-.*\.tar\.gz$',tmpFile.lfn) == None:
             nInputFiles += 1
-        elif tmpFile.type == 'output' and len(tmpFile.lfn) > limit_maxLfnLength:
+        # check LFN length    
+        if tmpFile.type == 'output' and len(tmpFile.lfn) > limit_maxLfnLength:
             errMsg =  "Filename %s is too long (%s chars). It must be less than %s. Please use a shorter name" \
                      % (tmpFile.lfn,len(tmpFile.lfn),limit_maxLfnLength)
             tmpLog.error(errMsg)
-            sys.exit(EC_Config)    
+            sys.exit(EC_Config)
+        # check NG chars     
+        if isFirstJobSpecForCheck:
+            if tmpFile.type == 'output':
+                # $ is allowed for $PANDAID/$JOBSETID
+                for tmpChar in ['%','|',';','>','<','?','\'','"','(',')','@','*',':',
+                                '=','&','^','#','\\','@','[',']','{','}','`']:
+                    if tmpChar in tmpFile.lfn:
+                        errMsg = 'invalid character "%s" is used in output LFN %s' % (tmpChar,tmpFile.lfn)
+                        tmpLog.error(errMsg)
+                        sys.exit(EC_Config)
+    # check the number of input files                                                    
     maxNumInputs = limit_maxNumInputs
     if nInputFiles > maxNumInputs:
         errMsg =  "Too many input files (%s files) in a sub job. " % nInputFiles
         errMsg += "Please reduce that to less than %s" % maxNumInputs 
         tmpLog.error(errMsg)
-        sys.exit(EC_Config)    
+        sys.exit(EC_Config)
+    # NG char check with the first JobSpec is enough
+    if job.prodSourceLabel == 'user':
+        isFirstJobSpecForCheck = False
 
 
 # get prodDBlock
