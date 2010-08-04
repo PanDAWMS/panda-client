@@ -85,7 +85,7 @@ optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,typ
 optP.add_option('--official',action='store_const',const=True,dest='official',default=False,
                 help='Produce official dataset')
 optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
-                help='LFN is user.nickname.something (e.g. user.harumaki._00001.AOD.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.description.something')
+                help='LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something')
 optP.add_option('--useAthenaPackages',action='store_const',const=True,dest='useAthenaPackages',default=False,
                 help='Use Athena packages. See PandaRun wiki page for detail')
 optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',

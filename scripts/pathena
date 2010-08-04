@@ -162,7 +162,7 @@ optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=-1,
 optP.add_option('--official', action='store_const', const=True, dest='official',  default=False,
                 help='Produce official dataset')
 optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
-                help='LFN is user.nickname.something (e.g. user.harumaki._00001.AOD.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.description.something')
+                help='LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something')
 optP.add_option('--extFile', action='store', dest='extFile',  default='',
                 help='pathena exports files with some special extensions (.C, .dat, .py .xml) in the current directory. If you want to add other files, specify their names, e.g., data1.root,data2.doc')
 optP.add_option('--excludeFile',action='store',dest='excludeFile',default='',
