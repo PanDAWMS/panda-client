@@ -332,7 +332,7 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
         print
     # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
     maxLength = 200
-    maxLengthCont = 133
+    maxLengthCont = 132
     if outDS.endswith('/'):
         # container
         if len(outDS) > maxLengthCont:
