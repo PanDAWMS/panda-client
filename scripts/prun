@@ -84,6 +84,8 @@ optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,typ
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--official',action='store_const',const=True,dest='official',default=False,
                 help='Produce official dataset')
+optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
+                help='LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something')
 optP.add_option('--useAthenaPackages',action='store_const',const=True,dest='useAthenaPackages',default=False,
                 help='Use Athena packages. See PandaRun wiki page for detail')
 optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
@@ -980,7 +982,7 @@ if options.inDS != '':
                     PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
                                          options.site,options.crossSite,"",options.removedDS,
 					 options.inDS,options.goodRunListXML,options.eventPickEvtList,
-                                         options.panda_dbRelease,jobsetID,options.verbose)
+                                         options.panda_dbRelease,options.panda_jobsetID,options.verbose)
             # succeeded
             sys.exit(0)
     # truncate
@@ -1757,9 +1759,11 @@ for iJob in range(options.nJobs):
             if matchLFN != None and original_outDS_Name.endswith('/'):
                 flagUseNewLFN = True
                 if jobsetIDMapForLFN.has_key(tmpLFN) and jobsetIDMapForLFN[tmpLFN] != None:
-                    lfnPrefix = '%s.%s.' % (matchLFN.group(1),matchLFN.group(2),jobsetIDMapForLFN[tmpLFN])
+                    lfnPrefix = '%s.%s.%s' % (matchLFN.group(1),matchLFN.group(2),jobsetIDMapForLFN[tmpLFN])
                 else:
                     lfnPrefix = '%s.%s.$JOBSETID' % (matchLFN.group(1),matchLFN.group(2))                    
+		if options.descriptionInLFN != '':
+		    lfnPrefix += '.%s' % options.descriptionInLFN
             else:
                 flagUseNewLFN = False
                 lfnPrefix = dsNameWoSlash
