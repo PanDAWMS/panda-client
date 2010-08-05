@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.75 (8/5/2010)
   * added --descriptionInLFN to pathena/prun
+  * fixed ConfigExtractor for StreamRDO
 
 0.2.74 (8/2/2010)
   * fixed pbook.show('running')

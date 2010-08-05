@@ -1661,8 +1661,13 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
             elif outMap.has_key(sAsso):
                 # Stream1,2
                 foundLFN = outMap[sAsso]
-            elif sAsso in ['StreamRDO','StreamESD','StreamAOD']:
-                # RDO,ESD,AOD
+            elif sAsso in ['StreamESD','StreamAOD']:
+                # ESD,AOD
+                stKey = re.sub('^Stream','',sAsso)
+                if outMap.has_key(stKey):
+                    foundLFN = outMap[stKey]
+            elif sAsso == 'StreamRDO' and outMap.has_key('StreamRDO'):
+                # RDO
                 stKey = re.sub('^Stream','',sAsso)
                 if outMap.has_key(stKey):
                     foundLFN = outMap[stKey]
