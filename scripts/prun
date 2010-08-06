@@ -733,6 +733,7 @@ if options.dbRelease != '':
             tmpLog.info("query files in %s" % tmpDbrDS)
         tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
         # append
+        dbrDsList.append(tmpDbrDS)
         for tmpLFN,tmpVal in tmpList.iteritems():
             dbrFiles[tmpLFN] = tmpVal
     # check
@@ -806,26 +807,31 @@ if options.inDS != '':
             if inputDsString == '':
                 tmpDsForLookUpList = [options.inDS] + options.secondaryDSs.keys()
             else:
-                tmpDsForLookUpList = [inputDsString] + options.secondaryDSs.keys()                
+                tmpDsForLookUpList = [inputDsString] + options.secondaryDSs.keys()
+            tmpDsForLookUpList += dbrDsList    
             tmpDsLocationForTest = {}
             dsLocationMap = None
             dsLocationMapBack = None
             for tmpDsForLookUp in tmpDsForLookUpList:
-                tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites,dsUsedDsMap = Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
-                                                                                                    options.verbose,expCloud=expCloudFlag,
-                                                                                                    getReserved=True,getTapeSites=True,
-                                                                                                    removeDS=True,
-                                                                                                    removedDatasets=options.removedDS,
-                                                                                                    useOutContainer=usingContainerForOut)
+                tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites,tmpDsUsedDsMap = \
+                                                                                 Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
+                                                                                                     options.verbose,expCloud=expCloudFlag,
+                                                                                                     getReserved=True,getTapeSites=True,
+                                                                                                     removeDS=True,
+                                                                                                     removedDatasets=options.removedDS,
+                                                                                                     useOutContainer=usingContainerForOut)
+                # use UsedDsMap of primary dataset
+                if tmpDsForLookUp == tmpDsForLookUpList[0]:
+                    dsUsedDsMap = tmpDsUsedDsMap
                 # no location
                 if tmpDsLocationMap == {} and tmpDsLocationMapBack == {}:
+		    if dsTapeSites != []:
+			tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
                     if options.crossSite in [0,maxCrossSite] or options.verbose:
                         if expCloudFlag:
                             tmpLog.error("could not find supported/online sites in the %s cloud for %s" % (options.cloud,tmpDsForLookUp))
                         else:
                             tmpLog.error("could not find supported/online sites for %s" % tmpDsForLookUp)
-                        if dsTapeSites != []:
-                            tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
                     else:
                         errStr = "could not find supported/online sites for the missing files"
                         tmpLog.error(errStr)

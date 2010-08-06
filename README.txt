@@ -21,6 +21,12 @@ pathena -h
 
 ** Release Note
 
+current
+  * improved error message about missing DBR
+  * fixed prun to check DBR location
+  * increased the minimum number of the latest DBR replicas to 40 
+  * fixed error message about TAPE sites
+
 0.2.76 (8/6/2010)
   * fixed pathena/prun to exit immediately when all input files were used by other jobs 
 

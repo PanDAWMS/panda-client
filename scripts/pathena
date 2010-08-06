@@ -1515,6 +1515,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                                                           removedDatasets=options.removedDS,
                                                                                           useOutContainer=usingContainerForOut)
             # get locations for DBR
+            dbrMissingSites = []
             if dbrDsString != '':
                 dbrDsLocationMap,dbrDsLocationMapBack,dbrDsTapeSites = Client.getLocations(dbrDsString,{},options.cloud,
                                                                                            False,options.verbose,
@@ -1525,17 +1526,23 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 tmpSiteKeys = dsLocationMap.keys()
                 for tmpSite in tmpSiteKeys:
                     if not tmpSite in dbrDsLocationMap and not tmpSite in dbrDsLocationMapBack:
-                        if options.crossSite in [0,maxCrossSite] or options.verbose:
-                            tmpLog.info("%s is unavailable at %s although input dataset exists there" % (dbrDsString,tmpSite))
+                        for tmpItem in dsLocationMap[tmpSite]:
+                            if not tmpItem in dbrMissingSites:
+                                dbrMissingSites.append(tmpItem)
                         del dsLocationMap[tmpSite]
                 tmpSiteKeys = dbrDsLocationMapBack.keys()
                 for tmpSite in tmpSiteKeys:
                     if not tmpSite in dbrDsLocationMap and not tmpSite in dbrDsLocationMapBack:
-                        if options.crossSite in [0,maxCrossSite] or options.verbose:
-                            tmpLog.info("%s is unavailable at %s although input datasets exist there" % (dbrDsString,tmpSite))
+                        for tmpItem in dsLocationMap[tmpSite]:
+                            if not tmpItem in dbrMissingSites:
+                                dbrMissingSites.append(tmpItem)
                         del dbrDsLocationMapBack[tmpSite]
 	    # no location
             if dsLocationMap == {} and dsLocationMapBack == {}:
+		if dsTapeSites != []:
+		    tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
+                if dbrMissingSites != []:
+                    tmpLog.error("%s is missing at %s although input dataset is available" % (dbrDsString,str(dbrMissingSites)))
                 if options.crossSite in [0,maxCrossSite] or options.verbose:
                     if expCloudFlag:
                         errStr = "could not find supported/online sites in the %s cloud for %s" % (options.cloud,options.inDS)
@@ -1546,8 +1553,6 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     if dbrDsString != '':
                         errStr += ' and %s' % dbrDsString
                     tmpLog.error(errStr)
-                    if dsTapeSites != []:
-                        tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
                 else:
                     errStr = "could not find supported/online sites for the missing files"
                     tmpLog.error(errStr)

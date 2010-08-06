@@ -172,7 +172,6 @@ def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=[]):
 def convertDQ2toPandaID(site):
     return Client.convertDQ2toPandaID(site)
 
-
 # get DN
 def getDN():
     shortName = ''
