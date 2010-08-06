@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.76 (8/6/2010)
+  * fixed pathena/prun to exit immediately when all input files were used by other jobs 
+
 0.2.75 (8/5/2010)
   * added --descriptionInLFN to pathena/prun
   * fixed ConfigExtractor for StreamRDO
