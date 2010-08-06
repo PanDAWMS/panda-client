@@ -1033,7 +1033,7 @@ globalSerialnumber = None
 
 
 # set initial index of outputs
-def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSlist,verbose):
+def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSlist,verbose,descriptionInLFN=''):
     import Client
     # use global
     global indexHIST
@@ -1161,6 +1161,8 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
     tmpMatch = re.search('^([^\.]+)\.([^\.]+)\.',outDS)
     if tmpMatch != None and origOutDS.endswith('/'):
         shortPrefix = '^%s\.%s\.(\d+)' % (tmpMatch.group(1),tmpMatch.group(2))
+        if descriptionInLFN != '':
+            shortPrefix += '\.%s' % descriptionInLFN
     else:
         shortPrefix = outDS        
     indexHIST    = getIndex(tmpList,"%s\.hist\._(\d+)\.root" % shortPrefix)
@@ -1229,7 +1231,7 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
 
     
 # convert runConfig to outMap
-def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,original_outDS=''):
+def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,original_outDS='',descriptionInLFN=''):
     from taskbuffer.FileSpec import FileSpec    
     # use global to increment index
     global indexHIST
@@ -1259,6 +1261,8 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
             outDSwoSlash += '$JOBSETID'
         else:
             outDSwoSlash += globalSerialnumber
+        if descriptionInLFN != '':
+            outDSwoSlash += '.%s' % descriptionInLFN
     # start conversion
     if runConfig.output.outNtuple:
         indexNT += 1
@@ -1657,8 +1661,13 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
             elif outMap.has_key(sAsso):
                 # Stream1,2
                 foundLFN = outMap[sAsso]
-            elif sAsso in ['StreamRDO','StreamESD','StreamAOD']:
-                # RDO,ESD,AOD
+            elif sAsso in ['StreamESD','StreamAOD']:
+                # ESD,AOD
+                stKey = re.sub('^Stream','',sAsso)
+                if outMap.has_key(stKey):
+                    foundLFN = outMap[stKey]
+            elif sAsso == 'StreamRDO' and outMap.has_key('StreamRDO'):
+                # RDO
                 stKey = re.sub('^Stream','',sAsso)
                 if outMap.has_key(stKey):
                     foundLFN = outMap[stKey]
