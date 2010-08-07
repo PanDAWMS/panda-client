@@ -279,6 +279,10 @@ optP.add_option('--panda_jobsetID',action='store',dest='panda_jobsetID',default=
                 type='int', help='internal parameter for jobsetID')
 optP.add_option('--panda_dbRelease', action='store', dest='panda_dbRelease', default='',
                 type='string', help='internal parameter')
+optP.add_option('--panda_singleLine', action='store', dest='panda_singleLine', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_trf', action='store', dest='panda_trf', default='',
+                type='string', help='internal parameter')
 optP.add_option('--panda_devidedByGUID',action='store_const',const=True,dest='panda_devidedByGUID',default=False,
                 help='internal parameter')
 optP.add_option('--panda_suppressMsg',action='store_const',const=True,dest='panda_suppressMsg',default=False,
@@ -458,6 +462,17 @@ if options.nGBPerJob != -1:
         # reset max size per job
         maxTotalSize = options.nGBPerJob
     
+# trf parameter
+if options.panda_trf != '':
+    options.trf = urllib.unquote(options.panda_trf)
+if options.trf == False:
+    orig_trfStr = ''
+else:
+    orig_trfStr = options.trf
+
+# one liner
+if options.panda_singleLine != '':
+    options.singleLine = urllib.unquote(options.panda_singleLine)
 
 # check DBRelease
 if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
@@ -748,7 +763,6 @@ if options.eventPickEvtList != '':
     # add to be deleted on exit
     delFilesOnExit.append(eventPickRunEvtDat)
     
-        
 # get job options
 jobO = ''
 if options.trf:
@@ -1681,7 +1695,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                 options.site,options.crossSite,archiveName,options.removedDS,
                                                 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                                 options.panda_devidedByGUID,options.panda_dbRelease,
-                                                options.panda_jobsetID,options.verbose)
+                                                options.panda_jobsetID,orig_trfStr,options.singleLine,
+                                                True,options.verbose)
                 # exit        
                 sys.exit(0)
         # make list
@@ -1753,7 +1768,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                             options.site,options.crossSite,archiveName,options.removedDS,
                                             options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                             options.panda_devidedByGUID,options.panda_dbRelease,
-                                            options.panda_jobsetID,options.verbose,False)
+                                            options.panda_jobsetID,orig_trfStr,options.singleLine,
+                                            False,options.verbose)
                     # exit        
                     sys.exit(0)
 
@@ -3280,7 +3296,8 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                                 options.site,options.crossSite,archiveName,options.removedDS,
                                 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                 options.panda_devidedByGUID,options.panda_dbRelease,
-                                jobsetID,options.verbose)
+                                jobsetID,orig_trfStr,options.singleLine,
+                                True,options.verbose)
 # succeeded
 sys.exit(0)
 

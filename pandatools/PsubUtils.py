@@ -367,7 +367,7 @@ def getMaxIndex(list,pattern,shortLFN=False):
                 maxIndex = tmpIndex
                 # check jobsetID in LFN
                 if shortLFN:
-                    if maxJobsetID == None or int(maxJobsetID) < int(tmpJobsetID):
+                    if maxJobsetID == None or int(maxJobsetID.split('_')[-1]) < int(tmpJobsetID.split('_')[-1]):
                         maxJobsetID = tmpJobsetID
     if shortLFN:
         return maxIndex,maxJobsetID
@@ -740,8 +740,8 @@ def checkDestSE(destSEs,dsName,verbose):
 
 # run pathena recursively
 def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,
-                  removedDS,inDS,goodRunListXML,eventPickEvtList,devidedByGUID,dbRelease,jobsetID,verbose,
-                  isMissing=True):
+                  removedDS,inDS,goodRunListXML,eventPickEvtList,devidedByGUID,dbRelease,jobsetID,trfStr,
+                  singleLine,isMissing,verbose):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -821,6 +821,12 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # set jobsetID
     if not '--panda_jobsetID' in fullExecString and not jobsetID in [None,'NULL',-1]:
         fullExecString += ' --panda_jobsetID=%s' % jobsetID
+    # trf string
+    if not '--panda_trf' in fullExecString and trfStr != '':
+        fullExecString += ' --panda_trf=%s' % urllib.quote(trfStr)
+    # one liner
+    if not '--panda_singleLine' in fullExecString and singleLine != '':
+        fullExecString += ' --panda_singleLine=%s' % urllib.quote(singleLine)
     # run pathena
     if anotherTry:
         if isMissing:
@@ -840,7 +846,8 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     
 # run prun recursively
 def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite,archiveName,
-               removedDS,inDS,goodRunListXML,eventPickEvtList,dbRelease,jobsetID,verbose):
+               removedDS,inDS,goodRunListXML,eventPickEvtList,dbRelease,jobsetID,
+               bexecStr,execStr,verbose):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -907,6 +914,12 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
     # set jobsetID
     if not '--panda_jobsetID' in fullExecString and not jobsetID in [None,'NULL',-1]:
                 fullExecString += ' --panda_jobsetID=%s' % jobsetID
+    # bexec string
+    if not '--panda_bexec' in fullExecString and bexecStr != '':
+        fullExecString += ' --panda_bexec=%s' % urllib.quote(bexecStr)
+    # exec string
+    if not '--panda_exec' in fullExecString and execStr != '':
+        fullExecString += ' --panda_exec=%s' % urllib.quote(execStr)
     # run prun
     if anotherTry:
         tmpLog.info("trying other sites for the missing files")

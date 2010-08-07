@@ -21,11 +21,13 @@ pathena -h
 
 ** Release Note
 
-current
-  * improved error message about missing DBR
+0.2.77 (8/7/2010)
+  * added global SN into group file names to guarantee LFN uniqueness 
+  * fixed error message about missing DBR
   * fixed prun to check DBR location
   * increased the minimum number of the latest DBR replicas to 40 
   * fixed error message about TAPE sites
+  * fixed --exec/--bexec of prun and --trf/-p/-c of pathena to keep special characters
 
 0.2.76 (8/6/2010)
   * fixed pathena/prun to exit immediately when all input files were used by other jobs 

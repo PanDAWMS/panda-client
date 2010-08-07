@@ -5,6 +5,7 @@ import commands
 
 import PLogger
 
+
 # replace parameter with compact LFNs
 def replaceParam(patt,inList,tmpJobO):
     # remove attempt numbers
@@ -1080,7 +1081,7 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
                     if len(match.groups()) == 2:
                         global globalSerialnumber
                         if globalSerialnumber == None or \
-                           int(globalSerialnumber) < int(match.group(1)):
+                           int(globalSerialnumber.split('_')[-1]) < int(match.group(1).split('_')[-1]):
                             globalSerialnumber = match.group(1)
         return maxIndex
 
@@ -1160,7 +1161,7 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
     # set index
     tmpMatch = re.search('^([^\.]+)\.([^\.]+)\.',outDS)
     if tmpMatch != None and origOutDS.endswith('/'):
-        shortPrefix = '^%s\.%s\.(\d+)' % (tmpMatch.group(1),tmpMatch.group(2))
+        shortPrefix = '^%s\.%s\.([_\d]+)' % (tmpMatch.group(1),tmpMatch.group(2))
         if descriptionInLFN != '':
             shortPrefix += '\.%s' % descriptionInLFN
     else:
@@ -1229,7 +1230,6 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
                 indexMS = tmpIndex
 
 
-    
 # convert runConfig to outMap
 def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,original_outDS='',descriptionInLFN=''):
     from taskbuffer.FileSpec import FileSpec    
@@ -1258,6 +1258,8 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
     if tmpMatch != None and original_outDS.endswith('/'):
         outDSwoSlash = '%s.%s.' % (tmpMatch.group(1),tmpMatch.group(2))
         if globalSerialnumber == None:
+            if outDSwoSlash.startswith('group'):
+                outDSwoSlash += "$GROUPJOBSN_"
             outDSwoSlash += '$JOBSETID'
         else:
             outDSwoSlash += globalSerialnumber
