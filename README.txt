@@ -21,13 +21,32 @@ pathena -h
 
 ** Release Note
 
+0.2.77 (8/7/2010)
+  * added global SN into group file names to guarantee LFN uniqueness 
+  * fixed error message about missing DBR
+  * fixed prun to check DBR location
+  * increased the minimum number of the latest DBR replicas to 40 
+  * fixed error message about TAPE sites
+  * fixed --exec/--bexec of prun and --trf/-p/-c of pathena to keep special characters
+
+0.2.76 (8/6/2010)
+  * fixed pathena/prun to exit immediately when all input files were used by other jobs 
+
+0.2.75 (8/5/2010)
+  * added --descriptionInLFN to pathena/prun
+  * fixed ConfigExtractor for StreamRDO
+
+0.2.74 (8/2/2010)
+  * fixed pbook.show('running')
+  * fixed string conversion error in prun
+
 0.2.73 (8/2/2010)
   * changed pathena/prun to use output container by default
   * changed --outDS to append / when / is missing
-  * shortened LFN format to follow new DQ2 limitation on LFN length
+  * introduced a short LFN format to follow new DQ2 limitation on LFN length
   * added --useOldStyleOutput to pathena/prun to allow output dataset and old LFN convention
   * fixed --individualOutDS of pathena to create separate containers
-  * fixed pbook to work with JobsetID instead if JobID
+  * fixed pbook to work with JobsetID instead of JobID
   * added longFormat option to pbook.show() to show jobs individually
   * fixed pbook.retry() to check input duplication
   * increased the minimum number of complete replicas for the latest DBR
