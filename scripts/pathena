@@ -161,6 +161,8 @@ optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=-1,
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--official', action='store_const', const=True, dest='official',  default=False,
                 help='Produce official dataset')
+optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
+                help='LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something')
 optP.add_option('--extFile', action='store', dest='extFile',  default='',
                 help='pathena exports files with some special extensions (.C, .dat, .py .xml) in the current directory. If you want to add other files, specify their names, e.g., data1.root,data2.doc')
 optP.add_option('--excludeFile',action='store',dest='excludeFile',default='',
@@ -276,6 +278,10 @@ optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFu
 optP.add_option('--panda_jobsetID',action='store',dest='panda_jobsetID',default=-1,
                 type='int', help='internal parameter for jobsetID')
 optP.add_option('--panda_dbRelease', action='store', dest='panda_dbRelease', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_singleLine', action='store', dest='panda_singleLine', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_trf', action='store', dest='panda_trf', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_devidedByGUID',action='store_const',const=True,dest='panda_devidedByGUID',default=False,
                 help='internal parameter')
@@ -456,6 +462,17 @@ if options.nGBPerJob != -1:
         # reset max size per job
         maxTotalSize = options.nGBPerJob
     
+# trf parameter
+if options.panda_trf != '':
+    options.trf = urllib.unquote(options.panda_trf)
+if options.trf == False:
+    orig_trfStr = ''
+else:
+    orig_trfStr = options.trf
+
+# one liner
+if options.panda_singleLine != '':
+    options.singleLine = urllib.unquote(options.panda_singleLine)
 
 # check DBRelease
 if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
@@ -746,7 +763,6 @@ if options.eventPickEvtList != '':
     # add to be deleted on exit
     delFilesOnExit.append(eventPickRunEvtDat)
     
-        
 # get job options
 jobO = ''
 if options.trf:
@@ -1445,6 +1461,17 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 		errStr += "The dataset is empty"
             tmpLog.error(errStr)
             sys.exit(EC_Config)
+        # check if all files were used
+        unUsedFlag = False
+        for tmpLFN in inputFileMap.keys():
+            if not tmpLFN in shadowList:
+                unUsedFlag = True
+                break
+        if not unUsedFlag:
+            # exit
+            tmpMsg = "Done. All input files were (or are being) processed"
+            tmpLog.info(tmpMsg)
+            sys.exit(0)
         # get locations when site==AUTO
         if options.site == "AUTO":
             if inputDsString == '':
@@ -1502,6 +1529,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                                                           removedDatasets=options.removedDS,
                                                                                           useOutContainer=usingContainerForOut)
             # get locations for DBR
+            dbrMissingSites = []
             if dbrDsString != '':
                 dbrDsLocationMap,dbrDsLocationMapBack,dbrDsTapeSites = Client.getLocations(dbrDsString,{},options.cloud,
                                                                                            False,options.verbose,
@@ -1512,17 +1540,23 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 tmpSiteKeys = dsLocationMap.keys()
                 for tmpSite in tmpSiteKeys:
                     if not tmpSite in dbrDsLocationMap and not tmpSite in dbrDsLocationMapBack:
-                        if options.crossSite in [0,maxCrossSite] or options.verbose:
-                            tmpLog.info("%s is unavailable at %s although input dataset exists there" % (dbrDsString,tmpSite))
+                        for tmpItem in dsLocationMap[tmpSite]:
+                            if not tmpItem in dbrMissingSites:
+                                dbrMissingSites.append(tmpItem)
                         del dsLocationMap[tmpSite]
                 tmpSiteKeys = dbrDsLocationMapBack.keys()
                 for tmpSite in tmpSiteKeys:
                     if not tmpSite in dbrDsLocationMap and not tmpSite in dbrDsLocationMapBack:
-                        if options.crossSite in [0,maxCrossSite] or options.verbose:
-                            tmpLog.info("%s is unavailable at %s although input datasets exist there" % (dbrDsString,tmpSite))
+                        for tmpItem in dsLocationMap[tmpSite]:
+                            if not tmpItem in dbrMissingSites:
+                                dbrMissingSites.append(tmpItem)
                         del dbrDsLocationMapBack[tmpSite]
 	    # no location
             if dsLocationMap == {} and dsLocationMapBack == {}:
+		if dsTapeSites != []:
+		    tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
+                if dbrMissingSites != []:
+                    tmpLog.error("%s is missing at %s although input dataset is available" % (dbrDsString,str(dbrMissingSites)))
                 if options.crossSite in [0,maxCrossSite] or options.verbose:
                     if expCloudFlag:
                         errStr = "could not find supported/online sites in the %s cloud for %s" % (options.cloud,options.inDS)
@@ -1533,8 +1567,6 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     if dbrDsString != '':
                         errStr += ' and %s' % dbrDsString
                     tmpLog.error(errStr)
-                    if dsTapeSites != []:
-                        tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
                 else:
                     errStr = "could not find supported/online sites for the missing files"
                     tmpLog.error(errStr)
@@ -1656,13 +1688,15 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 # go back to current dir
                 os.chdir(currentDir)
                 # try another site if input files remain
+		options.crossSite -= 1
                 if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                     if missList != []:
                         PsubUtils.runPathenaRec(runConfig,missList,tmpDir,fullExecString,options.nfiles,inputFileMap,
                                                 options.site,options.crossSite,archiveName,options.removedDS,
                                                 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                                 options.panda_devidedByGUID,options.panda_dbRelease,
-                                                options.panda_jobsetID,options.verbose)
+                                                options.panda_jobsetID,orig_trfStr,options.singleLine,
+                                                True,options.verbose)
                 # exit        
                 sys.exit(0)
         # make list
@@ -1734,7 +1768,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                             options.site,options.crossSite,archiveName,options.removedDS,
                                             options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                             options.panda_devidedByGUID,options.panda_dbRelease,
-                                            options.panda_jobsetID,options.verbose,False)
+                                            options.panda_jobsetID,orig_trfStr,options.singleLine,
+                                            False,options.verbose)
                     # exit        
                     sys.exit(0)
 
@@ -2203,7 +2238,8 @@ indexBGasO   = 0
         
 # set index of outputs
 if outputDSexist or outputContExist:
-    AthenaUtils.setInitOutputIndex(runConfig,original_outDS_Name,options.individualOutDS,options.extOutFile,outputIndvDSlist,options.verbose)
+    AthenaUtils.setInitOutputIndex(runConfig,original_outDS_Name,options.individualOutDS,options.extOutFile,outputIndvDSlist,
+                                   options.verbose,options.descriptionInLFN)
 
 # check permission
 if not Client.checkSiteAccessPermission(options.site,options.workingGroup,options.verbose):
@@ -2771,7 +2807,8 @@ for iSubJob in range(options.split):
 
     # output files
     outMap = {}
-    AthenaUtils.convertConfToOutput(runConfig,jobR,outMap,options.individualOutDS,options.extOutFile,original_outDS_Name)
+    AthenaUtils.convertConfToOutput(runConfig,jobR,outMap,options.individualOutDS,options.extOutFile,original_outDS_Name,
+                                    options.descriptionInLFN)
     # set space token
     for file in jobR.Files:
         if file.type in ['output','log']:
@@ -3259,7 +3296,8 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                                 options.site,options.crossSite,archiveName,options.removedDS,
                                 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                 options.panda_devidedByGUID,options.panda_dbRelease,
-                                jobsetID,options.verbose)
+                                jobsetID,orig_trfStr,options.singleLine,
+                                True,options.verbose)
 # succeeded
 sys.exit(0)
 

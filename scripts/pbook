@@ -808,7 +808,14 @@ For more info, do help(show) for example."""
             jobList = pbookCore.getLocalJobList()
 	    for job in jobList:
                 if job.dbStatus != 'frozen':
-                    show(job.JobID)
+                    if hasattr(job,'JobID'):
+                        # job
+                        show(job.JobID,forceUpdate=forceUpdate,
+                             showPandaIDinState=showPandaIDinState,longFormat=longFormat)
+                    else:
+                        # jobset
+                        show(long(job.JobsetID),forceUpdate=forceUpdate,
+                             showPandaIDinState=showPandaIDinState,longFormat=longFormat)
         else:
             tmpJobIDList = pbookCore.getJobIDsWithSetID(JobID)
             if tmpJobIDList == None:
