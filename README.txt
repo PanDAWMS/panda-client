@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.2.79 (8/9/2010)
+  * added protection to pbook against duplication of jobID and jobsetID
+  * added ignoreDuplication to pbook.retry()
+
 0.2.78 (8/9/2010)
   * added --maxNFilesPerJob and --writeInputToTxt to prun
 
