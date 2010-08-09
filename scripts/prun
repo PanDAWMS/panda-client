@@ -142,6 +142,10 @@ optP.add_option('--bexec',action='store',dest='bexec',default='',type='string',
                 help='execution string for build stage. e.g., --bexec "make"')
 optP.add_option('--myproxy',action='store',dest='myproxy',default='myproxy.cern.ch',type='string',
                 help='Name of the myproxy server')
+optP.add_option('--maxNFilesPerJob',action='store',dest='maxNFilesPerJob',default=200,type='int',
+                help='The maximum number of files per job is 200 by default since too many input files result in a too long command-line argument on WN which crashes the job. This option relax the limit. In many cases it is better to use this option together with --writeInputToTxt')
+optP.add_option('--writeInputToTxt',action='store',dest='writeInputToTxt',default='',type='string',
+                help='Write the input file list to a file so that your application gets the list from the file instead of stdin. The argument is a comma separated list of StreamName:FileName. e.g., IN:input1.txt,IN2:input2.txt')
 optP.add_option('--dbRelease',action='store',dest='dbRelease',default='',
                 type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used. Most likely the --useAthenaPackages or --athenaTag option is required to setup Athena runtime on WN')
 optP.add_option('--dbRunNumber',action='store',dest='dbRunNumber', default='',
@@ -246,6 +250,9 @@ useRandomCloud = []
 if re.search(',',options.site) != None:
     options.site,useRandomCloud = Client.useCertainSites(options.site)
 
+# set maxNFilesPerJob
+PsubUtils.limit_maxNumInputs = options.maxNFilesPerJob 
+
 # site specified
 siteSpecified = True
 if options.site == 'AUTO':
@@ -321,6 +328,17 @@ if options.eventPickEvtList != '':
     if options.eventPickDataType == '':
         tmpLog.error("--eventPickDataType must be specified")
         sys.exit(EC_Config)
+
+# check writeInputToTxt
+if options.writeInputToTxt != '':
+    # remove %
+    options.writeInputToTxt = options.writeInputToTxt.replace('%','')
+    # loop over all StreamName:FileName
+    for tmpItem in options.writeInputToTxt.split(','):
+        tmpItems = tmpItem.split(':')
+        if len(tmpItems) != 2:
+            tmpLog.error("invalid StreamName:FileName in --writeInputToTxt : %s" % tmpItem)
+            sys.exit(EC_Config)
     
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
@@ -1629,6 +1647,9 @@ for iJob in range(options.nJobs):
     # use Athena packages
     if options.useAthenaPackages:
         jobR.jobParameters += "--useAthenaPackages "
+    # write input to txt
+    if options.writeInputToTxt != '':
+        jobR.jobParameters += "--writeInputToTxt %s " % options.writeInputToTxt       
     if options.jobParams != '':
         # random seed
         tmpJobO = options.jobParams

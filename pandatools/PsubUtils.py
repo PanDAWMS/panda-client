@@ -1166,7 +1166,8 @@ def checkJobSpec(job):
     maxNumInputs = limit_maxNumInputs
     if nInputFiles > maxNumInputs:
         errMsg =  "Too many input files (%s files) in a sub job. " % nInputFiles
-        errMsg += "Please reduce that to less than %s" % maxNumInputs 
+        errMsg += "Please reduce that to less than %s. " % maxNumInputs
+        errMsg += "If you are using prun you may try --maxNFilesPerJob and --writeInputToTxt"
         tmpLog.error(errMsg)
         sys.exit(EC_Config)
     # NG char check with the first JobSpec is enough

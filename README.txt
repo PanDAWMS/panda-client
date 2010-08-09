@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.78 (8/9/2010)
+  * added --maxNFilesPerJob and --writeInputToTxt to prun
+
 0.2.77 (8/7/2010)
   * added global SN into group file names to guarantee LFN uniqueness 
   * fixed error message about missing DBR
