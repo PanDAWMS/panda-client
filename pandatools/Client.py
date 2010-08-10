@@ -2407,7 +2407,7 @@ def getLatestDBRelease(verbose=False):
                         continue
         # check replica locations to use well distributed DBRelease. i.e. to avoid DBR just created
         tmpLocations = getLocations(tmpName,[],'',False,verbose,getDQ2IDs=True)
-        if len(tmpLocations) < 20:
+        if len(tmpLocations) < 40:
             continue
         # check contents to exclude reprocessing DBR
         tmpDbrFileMap = queryFilesInDataset(tmpName,verbose)

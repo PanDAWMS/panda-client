@@ -172,7 +172,6 @@ def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=[]):
 def convertDQ2toPandaID(site):
     return Client.convertDQ2toPandaID(site)
 
-
 # get DN
 def getDN():
     shortName = ''
@@ -332,7 +331,7 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
         print
     # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
     maxLength = 200
-    maxLengthCont = 133
+    maxLengthCont = 132
     if outDS.endswith('/'):
         # container
         if len(outDS) > maxLengthCont:
@@ -368,7 +367,7 @@ def getMaxIndex(list,pattern,shortLFN=False):
                 maxIndex = tmpIndex
                 # check jobsetID in LFN
                 if shortLFN:
-                    if maxJobsetID == None or int(maxJobsetID) < int(tmpJobsetID):
+                    if maxJobsetID == None or int(maxJobsetID.split('_')[-1]) < int(tmpJobsetID.split('_')[-1]):
                         maxJobsetID = tmpJobsetID
     if shortLFN:
         return maxIndex,maxJobsetID
@@ -741,8 +740,8 @@ def checkDestSE(destSEs,dsName,verbose):
 
 # run pathena recursively
 def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,
-                  removedDS,inDS,goodRunListXML,eventPickEvtList,devidedByGUID,dbRelease,jobsetID,verbose,
-                  isMissing=True):
+                  removedDS,inDS,goodRunListXML,eventPickEvtList,devidedByGUID,dbRelease,jobsetID,trfStr,
+                  singleLine,isMissing,verbose):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -822,6 +821,12 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # set jobsetID
     if not '--panda_jobsetID' in fullExecString and not jobsetID in [None,'NULL',-1]:
         fullExecString += ' --panda_jobsetID=%s' % jobsetID
+    # trf string
+    if not '--panda_trf' in fullExecString and trfStr != '':
+        fullExecString += ' --panda_trf=%s' % urllib.quote(trfStr)
+    # one liner
+    if not '--panda_singleLine' in fullExecString and singleLine != '':
+        fullExecString += ' --panda_singleLine=%s' % urllib.quote(singleLine)
     # run pathena
     if anotherTry:
         if isMissing:
@@ -841,7 +846,8 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     
 # run prun recursively
 def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite,archiveName,
-               removedDS,inDS,goodRunListXML,eventPickEvtList,dbRelease,jobsetID,verbose):
+               removedDS,inDS,goodRunListXML,eventPickEvtList,dbRelease,jobsetID,
+               bexecStr,execStr,verbose):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -908,6 +914,12 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
     # set jobsetID
     if not '--panda_jobsetID' in fullExecString and not jobsetID in [None,'NULL',-1]:
                 fullExecString += ' --panda_jobsetID=%s' % jobsetID
+    # bexec string
+    if not '--panda_bexec' in fullExecString and bexecStr != '':
+        fullExecString += ' --panda_bexec=%s' % urllib.quote(bexecStr)
+    # exec string
+    if not '--panda_exec' in fullExecString and execStr != '':
+        fullExecString += ' --panda_exec=%s' % urllib.quote(execStr)
     # run prun
     if anotherTry:
         tmpLog.info("trying other sites for the missing files")
@@ -1120,27 +1132,47 @@ def getRealDatasetName(outDS,tmpDatasets):
 limit_maxNumInputs = 200
 limit_maxLfnLength = 150
 
+isFirstJobSpecForCheck = True
+
 # check job spec
 def checkJobSpec(job):
     # get logger
     tmpLog = PLogger.getPandaLogger()
-    # check the number of input files
+    global isFirstJobSpecForCheck
+    # loop over all files
     nInputFiles = 0
     for tmpFile in job.Files:
+        # the number of input files
         if tmpFile.type == 'input' and (not tmpFile.lfn.endswith('.lib.tgz')) \
                and re.search('DBRelease-.*\.tar\.gz$',tmpFile.lfn) == None:
             nInputFiles += 1
-        elif tmpFile.type == 'output' and len(tmpFile.lfn) > limit_maxLfnLength:
+        # check LFN length    
+        if tmpFile.type == 'output' and len(tmpFile.lfn) > limit_maxLfnLength:
             errMsg =  "Filename %s is too long (%s chars). It must be less than %s. Please use a shorter name" \
                      % (tmpFile.lfn,len(tmpFile.lfn),limit_maxLfnLength)
             tmpLog.error(errMsg)
-            sys.exit(EC_Config)    
+            sys.exit(EC_Config)
+        # check NG chars     
+        if isFirstJobSpecForCheck:
+            if tmpFile.type == 'output':
+                # $ is allowed for $PANDAID/$JOBSETID
+                for tmpChar in ['%','|',';','>','<','?','\'','"','(',')','@','*',':',
+                                '=','&','^','#','\\','@','[',']','{','}','`']:
+                    if tmpChar in tmpFile.lfn:
+                        errMsg = 'invalid character "%s" is used in output LFN %s' % (tmpChar,tmpFile.lfn)
+                        tmpLog.error(errMsg)
+                        sys.exit(EC_Config)
+    # check the number of input files                                                    
     maxNumInputs = limit_maxNumInputs
     if nInputFiles > maxNumInputs:
         errMsg =  "Too many input files (%s files) in a sub job. " % nInputFiles
-        errMsg += "Please reduce that to less than %s" % maxNumInputs 
+        errMsg += "Please reduce that to less than %s. " % maxNumInputs
+        errMsg += "If you are using prun you may try --maxNFilesPerJob and --writeInputToTxt"
         tmpLog.error(errMsg)
-        sys.exit(EC_Config)    
+        sys.exit(EC_Config)
+    # NG char check with the first JobSpec is enough
+    if job.prodSourceLabel == 'user':
+        isFirstJobSpecForCheck = False
 
 
 # get prodDBlock

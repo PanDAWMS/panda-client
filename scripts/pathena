@@ -161,6 +161,8 @@ optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=-1,
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--official', action='store_const', const=True, dest='official',  default=False,
                 help='Produce official dataset')
+optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
+                help='LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something')
 optP.add_option('--extFile', action='store', dest='extFile',  default='',
                 help='pathena exports files with some special extensions (.C, .dat, .py .xml) in the current directory. If you want to add other files, specify their names, e.g., data1.root,data2.doc')
 optP.add_option('--excludeFile',action='store',dest='excludeFile',default='',
@@ -276,6 +278,10 @@ optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFu
 optP.add_option('--panda_jobsetID',action='store',dest='panda_jobsetID',default=-1,
                 type='int', help='internal parameter for jobsetID')
 optP.add_option('--panda_dbRelease', action='store', dest='panda_dbRelease', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_singleLine', action='store', dest='panda_singleLine', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_trf', action='store', dest='panda_trf', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_devidedByGUID',action='store_const',const=True,dest='panda_devidedByGUID',default=False,
                 help='internal parameter')
@@ -456,6 +462,17 @@ if options.nGBPerJob != -1:
         # reset max size per job
         maxTotalSize = options.nGBPerJob
     
+# trf parameter
+if options.panda_trf != '':
+    options.trf = urllib.unquote(options.panda_trf)
+if options.trf == False:
+    orig_trfStr = ''
+else:
+    orig_trfStr = options.trf
+
+# one liner
+if options.panda_singleLine != '':
+    options.singleLine = urllib.unquote(options.panda_singleLine)
 
 # check DBRelease
 if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
@@ -746,7 +763,6 @@ if options.eventPickEvtList != '':
     # add to be deleted on exit
     delFilesOnExit.append(eventPickRunEvtDat)
     
-        
 # get job options
 jobO = ''
 if options.trf:
@@ -1445,30 +1461,42 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 		errStr += "The dataset is empty"
             tmpLog.error(errStr)
             sys.exit(EC_Config)
+        # check if all files were used
+        unUsedFlag = False
+        for tmpLFN in inputFileMap.keys():
+            if not tmpLFN in shadowList:
+                unUsedFlag = True
+                break
+        if not unUsedFlag:
+            # exit
+            tmpMsg = "Done. All input files were (or are being) processed"
+            tmpLog.info(tmpMsg)
+            sys.exit(0)
         # get locations when site==AUTO
         if options.site == "AUTO":
             if inputDsString == '':
                 # not using wildcard
                 inputDsString = options.inDS
             # take MinBias/Cavern datasets into account
+            secondaryDsStrList = []
             if runConfig.input.inMinBias:
-                inputDsString = inputDsString + ',' + minbiasDataset
+                secondaryDsStrList.append(minbiasDataset)
             if runConfig.input.inCavern:
-                inputDsString = inputDsString + ',' + cavernDataset
+                secondaryDsStrList.append(cavernDataset)
             # take beamgas/halo datasets into account
             if runConfig.input.inBeamHalo:
                 if options.useCommonHalo:
-                    inputDsString = inputDsString + ',' + beamHaloDataset
+                    secondaryDsStrList.append(beamHaloDataset)
                 else:
-                    inputDsString = inputDsString + ',' + beamHaloAdataset
-                    inputDsString = inputDsString + ',' + beamHaloCdataset
+                    secondaryDsStrList.append(beamHaloAdataset)
+                    secondaryDsStrList.append(beamHaloCdataset)
             if runConfig.input.inBeamGas:
                 if options.useCommonGas:
-                    inputDsString = inputDsString + ',' + beamGasDataset                    
+                    secondaryDsStrList.append(beamGasDataset)
                 else:
-                    inputDsString = inputDsString + ',' + beamGasHdataset
-                    inputDsString = inputDsString + ',' + beamGasCdataset
-                    inputDsString = inputDsString + ',' + beamGasOdataset
+                    secondaryDsStrList.append(beamGasHdataset)
+                    secondaryDsStrList.append(beamGasCdataset)
+                    secondaryDsStrList.append(beamGasOdataset)
             # DBRelease
             dbrDsString = ''
             if options.trf or options.dbRelease != '':
@@ -1502,6 +1530,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                                                           removedDatasets=options.removedDS,
                                                                                           useOutContainer=usingContainerForOut)
             # get locations for DBR
+            dbrMissingSites = []
             if dbrDsString != '':
                 dbrDsLocationMap,dbrDsLocationMapBack,dbrDsTapeSites = Client.getLocations(dbrDsString,{},options.cloud,
                                                                                            False,options.verbose,
@@ -1512,29 +1541,64 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 tmpSiteKeys = dsLocationMap.keys()
                 for tmpSite in tmpSiteKeys:
                     if not tmpSite in dbrDsLocationMap and not tmpSite in dbrDsLocationMapBack:
-                        if options.crossSite in [0,maxCrossSite] or options.verbose:
-                            tmpLog.info("%s is unavailable at %s although input dataset exists there" % (dbrDsString,tmpSite))
+                        for tmpItem in dsLocationMap[tmpSite]:
+                            if not tmpItem in dbrMissingSites:
+                                dbrMissingSites.append(tmpItem)
                         del dsLocationMap[tmpSite]
-                tmpSiteKeys = dbrDsLocationMapBack.keys()
+                tmpSiteKeys = dsLocationMapBack.keys()
                 for tmpSite in tmpSiteKeys:
                     if not tmpSite in dbrDsLocationMap and not tmpSite in dbrDsLocationMapBack:
-                        if options.crossSite in [0,maxCrossSite] or options.verbose:
-                            tmpLog.info("%s is unavailable at %s although input datasets exist there" % (dbrDsString,tmpSite))
-                        del dbrDsLocationMapBack[tmpSite]
+                        for tmpItem in dsLocationMap[tmpSite]:
+                            if not tmpItem in dbrMissingSites:
+                                dbrMissingSites.append(tmpItem)
+                        del dsLocationMapBack[tmpSite]
+            # get location for secondary DS
+            secMissingSites = {}
+            if secondaryDsStrList != []:
+                for secDsString in secondaryDsStrList:
+                    secMissingSites[secDsString] = []
+                    secDsLocationMap,secDsLocationMapBack,secDsTapeSites = Client.getLocations(secDsString,{},options.cloud,
+                                                                                               False,options.verbose,
+                                                                                               expCloud=expCloudFlag,getReserved=True,
+                                                                                               getTapeSites=True,
+                                                                                               locCandidates=parentDSlocations)
+                    # remove if DBR is unavailable
+                    tmpSiteKeys = dsLocationMap.keys()
+                    for tmpSite in tmpSiteKeys:
+                        if not tmpSite in secDsLocationMap and not tmpSite in secDsLocationMapBack:
+                            for tmpItem in dsLocationMap[tmpSite]:
+                                if not tmpItem in secMissingSites[secDsString]:
+                                    secMissingSites[secDsString].append(tmpItem)
+                            del dsLocationMap[tmpSite]
+                    tmpSiteKeys = dsLocationMapBack.keys()
+                    for tmpSite in tmpSiteKeys:
+                        if not tmpSite in secDsLocationMap and not tmpSite in secDsLocationMapBack:
+                            for tmpItem in dsLocationMap[tmpSite]:
+                                if not tmpItem in secMissingSites[secDsString]:
+                                    secMissingSites[secDsString].append(tmpItem)
+                            del dsLocationMapBack[tmpSite]
 	    # no location
             if dsLocationMap == {} and dsLocationMapBack == {}:
+		if dsTapeSites != []:
+		    tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
+                if dbrMissingSites != []:
+                    tmpLog.error("%s is missing at %s although input dataset is available" % (dbrDsString,str(dbrMissingSites)))
+                for secDsString,secMissingSites in secMissingSites.iteritems():
+                    if secMissingSites != []:
+                        tmpLog.error("%s is missing at %s although input dataset is available" % (secDsString,str(secMissingSites)))
                 if options.crossSite in [0,maxCrossSite] or options.verbose:
                     if expCloudFlag:
                         errStr = "could not find supported/online sites in the %s cloud for %s" % (options.cloud,options.inDS)
                     else:
                         errStr = "could not find supported/online sites for %s" % options.inDS
+                    if secondaryDsStrList != []:
+                        for secondaryDsString in secondaryDsStrList:
+                            errStr += ' and %s' % secondaryDsString
                     if options.parentDS != '':
                         errStr += ' and %s' % options.parentDS
                     if dbrDsString != '':
                         errStr += ' and %s' % dbrDsString
                     tmpLog.error(errStr)
-                    if dsTapeSites != []:
-                        tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
                 else:
                     errStr = "could not find supported/online sites for the missing files"
                     tmpLog.error(errStr)
@@ -1656,13 +1720,15 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 # go back to current dir
                 os.chdir(currentDir)
                 # try another site if input files remain
+		options.crossSite -= 1
                 if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                     if missList != []:
                         PsubUtils.runPathenaRec(runConfig,missList,tmpDir,fullExecString,options.nfiles,inputFileMap,
                                                 options.site,options.crossSite,archiveName,options.removedDS,
                                                 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                                 options.panda_devidedByGUID,options.panda_dbRelease,
-                                                options.panda_jobsetID,options.verbose)
+                                                options.panda_jobsetID,orig_trfStr,options.singleLine,
+                                                True,options.verbose)
                 # exit        
                 sys.exit(0)
         # make list
@@ -1734,7 +1800,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                             options.site,options.crossSite,archiveName,options.removedDS,
                                             options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                             options.panda_devidedByGUID,options.panda_dbRelease,
-                                            options.panda_jobsetID,options.verbose,False)
+                                            options.panda_jobsetID,orig_trfStr,options.singleLine,
+                                            False,options.verbose)
                     # exit        
                     sys.exit(0)
 
@@ -1883,11 +1950,15 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         # query files in dataset
         tmpLog.info("query files in %s" % minbiasDataset)
         tmpList = Client.queryFilesInDataset(minbiasDataset,options.verbose)
+	tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose)
 	minbiasList = []
         for item in tmpList.keys():
             # remove log
             if re.search('log(\.tgz)*(\.\d+)*$',item) != None or \
                    re.search('\.log(\.\d+)*(\.tgz)*$',item) != None:
+                continue
+            # remove missing files                                                                                                                                           
+            if item in tmpMissList:
                 continue
             minbiasList.append((item,tmpList[item]))
         # sort
@@ -1903,19 +1974,23 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     pass
         # check # of files
         if len(minbiasList) < options.nMin:
-            tmpLog.error("%s contains only %s files which is less than %s" % \
-                         (minbiasDataset,len(minbiasList),options.nMin))
+            tmpLog.error("only %s files in %s are available at %s which is less than nMin=%s" % \
+                         (len(minbiasList),minbiasDataset,options.site,options.nMin))
             sys.exit(EC_Dataset)
     # input stream for cavern
     if runConfig.input.inCavern:
         # query files in dataset
         tmpLog.info("query files in %s" % cavernDataset)
         tmpList = Client.queryFilesInDataset(cavernDataset,options.verbose)
+        tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose)
 	cavernList = []
         for item in tmpList.keys():
             # remove log
             if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
                    re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
+                continue
+            # remove missing files
+            if item in tmpMissList:
                 continue
             cavernList.append((item,tmpList[item]))
         # sort
@@ -1931,8 +2006,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     pass
         # check # of files
         if len(cavernList) < options.nCav:
-            tmpLog.error("%s contains only %s files which is less than %s" % \
-                         (cavernDataset,len(cavernList),options.nCav))
+            tmpLog.error("only %s files in %s are available at %s which is less than nCav=%s" % \
+                         (len(cavernList),cavernDataset,options.site,options.nCav))
             sys.exit(EC_Dataset)
     # input stream for beam halo
     if runConfig.input.inBeamHalo:
@@ -1941,11 +2016,15 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # query files in dataset
             tmpLog.info("query files in %s" % beamHaloDataset)
             tmpList = Client.queryFilesInDataset(beamHaloDataset,options.verbose)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose)
 	    beamHaloList = []
             for item in tmpList.keys():
                 # remove log
                 if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
                        re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
+                    continue
+                # remove missing files
+                if item in tmpMissList:
                     continue
                 beamHaloList.append((item,tmpList[item]))
             # sort
@@ -1961,27 +2040,35 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                         pass
             # check # of files
             if len(beamHaloList) < options.nBeamHalo:
-                tmpLog.error("%s contains only %s files which is less than %s" % \
-                             (beamHaloDataset,len(beamHaloList),options.nBeamHalo))
+                tmpLog.error("only %s files in %s are available at %s which is less than nBeamHalo=%s" % \
+                             (len(beamHaloList),beamHaloDataset,options.site,options.nBeamHalo))                
                 sys.exit(EC_Dataset)
 	else:	
             # query files in dataset
             tmpLog.info("query files in %s" % beamHaloAdataset)
             tmpList = Client.queryFilesInDataset(beamHaloAdataset,options.verbose)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose)
 	    beamHaloAList = []
             for item in tmpList.keys():
                 # remove log
                 if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
                        re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
                     continue
+                # remove missing files
+                if item in tmpMissList:
+                    continue
                 beamHaloAList.append((item,tmpList[item]))
             tmpLog.info("query files in %s" % beamHaloCdataset)
             tmpList = Client.queryFilesInDataset(beamHaloCdataset,options.verbose)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose)
 	    beamHaloCList = []
             for item in tmpList.keys():
                 # remove log
                 if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
                        re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
+                    continue
+                # remove missing files
+                if item in tmpMissList:
                     continue
                 beamHaloCList.append((item,tmpList[item]))
             # sort
@@ -2001,12 +2088,12 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 options.nBeamHaloC = int(0.02/1.02*options.nBeamHaloA)
             # check # of files
             if len(beamHaloAList) < options.nBeamHaloA:
-                tmpLog.error("%s contains only %s files which is less than %s" % \
-                             (beamHaloAdataset,len(beamHaloAList),options.nBeamHaloA))
+                tmpLog.error("only %s files in %s are available at %s which is less than nBeamHaloA=%s" % \
+                             (len(beamHaloAList),beamHaloAdataset,options.site,options.nBeamHaloA))                
                 sys.exit(EC_Dataset)
             if len(beamHaloCList) < options.nBeamHaloC:
-                tmpLog.error("%s contains only %s files which is less than %s" % \
-                             (beamHaloCdataset,len(beamHaloCList),options.nBeamHaloC))
+                tmpLog.error("only %s files in %s are available at %s which is less than nBeamHaloC=%s" % \
+                             (len(beamHaloCList),beamHaloCdataset,options.site,options.nBeamHaloC))
                 sys.exit(EC_Dataset)
     # beam gas dataset
     if runConfig.input.inBeamGas: 
@@ -2015,11 +2102,15 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # query files in dataset
             tmpLog.info("query files in %s" % beamGasDataset)
             tmpList = Client.queryFilesInDataset(beamGasDataset,options.verbose)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose)
 	    beamGasList = []
             for item in tmpList.keys():
                 # remove log
                 if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
                        re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
+                    continue
+                # remove missing files
+                if item in tmpMissList:
                     continue
                 beamGasList.append((item,tmpList[item]))
             # sort
@@ -2035,36 +2126,48 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                         pass
             # check # of files
             if len(beamGasList) < options.nBeamGas:
-                tmpLog.error("%s contains only %s files which is less than %s" % \
-                             (beamGasDataset,len(beamGasList),options.nBeamGas))
+                tmpLog.error("only %s files in %s are available at %s which is less than nBeamGas=%s" % \
+                             (len(beamGasList),beamGasDataset,options.site,options.nBeamGas))
                 sys.exit(EC_Dataset)
         else:
             # query files in dataset
             tmpLog.info("query files in %s" % beamGasHdataset)
             tmpList = Client.queryFilesInDataset(beamGasHdataset,options.verbose)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose)
 	    beamGasHList = []
             for item in tmpList.keys():
                 # remove log
                 if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
                        re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
                     continue
+                # remove missing files
+                if item in tmpMissList:
+                    continue
                 beamGasHList.append((item,tmpList[item]))
             tmpLog.info("query files in %s" % beamGasCdataset)
             tmpList = Client.queryFilesInDataset(beamGasCdataset,options.verbose)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose)
 	    beamGasCList = []
             for item in tmpList.keys():
                 # remove log
                 if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
                        re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
                     continue
+                # remove missing files
+                if item in tmpMissList:
+                    continue
                 beamGasCList.append((item,tmpList[item]))
             tmpLog.info("query files in %s" % beamGasOdataset)
             tmpList = Client.queryFilesInDataset(beamGasOdataset,options.verbose)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose)
 	    beamGasOList = []
             for item in tmpList.keys():
                 # remove log
                 if re.search('\.log(\.\d+)*(\.tgz)*$',item) != None or \
                        re.search('\.log(\.tgz)*(\.\d+)*$',item) != None:
+                    continue
+                # remove missing files
+                if item in tmpMissList:
                     continue
                 beamGasOList.append((item,tmpList[item]))
             # sort
@@ -2088,16 +2191,16 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 options.nBeamGasO = int(options.nBeamGasH*3/90)
             # check # of files
             if len(beamGasHList) < options.nBeamGasH:
-                tmpLog.error("%s contains only %s files which is less than %s" % \
-                             (beamGasHdataset,len(beamGasHList),options.nBeamGasH))
+                tmpLog.error("only %s files in %s are available at %s which is less than nBeamGasH=%s" % \
+                             (len(beamGasHList),beamGasHdataset,options.site,options.nBeamGasH))
                 sys.exit(EC_Dataset)
             if len(beamGasCList) < options.nBeamGasC:
-                tmpLog.error("%s contains only %s files which is less than %s" % \
-                             (beamGasCdataset,len(beamGasCList),options.nBeamGasC))
+                tmpLog.error("only %s files in %s are available at %s which is less than nBeamGasC=%s" % \
+                             (len(beamGasCList),beamGasCdataset,options.site,options.nBeamGasC))
                 sys.exit(EC_Dataset)
             if len(beamGasOList) < options.nBeamGasO:
-                tmpLog.error("%s contains only %s files which is less than %s" % \
-                             (beamGasOdataset,len(beamGasOList),options.nBeamGasO))
+                tmpLog.error("only %s files in %s are available at %s which is less than nBeamGasO=%s" % \
+                             (len(beamGasOList),beamGasOdataset,options.site,options.nBeamGasO))
                 sys.exit(EC_Dataset)
 else:
     if options.split <= 0:
@@ -2203,7 +2306,8 @@ indexBGasO   = 0
         
 # set index of outputs
 if outputDSexist or outputContExist:
-    AthenaUtils.setInitOutputIndex(runConfig,original_outDS_Name,options.individualOutDS,options.extOutFile,outputIndvDSlist,options.verbose)
+    AthenaUtils.setInitOutputIndex(runConfig,original_outDS_Name,options.individualOutDS,options.extOutFile,outputIndvDSlist,
+                                   options.verbose,options.descriptionInLFN)
 
 # check permission
 if not Client.checkSiteAccessPermission(options.site,options.workingGroup,options.verbose):
@@ -2771,7 +2875,8 @@ for iSubJob in range(options.split):
 
     # output files
     outMap = {}
-    AthenaUtils.convertConfToOutput(runConfig,jobR,outMap,options.individualOutDS,options.extOutFile,original_outDS_Name)
+    AthenaUtils.convertConfToOutput(runConfig,jobR,outMap,options.individualOutDS,options.extOutFile,original_outDS_Name,
+                                    options.descriptionInLFN)
     # set space token
     for file in jobR.Files:
         if file.type in ['output','log']:
@@ -3259,7 +3364,8 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                                 options.site,options.crossSite,archiveName,options.removedDS,
                                 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                 options.panda_devidedByGUID,options.panda_dbRelease,
-                                jobsetID,options.verbose)
+                                jobsetID,orig_trfStr,options.singleLine,
+                                True,options.verbose)
 # succeeded
 sys.exit(0)
 
