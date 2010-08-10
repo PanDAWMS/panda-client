@@ -978,6 +978,7 @@ if options.inDS != '':
         # check for seconday datasets
         for tmpDsName,tmpDsValMap in options.secondaryDSs.iteritems():
             if not options.skipScan:
+		tmpLog.info("scanning LFC for %s" % tmpDsName)
                 if tmpDsValMap['nFiles'] == 0 and tmpDsValMap['nSkip'] != 0:
                     secMissList = Client.getMissLFNsFromLFC(tmpDsValMap['fileMap'],options.site,True,options.verbose)
                 else:
@@ -1734,7 +1735,8 @@ for iJob in range(options.nJobs):
             tmpSecList  = tmpSecVal['files'][tmpIndexSec:tmpIndexSec+tmpSecVal['nFiles']]
             # check length
             if len(tmpSecList) < tmpSecVal['nFiles']:
-                errStr  = "%s contains %s files which is insufficient for splitting. " % (tmpSecDS,len(tmpSecVal['files']))
+                errStr  = "only %s files in %s are available at %s which is insufficient for splitting. " % \
+                          (len(tmpSecVal['files']),tmpSecDS,options.site)
                 errStr += "nJobs*nFilesPerJob=%s*%s=%s files are required" % (options.nJobs,tmpSecVal['nFiles'],
                                                                               options.nJobs*tmpSecVal['nFiles'])
                 tmpLog.error(errStr)            
