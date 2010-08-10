@@ -817,18 +817,8 @@ if options.inDS != '':
     # query files in secondary datasets
     for tmpDsName,tmpValMap in options.secondaryDSs.iteritems():
         tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose)
-        # sort
-        tmpSecFileList = tmpSecFileMap.keys()
-        tmpSecFileList.sort()
         # append
-        for tmpSecFile in tmpSecFileList:
-            tmpSecFileMap[tmpSecFile]['LFN'] = tmpSecFile
-            options.secondaryDSs[tmpDsName]['files'].append(tmpSecFileMap[tmpSecFile])
-        # skip files    
-        options.secondaryDSs[tmpDsName]['files'] = options.secondaryDSs[tmpDsName]['files'][options.secondaryDSs[tmpDsName]['nSkip']:]
-        # change nFiles=0 to the real size 
-        if options.secondaryDSs[tmpDsName]['nFiles'] == 0:
-            options.secondaryDSs[tmpDsName]['nFiles'] = len(options.secondaryDSs[tmpDsName]['files'])
+        options.secondaryDSs[tmpDsName]['fileMap'] = tmpSecFileMap
     # get locations
     if inputFileList != []:
         if options.site == "AUTO":
@@ -985,6 +975,31 @@ if options.inDS != '':
             if not inputFile in missList:
                 newInputFiles.append(inputFile)
         inputFileList = newInputFiles
+        # check for seconday datasets
+        for tmpDsName,tmpDsValMap in options.secondaryDSs.iteritems():
+            if not options.skipScan:
+                if tmpDsValMap['nFiles'] == 0 and tmpDsValMap['nSkip'] != 0:
+                    secMissList = Client.getMissLFNsFromLFC(tmpDsValMap['fileMap'],options.site,True,options.verbose)
+                else:
+                    secMissList = Client.getMissLFNsFromLFC(tmpDsValMap['fileMap'],options.site,True,options.verbose,
+                                                            tmpDsValMap['nFiles']+tmpDsValMap['nSkip'],shadowList)
+            else:
+                secMissList = []
+            # remove missing
+            tmpSecFileList = tmpDsValMap['fileMap'].keys()
+            tmpSecFileList.sort()
+            options.secondaryDSs[tmpDsName]['files'] = []
+            for tmpSecFile in tmpSecFileList:
+                if tmpSecFile in secMissList:
+                    continue
+                # append
+                tmpSecFileMap[tmpSecFile]['LFN'] = tmpSecFile
+                options.secondaryDSs[tmpDsName]['files'].append(tmpSecFileMap[tmpSecFile])
+            # skip files    
+            options.secondaryDSs[tmpDsName]['files'] = options.secondaryDSs[tmpDsName]['files'][options.secondaryDSs[tmpDsName]['nSkip']:]
+            # change nFiles=0 to the real size 
+            if options.secondaryDSs[tmpDsName]['nFiles'] == 0:
+                options.secondaryDSs[tmpDsName]['nFiles'] = len(options.secondaryDSs[tmpDsName]['files'])
     # update shadow just in case since LFC scan may take long time
     if not options.skipScan:
         shadowUpdated = False

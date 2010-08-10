@@ -23,6 +23,7 @@ pathena -h
 
 current
   * fixed pathena to check DQ2/LFC for MinimumBias/Cavern/BeamGas/BeamHalo datasets
+  * fixed prun to check LFC for secondary datasets
 
 0.2.79 (8/9/2010)
   * added protection to pbook against duplication of jobID and jobsetID
