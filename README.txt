@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.80 (8/10/2010)
   * fixed pathena to check DQ2/LFC for MinimumBias/Cavern/BeamGas/BeamHalo datasets
   * fixed prun to check LFC for secondary datasets
 
@@ -38,7 +38,7 @@ current
   * fixed prun to check DBR location
   * increased the minimum number of the latest DBR replicas to 40 
   * fixed error message about TAPE sites
-  * fixed --exec/--bexec of prun and --trf/-p/-c of pathena to keep special characters
+  * fixed --exec/--bexec of prun and --trf/-c of pathena to keep special characters
 
 0.2.76 (8/6/2010)
   * fixed pathena/prun to exit immediately when all input files were used by other jobs 
