@@ -1598,7 +1598,10 @@ if options.outputs != '' and (outputDSexist or outputContExist):
 
 if options.inDS != '':
     if len(missList) == 0:
-	tmpLog.info("all files are available at %s" % options.site)
+        if options.secondaryDSs == {}:
+            tmpLog.info("all files are available at %s" % options.site)
+        else:
+            tmpLog.info("all files in the primary DS are available at %s" % options.site)            
     else:
         tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
