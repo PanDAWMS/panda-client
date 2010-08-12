@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.82 (8/12/2010)
+  * fixed directory scan for python 2.6
+
 0.2.81 (8/12/2010)
   * fixed misuse of incomplete replica locations in site lookup
 

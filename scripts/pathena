@@ -2359,7 +2359,7 @@ if os.path.exists(jobid_file):
 for path in sys.path:
     if path == '':
         path = curDir
-    if os.path.exists(path) and 'pandatools' in os.listdir(path):
+    if os.path.exists(path) and os.path.isdir(path) and 'pandatools' in os.listdir(path):
         # make symlink for module name.
         os.symlink('%s/pandatools' % path,'taskbuffer')
         break

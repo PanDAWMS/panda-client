@@ -1558,7 +1558,7 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
     for path in sys.path:
         # look for base package
         basePackage = __name__.split('.')[-2]
-        if os.path.exists(path) and basePackage in os.listdir(path):
+        if os.path.exists(path) and os.path.isdir(path) and basePackage in os.listdir(path):
             lfcClient = '%s/%s/LFCclient.py' % (path,basePackage)
             if explicitSE:
                 stList = getSE(site)
