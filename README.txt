@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.81 (8/12/2010)
   * fixed misuse of incomplete replica locations in site lookup
 
 0.2.80 (8/10/2010)
