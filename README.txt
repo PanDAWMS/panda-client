@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed misuse of incomplete replica locations in site lookup
+
 0.2.80 (8/10/2010)
   * fixed pathena to check DQ2/LFC for MinimumBias/Cavern/BeamGas/BeamHalo datasets
   * fixed prun to check LFC for secondary datasets
