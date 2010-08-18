@@ -83,7 +83,7 @@ atexit.register(_onExit,tmpDir,historyFile)
 for path in sys.path:
     if path == '':
         path = '.'
-    if os.path.exists(path) and 'pandatools' in os.listdir(path) \
+    if os.path.exists(path) and os.path.isdir(path) and 'pandatools' in os.listdir(path) \
            and os.path.exists('%s/pandatools/__init__.py' % path):
         # make symlink for module name
         os.symlink('%s/pandatools' % path,'%s/taskbuffer' % tmpDir)
@@ -658,7 +658,7 @@ class PBookCore:
                 retryJobs.append(job)
             # all input files were or are being used by other jobs
             if retryJobs == []:
-                tmpLog.info('All input files were or are being used by other jobs for the same output. No jobs to be retried')
+                tmpLog.info('All input files were or are being used by other jobs for the same output. No jobs to be retried. If you need to ignore duplication check (e.g., using the same EVNT file for multiple simulation subjobs), set ignoreDuplication=True. i.e. retry(123,ignoreDuplication=True)')
                 return
 	    # check voms role
 	    if not retryJobs[0].workingGroup in ['NULL',None,'']:
@@ -808,7 +808,14 @@ For more info, do help(show) for example."""
             jobList = pbookCore.getLocalJobList()
 	    for job in jobList:
                 if job.dbStatus != 'frozen':
-                    show(job.JobID)
+                    if hasattr(job,'JobID'):
+                        # job
+                        show(job.JobID,forceUpdate=forceUpdate,
+                             showPandaIDinState=showPandaIDinState,longFormat=longFormat)
+                    else:
+                        # jobset
+                        show(long(job.JobsetID),forceUpdate=forceUpdate,
+                             showPandaIDinState=showPandaIDinState,longFormat=longFormat)
         else:
             tmpJobIDList = pbookCore.getJobIDsWithSetID(JobID)
             if tmpJobIDList == None:
@@ -853,13 +860,14 @@ For more info, do help(show) for example."""
 
 
     # retry
-    def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False):
-        """Retry failed/cancelled subJobs in JobID. Jobs between JobID and UpperJobID will be retried if upperJobID is given. Set newSite=True and specify newOpts when you want to retry at new site. newOpts is a map of options and new arguments which is passed to pathena/prun
+    def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False):
+        """Retry failed/cancelled subJobs in JobID. Jobs between JobID and UpperJobID will be retried if upperJobID is given. Set newSite=True and specify newOpts when you want to retry at new site. newOpts is a map of options and new arguments which is passed to pathena/prun. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True
 
          example:
            >>> retry(15)
            >>> retry(15,20)
            >>> retry(15,newSite=True,newOpts={'outDS':'user.nickname.blah'})
+           >>> retry(15,ignoreDuplication=True)
         """
         if upperJobID != None:
             # check range
@@ -869,9 +877,9 @@ For more info, do help(show) for example."""
             else:
                 # retry jobs between the range
                 for tmpJobID in range(JobID,upperJobID+1):
-                    pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit)
+                    pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,ignoreDuplication=ignoreDuplication)
         else:            
-            pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit)
+            pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,ignoreDuplication=ignoreDuplication)
 
 
     # rebrokerage
@@ -896,13 +904,13 @@ For more info, do help(show) for example."""
 
 
     # kill and retry
-    def killAndRetry(JobID,newSite=False,newOpts={}):
+    def killAndRetry(JobID,newSite=False,newOpts={},ignoreDuplication=False):
         """Kill JobID and then retry failed/cancelled sub-jobs. Concerning newSite and newOpts, see help(retry)
 
          example:
            >>> killAndRetry(15)
         """
-	ret = pbookCore.killAndRetry(JobID,newSite=newSite,newOpts=newOpts)
+	ret = pbookCore.killAndRetry(JobID,newSite=newSite,newOpts=newOpts,ignoreDuplication=ignoreDuplication)
 
 
     # synchronize local repository
