@@ -3152,6 +3152,7 @@ if not options.nosubmit:
         if not Client.isDQ2free(options.site):
             # register output dataset
             tmpIdvOutDsList = []
+            tmpDsContMap = {}
             if (not outputDSexist) or options.destSE != '':
                 if not options.individualOutDS:
                     Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
@@ -3163,10 +3164,10 @@ if not options.nosubmit:
                         if (not outputIndvDSlist.has_key(tmpFile.destinationDBlock)) and (not tmpFile.destinationDBlock in tmpIdvOutDsList):
                             Client.addDataset(tmpFile.destinationDBlock,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
                             tmpIdvOutDsList.append(tmpFile.destinationDBlock)
+                        tmpDsContMap[tmpFile.destinationDBlock] = tmpFile.dataset
 
             # register output dataset container
             if original_outDS_Name.endswith('/'):
-                tmpDsContMap = {}
                 # create
                 if not outputContExist:
                     tmpIdvContList = []
@@ -3175,7 +3176,6 @@ if not options.nosubmit:
                     if options.individualOutDS:
                         for tmpFile in jobList[-1].Files:
                             if tmpFile.type in ['output','log'] and tmpFile.dataset.endswith('/'):
-                                tmpDsContMap[tmpFile.destinationDBlock] = tmpFile.dataset
                                 if not tmpFile.dataset in tmpIdvContList:
                                     Client.createContainer(tmpFile.dataset,options.verbose)
                                     tmpIdvContList.append(tmpFile.dataset)
