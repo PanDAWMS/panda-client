@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.2.84 (8/18/2010)
+  * added a protection against empty --excludedSite
+  * added a protection against duplicated counties in unused cloud
+
 0.2.83 (8/18/2010)
   * fixed key error in pathena when --individualOutDS is used for existing outDS
 

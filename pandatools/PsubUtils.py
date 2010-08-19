@@ -123,15 +123,16 @@ def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=[]):
         vomsFQAN = out
     cloud = None
     countryAttStr = ''
-    # check countries
+    # remove cloud not used for analysis
     validCloudList = []
     for tmpCloud,spec in Client.PandaClouds.iteritems():
-        # remove cloud not used for analysis
         for tmpSiteID,tmpSiteSpec in Client.PandaSites.iteritems():
             if tmpCloud == tmpSiteSpec['cloud']:
                 if not tmpCloud in validCloudList:
                     validCloudList.append(tmpCloud)
-                break        
+                break
+    # check countries
+    for tmpCloud,spec in Client.PandaClouds.iteritems():            
         # loop over all FQANs
         for tmpFQAN in vomsFQAN.split('\n'):
             # look for matching country

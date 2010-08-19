@@ -2210,6 +2210,9 @@ def excludeSite(excludedSite):
     # remove sites
     global PandaSites
     for tmpPatt in excludedSite.split(','):
+        # skip empty
+        if tmpPatt == '':
+            continue
         # check if it is a composite
         for tmpComp in compSites:
             if tmpComp in tmpPatt:
