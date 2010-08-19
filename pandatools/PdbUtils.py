@@ -497,7 +497,7 @@ def bulkReadJobDB(verbose=False):
             else:
                 # add jobset
                 tmpJobsetID = long(job.groupID)
-                if not retMap.has_key(tmpJobsetID):
+                if (not retMap.has_key(tmpJobsetID)) or (not jobsetMap.has_key(tmpJobsetID)):
                     jobsetMap[tmpJobsetID] = []
                     jobset = LocalJobsetSpec()
                     retMap[tmpJobsetID] = jobset

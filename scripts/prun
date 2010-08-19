@@ -84,6 +84,8 @@ optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,typ
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--official',action='store_const',const=True,dest='official',default=False,
                 help='Produce official dataset')
+optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
+                help='LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something')
 optP.add_option('--useAthenaPackages',action='store_const',const=True,dest='useAthenaPackages',default=False,
                 help='Use Athena packages. See PandaRun wiki page for detail')
 optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
@@ -140,6 +142,10 @@ optP.add_option('--bexec',action='store',dest='bexec',default='',type='string',
                 help='execution string for build stage. e.g., --bexec "make"')
 optP.add_option('--myproxy',action='store',dest='myproxy',default='myproxy.cern.ch',type='string',
                 help='Name of the myproxy server')
+optP.add_option('--maxNFilesPerJob',action='store',dest='maxNFilesPerJob',default=200,type='int',
+                help='The maximum number of files per job is 200 by default since too many input files result in a too long command-line argument on WN which crashes the job. This option relax the limit. In many cases it is better to use this option together with --writeInputToTxt')
+optP.add_option('--writeInputToTxt',action='store',dest='writeInputToTxt',default='',type='string',
+                help='Write the input file list to a file so that your application gets the list from the file instead of stdin. The argument is a comma separated list of StreamName:FileName. e.g., IN:input1.txt,IN2:input2.txt')
 optP.add_option('--dbRelease',action='store',dest='dbRelease',default='',
                 type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used. Most likely the --useAthenaPackages or --athenaTag option is required to setup Athena runtime on WN')
 optP.add_option('--dbRunNumber',action='store',dest='dbRunNumber', default='',
@@ -172,6 +178,10 @@ optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFu
 optP.add_option('--panda_jobsetID',action='store',dest='panda_jobsetID',default=-1,
                 type='int', help='internal parameter for jobsetID')
 optP.add_option('--panda_dbRelease', action='store', dest='panda_dbRelease', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_exec', action='store', dest='panda_exec', default='',
+                type='string', help='internal parameter')
+optP.add_option('--panda_bexec', action='store', dest='panda_bexec', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_suppressMsg',action='store_const',const=True,dest='panda_suppressMsg',default=False,
                 help='internal parameter')
@@ -239,6 +249,9 @@ if options.excludedSite != '':
 useRandomCloud = []
 if re.search(',',options.site) != None:
     options.site,useRandomCloud = Client.useCertainSites(options.site)
+
+# set maxNFilesPerJob
+PsubUtils.limit_maxNumInputs = options.maxNFilesPerJob 
 
 # site specified
 siteSpecified = True
@@ -315,6 +328,17 @@ if options.eventPickEvtList != '':
     if options.eventPickDataType == '':
         tmpLog.error("--eventPickDataType must be specified")
         sys.exit(EC_Config)
+
+# check writeInputToTxt
+if options.writeInputToTxt != '':
+    # remove %
+    options.writeInputToTxt = options.writeInputToTxt.replace('%','')
+    # loop over all StreamName:FileName
+    for tmpItem in options.writeInputToTxt.split(','):
+        tmpItems = tmpItem.split(':')
+        if len(tmpItems) != 2:
+            tmpLog.error("invalid StreamName:FileName in --writeInputToTxt : %s" % tmpItem)
+            sys.exit(EC_Config)
     
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
@@ -514,9 +538,15 @@ if options.antiMatch != '':
 
 # get job script
 jobScript = ''
+if options.panda_bexec != '':
+    options.bexec = urllib.unquote(options.panda_bexec)
+if options.panda_exec != '':
+    options.jobParams = urllib.unquote(options.panda_exec)
 if options.jobParams == '':
     tmpLog.error("you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
     sys.exit(EC_Config)
+orig_execStr  = options.jobParams
+orig_bexecStr = options.bexec
 
 # replace : to = for backward compatibility
 for optArg in ['RNDM']:
@@ -731,6 +761,7 @@ if options.dbRelease != '':
             tmpLog.info("query files in %s" % tmpDbrDS)
         tmpList = Client.queryFilesInDataset(tmpDbrDS,options.verbose)
         # append
+        dbrDsList.append(tmpDbrDS)
         for tmpLFN,tmpVal in tmpList.iteritems():
             dbrFiles[tmpLFN] = tmpVal
     # check
@@ -768,7 +799,17 @@ if options.inDS != '':
                 errStr += " or --antiMatch is wrong"
         tmpLog.error(errStr)
         sys.exit(EC_Config)
-
+    # check if all files were used
+    unUsedFlag = False
+    for tmpLFN in inputFileMap.keys():
+        if not tmpLFN in shadowList:
+            unUsedFlag = True
+            break
+    if not unUsedFlag:
+        # exit
+        tmpMsg = "Done. All input files were (or are being) processed"
+        tmpLog.info(tmpMsg)
+        sys.exit(0)
     # sort
     inputFileList = inputFileMap.keys()
     inputFileList.sort()
@@ -776,44 +817,39 @@ if options.inDS != '':
     # query files in secondary datasets
     for tmpDsName,tmpValMap in options.secondaryDSs.iteritems():
         tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose)
-        # sort
-        tmpSecFileList = tmpSecFileMap.keys()
-        tmpSecFileList.sort()
         # append
-        for tmpSecFile in tmpSecFileList:
-            tmpSecFileMap[tmpSecFile]['LFN'] = tmpSecFile
-            options.secondaryDSs[tmpDsName]['files'].append(tmpSecFileMap[tmpSecFile])
-        # skip files    
-        options.secondaryDSs[tmpDsName]['files'] = options.secondaryDSs[tmpDsName]['files'][options.secondaryDSs[tmpDsName]['nSkip']:]
-        # change nFiles=0 to the real size 
-        if options.secondaryDSs[tmpDsName]['nFiles'] == 0:
-            options.secondaryDSs[tmpDsName]['nFiles'] = len(options.secondaryDSs[tmpDsName]['files'])
+        options.secondaryDSs[tmpDsName]['fileMap'] = tmpSecFileMap
     # get locations
     if inputFileList != []:
         if options.site == "AUTO":
             if inputDsString == '':
                 tmpDsForLookUpList = [options.inDS] + options.secondaryDSs.keys()
             else:
-                tmpDsForLookUpList = [inputDsString] + options.secondaryDSs.keys()                
+                tmpDsForLookUpList = [inputDsString] + options.secondaryDSs.keys()
+            tmpDsForLookUpList += dbrDsList    
             tmpDsLocationForTest = {}
             dsLocationMap = None
             dsLocationMapBack = None
             for tmpDsForLookUp in tmpDsForLookUpList:
-                tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites,dsUsedDsMap = Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
-                                                                                                    options.verbose,expCloud=expCloudFlag,
-                                                                                                    getReserved=True,getTapeSites=True,
-                                                                                                    removeDS=True,
-                                                                                                    removedDatasets=options.removedDS,
-                                                                                                    useOutContainer=usingContainerForOut)
+                tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites,tmpDsUsedDsMap = \
+                                                                                 Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
+                                                                                                     options.verbose,expCloud=expCloudFlag,
+                                                                                                     getReserved=True,getTapeSites=True,
+                                                                                                     removeDS=True,
+                                                                                                     removedDatasets=options.removedDS,
+                                                                                                     useOutContainer=usingContainerForOut)
+                # use UsedDsMap of primary dataset
+                if tmpDsForLookUp == tmpDsForLookUpList[0]:
+                    dsUsedDsMap = tmpDsUsedDsMap
                 # no location
                 if tmpDsLocationMap == {} and tmpDsLocationMapBack == {}:
+		    if dsTapeSites != []:
+			tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
                     if options.crossSite in [0,maxCrossSite] or options.verbose:
                         if expCloudFlag:
                             tmpLog.error("could not find supported/online sites in the %s cloud for %s" % (options.cloud,tmpDsForLookUp))
                         else:
                             tmpLog.error("could not find supported/online sites for %s" % tmpDsForLookUp)
-                        if dsTapeSites != []:
-                            tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
                     else:
                         errStr = "could not find supported/online sites for the missing files"
                         tmpLog.error(errStr)
@@ -939,6 +975,32 @@ if options.inDS != '':
             if not inputFile in missList:
                 newInputFiles.append(inputFile)
         inputFileList = newInputFiles
+        # check for seconday datasets
+        for tmpDsName,tmpDsValMap in options.secondaryDSs.iteritems():
+            if not options.skipScan:
+		tmpLog.info("scanning LFC for %s" % tmpDsName)
+                if tmpDsValMap['nFiles'] == 0 and tmpDsValMap['nSkip'] != 0:
+                    secMissList = Client.getMissLFNsFromLFC(tmpDsValMap['fileMap'],options.site,True,options.verbose)
+                else:
+                    secMissList = Client.getMissLFNsFromLFC(tmpDsValMap['fileMap'],options.site,True,options.verbose,
+                                                            tmpDsValMap['nFiles']+tmpDsValMap['nSkip'],shadowList)
+            else:
+                secMissList = []
+            # remove missing
+            tmpSecFileList = tmpDsValMap['fileMap'].keys()
+            tmpSecFileList.sort()
+            options.secondaryDSs[tmpDsName]['files'] = []
+            for tmpSecFile in tmpSecFileList:
+                if tmpSecFile in secMissList:
+                    continue
+                # append
+                tmpSecFileMap[tmpSecFile]['LFN'] = tmpSecFile
+                options.secondaryDSs[tmpDsName]['files'].append(tmpSecFileMap[tmpSecFile])
+            # skip files    
+            options.secondaryDSs[tmpDsName]['files'] = options.secondaryDSs[tmpDsName]['files'][options.secondaryDSs[tmpDsName]['nSkip']:]
+            # change nFiles=0 to the real size 
+            if options.secondaryDSs[tmpDsName]['nFiles'] == 0:
+                options.secondaryDSs[tmpDsName]['nFiles'] = len(options.secondaryDSs[tmpDsName]['files'])
     # update shadow just in case since LFC scan may take long time
     if not options.skipScan:
         shadowUpdated = False
@@ -975,12 +1037,14 @@ if options.inDS != '':
             # go back to current dir
             os.chdir(curDir)
             # try another site if input files remain
+	    options.crossSite -= 1
             if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                 if missList != []:
                     PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
                                          options.site,options.crossSite,"",options.removedDS,
 					 options.inDS,options.goodRunListXML,options.eventPickEvtList,
-                                         options.panda_dbRelease,jobsetID,options.verbose)
+                                         options.panda_dbRelease,options.panda_jobsetID,
+                                         orig_bexecStr,orig_execStr,options.verbose)
             # succeeded
             sys.exit(0)
     # truncate
@@ -1221,7 +1285,7 @@ else:
 for path in sys.path:
     if path == '':
         path = curDir
-    if os.path.exists(path) and 'pandatools' in os.listdir(path):
+    if os.path.exists(path) and os.path.isdir(path) and 'pandatools' in os.listdir(path):
         # make symlink for module name.
         os.symlink('%s/pandatools' % path,'taskbuffer')
         break
@@ -1534,7 +1598,10 @@ if options.outputs != '' and (outputDSexist or outputContExist):
 
 if options.inDS != '':
     if len(missList) == 0:
-	tmpLog.info("all files are available at %s" % options.site)
+        if options.secondaryDSs == {}:
+            tmpLog.info("all files are available at %s" % options.site)
+        else:
+            tmpLog.info("all files in the primary DS are available at %s" % options.site)            
     else:
         tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
     tmpLog.info("use %s files" % len(inputFileList)) 
@@ -1599,6 +1666,9 @@ for iJob in range(options.nJobs):
     # use Athena packages
     if options.useAthenaPackages:
         jobR.jobParameters += "--useAthenaPackages "
+    # write input to txt
+    if options.writeInputToTxt != '':
+        jobR.jobParameters += "--writeInputToTxt %s " % options.writeInputToTxt       
     if options.jobParams != '':
         # random seed
         tmpJobO = options.jobParams
@@ -1668,7 +1738,8 @@ for iJob in range(options.nJobs):
             tmpSecList  = tmpSecVal['files'][tmpIndexSec:tmpIndexSec+tmpSecVal['nFiles']]
             # check length
             if len(tmpSecList) < tmpSecVal['nFiles']:
-                errStr  = "%s contains %s files which is insufficient for splitting. " % (tmpSecDS,len(tmpSecVal['files']))
+                errStr  = "only %s files in %s are available at %s which is insufficient for splitting. " % \
+                          (len(tmpSecVal['files']),tmpSecDS,options.site)
                 errStr += "nJobs*nFilesPerJob=%s*%s=%s files are required" % (options.nJobs,tmpSecVal['nFiles'],
                                                                               options.nJobs*tmpSecVal['nFiles'])
                 tmpLog.error(errStr)            
@@ -1745,6 +1816,11 @@ for iJob in range(options.nJobs):
             # set offset to 0 for fresh output dataset
             if existingFilesInOutDS == {}:
                 indexOffsetMap[tmpLFN] = 0
+                jobsetIDMapForLFN[tmpLFN] = ''
+                if dsNameWoSlash.startswith('group'):
+		    # append group job SN since group.xyz.jobsetID may be duplicated
+                    jobsetIDMapForLFN[tmpLFN] += "$GROUPJOBSN_"
+                jobsetIDMapForLFN[tmpLFN] += '$JOBSETID'    
             # offset is already obtained
             if indexOffsetMap.has_key(tmpLFN):
                 idxOffset = indexOffsetMap[tmpLFN]
@@ -1757,9 +1833,11 @@ for iJob in range(options.nJobs):
             if matchLFN != None and original_outDS_Name.endswith('/'):
                 flagUseNewLFN = True
                 if jobsetIDMapForLFN.has_key(tmpLFN) and jobsetIDMapForLFN[tmpLFN] != None:
-                    lfnPrefix = '%s.%s.' % (matchLFN.group(1),matchLFN.group(2),jobsetIDMapForLFN[tmpLFN])
+                    lfnPrefix = '%s.%s.%s' % (matchLFN.group(1),matchLFN.group(2),jobsetIDMapForLFN[tmpLFN])
                 else:
                     lfnPrefix = '%s.%s.$JOBSETID' % (matchLFN.group(1),matchLFN.group(2))                    
+		if options.descriptionInLFN != '':
+		    lfnPrefix += '.%s' % options.descriptionInLFN
             else:
                 flagUseNewLFN = False
                 lfnPrefix = dsNameWoSlash
@@ -1783,7 +1861,7 @@ for iJob in range(options.nJobs):
                     tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)                    
                 else:
                     # short LFN : user.nickname.XYZ
-                    filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % lfnPrefix.replace('$JOBSETID','(\d+)'))
+                    filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % lfnPrefix.replace('$JOBSETID','([_\d]+)'))
                     # get offset    
                     idxOffset,jobsetIDinLFN = PsubUtils.getMaxIndex(existingFilesInOutDS,filePatt,shortLFN=True)
                     # append
@@ -1792,7 +1870,11 @@ for iJob in range(options.nJobs):
                     # correct
                     if jobsetIDinLFN != None:
                         newHead = '%s._%05d.' % (lfnPrefix.replace('$JOBSETID',jobsetIDinLFN),idxOffset+iJob+1)
-                        tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)                    
+                        tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)
+                    elif dsNameWoSlash.startswith('group'):
+			# append group job SN since group.xyz.jobsetID may be duplicated 
+                        newHead = '%s._%05d.' % (lfnPrefix.replace('$JOBSETID','$GROUPJOBSN_$JOBSETID'),idxOffset+iJob+1)
+                        tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)
             # set file spec
             file = FileSpec()
             file.lfn               = tmpNewLFN              
@@ -1967,6 +2049,7 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
 	PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
                              options.site,options.crossSite,archiveName,options.removedDS,
 			     options.inDS,options.goodRunListXML,options.eventPickEvtList,
-			     options.panda_dbRelease,jobsetID,options.verbose)
+			     options.panda_dbRelease,jobsetID,
+                             orig_bexecStr,orig_execStr,options.verbose)
 # succeeded
 sys.exit(0)
