@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.85 (8/21/2010)
+  * fixed --eventPick of pathena for multiple run numbers
+
 0.2.84 (8/18/2010)
   * added a protection against empty --excludedSite
   * added a protection against duplicated counties in unused cloud

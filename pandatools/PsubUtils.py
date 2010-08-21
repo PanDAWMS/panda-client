@@ -742,7 +742,7 @@ def checkDestSE(destSEs,dsName,verbose):
 # run pathena recursively
 def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,
                   removedDS,inDS,goodRunListXML,eventPickEvtList,devidedByGUID,dbRelease,jobsetID,trfStr,
-                  singleLine,isMissing,verbose):
+                  singleLine,isMissing,eventPickRunEvtDat,verbose):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -796,6 +796,8 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # set inDS to avoid redundant ELSSI lookup for event picking
     if inDS != '' and eventPickEvtList != '' and not '--panda_inDSForEP' in fullExecString:
         fullExecString += ' --panda_inDSForEP=%s' % inDS
+        if eventPickRunEvtDat != '' and not '--panda_eventPickRunEvtDat' in fullExecString:
+            fullExecString += ' --panda_eventPickRunEvtDat=%s' % eventPickRunEvtDat
     # set DBR
     if dbRelease != '' and not '--panda_dbRelease' in fullExecString:
         fullExecString += ' --panda_dbRelease=%s' % dbRelease
