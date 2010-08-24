@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.86 (8/24/2010)
+  * fixed a misleading error message in prun when --outDS is reused together with --match
+
 0.2.85 (8/21/2010)
   * fixed --eventPick of pathena for multiple run numbers
 

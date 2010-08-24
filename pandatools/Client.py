@@ -2301,6 +2301,7 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
         antifilters = antiFilter.split(',')
     # remove redundant files
     tmpKeys = inputFileMap.keys()
+    filesPassFilter = []
     for tmpLFN in tmpKeys:
         # remove log
         if re.search('\.log(\.tgz)*(\.\d+)*$',tmpLFN) != None or \
@@ -2327,11 +2328,6 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             if antiMatchFlag:
                 del inputFileMap[tmpLFN]
                 continue
-        # files in shadow
-        if tmpLFN in shadowList:
-            if inputFileMap.has_key(tmpLFN):
-                del inputFileMap[tmpLFN]            
-            continue
         # files to be used
         if filesToBeUsed != []:
             # check matching    
@@ -2344,14 +2340,22 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             # doesn't match
             if not matchFlag:
                 del inputFileMap[tmpLFN]
+                continue
+        # files which pass the matching filters    
+        filesPassFilter.append(tmpLFN)            
+        # files in shadow
+        if tmpLFN in shadowList:
+            if inputFileMap.has_key(tmpLFN):
+                del inputFileMap[tmpLFN]            
+            continue
     # no files in filelist are available
-    if inputFileMap == {} and (filter != '' or antiFilter != '' or inputFileListName != ''):
+    if inputFileMap == {} and (filter != '' or antiFilter != '' or inputFileListName != '') and filesPassFilter == []:
         if inputFileListName != '':
             errStr =  "Files specified in %s are unavailable in %s. " % (inputFileListName,inDS)
         elif filter != '':
-            errStr =  "File matching with %s are unavailable in %s. " % (filters,inDS)
+            errStr =  "Files matching with %s are unavailable in %s. " % (filters,inDS)
         else:
-            errStr =  "File unmatching with %s are unavailable in %s. " % (antifilters,inDS)
+            errStr =  "Files unmatching with %s are unavailable in %s. " % (antifilters,inDS)
         errStr += "Make sure that you specify correct file names or matching patterns"
         tmpLog.error(errStr)
         sys.exit(EC_Failed)
