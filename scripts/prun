@@ -807,7 +807,7 @@ if options.inDS != '':
             break
     if not unUsedFlag:
         # exit
-        tmpMsg = "Done. All input files were (or are being) processed"
+        tmpMsg = "Done. All input files were (or are being) processed for the outDS"
         tmpLog.info(tmpMsg)
         sys.exit(0)
     # sort
@@ -1811,6 +1811,7 @@ for iJob in range(options.nJobs):
     # output files
     outMap = {}
     dsNameWoSlash = re.sub('/$','',original_outDS_Name)
+    lfnPrefixForLog = dsNameWoSlash 
     if options.outputs != '':
         for tmpLFN in options.outputs.split(','):
             # set offset to 0 for fresh output dataset
@@ -1842,6 +1843,7 @@ for iJob in range(options.nJobs):
                 flagUseNewLFN = False
                 lfnPrefix = dsNameWoSlash
             tmpNewLFN = '%s._%05d.%s' % (lfnPrefix,idxOffset+iJob+1,tmpLFN)
+            lfnPrefixForLog = lfnPrefix
             # change * to XYZ and add .tgz
 	    if tmpNewLFN.find('*') != -1:
 		tmpNewLFN = tmpNewLFN.replace('*','XYZ')
@@ -1888,7 +1890,7 @@ for iJob in range(options.nJobs):
         jobR.jobParameters += '-o "%s" ' % str(outMap)
     # log
     file = FileSpec()
-    file.lfn               = '%s._$PANDAID.log.tgz' % dsNameWoSlash
+    file.lfn               = '%s._$PANDAID.log.tgz' % lfnPrefixForLog
     file.type              = 'log'
     file.dataset           = original_outDS_Name
     file.destinationSE     = jobR.destinationSE

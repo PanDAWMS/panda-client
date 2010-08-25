@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed prun to use short LFN for log files
+  * fixed DBR lookup to ignore DBRs with special suffixes
+
 0.2.86 (8/24/2010)
   * fixed a misleading error message in prun when --outDS is reused together with --match
 

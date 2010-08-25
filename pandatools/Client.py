@@ -2426,9 +2426,12 @@ def getLatestDBRelease(verbose=False):
         # ignore CDRelease
         if ".CDRelease." in tmpName:
             continue
-        match = re.search('\.v(\d+)_*[^\.]*$',tmpName)
+        match = re.search('\.v(\d+)(_*[^\.]*)$',tmpName)
         if match == None:
             tmpLog.warning('cannot extract version number from %s' % tmpName)
+            continue
+        # ignore special DBRs
+        if match.group(2) != '':
             continue
         # get major,minor,build,revision numbers
         tmpVerStr = match.group(1)
