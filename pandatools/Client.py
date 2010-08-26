@@ -1108,6 +1108,31 @@ def convSrmV2ID(tmpSite):
     return tmpSite
 
 
+# check tape sites
+def isTapeSite(origTmpSite):
+    if re.search('TAPE$',origTmpSite) != None or \
+           re.search('PROD_TZERO$',origTmpSite) != None or \
+           re.search('PROD_DAQ$',origTmpSite) != None:
+        return True
+    return False
+
+
+# check online site
+def isOnlineSite(origTmpSite):
+    # get PandaID
+    tmpPandaSite = convertDQ2toPandaID(origTmpSite)
+    # check if Panda site
+    if not PandaSites.has_key(tmpPandaSite):
+        return False
+    # exclude long,local queues
+    if isExcudedSite(tmpPandaSite):
+        return False
+    # status    
+    if PandaSites[tmpPandaSite]['status'] == 'online':
+        return True
+    return False
+                
+
 # get locations
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
                  getTapeSites=False,getDQ2IDs=False,locCandidates=None,removeDS=False,
@@ -1188,7 +1213,14 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                         continue
                     for tmpEleVUID,tmpEleLocs in tmpEleVal.iteritems():
                         # get complete locations
+                        tmpFoundFlag = False
                         for tmpEleLoc in tmpEleLocs[1]:
+                            # don't use TAPE
+                            if isTapeSite(tmpEleLoc):
+                                if not tmpEleLoc in resTapeSites:
+                                    resTapeSites.append(tmpEleLoc)
+                                continue
+                            # append
                             if not outTmp.has_key(tmpEleLoc):
                                 outTmp[tmpEleLoc] = [{'found':0,'useddatasets':[]}]
                             # increment    
@@ -1196,10 +1228,18 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             # append list
                             if not tmpEleName in outTmp[tmpEleLoc][0]['useddatasets']:
                                 outTmp[tmpEleLoc][0]['useddatasets'].append(tmpEleName)
-                        # use incomplete locations for user container if no complete replicas
-                        if tmpEleLocs[1] == [] and (tmpEleName.startswith('user') or \
-                                                    tmpEleName.startswith('group')):
+                            # found online site    
+                            if isOnlineSite(tmpEleLoc):
+                                tmpFoundFlag = True
+                        # use incomplete locations if no complete replica at online sites
+                        if not tmpFoundFlag:
                             for tmpEleLoc in tmpEleLocs[0]:
+                                # don't use TAPE
+                                if isTapeSite(tmpEleLoc):
+                                    if not tmpEleLoc in resTapeSites:
+                                        resTapeSites.append(tmpEleLoc)
+                                    continue
+                                # append
                                 if not outTmp.has_key(tmpEleLoc):
                                     outTmp[tmpEleLoc] = [{'found':0,'useddatasets':[]}]
                                 # increment
@@ -1207,23 +1247,39 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                                 # append list
                                 if not tmpEleName in outTmp[tmpEleLoc][0]['useddatasets']:
                                     outTmp[tmpEleLoc][0]['useddatasets'].append(tmpEleName)
-                # replace
-                out = outTmp
+            else:
+                # check completeness
+                tmpIncompList = []
+                tmpFoundFlag = False
+                for tmpOutKey,tmpOutVar in out.iteritems():
+                    # don't use TAPE
+                    if isTapeSite(tmpOutKey):
+                        if not tmpOutKey in resTapeSites:
+                            resTapeSites.append(tmpOutKey)
+                        continue
+                    # protection against unchecked
+                    tmpNfound = tmpOutVar[0]['found']
+                    # complete or not
+                    if isinstance(tmpNfound,types.IntType) and tmpNfound == tmpOutVar[0]['total']:
+                        outTmp[tmpOutKey] = [{'found':1,'useddatasets':[tmpName]}]
+                        # found online site
+                        if isOnlineSite(tmpOutKey):
+                            tmpFoundFlag = True
+                    else:
+                        # keep just in case
+                        if not tmpOutKey in tmpIncompList:
+                            tmpIncompList.append(tmpOutKey)
+                # use incomplete replicas when no complete at online sites
+                if not tmpFoundFlag:
+                    for tmpOutKey in tmpIncompList:
+                        outTmp[tmpOutKey] = [{'found':1,'useddatasets':[tmpName]}]
+            # replace
+            out = outTmp
             # sum
             for tmpOutKey,tmpOutVar in out.iteritems():
-                # protection against unchecked
-                tmpNfound = tmpOutVar[0]['found']
-                if not isinstance(tmpNfound,types.IntType):
-                    tmpNfound = 1
-                if allOut.has_key(tmpOutKey):
-                    allOut[tmpOutKey][0]['found'] += tmpNfound
-                else:
-                    allOut[tmpOutKey] = [{'found':tmpNfound}]
-                if not tmpOutVar[0].has_key('useddatasets'):
-                    # add dataset as a container element
-                    tmpOutVar[0]['useddatasets'] = [tmpName]
-                if not allOut[tmpOutKey][0].has_key('useddatasets'):
-                    allOut[tmpOutKey][0]['useddatasets'] = []
+                if not allOut.has_key(tmpOutKey):
+                    allOut[tmpOutKey] = [{'found':0,'useddatasets':[]}]
+                allOut[tmpOutKey][0]['found'] += tmpOutVar[0]['found']
                 allOut[tmpOutKey][0]['useddatasets'] += tmpOutVar[0]['useddatasets']    
         # replace
         out = allOut
@@ -1238,9 +1294,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 # check status
                 if PandaSites.has_key(tmpPandaSite) and PandaSites[tmpPandaSite]['status'] == 'online':
                     # don't use TAPE
-                    if re.search('TAPE$',origTmpSite) != None or \
-                           re.search('PROD_TZERO$',origTmpSite) != None or \
-                           re.search('PROD_DAQ$',origTmpSite) != None:
+                    if isTapeSite(origTmpSite):
                         if not origTmpSite in resTapeSites:
                             resTapeSites.append(origTmpSite)
                         continue
@@ -1258,9 +1312,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         tmpFirstDump = True
         for origTmpSite,origTmpInfo in out.iteritems():
             # don't use TAPE
-            if re.search('TAPE$',origTmpSite) != None or \
-                   re.search('PROD_TZERO$',origTmpSite) != None or \
-                   re.search('PROD_DAQ$',origTmpSite) != None:
+            if isTapeSite(origTmpSite):
                 if not origTmpSite in resTapeSites:
                     resTapeSites.append(origTmpSite)
                 continue
@@ -1350,7 +1402,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         elif not removeDS:
             return retSiteMap,resRetSiteMap,resTapeSites
         else:
-            return retSiteMap,resRetSiteMap,resTapeSites,resUsedDsMap            
+            return retSiteMap,resRetSiteMap,resTapeSites,resUsedDsMap
     except:
         print status,out
         if errStr != '':
@@ -1506,7 +1558,7 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
     for path in sys.path:
         # look for base package
         basePackage = __name__.split('.')[-2]
-        if os.path.exists(path) and basePackage in os.listdir(path):
+        if os.path.exists(path) and os.path.isdir(path) and basePackage in os.listdir(path):
             lfcClient = '%s/%s/LFCclient.py' % (path,basePackage)
             if explicitSE:
                 stList = getSE(site)
@@ -1619,7 +1671,7 @@ def _getGridSrc():
     if gridSrc != '':
         gridSrc = 'source %s;' % gridSrc
         # some grid_env.sh doen't correct PATH/LD_LIBRARY_PATH
-        gridSrc = "unset LD_LIBRARY_PATH; unset PYTHONPATH; export PATH=/usr/local/bin:/bin:/usr/bin; %s" % gridSrc
+        gridSrc = "unset LD_LIBRARY_PATH; unset PYTHONPATH; unset MANPATH; export PATH=/usr/local/bin:/bin:/usr/bin; %s" % gridSrc
     # return
     return gridSrc
 
@@ -2158,6 +2210,9 @@ def excludeSite(excludedSite):
     # remove sites
     global PandaSites
     for tmpPatt in excludedSite.split(','):
+        # skip empty
+        if tmpPatt == '':
+            continue
         # check if it is a composite
         for tmpComp in compSites:
             if tmpComp in tmpPatt:
@@ -2246,6 +2301,7 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
         antifilters = antiFilter.split(',')
     # remove redundant files
     tmpKeys = inputFileMap.keys()
+    filesPassFilter = []
     for tmpLFN in tmpKeys:
         # remove log
         if re.search('\.log(\.tgz)*(\.\d+)*$',tmpLFN) != None or \
@@ -2272,11 +2328,6 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             if antiMatchFlag:
                 del inputFileMap[tmpLFN]
                 continue
-        # files in shadow
-        if tmpLFN in shadowList:
-            if inputFileMap.has_key(tmpLFN):
-                del inputFileMap[tmpLFN]            
-            continue
         # files to be used
         if filesToBeUsed != []:
             # check matching    
@@ -2289,14 +2340,22 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
             # doesn't match
             if not matchFlag:
                 del inputFileMap[tmpLFN]
+                continue
+        # files which pass the matching filters    
+        filesPassFilter.append(tmpLFN)            
+        # files in shadow
+        if tmpLFN in shadowList:
+            if inputFileMap.has_key(tmpLFN):
+                del inputFileMap[tmpLFN]            
+            continue
     # no files in filelist are available
-    if inputFileMap == {} and (filter != '' or antiFilter != '' or inputFileListName != ''):
+    if inputFileMap == {} and (filter != '' or antiFilter != '' or inputFileListName != '') and filesPassFilter == []:
         if inputFileListName != '':
             errStr =  "Files specified in %s are unavailable in %s. " % (inputFileListName,inDS)
         elif filter != '':
-            errStr =  "File matching with %s are unavailable in %s. " % (filters,inDS)
+            errStr =  "Files matching with %s are unavailable in %s. " % (filters,inDS)
         else:
-            errStr =  "File unmatching with %s are unavailable in %s. " % (antifilters,inDS)
+            errStr =  "Files unmatching with %s are unavailable in %s. " % (antifilters,inDS)
         errStr += "Make sure that you specify correct file names or matching patterns"
         tmpLog.error(errStr)
         sys.exit(EC_Failed)
@@ -2367,9 +2426,12 @@ def getLatestDBRelease(verbose=False):
         # ignore CDRelease
         if ".CDRelease." in tmpName:
             continue
-        match = re.search('\.v(\d+)_*[^\.]*$',tmpName)
+        match = re.search('\.v(\d+)(_*[^\.]*)$',tmpName)
         if match == None:
             tmpLog.warning('cannot extract version number from %s' % tmpName)
+            continue
+        # ignore special DBRs
+        if match.group(2) != '':
             continue
         # get major,minor,build,revision numbers
         tmpVerStr = match.group(1)
@@ -2407,7 +2469,7 @@ def getLatestDBRelease(verbose=False):
                         continue
         # check replica locations to use well distributed DBRelease. i.e. to avoid DBR just created
         tmpLocations = getLocations(tmpName,[],'',False,verbose,getDQ2IDs=True)
-        if len(tmpLocations) < 20:
+        if len(tmpLocations) < 40:
             continue
         # check contents to exclude reprocessing DBR
         tmpDbrFileMap = queryFilesInDataset(tmpName,verbose)
