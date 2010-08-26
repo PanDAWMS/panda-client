@@ -21,9 +21,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.87 (8/26/2010)
   * fixed prun to use short LFN for log files
   * fixed DBR lookup to ignore DBRs with special suffixes
+  * unset MANPATH to avoid an error message caused by a corrupted MANPATH in OSG middle-ware
 
 0.2.86 (8/24/2010)
   * fixed a misleading error message in prun when --outDS is reused together with --match

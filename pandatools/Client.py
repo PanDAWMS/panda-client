@@ -1671,7 +1671,7 @@ def _getGridSrc():
     if gridSrc != '':
         gridSrc = 'source %s;' % gridSrc
         # some grid_env.sh doen't correct PATH/LD_LIBRARY_PATH
-        gridSrc = "unset LD_LIBRARY_PATH; unset PYTHONPATH; export PATH=/usr/local/bin:/bin:/usr/bin; %s" % gridSrc
+        gridSrc = "unset LD_LIBRARY_PATH; unset PYTHONPATH; unset MANPATH; export PATH=/usr/local/bin:/bin:/usr/bin; %s" % gridSrc
     # return
     return gridSrc
 
