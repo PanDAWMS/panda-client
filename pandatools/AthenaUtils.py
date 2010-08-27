@@ -726,7 +726,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
             for item in list:
                 # ignore libraries
                 if item.startswith('i686') or item.startswith('i386') or item.startswith('x86_64') \
-                       or item=='dict' or item=='pool' or item =='pool_plugins' or item == 'doc' or item == '.svn':
+                       or item=='pool' or item =='pool_plugins' or item == 'doc' or item == '.svn':
                     continue
                 # check exclude files
                 excludeFileFlag = False

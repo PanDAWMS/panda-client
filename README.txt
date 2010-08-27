@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.88 (8/27/2010)
+  * changed archiveFiles to include dict dirs when archiving
+
 0.2.87 (8/26/2010)
   * fixed prun to use short LFN for log files
   * fixed DBR lookup to ignore DBRs with special suffixes
