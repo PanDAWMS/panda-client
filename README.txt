@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.89 (8/28/2010)
+  * fixed --secondaryDSs of prun for multiple streams
+
 0.2.88 (8/27/2010)
   * changed archiveFiles to include dict dirs when archiving
 

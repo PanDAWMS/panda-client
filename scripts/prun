@@ -567,11 +567,15 @@ if options.secondaryDSs != '':
     for tmpItem in options.secondaryDSs.split(','):
         tmpItems = tmpItem.split(':')
         if len(tmpItems) in [3,4,5]:
-            tmpMap[tmpItems[2]] = {'nFiles'     : int(tmpItems[1]),
-                                   'streamName' : tmpItems[0],
-                                   'pattern'    : '',
-                                   'nSkip'      : 0,
-                                   'files'      : []}
+            tmpDsName = tmpItems[2]
+            # change ^ to ,
+            tmpDsName = tmpDsName.replace('^',',')
+            # make map
+            tmpMap[tmpDsName] = {'nFiles'     : int(tmpItems[1]),
+                                 'streamName' : tmpItems[0],
+                                 'pattern'    : '',
+                                 'nSkip'      : 0,
+                                 'files'      : []}
             # using filtering pattern
             if len(tmpItems) >= 4:
                 tmpMap[tmpItems[2]]['pattern'] = tmpItems[3]
@@ -994,8 +998,8 @@ if options.inDS != '':
                 if tmpSecFile in secMissList:
                     continue
                 # append
-                tmpSecFileMap[tmpSecFile]['LFN'] = tmpSecFile
-                options.secondaryDSs[tmpDsName]['files'].append(tmpSecFileMap[tmpSecFile])
+                options.secondaryDSs[tmpDsName]['fileMap'][tmpSecFile]['LFN'] = tmpSecFile
+                options.secondaryDSs[tmpDsName]['files'].append(options.secondaryDSs[tmpDsName]['fileMap'][tmpSecFile])
             # skip files    
             options.secondaryDSs[tmpDsName]['files'] = options.secondaryDSs[tmpDsName]['files'][options.secondaryDSs[tmpDsName]['nSkip']:]
             # change nFiles=0 to the real size 
