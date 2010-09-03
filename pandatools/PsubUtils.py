@@ -73,7 +73,13 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
             import getpass
             tmpLog.info("Need to generate a grid proxy")            
             print "Your identity: " + commands.getoutput('%s grid-cert-info -subject' % gridSrc)
-            gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:')
+            if sys.stdin.isatty():
+                gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:')
+            else:
+                sys.stdout.write('Enter GRID pass phrase for this identity:')
+                sys.stdout.flush()
+                gridPassPhrase = sys.stdin.readline().rstrip()
+                print
             gridPassPhrase = gridPassPhrase.replace('$','\$')
         # with VOMS extension
         if vomsRoles != None:

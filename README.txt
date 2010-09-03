@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * changed getpass to work without a tty 
+
 0.2.90 (9/3/2010)
   * added a protection to pbook against jobsetID=NULL or ''
 
