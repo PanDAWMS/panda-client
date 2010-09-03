@@ -22,7 +22,7 @@ pathena -h
 ** Release Note
 
 0.2.90 (9/3/2010)
-  * added a protection to pbook against jobsetID=NULL
+  * added a protection to pbook against jobsetID=NULL or ''
 
 0.2.89 (8/28/2010)
   * fixed --secondaryDSs of prun for multiple streams

@@ -552,7 +552,7 @@ def getListOfJobIDs(nonFrozen=False,verbose=False):
 # get map of jobsetID and JobIDs
 def getMapJobsetIDJobIDs(verbose=False):
     # make sql
-    sql1 = "SELECT groupID,JobID FROM %s WHERE groupID is not NULL and groupID != 0" % pdbProxy.tablename
+    sql1 = "SELECT groupID,JobID FROM %s WHERE groupID is not NULL and groupID != 0 and groupID != ''" % pdbProxy.tablename
     # execute
     status,out = pdbProxy.execute(sql1)
     if not status:
