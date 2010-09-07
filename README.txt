@@ -23,6 +23,7 @@ pathena -h
 
 current
   * changed getpass to work without a tty 
+  * check actimeleft of voms-proxy to avoid expiration of VOMS FQANs
 
 0.2.90 (9/3/2010)
   * added a protection to pbook against jobsetID=NULL or ''

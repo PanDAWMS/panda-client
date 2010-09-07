@@ -44,6 +44,25 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
             tmpLog.debug(out)
         if status == 0:
             vomsFQAN = out
+            # check actime
+            com = '%s voms-proxy-info -actimeleft' % gridSrc    
+            if verbose:
+                tmpLog.debug(com)
+            acstatus,acout = commands.getstatusoutput(com)
+            if verbose:
+                tmpLog.debug(acstatus % 255)
+                tmpLog.debug(acout)
+            if acstatus == 0:
+                # get actime
+                acTimeLeft = 0
+                try:
+                    acTimeLeft = int(acout.split('\n')[-1])
+                except:
+                    pass
+                if acTimeLeft < 2*60:
+                    # set status to regenerate proxy with roles
+                    status = -1
+                    out = ''
         # check roles
         if vomsRoles != None:
             hasAttr = True
@@ -65,6 +84,7 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
             if not hasAttr:
                 # set status to regenerate proxy with roles
                 status = -1
+                out = ''
     # generate proxy
     if (status != 0 and out.find('Error: Cannot verify AC signature') == -1) or \
            out.find('Error: VOMS extension not found') != -1 or enforceEnter:
