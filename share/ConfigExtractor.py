@@ -224,6 +224,7 @@ if hasattr(NTupleSvc,'Output') and hasattr(NTupleSvc.Output,'__len__') and len(N
 streamOutputFiles = {}
 
 # RDO
+foundStreamRD0 = False
 key = "AthenaOutputStream/StreamRDO"
 if key in _configs:
     StreamRDO = _getConfig( key )
@@ -233,6 +234,7 @@ if hasattr(StreamRDO,'OutputFile') and hasattr(StreamRDO.OutputFile,'__len__') a
     streamOutputFiles[key.split('/')[-1]] = StreamRDO.OutputFile
     _printConfig('Output=RDO')
     _printConfig(' Name: %s'% StreamRDO.OutputFile)
+    foundStreamRD0 = True
                 
 # ESD
 key = "AthenaOutputStream/StreamESD"
@@ -343,14 +345,18 @@ if hasattr(Stream2,'OutputFile') and hasattr(Stream2.OutputFile,'__len__') and l
 strGenFName = ''
 strGenStream  = ''
 strMetaStream = ''
+ignoredStreamList = ['Stream1','Stream2','StreamBS','StreamESD','StreamAOD','StreamBSFileOutput']
+if foundStreamRD0:
+    # for old releases where  StreamRDO was an algorithm 
+    ignoredStreamList += ['StreamRDO']
+    
 try:
     metaStreams = []
     for genStream in theApp._streams.getAllChildren()+AlgSequence().getAllChildren():
         # check name
         fullName = genStream.getFullName()
         if fullName.split('/')[0] == 'AthenaOutputStream' and \
-               (not fullName.split('/')[-1] in ['Stream1','Stream2','StreamBS','StreamRDO','StreamESD','StreamAOD',
-                                                'StreamBSFileOutput']):
+               (not fullName.split('/')[-1] in ignoredStreamList):
             if hasattr(genStream,'OutputFile') and hasattr(genStream.OutputFile,'__len__') and len(genStream.OutputFile):
                 if (hasattr(genStream,'Enable') and genStream.Enable) or (not hasattr(genStream,'Enable')):
                     # keep meta data

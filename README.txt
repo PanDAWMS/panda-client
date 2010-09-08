@@ -21,13 +21,81 @@ pathena -h
 
 ** Release Note
 
+0.2.91 (9/8/2010)
+  * changed getpass to work without a tty 
+  * check actimeleft of voms-proxy to avoid expiration of VOMS FQANs
+  * fixed retry(newSite=True) to distinguish DBR from regular inputs
+
+0.2.90 (9/3/2010)
+  * added a protection to pbook against jobsetID=NULL or ''
+
+0.2.89 (8/28/2010)
+  * fixed --secondaryDSs of prun for multiple streams
+
+0.2.88 (8/27/2010)
+  * changed archiveFiles to include dict dirs when archiving
+
+0.2.87 (8/26/2010)
+  * fixed prun to use short LFN for log files
+  * fixed DBR lookup to ignore DBRs with special suffixes
+  * unset MANPATH to avoid an error message caused by a corrupted MANPATH in OSG middle-ware
+
+0.2.86 (8/24/2010)
+  * fixed a misleading error message in prun when --outDS is reused together with --match
+
+0.2.85 (8/21/2010)
+  * fixed --eventPick of pathena for multiple run numbers
+
+0.2.84 (8/18/2010)
+  * added a protection against empty --excludedSite
+  * added a protection against duplicated counties in unused cloud
+
+0.2.83 (8/18/2010)
+  * fixed key error in pathena when --individualOutDS is used for existing outDS
+
+0.2.82 (8/12/2010)
+  * fixed directory scan for python 2.6
+
+0.2.81 (8/12/2010)
+  * fixed misuse of incomplete replica locations in site lookup
+
+0.2.80 (8/10/2010)
+  * fixed pathena to check DQ2/LFC for MinimumBias/Cavern/BeamGas/BeamHalo datasets
+  * fixed prun to check LFC for secondary datasets
+
+0.2.79 (8/9/2010)
+  * added protection to pbook against duplication of jobID and jobsetID
+  * added ignoreDuplication to pbook.retry()
+
+0.2.78 (8/9/2010)
+  * added --maxNFilesPerJob and --writeInputToTxt to prun
+
+0.2.77 (8/7/2010)
+  * added global SN into group file names to guarantee LFN uniqueness 
+  * fixed error message about missing DBR
+  * fixed prun to check DBR location
+  * increased the minimum number of the latest DBR replicas to 40 
+  * fixed error message about TAPE sites
+  * fixed --exec/--bexec of prun and --trf/-c of pathena to keep special characters
+
+0.2.76 (8/6/2010)
+  * fixed pathena/prun to exit immediately when all input files were used by other jobs 
+
+0.2.75 (8/5/2010)
+  * added --descriptionInLFN to pathena/prun
+  * fixed ConfigExtractor for StreamRDO
+
+0.2.74 (8/2/2010)
+  * fixed pbook.show('running')
+  * fixed string conversion error in prun
+
 0.2.73 (8/2/2010)
   * changed pathena/prun to use output container by default
   * changed --outDS to append / when / is missing
-  * shortened LFN format to follow new DQ2 limitation on LFN length
+  * introduced a short LFN format to follow new DQ2 limitation on LFN length
   * added --useOldStyleOutput to pathena/prun to allow output dataset and old LFN convention
   * fixed --individualOutDS of pathena to create separate containers
-  * fixed pbook to work with JobsetID instead if JobID
+  * fixed pbook to work with JobsetID instead of JobID
   * added longFormat option to pbook.show() to show jobs individually
   * fixed pbook.retry() to check input duplication
   * increased the minimum number of complete replicas for the latest DBR
