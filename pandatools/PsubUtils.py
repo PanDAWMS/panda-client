@@ -1294,7 +1294,8 @@ def execWithModifiedParams(jobs,newOpts,verbose):
     inFiles = []
     for job in jobs:
         for tmpFile in job.Files:
-            if tmpFile.type == 'input' and not tmpFile.lfn.endswith('.lib.tgz'):
+            if tmpFile.type == 'input' and (not tmpFile.lfn.endswith('.lib.tgz')) \
+               and re.search('^DBRelease-.*\.tar\.gz$',tmpFile.lfn) == None:
                 if not tmpFile.dataset in inDSs:
                     inDSs.append(tmpFile.dataset)
                 if not tmpFile.lfn in inFiles:
