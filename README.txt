@@ -21,10 +21,13 @@ pathena -h
 
 ** Release Note
 
+0.2.92 (9/12/2010)
+  * changed pbook.retry to show JobsetID when the job was already retried
+
 0.2.91 (9/8/2010)
   * changed getpass to work without a tty 
   * check actimeleft of voms-proxy to avoid expiration of VOMS FQANs
-  * fixed retry(newSite=True) to distinguish DBR from regular inputs
+  * fixed pbook.retry(newSite=True) to distinguish DBR from regular inputs
 
 0.2.90 (9/3/2010)
   * added a protection to pbook against jobsetID=NULL or ''

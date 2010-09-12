@@ -478,7 +478,8 @@ class PBookCore:
             # skip already retried
             if localJob.retryID != '0':
                 if isJobset:
-                    tmpLog.info('Skip JobID=%s since already retried by JobID=%s' % (JobID,localJob.retryID))
+                    tmpLog.info('Skip JobID=%s since already retried by JobID=%s JobsetID=%s' % \
+                                (JobID,localJob.retryID,localJob.retryJobsetID))
                     continue
                 else:
                     tmpLog.warning('This job was already retried by JobID=%s' % localJob.retryID)
