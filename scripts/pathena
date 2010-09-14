@@ -1765,11 +1765,11 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             inputFileList = guidCollList
             # use GUID boundaries
             devidedByGUID = True
+            # set inDS and missList to invoke runPathenaRec
+            options.inDS = ''
+            missList = []
             # set parentDS
             if options.parentDS == '':
-                # set inDS and missList to invoke runPathenaRec
-                options.inDS = ''
-                missList = []
                 # get DSs using GUIDs
 		tmpLog.info("extracting parent datasets from TAG")
                 tmpRetMap,tmpAllMap = Client.listDatasetsByGUIDs(guidCollList,options.eventPickDS,options.verbose,True)
@@ -1794,28 +1794,41 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     sys.exit(EC_Dataset)                    
                 else:
                     tmpLog.info("parent datasets : %s" % options.inDS)
-                    # go back to current dir
-                    os.chdir(currentDir)
-                    # use devidedByGUID in invoked process
-                    options.panda_devidedByGUID = True
-                    # set a dummy string to set inDS in invoked process
-                    options.goodRunListXML = 'dummy'
-                    # invoke pathena
-                    PsubUtils.runPathenaRec(runConfig,missList,tmpDir,fullExecString,options.nfiles,{},
-                                            options.site,options.crossSite,archiveName,options.removedDS,
-                                            options.inDS,options.goodRunListXML,options.eventPickEvtList,
-                                            options.panda_devidedByGUID,options.panda_dbRelease,
-                                            options.panda_jobsetID,orig_trfStr,options.singleLine,
-                                            False,eventPickRunEvtDat,options.verbose)
-                    # exit        
-                    sys.exit(0)
-
-                    
-                    parentDSlocations = Client.getLocations(options.parentDS,[],options.cloud,False,options.verbose,
-                                                            getDQ2IDs=True,useOutContainer=usingContainerForOut)
-                    if parentDSlocations == []:
-                        tmpLog.error("could not find replica locations for %s which was extracted from TAG" % options.parentDS)
+            else:
+                tmpLog.info("checking GUIDs in TAG and parentDS")
+                # get files in parent datasets
+                tmpParentFileList = Client.queryFilesInDataset(options.parentDS,options.verbose)
+                # set parameters for recursive execution
+                options.inDS = options.parentDS
+                tmpParentGuidLLfnMap = {}
+                for tmpParentLFN,tmpParentVal in tmpParentFileList.iteritems():
+                    tmpParentGuidLLfnMap[tmpParentVal['guid']] = tmpParentLFN
+                # get files 
+                missList = []
+                for tmpGUID in guidCollList:
+                    if not tmpParentGuidLLfnMap.has_key(tmpGUID):
+			errStr = "GUID=%s in TAG is not found in %s. Please check if you specify correct --parentDS" \
+                                 % (tmpGUID,options.parentDS)
+                        tmpLog.error(errStr)
                         sys.exit(EC_Dataset)
+                    # append
+                    if not tmpParentGuidLLfnMap[tmpGUID] in missList:
+                        missList.append(tmpParentGuidLLfnMap[tmpGUID])
+            # execute pathena            
+            os.chdir(currentDir)
+            # use devidedByGUID in invoked process
+            options.panda_devidedByGUID = True
+            # set a dummy string to set inDS in invoked process
+            options.goodRunListXML = 'dummy'
+            # invoke pathena
+            PsubUtils.runPathenaRec(runConfig,missList,tmpDir,fullExecString,options.nfiles,{},
+                                    options.site,options.crossSite,archiveName,options.removedDS,
+                                    options.inDS,options.goodRunListXML,options.eventPickEvtList,
+                                    options.panda_devidedByGUID,options.panda_dbRelease,
+                                    options.panda_jobsetID,orig_trfStr,options.singleLine,
+                                    False,eventPickRunEvtDat,options.verbose)
+            # exit        
+            sys.exit(0)
         else:
             # use input collections for looping
             inputFileList = runConfig.input.shipFiles

@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed --shipInput of pathena to check dataset availability when --parentDS is used
+
 0.2.92 (9/12/2010)
   * changed pbook.retry to show JobsetID when the job was already retried
 
