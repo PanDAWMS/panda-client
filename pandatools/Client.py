@@ -758,6 +758,123 @@ def getDatasets(name,verbose=False,withWC=False,onlyNames=False):
     return datasets
 
 
+# get expiring files
+globalExpFilesMap = {}
+def getExpiringFiles(dsStr,removedDS,siteID,verbose):
+    # reuse map
+    global globalExpFilesMap
+    mapKey = (dsStr,siteID)
+    if globalExpFilesMap.has_key(mapKey):
+        return globalExpFilesMap[mapKey]
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # get DQ2 location and used data
+    tmpLocations,dsUsedDsMap = getLocations(dsStr,[],'',False,verbose,getDQ2IDs=True,
+                                            includeIncomplete=True)
+    # get datasets at the site
+    datasets = []
+    for tmpDsUsedDsMapKey,tmpDsUsedDsVal in dsUsedDsMap.iteritems():
+        if siteID in [tmpDsUsedDsMapKey,convertToLong(tmpDsUsedDsMapKey)]:
+            datasets = tmpDsUsedDsVal
+            break
+    # not found    
+    if datasets == []:
+        tmpLog.error("cannot find datasets at %s for replica metadata check" % siteID)
+        sys.exit(EC_Failed)        
+    # get DQ2 IDs for the siteID    
+    dq2Locations = []
+    for tmpLoc in tmpLocations:
+        # check Panda site IDs
+        for tmpPandaSiteID in convertDQ2toPandaIDList(tmpLoc):
+            if siteID in [tmpPandaSiteID,convertToLong(tmpPandaSiteID)]:
+                if not tmpLoc in dq2Locations:
+                    dq2Locations.append(tmpLoc)
+                break
+    # empty
+    if dq2Locations == []:
+        tmpLog.error("cannot find replica locations for %s to check metadata" % siteID)
+        sys.exit(EC_Failed)        
+    # loop over all datasets
+    expFilesMap = {'datasets':[],'files':[]}
+    for dsName in datasets:
+        metaList = getReplicaMetadata(dsName,dq2Locations,verbose)
+        # check metadata
+        metaOK = False
+        for metaItem in metaList:
+            # check the archived attribute
+            if isinstance(metaItem['archived'],types.StringType) and metaItem['archived'].lower() in ['tobedeleted',]:
+                pass
+            else:
+                metaOK = True
+                break
+        # expiring
+        if not metaOK:
+            expFilesMap['datasets'].append(dsName)
+            # get files
+            expFilesMap['files'] += queryFilesInDataset(dsName,verbose)
+    # keep to avoid redundant lookup
+    globalExpFilesMap[mapKey] = expFilesMap
+    if expFilesMap['datasets'] != []:
+        msgStr = 'ignore replicas of '
+        for tmpDsStr in expFilesMap['datasets']:
+            msgStr += '%s,' % tmpDsStr
+        msgStr = msgStr[:-1]
+        msgStr += ' at %s due to archived=ToBeDeleted' % siteID
+        tmpLog.info(msgStr)
+    # return
+    return expFilesMap
+    
+
+# get replica metadata
+def getReplicaMetadata(name,dq2Locations,verbose):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    if verbose:
+        tmpLog.debug("getReplicaMetadata for %s" % (name))
+    # instantiate curl
+    curl = _Curl()
+    curl.verbose = verbose
+    try:
+        errStr = ''
+        # get VUID
+        url = baseURLDQ2 + '/ws_repository/rpc'
+        data = {'operation':'queryDatasetByName','dsn':name,'version':0,
+                'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+        status,out = curl.get(url,data)
+        if status != 0:
+            errStr = "ERROR : could not access DQ2 server"
+            sys.exit(EC_Failed)
+        # parse
+        datasets = {}
+        if out == '\x00' or not checkDatasetInMap(name,out):
+            errStr = "ERROR : VUID for %s was not found in DQ2" % name
+            sys.exit(EC_Failed)
+        # get VUIDs
+        vuid = out[name]['vuids'][0]
+        # get replica metadata
+        retList = []
+        for location in dq2Locations:
+            url = baseURLDQ2 + '/ws_location/rpc'
+            data = {'operation':'queryDatasetReplicaMetadata','vuid':vuid,
+                    'location':location,'API':'0_3_0',
+                    'tuid':commands.getoutput('uuidgen')}
+            status,out = curl.post(url,data)
+            if status != 0:
+                errStr = "ERROR : could not access DQ2 server to get replica metadata"
+                sys.exit(EC_Failed)
+            # append
+            retList.append(out)
+        # return
+        return retList
+    except:
+        print status,out
+        if errStr != '':
+            print errStr
+        else:
+            print "ERROR : invalid DQ2 response"
+        sys.exit(EC_Failed)
+
+
 # query files in shadow datasets associated to container
 def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
     fileList = []
@@ -1136,7 +1253,7 @@ def isOnlineSite(origTmpSite):
 # get locations
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
                  getTapeSites=False,getDQ2IDs=False,locCandidates=None,removeDS=False,
-                 removedDatasets=[],useOutContainer=False):
+                 removedDatasets=[],useOutContainer=False,includeIncomplete=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1232,7 +1349,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             if isOnlineSite(tmpEleLoc):
                                 tmpFoundFlag = True
                         # use incomplete locations if no complete replica at online sites
-                        if not tmpFoundFlag:
+                        if includeIncomplete or not tmpFoundFlag:
                             for tmpEleLoc in tmpEleLocs[0]:
                                 # don't use TAPE
                                 if isTapeSite(tmpEleLoc):
@@ -1270,7 +1387,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                         if not tmpOutKey in tmpIncompList:
                             tmpIncompList.append(tmpOutKey)
                 # use incomplete replicas when no complete at online sites
-                if not tmpFoundFlag:
+                if includeIncomplete or not tmpFoundFlag:
                     for tmpOutKey in tmpIncompList:
                         outTmp[tmpOutKey] = [{'found':1,'useddatasets':[tmpName]}]
             # replace
@@ -1373,6 +1490,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             tmpFirstDump = False
         # retrun DQ2 IDs
         if getDQ2IDs:
+            if includeIncomplete:
+                return retDQ2IDs,resUsedDsMap
             return retDQ2IDs
         # return list when file check is not required
         if woFileCheck:
@@ -1610,7 +1729,7 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
 
 
 # get list of missing LFNs from LFC
-def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList=[]):
+def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList=[],dsStr='',removedDS=[]):
     missList = []
     # ignore files in shadow
     if shadowList != []:
@@ -1620,6 +1739,14 @@ def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList
                 tmpFileMap[lfn] = vals
     else:
         tmpFileMap = fileMap
+    # ignore expiring files
+    if dsStr != '':
+        tmpTmpFileMap = {}
+        expFilesMap = getExpiringFiles(dsStr,removedDS,site,verbose)
+        for lfn,vals in tmpFileMap.iteritems():
+            if not lfn in expFilesMap['files']:
+                tmpTmpFileMap[lfn] = vals
+        tmpFileMap = tmpTmpFileMap        
     # get PFNS
     pfnMap = _getPFNsLFC(tmpFileMap,site,explicitSE,verbose,nFiles)
     for lfn,vals in fileMap.iteritems():

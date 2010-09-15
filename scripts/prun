@@ -939,10 +939,15 @@ if options.inDS != '':
             # set site/cloud
             options.site  = out
             options.cloud = Client.PandaSites[options.site]['cloud']
+	    # get expiring files
+            expFilesMap = Client.getExpiringFiles(options.inDS,options.removedDS,options.site,options.verbose)
             # update used the list of used datasets
             for tmpDsUsedDsMapKey,tmpDsUsedDsVal in dsUsedDsMap.iteritems():
                 if options.site in [tmpDsUsedDsMapKey,Client.convertToLong(tmpDsUsedDsMapKey)]:
-                    options.removedDS += tmpDsUsedDsVal
+                    for tmpDsUsedDsValItem in tmpDsUsedDsVal:
+                        # ignore expiring datasets
+                        if not tmpDsUsedDsValItem in expFilesMap['datasets']:
+                            options.removedDS.append(tmpDsUsedDsValItem)
                     break
         # scan local replica catalog
         dsLocation = Client.PandaSites[options.site]['ddm']
@@ -953,10 +958,12 @@ if options.inDS != '':
 	    tmpLog.info("scanning LFC %s for %s" % (Client.getLFC(dsLocation),options.site))
             # LFC
             if options.nFiles == 0 and options.nSkipFiles != 0:
-                missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose)
+                missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
+                                                     dsStr=options.inDS,removedDS=options.removedDS)
             else:
                 missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
-                                                     options.nFiles+options.nSkipFiles)                
+                                                     options.nFiles+options.nSkipFiles,
+                                                     dsStr=options.inDS,removedDS=options.removedDS)                
         elif Client.getLRC(dsLocation) != None:
 	    tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
             # LRC
@@ -984,10 +991,12 @@ if options.inDS != '':
             if not options.skipScan:
 		tmpLog.info("scanning LFC for %s" % tmpDsName)
                 if tmpDsValMap['nFiles'] == 0 and tmpDsValMap['nSkip'] != 0:
-                    secMissList = Client.getMissLFNsFromLFC(tmpDsValMap['fileMap'],options.site,True,options.verbose)
+                    secMissList = Client.getMissLFNsFromLFC(tmpDsValMap['fileMap'],options.site,True,options.verbose,
+                                                            dsStr=tmpDsName)
                 else:
                     secMissList = Client.getMissLFNsFromLFC(tmpDsValMap['fileMap'],options.site,True,options.verbose,
-                                                            tmpDsValMap['nFiles']+tmpDsValMap['nSkip'],shadowList)
+                                                            tmpDsValMap['nFiles']+tmpDsValMap['nSkip'],shadowList,
+                                                            dsStr=tmpDsName)
             else:
                 secMissList = []
             # remove missing

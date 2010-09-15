@@ -21,7 +21,8 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.93 (9/15/2010)
+  * fixed pathena/prun to ignore dataset replicas with archived=ToBeDeleted	
   * fixed --shipInput of pathena to check dataset availability when --parentDS is used
 
 0.2.92 (9/12/2010)
