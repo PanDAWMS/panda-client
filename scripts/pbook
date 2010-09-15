@@ -83,7 +83,7 @@ atexit.register(_onExit,tmpDir,historyFile)
 for path in sys.path:
     if path == '':
         path = '.'
-    if os.path.exists(path) and 'pandatools' in os.listdir(path) \
+    if os.path.exists(path) and os.path.isdir(path) and 'pandatools' in os.listdir(path) \
            and os.path.exists('%s/pandatools/__init__.py' % path):
         # make symlink for module name
         os.symlink('%s/pandatools' % path,'%s/taskbuffer' % tmpDir)
@@ -478,7 +478,8 @@ class PBookCore:
             # skip already retried
             if localJob.retryID != '0':
                 if isJobset:
-                    tmpLog.info('Skip JobID=%s since already retried by JobID=%s' % (JobID,localJob.retryID))
+                    tmpLog.info('Skip JobID=%s since already retried by JobID=%s JobsetID=%s' % \
+                                (JobID,localJob.retryID,localJob.retryJobsetID))
                     continue
                 else:
                     tmpLog.warning('This job was already retried by JobID=%s' % localJob.retryID)
@@ -493,8 +494,8 @@ class PBookCore:
                     return
             # check opts for newSite
             if newSite:
-                if not newOpts.has_key('outDS') and not newOpts.has_key('--outDS'):
-                    tmpLog.warning('You need to specify --outDS in newOpts to retry at new site')
+                if not localJob.outDS.endswith('/') and not newOpts.has_key('outDS') and not newOpts.has_key('--outDS'):
+                    tmpLog.warning('You need to specify --outDS in newOpts to retry at new site unless container is used as output')
                     return
             # get list of failed jobs
             pandaIDs  = localJob.PandaID.split(',')
@@ -658,7 +659,7 @@ class PBookCore:
                 retryJobs.append(job)
             # all input files were or are being used by other jobs
             if retryJobs == []:
-                tmpLog.info('All input files were or are being used by other jobs for the same output. No jobs to be retried')
+                tmpLog.info('All input files were or are being used by other jobs for the same output. No jobs to be retried. If you need to ignore duplication check (e.g., using the same EVNT file for multiple simulation subjobs), set ignoreDuplication=True. i.e. retry(123,ignoreDuplication=True)')
                 return
 	    # check voms role
 	    if not retryJobs[0].workingGroup in ['NULL',None,'']:
@@ -678,12 +679,35 @@ class PBookCore:
 		    except:
 			tmpLog.error("Failed to generate a proxy with %s" % vomsRoles)
 			return
+            # check runtime env for new site submission
+            if newSite:
+                if retryJobs[0].processingType == 'pathena' or '--useAthenaPackages' in retryJobs[0].metadata:
+                    from pandatools import AthenaUtils
+                    stA,retA = AthenaUtils.getAthenaVer()
+                    if not stA:
+                        tmpLog.error("Failed to get Athena rel/cache version in current runtime env")
+                        return
+                    athenaVer = retA['athenaVer']
+                    cacheVer  = retA['cacheVer']
+                    nightVer  = retA['nightVer']
+                    wrongSetup = False
+                    if retryJobs[0].AtlasRelease != 'Atlas-%s' % athenaVer:
+                        wrongSetup = True
+                        errMsg =  "Current Athena version Atlas-%s is inconsitent with the previous submission %s. " % (athenaVer,retryJobs[0].AtlasRelease)
+                    elif retryJobs[0].homepackage != 'AnalysisTransforms'+cacheVer+nightVer:
+                        wrongSetup = True                        
+                        errMsg =  "Current cache version %s is inconsitent with the previous submission. " % cacheVer.replace('-','').replace('_','-')
+                    if wrongSetup:    
+                        errMsg += 'You need to have the same runtime env as before since all job spec need to be re-created to send jobs to a new site. '
+                        errMsg += 'Please setup Athena correctly and restart pbook'                        
+                        tmpLog.error(errMsg)
+                        return
 	    # test mode
 	    if noSubmit:
 		continue
             # invoke pathena/prun to send job to new site
             if newSite:
-                tmpLog.info("Constrcuting job spec again to be sent to another site. Make sure you have the same runtime env as before ...")
+                tmpLog.info("Constrcuting job spec again to be sent to another site ...")
                 comStat= PsubUtils.execWithModifiedParams(retryJobs,newOpts,self.verbose)
                 if comStat == 0:
                     # update database
@@ -808,7 +832,14 @@ For more info, do help(show) for example."""
             jobList = pbookCore.getLocalJobList()
 	    for job in jobList:
                 if job.dbStatus != 'frozen':
-                    show(job.JobID)
+                    if hasattr(job,'JobID'):
+                        # job
+                        show(job.JobID,forceUpdate=forceUpdate,
+                             showPandaIDinState=showPandaIDinState,longFormat=longFormat)
+                    else:
+                        # jobset
+                        show(long(job.JobsetID),forceUpdate=forceUpdate,
+                             showPandaIDinState=showPandaIDinState,longFormat=longFormat)
         else:
             tmpJobIDList = pbookCore.getJobIDsWithSetID(JobID)
             if tmpJobIDList == None:
@@ -853,13 +884,14 @@ For more info, do help(show) for example."""
 
 
     # retry
-    def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False):
-        """Retry failed/cancelled subJobs in JobID. Jobs between JobID and UpperJobID will be retried if upperJobID is given. Set newSite=True and specify newOpts when you want to retry at new site. newOpts is a map of options and new arguments which is passed to pathena/prun
+    def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False):
+        """Retry failed/cancelled subJobs in JobID or JobsetID. Jobs between JobID and UpperJobID will be retried if upperJobID is given. Set newSite=True when you want to retry at new site, which essentially runs pathena/prun again because new sub jobs need to be created for the new site. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission.  newOpts is a map of options and new arguments which is passed to pathena/prun. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True
 
          example:
            >>> retry(15)
            >>> retry(15,20)
-           >>> retry(15,newSite=True,newOpts={'outDS':'user.nickname.blah'})
+           >>> retry(15,newSite=True)
+           >>> retry(15,ignoreDuplication=True)
         """
         if upperJobID != None:
             # check range
@@ -869,9 +901,9 @@ For more info, do help(show) for example."""
             else:
                 # retry jobs between the range
                 for tmpJobID in range(JobID,upperJobID+1):
-                    pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit)
+                    pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,ignoreDuplication=ignoreDuplication)
         else:            
-            pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit)
+            pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,ignoreDuplication=ignoreDuplication)
 
 
     # rebrokerage
@@ -896,13 +928,13 @@ For more info, do help(show) for example."""
 
 
     # kill and retry
-    def killAndRetry(JobID,newSite=False,newOpts={}):
+    def killAndRetry(JobID,newSite=False,newOpts={},ignoreDuplication=False):
         """Kill JobID and then retry failed/cancelled sub-jobs. Concerning newSite and newOpts, see help(retry)
 
          example:
            >>> killAndRetry(15)
         """
-	ret = pbookCore.killAndRetry(JobID,newSite=newSite,newOpts=newOpts)
+	ret = pbookCore.killAndRetry(JobID,newSite=newSite,newOpts=newOpts,ignoreDuplication=ignoreDuplication)
 
 
     # synchronize local repository
