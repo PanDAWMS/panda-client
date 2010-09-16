@@ -5,6 +5,7 @@ import commands
 
 import PLogger
 
+
 # replace parameter with compact LFNs
 def replaceParam(patt,inList,tmpJobO):
     # remove attempt numbers
@@ -725,7 +726,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
             for item in list:
                 # ignore libraries
                 if item.startswith('i686') or item.startswith('i386') or item.startswith('x86_64') \
-                       or item=='dict' or item=='pool' or item =='pool_plugins' or item == 'doc' or item == '.svn':
+                       or item=='pool' or item =='pool_plugins' or item == 'doc' or item == '.svn':
                     continue
                 # check exclude files
                 excludeFileFlag = False
@@ -1033,7 +1034,7 @@ globalSerialnumber = None
 
 
 # set initial index of outputs
-def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSlist,verbose):
+def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSlist,verbose,descriptionInLFN=''):
     import Client
     # use global
     global indexHIST
@@ -1080,7 +1081,7 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
                     if len(match.groups()) == 2:
                         global globalSerialnumber
                         if globalSerialnumber == None or \
-                           int(globalSerialnumber) < int(match.group(1)):
+                           int(globalSerialnumber.split('_')[-1]) < int(match.group(1).split('_')[-1]):
                             globalSerialnumber = match.group(1)
         return maxIndex
 
@@ -1160,7 +1161,9 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
     # set index
     tmpMatch = re.search('^([^\.]+)\.([^\.]+)\.',outDS)
     if tmpMatch != None and origOutDS.endswith('/'):
-        shortPrefix = '^%s\.%s\.(\d+)' % (tmpMatch.group(1),tmpMatch.group(2))
+        shortPrefix = '^%s\.%s\.([_\d]+)' % (tmpMatch.group(1),tmpMatch.group(2))
+        if descriptionInLFN != '':
+            shortPrefix += '\.%s' % descriptionInLFN
     else:
         shortPrefix = outDS        
     indexHIST    = getIndex(tmpList,"%s\.hist\._(\d+)\.root" % shortPrefix)
@@ -1227,9 +1230,8 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
                 indexMS = tmpIndex
 
 
-    
 # convert runConfig to outMap
-def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,original_outDS=''):
+def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,original_outDS='',descriptionInLFN=''):
     from taskbuffer.FileSpec import FileSpec    
     # use global to increment index
     global indexHIST
@@ -1256,9 +1258,13 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
     if tmpMatch != None and original_outDS.endswith('/'):
         outDSwoSlash = '%s.%s.' % (tmpMatch.group(1),tmpMatch.group(2))
         if globalSerialnumber == None:
+            if outDSwoSlash.startswith('group'):
+                outDSwoSlash += "$GROUPJOBSN_"
             outDSwoSlash += '$JOBSETID'
         else:
             outDSwoSlash += globalSerialnumber
+        if descriptionInLFN != '':
+            outDSwoSlash += '.%s' % descriptionInLFN
     # start conversion
     if runConfig.output.outNtuple:
         indexNT += 1
@@ -1657,8 +1663,13 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
             elif outMap.has_key(sAsso):
                 # Stream1,2
                 foundLFN = outMap[sAsso]
-            elif sAsso in ['StreamRDO','StreamESD','StreamAOD']:
-                # RDO,ESD,AOD
+            elif sAsso in ['StreamESD','StreamAOD']:
+                # ESD,AOD
+                stKey = re.sub('^Stream','',sAsso)
+                if outMap.has_key(stKey):
+                    foundLFN = outMap[stKey]
+            elif sAsso == 'StreamRDO' and outMap.has_key('StreamRDO'):
+                # RDO
                 stKey = re.sub('^Stream','',sAsso)
                 if outMap.has_key(stKey):
                     foundLFN = outMap[stKey]

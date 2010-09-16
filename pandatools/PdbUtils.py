@@ -497,7 +497,7 @@ def bulkReadJobDB(verbose=False):
             else:
                 # add jobset
                 tmpJobsetID = long(job.groupID)
-                if not retMap.has_key(tmpJobsetID):
+                if (not retMap.has_key(tmpJobsetID)) or (not jobsetMap.has_key(tmpJobsetID)):
                     jobsetMap[tmpJobsetID] = []
                     jobset = LocalJobsetSpec()
                     retMap[tmpJobsetID] = jobset
@@ -552,7 +552,7 @@ def getListOfJobIDs(nonFrozen=False,verbose=False):
 # get map of jobsetID and JobIDs
 def getMapJobsetIDJobIDs(verbose=False):
     # make sql
-    sql1 = "SELECT groupID,JobID FROM %s WHERE groupID != 0" % pdbProxy.tablename
+    sql1 = "SELECT groupID,JobID FROM %s WHERE groupID is not NULL and groupID != 0 and groupID != ''" % pdbProxy.tablename
     # execute
     status,out = pdbProxy.execute(sql1)
     if not status:
