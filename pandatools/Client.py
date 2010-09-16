@@ -768,8 +768,12 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
         return globalExpFilesMap[mapKey]
     # get logger
     tmpLog = PLogger.getPandaLogger()
+    if verbose:
+        tmpLog.error("checking metadata for %s, removed=%s " % (dsStr,str(removedDS)))
     # get DQ2 location and used data
     tmpLocations,dsUsedDsMap = getLocations(dsStr,[],'',False,verbose,getDQ2IDs=True,
+                                            removedDatasets=removedDS,
+                                            useOutContainer=True,
                                             includeIncomplete=True)
     # get datasets at the site
     datasets = []

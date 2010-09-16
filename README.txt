@@ -21,9 +21,12 @@ pathena -h
 
 ** Release Note
 
+0.2.94 (9/15/2010)
+  * fixed dataset lookup in metadata check
+
 0.2.93 (9/15/2010)
-  * fixed pathena/prun to ignore dataset replicas with archived=ToBeDeleted	
-  * fixed --shipInput of pathena to check dataset availability when --parentDS is used
+  * fixed pathena/prun to ignore dataset replicas with archived=ToBeDeleted
+  * fixed --shipInput of pathena to check dataset availability when --parentDS is used for container as well as dataset
 
 0.2.92 (9/12/2010)
   * changed pbook.retry to show JobsetID when the job was already retried
