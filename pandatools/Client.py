@@ -775,11 +775,19 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
                                             removedDatasets=removedDS,
                                             useOutContainer=True,
                                             includeIncomplete=True)
+    # get all sites matching with site's DQ2ID here, to work with brokeroff sites
+    fullSiteList = convertDQ2toPandaIDList(PandaSites[siteID]['ddm'])
     # get datasets at the site
     datasets = []
     for tmpDsUsedDsMapKey,tmpDsUsedDsVal in dsUsedDsMap.iteritems():
-        if siteID in [tmpDsUsedDsMapKey,convertToLong(tmpDsUsedDsMapKey)]:
-            datasets = tmpDsUsedDsVal
+        siteMatched = False
+        for tmpTargetID in fullSiteList:
+            # check with short/long siteID
+            if tmpDsUsedDsMapKey in [tmpTargetID,convertToLong(tmpTargetID)]:
+                datasets = tmpDsUsedDsVal
+                siteMatched = True
+                break
+        if siteMatched:
             break
     # not found    
     if datasets == []:
@@ -790,7 +798,7 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
     for tmpLoc in tmpLocations:
         # check Panda site IDs
         for tmpPandaSiteID in convertDQ2toPandaIDList(tmpLoc):
-            if siteID in [tmpPandaSiteID,convertToLong(tmpPandaSiteID)]:
+            if tmpPandaSiteID in fullSiteList:
                 if not tmpLoc in dq2Locations:
                     dq2Locations.append(tmpLoc)
                 break

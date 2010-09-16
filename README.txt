@@ -21,7 +21,10 @@ pathena -h
 
 ** Release Note
 
-0.2.94 (9/15/2010)
+0.2.95 (9/16/2010)
+  * fixed site lookup in metadata check for brokeroff sites
+
+0.2.94 (9/16/2010)
   * fixed dataset lookup in metadata check
 
 0.2.93 (9/15/2010)
