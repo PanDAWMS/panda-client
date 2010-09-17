@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed grid source lookup for AtlasSetup
+
 0.2.96 (9/17/2010)
   * fixed --useOldStyleOutput
 

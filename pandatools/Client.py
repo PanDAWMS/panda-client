@@ -1773,13 +1773,13 @@ def _getGridSrc():
     # set Grid setup.sh if needed
     status,out = commands.getstatusoutput('which voms-proxy-info')
     stLFC,outLFC = commands.getstatusoutput('python -c "import lfc"')
+    athenaStatus,athenaPath = commands.getstatusoutput('which athena.py')
     if status == 0 and stLFC == 0:
         gridSrc = ''
-        status,athenaPath = commands.getstatusoutput('which athena.py')
-        if status == 0 and athenaPath.startswith('/afs/in2p3.fr'):
+        if athenaStatus == 0 and athenaPath.startswith('/afs/in2p3.fr'):
             # for LYON, to avoid missing LD_LIBRARY_PATH
             gridSrc = '/afs/in2p3.fr/grid/profiles/lcg_env.sh'
-        elif status == 0 and athenaPath.startswith('/afs/cern.ch'):
+        elif athenaStatus == 0 and re.search('^/afs/\.*cern.ch',athenaPath) != None:
             # for CERN, VDT is already installed
             gridSrc = '/afs/cern.ch/project/gd/LCG-share/current/etc/profile.d/grid_env.sh'
     else:
@@ -1790,14 +1790,14 @@ def _getGridSrc():
             if not os.environ.has_key('CMTSITE'):
                 print "ERROR : CMTSITE is no defined in envvars"
                 return False
-            if os.environ['CMTSITE'] == 'CERN':
+            if os.environ['CMTSITE'] == 'CERN' or (athenaStatus == 0 and \
+                                                   re.search('^/afs/\.*cern.ch',athenaPath) != None):
 		gridSrc = '/afs/cern.ch/project/gd/LCG-share/current/etc/profile.d/grid_env.sh'
             elif os.environ['CMTSITE'] == 'BNL':
                 gridSrc = '/afs/usatlas.bnl.gov/osg/client/@sys/current/setup.sh'
             else:
                 # try to determin site using path to athena
-                status,athenaPath = commands.getstatusoutput('which athena.py')
-                if status == 0 and athenaPath.startswith('/afs/in2p3.fr'):
+                if athenaStatus == 0 and athenaPath.startswith('/afs/in2p3.fr'):
                     # LYON
                     gridSrc = '/afs/in2p3.fr/grid/profiles/lcg_env.sh'
                 else:
