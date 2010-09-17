@@ -2,6 +2,7 @@
 
 import os
 import re
+import sys
 import getpass
 import commands
 import Client
@@ -338,7 +339,13 @@ class MyProxyInterface(object):
         cmd += ' -d'                                # uses DN as username
         cmd += ' --credname %s' % credname
         if gridPassPhrase == '':
-            gridPassPhrase = getpass.getpass('Enter GRID pass phrase:')
+            if sys.stdin.isatty():  
+                gridPassPhrase = getpass.getpass('Enter GRID pass phrase:')
+            else:
+                sys.stdout.write('Enter GRID pass phrase:')
+                sys.stdout.flush()
+                gridPassPhrase = sys.stdin.readline().rstrip()
+                print
             gridPassPhrase = gridPassPhrase.replace('$','\$')
         cmd = 'echo "%s" | %s -S' % (gridPassPhrase,cmd)
         cmd = self.srcFile + ' unset GT_PROXY_MODE; ' + cmd   
