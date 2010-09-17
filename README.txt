@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.96 (9/17/2010)
+  * fixed --useOldStyleOutput
+
 0.2.95 (9/16/2010)
   * fixed site lookup in metadata check for brokeroff sites
 

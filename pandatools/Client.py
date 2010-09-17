@@ -917,7 +917,7 @@ def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
 def getFilesInShadowDatasetOld(outDS,suffixShadow,verbose=False):
     shadowList = []    
     # query files in PandaDB first to get running/failed files + files which are being added
-    tmpShadowList = Client.getFilesInUseForAnal(outDS,verbose)
+    tmpShadowList = getFilesInUseForAnal(outDS,verbose)
     for tmpItem in tmpShadowList:
         shadowList.append(tmpItem)
     # query files in shadow dataset        
