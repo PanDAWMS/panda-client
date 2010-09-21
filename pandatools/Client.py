@@ -295,17 +295,24 @@ def getCloudSpecs():
         return EC_Failed,output+'\n'+errStr
                                                                 
 
-# get Panda Sites
-tmpStat,PandaSites = getSiteSpecs()
-if tmpStat != 0:
-    print "ERROR : cannot get Panda Sites" 
-    sys.exit(EC_Failed)
+# refresh spacs at runtime
+def refreshSpecs():
+    global PandaSites
+    global PandaClouds
+    # get Panda Sites
+    tmpStat,PandaSites = getSiteSpecs()
+    if tmpStat != 0:
+        print "ERROR : cannot get Panda Sites"
+        sys.exit(EC_Failed)
+    # get cloud info
+    tmpStat,PandaClouds = getCloudSpecs()
+    if tmpStat != 0:
+        print "ERROR : cannot get Panda Clouds"
+        sys.exit(EC_Failed)
 
-# get cloud info
-tmpStat,PandaClouds = getCloudSpecs()
-if tmpStat != 0:
-    print "ERROR : cannot get Panda Clouds" 
-    sys.exit(EC_Failed)
+
+# initialize spacs
+refreshSpecs()
 
 
 # get LRC

@@ -22,6 +22,7 @@ pathena -h
 ** Release Note
 
 current
+  * added refreshSpecs to Client.py	
   * fixed grid source lookup for AtlasSetup
 
 0.2.96 (9/17/2010)
