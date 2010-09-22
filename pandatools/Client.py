@@ -776,7 +776,7 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     if verbose:
-        tmpLog.error("checking metadata for %s, removed=%s " % (dsStr,str(removedDS)))
+        tmpLog.debug("checking metadata for %s, removed=%s " % (dsStr,str(removedDS)))
     # get DQ2 location and used data
     tmpLocations,dsUsedDsMap = getLocations(dsStr,[],'',False,verbose,getDQ2IDs=True,
                                             removedDatasets=removedDS,
@@ -800,7 +800,8 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
     if datasets == []:
         tmpLog.error("cannot find datasets at %s for replica metadata check" % siteID)
         sys.exit(EC_Failed)        
-    # get DQ2 IDs for the siteID    
+    # get DQ2 IDs for the siteID
+    convertedOrigSite = convSrmV2ID(PandaSites[siteID]['ddm'])
     dq2Locations = []
     for tmpLoc in tmpLocations:
         # check Panda site IDs
@@ -809,6 +810,12 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
                 if not tmpLoc in dq2Locations:
                     dq2Locations.append(tmpLoc)
                 break
+        # check prefix mainly for MWT2 and MWT2_UC    
+        convertedScannedID = convSrmV2ID(tmpLoc)
+        if convertedOrigSite.startswith(convertedScannedID) or \
+               convertedScannedID.startswith(convertedOrigSite):
+            if not tmpLoc in dq2Locations:
+                dq2Locations.append(tmpLoc)
     # empty
     if dq2Locations == []:
         tmpLog.error("cannot find replica locations for %s to check metadata" % siteID)
@@ -1240,7 +1247,7 @@ def convSrmV2ID(tmpSite):
         tmpSite = re.sub('_PERF-[A-Z,0-9]+$','',tmpSite)                
     if tmpSite == 'NET2':
         tmpSite = 'BU'
-    # return
+    # return    
     return tmpSite
 
 
