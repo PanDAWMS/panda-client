@@ -790,7 +790,6 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
         siteMatched = False
         for tmpTargetID in fullSiteList:
             # check with short/long siteID
-            convertedScannedID = convSrmV2ID(PandaSites[tmpDsUsedDsMapKey]['ddm'])
             if tmpDsUsedDsMapKey in [tmpTargetID,convertToLong(tmpTargetID)]:
                 datasets = tmpDsUsedDsVal
                 siteMatched = True
@@ -801,35 +800,41 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
     if datasets == []:
         tmpLog.error("cannot find datasets at %s for replica metadata check" % siteID)
         sys.exit(EC_Failed)        
-    # get DQ2 IDs for the siteID
-    convertedOrigSite = convSrmV2ID(PandaSites[siteID]['ddm'])
-    dq2Locations = []
-    for tmpLoc in tmpLocations:
-        # check Panda site IDs
-        for tmpPandaSiteID in convertDQ2toPandaIDList(tmpLoc):
-            if tmpPandaSiteID in fullSiteList:
-                if not tmpLoc in dq2Locations:
-                    dq2Locations.append(tmpLoc)
-                break
-        # check prefix mainly for MWT2 and MWT2_UC    
-        convertedScannedID = convSrmV2ID(tmpLoc)
-        if convertedOrigSite.startswith(convertedScannedID) or \
-               convertedScannedID.startswith(convertedOrigSite):
-            if not tmpLoc in dq2Locations:
-                dq2Locations.append(tmpLoc)
-    # empty
-    if dq2Locations == []:
-        tmpLog.error("cannot find replica locations for %s to check metadata" % siteID)
-        sys.exit(EC_Failed)        
     # loop over all datasets
+    convertedOrigSite = convSrmV2ID(PandaSites[siteID]['ddm'])
     expFilesMap = {'datasets':[],'files':[]}
     for dsName in datasets:
+        # get DQ2 IDs for the siteID
+        dq2Locations = []
+        if tmpLocations.has_key(dsName):
+            for tmpLoc in tmpLocations[dsName]:
+                # check Panda site IDs
+                for tmpPandaSiteID in convertDQ2toPandaIDList(tmpLoc):
+                    if tmpPandaSiteID in fullSiteList:
+                        if not tmpLoc in dq2Locations:
+                            dq2Locations.append(tmpLoc)
+                        break
+                # check prefix mainly for MWT2 and MWT2_UC    
+                convertedScannedID = convSrmV2ID(tmpLoc)
+                if convertedOrigSite.startswith(convertedScannedID) or \
+                       convertedScannedID.startswith(convertedOrigSite):
+                    if not tmpLoc in dq2Locations:
+                        dq2Locations.append(tmpLoc)
+        # empty
+        if dq2Locations == []:
+            tmpLog.error("cannot find replica locations for %s:%s to check metadata" % (siteID,dsName))
+            sys.exit(EC_Failed)        
+        # get metadata
         metaList = getReplicaMetadata(dsName,dq2Locations,verbose)
         # check metadata
         metaOK = False
         for metaItem in metaList:
             # check the archived attribute
-            if isinstance(metaItem['archived'],types.StringType) and metaItem['archived'].lower() in ['tobedeleted',]:
+            if isinstance(metaItem,types.StringType) and "No replica found at the location" in metaItem:
+                # replica deleted
+                pass
+            elif isinstance(metaItem['archived'],types.StringType) and metaItem['archived'].lower() in ['tobedeleted',]:
+                # to be deleted
                 pass
             else:
                 metaOK = True
@@ -1298,6 +1303,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         resBadStSites = {}
         resTapeSites  = []
         retDQ2IDs     = []
+        retDQ2IDmap   = {}
         allOut        = {}
         iLookUp       = 0
         resUsedDsMap  = {}
@@ -1463,6 +1469,11 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             # collect DQ2 IDs
             if not origTmpSite in retDQ2IDs:
                 retDQ2IDs.append(origTmpSite)
+            for tmpUDS in origTmpInfo[0]['useddatasets']:    
+                if not retDQ2IDmap.has_key(tmpUDS):
+                    retDQ2IDmap[tmpUDS] = []
+                if not origTmpSite in retDQ2IDmap[tmpUDS]:
+                    retDQ2IDmap[tmpUDS].append(origTmpSite)
             # patch for SRM v2
             tmpSite = convSrmV2ID(origTmpSite)
             # if candidates are limited
@@ -1518,7 +1529,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         # retrun DQ2 IDs
         if getDQ2IDs:
             if includeIncomplete:
-                return retDQ2IDs,resUsedDsMap
+                return retDQ2IDmap,resUsedDsMap
             return retDQ2IDs
         # return list when file check is not required
         if woFileCheck:
