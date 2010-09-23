@@ -21,9 +21,13 @@ pathena -h
 
 ** Release Note
 
-current
+0.2.98 (9/23/2010)
+  * added protection to metadata check against missing replicas
+
+0.2.97 (9/22/2010)
   * added refreshSpecs to Client.py	
-  * fixed grid source lookup for AtlasSetup
+  * fixed grid source setup for AtlasSetup
+  * fixed replica lookup in metadata check for MWT2
 
 0.2.96 (9/17/2010)
   * fixed --useOldStyleOutput
