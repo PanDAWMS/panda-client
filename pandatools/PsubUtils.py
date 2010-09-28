@@ -987,12 +987,13 @@ def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose):
 def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbose=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
-    # set 
-    from eventLookup import pyELSSI
-    elssiIF = pyELSSI()
     # set X509_USER_PROXY
     if not os.environ.has_key('X509_USER_PROXY') or os.environ['X509_USER_PROXY'] == '':
         os.environ['X509_USER_PROXY'] = Client._x509()
+    # set 
+    from eventLookupClient import eventLookupClient
+    elssiIF = eventLookupClient()
+    elssiIF.debug = verbose
     # open run/event txt
     if '/' in runEventTxt:
         tmpLog.error('%s must be in the current directory' % runEventTxt.split('/')[-1])
@@ -1021,45 +1022,77 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
         if len(items) != 2:
             continue
         runNr,evtNr = items
-        paramStr = 'Run:%s Evt:%s Stream:%s' % (runNr,evtNr,streamName)
-        if verbose:
-            tmpLog.debug(paramStr)
-        else:
-            sys.stdout.write('.')
-            sys.stdout.flush()
-        # check with ELSSI
-        if streamName == '':
-            guidListELSSI = elssiIF.eventLookup(runNr,evtNr,[streamRef],verbose=verbose)
-        else:
-            guidListELSSI = elssiIF.eventLookup(runNr,evtNr,[streamRef],streamName,verbose=verbose)            
-        if guidListELSSI == []:
-            if not verbose:
-                print
-            errStr = "GUID was not found in ELSSI for %s" % paramStr    
-            tmpLog.error(errStr)
-            sys.exit(EC_Config)
-        # check duplication
-        tmpguids = []
-        for tmpGuid, in guidListELSSI:
-            if tmpGuid == 'NOATTRIB':
-                continue
-            if not tmpGuid in tmpguids:
-                tmpguids.append(tmpGuid)
-        if tmpguids == []:
-            if not verbose:
-                print
-            errStr = "no GUIDs were found in ELSSI for %s" % paramStr
-            tmpLog.error(errStr)
-            sys.exit(EC_Config)
-        # append
-        for tmpguid in tmpguids:
-            if not tmpguid in guids:
-                guids.append(tmpguid)
-                guidRunEvtMap[tmpguid] = []
-            guidRunEvtMap[tmpguid].append((runNr,evtNr))
-        runEvtGuidMap[(runNr,evtNr)] = tmpguids
+        runEvtList.append([runNr,evtNr])
     # close
     runevttxt.close()
+    # bulk lookup
+    nEventsPerLoop = 500
+    iEventsTotal = 0
+    while iEventsTotal < len(runEvtList):
+        tmpRunEvtList = runEvtList[iEventsTotal:iEventsTotal+nEventsPerLoop]
+        iEventsTotal += nEventsPerLoop
+        for tmpItem in tmpRunEvtList:
+            sys.stdout.write('.')
+        sys.stdout.flush()
+        # check with ELSSI
+        if streamName == '':
+            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,tokens=streamRef,extract=True)
+        else:
+            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,stream=streamName,tokens=streamRef,extract=True)
+        if len(guidListELSSI) == 0 or guidListELSSI == None:
+            if not verbose:
+                print
+            errStr = ''    
+            for tmpLine in elssiIF.output:
+                errStr += tmpLine + '\n'
+            tmpLog.error(errStr)    
+            errStr = "GUID lookup in ELSSI failed"
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
+        # check attribute
+        attrNames, attrVals = guidListELSSI
+        def getAttributeIndex(attr):
+            for tmpIdx,tmpAttrName in enumerate(attrNames):
+                if tmpAttrName.strip() == attr:
+                    return tmpIdx
+            tmpLog.error("cannot find attribute=%s in %s provided by ELSSI" % \
+                         (attr,str(attrNames)))
+            sys.exit(EC_Config)
+        # get index
+        indexEvt = getAttributeIndex('EventNumber')
+        indexRun = getAttributeIndex('RunNumber')
+        indexTag = getAttributeIndex(streamRef)
+        # check events
+        for runNr,evtNr in tmpRunEvtList:
+            paramStr = 'Run:%s Evt:%s Stream:%s' % (runNr,evtNr,streamName)
+            if verbose:
+                tmpLog.debug(paramStr)
+            # collect GUIDs    
+            tmpguids = []
+            for attrVal in attrVals:
+                if runNr == attrVal[indexRun] and evtNr == attrVal[indexEvt]:
+                    tmpGuid = attrVal[indexTag]
+                    # check non existing
+                    if tmpGuid == 'NOATTRIB':
+                        continue
+                    if not tmpGuid in tmpguids:
+                        tmpguids.append(tmpGuid)
+            # not found            
+            if tmpguids == []:
+                if not verbose:
+                    print
+                errStr = "no GUIDs were found in ELSSI for %s" % paramStr
+                tmpLog.error(errStr)
+                sys.exit(EC_Config)
+            # append
+            for tmpguid in tmpguids:
+                if not tmpguid in guids:
+                    guids.append(tmpguid)
+                    guidRunEvtMap[tmpguid] = []
+                guidRunEvtMap[tmpguid].append((runNr,evtNr))
+            runEvtGuidMap[(runNr,evtNr)] = tmpguids
+            if verbose:
+                tmpLog.debug("   GUID:%s" % str(tmpguids))
     if not verbose:
         print
     # convert to dataset names and LFNs

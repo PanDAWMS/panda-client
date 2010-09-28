@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.2.99 (9/28/2010)
+  * updated --eventPick to use bulk lookup function of new server 
+
 0.2.98 (9/23/2010)
   * added protection to metadata check against missing replicas
 
