@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.0 (9/29/2010)
+  * fixed pathena for jobO specified with a full path
+
 0.2.99 (9/28/2010)
   * updated --eventPick to use bulk lookup function of new server 
 
