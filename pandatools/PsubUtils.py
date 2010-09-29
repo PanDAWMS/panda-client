@@ -10,6 +10,7 @@ import pickle
 import Client
 import MyproxyUtils
 import PLogger
+import AthenaUtils
 
 # error code
 EC_Config    = 10
@@ -856,6 +857,9 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # one liner
     if not '--panda_singleLine' in fullExecString and singleLine != '':
         fullExecString += ' --panda_singleLine=%s' % urllib.quote(singleLine)
+    # jobOs with fullpath
+    if not '--panda_fullPathJobOs' in fullExecString and AthenaUtils.fullPathJobOs != {}:
+        fullExecString += ' --panda_fullPathJobOs=%s' % AthenaUtils.convFullPathJobOsToStr()
     # run pathena
     if anotherTry:
         if isMissing:

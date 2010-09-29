@@ -289,7 +289,8 @@ optP.add_option('--panda_devidedByGUID',action='store_const',const=True,dest='pa
                 help='internal parameter')
 optP.add_option('--panda_suppressMsg',action='store_const',const=True,dest='panda_suppressMsg',default=False,
                 help='internal parameter')
-
+optP.add_option('--panda_fullPathJobOs',action='store', dest='panda_fullPathJobOs', default='',
+                type='string', help='internal parameter')
 
 # parse options
 options,args = optP.parse_args()
@@ -1016,6 +1017,9 @@ if options.panda_srcName != '':
     archiveName = options.panda_srcName
     # go to tmp dir
     os.chdir(tmpDir)
+    # set jobOs with fullpath
+    if options.panda_fullPathJobOs != '':
+        AthenaUtils.fullPathJobOs = AthenaUtils.convStrToFullPathJobOs(options.panda_fullPathJobOs)
 else:
     # extract jobOs with full pathnames
     for tmpItem in jobO.split():
