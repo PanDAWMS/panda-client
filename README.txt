@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.3.1 (10/1/2010)
+  * fixed --athenaTag of prun for analysis projects
+  * added --disableRebrokerage to pathena/prun
+
 0.3.0 (9/29/2010)
   * fixed pathena for jobO specified with a full path
 

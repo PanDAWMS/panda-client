@@ -253,6 +253,8 @@ optP.add_option('--useExperimental', action='store_const', const=True, dest='use
                 help='use experimental features')
 optP.add_option('--useOldStyleOutput',action='store_const',const=True,dest='useOldStyleOutput',default=False,
                 help="use output dataset and long LFN instead of output dataset container and short LFN")
+optP.add_option('--disableRebrokerage',action='store_const',const=True,dest='disableRebrokerage',default=False,
+                help="disable auto-rebrokerage")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
                 type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
 # athena options
