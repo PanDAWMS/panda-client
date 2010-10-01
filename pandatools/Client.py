@@ -2437,6 +2437,30 @@ def getPandaClientVer(verbose):
     return status,output
 
 
+# get list of cache prefix
+def getCachePrefixes(verbose):
+    # instantiate curl
+    curl = _Curl()
+    curl.verbose = verbose
+    # execute
+    url = baseURL + '/getCachePrefixes'
+    status,output = curl.get(url,{})
+    # failed
+    if status != 0:
+        print output
+        errStr = "cannot get the list of Athena projects"
+        tmpLog.error(errStr)
+        sys.exit(EC_Failed)
+    # return
+    try:
+        return pickle.loads(output)
+    except:
+        print output
+        errType,errValue = sys.exc_info()[:2]
+        print "ERROR: getCachePrefixes : %s %s" % (errType,errValue)
+        sys.exit(EC_Failed)
+
+
 # get files in dataset with filte
 def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose,dsStringFlag=False,isRecursive=False,
                                 antiFilter=''):
