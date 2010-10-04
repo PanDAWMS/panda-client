@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.2 (10/4/2010)
+  * fixed metadata check for wildcard in --inDS
+
 0.3.1 (10/1/2010)
   * fixed --athenaTag of prun for analysis projects
   * added --disableRebrokerage to pathena/prun
