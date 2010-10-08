@@ -1687,6 +1687,12 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
                 stKey = re.sub('^Stream','',sAsso)
                 if outMap.has_key(stKey):
                     foundLFN = outMap[stKey]
+                else:
+                    # check StreamG when ESD/AOD are not defined as algorithms
+                    if outMap.has_key('StreamG'):
+                        for tmpStName,tmpLFN in outMap['StreamG']:
+                            if tmpStName == sAsso:
+                                foundLFN = tmpLFN
             elif sAsso == 'StreamRDO' and outMap.has_key('StreamRDO'):
                 # RDO
                 stKey = re.sub('^Stream','',sAsso)
@@ -2054,5 +2060,3 @@ except:
     oFile.close()
     # reutrn file name
     return optFileName
-
-            

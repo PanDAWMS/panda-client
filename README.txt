@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed ConfigExtractor for StreamESD/AOD defined as normal streams
+
 0.3.2 (10/4/2010)
   * fixed metadata check for wildcard in --inDS
 

@@ -237,6 +237,7 @@ if hasattr(StreamRDO,'OutputFile') and hasattr(StreamRDO.OutputFile,'__len__') a
     foundStreamRD0 = True
                 
 # ESD
+foundStreamESD = False
 key = "AthenaOutputStream/StreamESD"
 if key in _configs:
     StreamESD = _getConfig( key )
@@ -246,8 +247,10 @@ if hasattr(StreamESD,'OutputFile') and hasattr(StreamESD.OutputFile,'__len__') a
     streamOutputFiles[key.split('/')[-1]] = StreamESD.OutputFile
     _printConfig('Output=ESD')
     _printConfig(' Name: %s'% StreamESD.OutputFile)
+    foundStreamESD = True
 
-# AOD    
+# AOD
+foundStreamAOD = False
 key = "AthenaOutputStream/StreamAOD"
 if key in _configs:
     StreamAOD = _getConfig( key )
@@ -257,6 +260,7 @@ if hasattr(StreamAOD,'OutputFile') and hasattr(StreamAOD.OutputFile,'__len__') a
     streamOutputFiles[key.split('/')[-1]] = StreamAOD.OutputFile
     _printConfig('Output=AOD')
     _printConfig(' Name: %s'% StreamAOD.OutputFile)
+    foundStreamAOD = True
 
 # TAG    
 keys = ["AthenaOutputStream/StreamTAG","RegistrationStream/StreamTAG"]
@@ -345,10 +349,17 @@ if hasattr(Stream2,'OutputFile') and hasattr(Stream2.OutputFile,'__len__') and l
 strGenFName = ''
 strGenStream  = ''
 strMetaStream = ''
-ignoredStreamList = ['Stream1','Stream2','StreamBS','StreamESD','StreamAOD','StreamBSFileOutput']
+ignoredStreamList = ['Stream1','Stream2','StreamBS','StreamBSFileOutput']
 if foundStreamRD0:
-    # for old releases where  StreamRDO was an algorithm 
+    # for old releases where StreamRDO was an algorithm 
     ignoredStreamList += ['StreamRDO']
+if foundStreamESD:
+    # for streamESD defined as an algorithm 
+    ignoredStreamList += ['StreamESD']
+if foundStreamAOD:
+    # for streamAOD defined as an algorithm     
+    ignoredStreamList += ['StreamAOD']
+    
     
 try:
     metaStreams = []
