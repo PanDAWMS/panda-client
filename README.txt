@@ -21,7 +21,8 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.3 (10/9/2010)
+  * disallowed userXY
   * fixed ConfigExtractor for StreamESD/AOD defined as normal streams
 
 0.3.2 (10/4/2010)
