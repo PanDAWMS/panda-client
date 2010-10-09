@@ -96,11 +96,13 @@ sys.path = [tmpDir]+sys.path
 class PBookCore:
 
     # constructor
-    def __init__(self,enforceEnter=False,verbose=False):
+    def __init__(self,enforceEnter=False,verbose=False,restoreDB=False):
         # verbose
         self.verbose = verbose
+        # restore database
+        self.restoreDB = restoreDB
         # initialize database
-        PdbUtils.initialzieDB(self.verbose)
+        PdbUtils.initialzieDB(self.verbose,self.restoreDB)
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy('',enforceEnter,self.verbose)
 
@@ -118,6 +120,12 @@ class PBookCore:
         syncTime = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         # set sync time for the first attempt
         bookConf = BookConfig.getConfig()
+        if self.restoreDB:
+            # reset last_synctime to restore database 
+            bookConf.last_synctime = ''
+	    # disable
+	    self.restoreDB = False
+	    tmpLog.info("It may take several minutes to restore local repository ...")
         if bookConf.last_synctime == '':
             bookConf.last_synctime = datetime.datetime.utcnow()-datetime.timedelta(days=180)
             bookConf.last_synctime = bookConf.last_synctime.strftime('%Y-%m-%d %H:%M:%S')
@@ -1006,6 +1014,8 @@ if __name__ == "__main__":
                       help="use GUI")
     parser.add_option('-c',action='store',dest='comString',default='',type='string',
                       help='execute a command in the batch mode')
+    parser.add_option("--restoreDB",action="store_true",dest="restoreDB",default=False,
+                      help="restore local database")
     parser.add_option("--noPass",action="store_true",dest="noPass",default=False,
                       help="disable to enter pass phrase for GUI")
     parser.add_option('--version',action='store_const',const=True,dest='version',default=False,
@@ -1041,7 +1051,7 @@ if __name__ == "__main__":
             guimain(pbookCore)
         else:
             # instantiate core
-            pbookCore = PBookCore(False,options.verbose)
+            pbookCore = PBookCore(False,options.verbose,options.restoreDB)
             # CUI
             intmain(pbookCore,options.comString)
     else:

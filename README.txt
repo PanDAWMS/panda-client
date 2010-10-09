@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added --restoreDB to pbook
+
 0.3.3 (10/9/2010)
   * disallowed userXY
   * fixed ConfigExtractor for StreamESD/AOD defined as normal streams
