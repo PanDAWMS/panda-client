@@ -162,6 +162,8 @@ optP.add_option('--outputPath',action='store',dest='outputPath', default='',
                 type='string', help='Physical path of output directory relative to a root path')
 optP.add_option('--useOldStyleOutput',action='store_const',const=True,dest='useOldStyleOutput',default=False,
                 help="use output dataset and long LFN instead of output dataset container and short LFN")
+optP.add_option('--disableRebrokerage',action='store_const',const=True,dest='disableRebrokerage',default=False,
+                help="disable auto-rebrokerage")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
                 type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
 # internal parameters
@@ -416,6 +418,8 @@ if options.useAthenaPackages:
         runDir = runDir[1:]
     runDir = runDir+'/'
 elif options.athenaTag != '':
+    # get list of Athena projects
+    listProjects = Client.getCachePrefixes(options.verbose)
     items = options.athenaTag.split(',')
     for item in items:
         # releases
@@ -423,11 +427,11 @@ elif options.athenaTag != '':
         if match != None:
             athenaVer = 'Atlas-%s' % match.group(1)
             # cache
-	    cmatch = re.search('^(\d+\.\d+\.\d+\.\d+)$',item)
+	    cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
 	    if cmatch != None:
 		cacheVer += '_%s' % cmatch.group(1)
         # project
-        if item.startswith('Atlas'):
+        if item.startswith('Atlas') or item in listProjects:
             # ignore AtlasOffline
             if item in ['AtlasOffline']:
                 continue
@@ -443,7 +447,12 @@ elif options.athenaTag != '':
                 sys.exit(EC_Config)
     # check cache
     if re.search('^-.+_.+$',cacheVer) == None:
-        cacheVer = ''
+        if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) != None:
+            # use AtlasProduction
+            cacheVer = '-AtlasProduction'+cacheVer
+        else:
+            # unknown
+            cacheVer = ''
 
 # good run list
 if options.goodRunListXML != '':
