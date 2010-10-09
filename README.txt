@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.4 (10/9/2010)
   * added --restoreDB to pbook
 
 0.3.3 (10/9/2010)
