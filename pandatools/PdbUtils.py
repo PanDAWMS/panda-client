@@ -91,6 +91,11 @@ class PdbProxy:
             return True,outList
 
 
+    # remove old database
+    def deleteDatabase(self):
+        status,output = commands.getstatusoutput('rm -f %s' % self.database)
+        
+        
     # initialize database
     def initialize(self):
         # import sqlite3
@@ -335,7 +340,9 @@ pdbProxy = PdbProxy()
 
 
 # just initialize DB
-def initialzieDB(verbose=False):
+def initialzieDB(verbose=False,restoreDB=False):
+    if restoreDB:
+        pdbProxy.deleteDatabase()
     pdbProxy.initialize()
     pdbProxy.setVerbose(verbose)
     
