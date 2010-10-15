@@ -21,6 +21,29 @@ pathena -h
 
 ** Release Note
 
+0.3.5 (10/15/2010)
+  * fixed misleading message in prun when --secondaryDSs is used
+  * fixes messages in pathena/prun when no jobs are submitted due to lack
+    of unused input files
+  * added pbook.show(X,Y)
+
+0.3.4 (10/9/2010)
+  * added --restoreDB to pbook
+
+0.3.3 (10/9/2010)
+  * disallowed userXY
+  * fixed ConfigExtractor for StreamESD/AOD defined as normal streams
+
+0.3.2 (10/4/2010)
+  * fixed metadata check for wildcard in --inDS
+
+0.3.1 (10/1/2010)
+  * fixed --athenaTag of prun for analysis projects
+  * added --disableRebrokerage to pathena/prun
+
+0.3.0 (9/29/2010)
+  * fixed pathena for jobO specified with a full path
+
 0.2.99 (9/28/2010)
   * updated --eventPick to use bulk lookup function of new server 
 

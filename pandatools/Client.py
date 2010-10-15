@@ -610,7 +610,7 @@ def getDatasetValueInMap(name,outMap):
 
 
 # query files in dataset
-def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False):
+def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False,dsStringOnly=False):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
@@ -668,6 +668,8 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False):
                         dsString += '%s,' % outKeyName
         else:
             vuidList = [v_vuids]
+        if dsStringOnly:
+            return dsString[:-1]
         # reset for backward comatiblity when * or , is not used
         if re.search('\*',name) == None and re.search(',',name) == None:
             nameVuidsMap = {}
@@ -768,6 +770,9 @@ def getDatasets(name,verbose=False,withWC=False,onlyNames=False):
 # get expiring files
 globalExpFilesMap = {}
 def getExpiringFiles(dsStr,removedDS,siteID,verbose):
+    # convert * in dsStr
+    if re.search('\*',dsStr) != None:
+        dsStr = queryFilesInDataset(dsStr,verbose,dsStringOnly=True)
     # reuse map
     global globalExpFilesMap
     mapKey = (dsStr,siteID)
@@ -2435,6 +2440,30 @@ def getPandaClientVer(verbose):
         return EC_Failed,"invalid version '%s'" % output
     # return
     return status,output
+
+
+# get list of cache prefix
+def getCachePrefixes(verbose):
+    # instantiate curl
+    curl = _Curl()
+    curl.verbose = verbose
+    # execute
+    url = baseURL + '/getCachePrefixes'
+    status,output = curl.get(url,{})
+    # failed
+    if status != 0:
+        print output
+        errStr = "cannot get the list of Athena projects"
+        tmpLog.error(errStr)
+        sys.exit(EC_Failed)
+    # return
+    try:
+        return pickle.loads(output)
+    except:
+        print output
+        errType,errValue = sys.exc_info()[:2]
+        print "ERROR: getCachePrefixes : %s %s" % (errType,errValue)
+        sys.exit(EC_Failed)
 
 
 # get files in dataset with filte
