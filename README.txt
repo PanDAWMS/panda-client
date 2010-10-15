@@ -21,6 +21,12 @@ pathena -h
 
 ** Release Note
 
+0.3.5 (10/15/2010)
+  * fixed misleading message in prun when --secondaryDSs is used
+  * fixes messages in pathena/prun when no jobs are submitted due to lack
+    of unused input files
+  * added pbook.show(X,Y)
+
 0.3.4 (10/9/2010)
   * added --restoreDB to pbook
 

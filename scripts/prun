@@ -95,7 +95,7 @@ optP.add_option('--nFiles',action='store',dest='nFiles',default=0,type='int',
 optP.add_option('--nSkipFiles',action='store',dest='nSkipFiles',default=0,type='int',
                 help='Skip N files in the input dataset')
 optP.add_option('--nFilesPerJob',action='store',dest='nFilesPerJob',default=None,type='int',
-                help='Number of files on which each sub-job runs (default 50)')
+                help='Number of files on which each sub-job runs (default 50). Note that this is the number of files per sub-job in the primary dataset even if --secondaryDSs is used')
 optP.add_option('--nJobs',action='store',dest='nJobs',default=-1,type='int',
                 help='Maximum number of sub-jobs. If the number of input files (N_in) is less than nJobs*nFilesPerJob, only N_in/nFilesPerJob sub-jobs will be instantiated')
 optP.add_option('--nGBPerJob',action='store',dest='nGBPerJob',default=-1,
@@ -820,7 +820,9 @@ if options.inDS != '':
             break
     if not unUsedFlag:
         # exit
-        tmpMsg = "Done. All input files were (or are being) processed for the outDS"
+	tmpMsg  = "Done. No jobs to be submitted since all input files were (or are being) processed for the outDS. "
+	tmpMsg += "The intention is to avoid duplication in the outDS. " 
+	tmpMsg += "If you need to run again on the input dataset please use new outDS"
         tmpLog.info(tmpMsg)
         sys.exit(0)
     # sort
@@ -1626,8 +1628,11 @@ if options.inDS != '':
             tmpLog.info("all files in the primary DS are available at %s" % options.site)            
     else:
         tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
-    tmpLog.info("use %s files" % len(inputFileList)) 
-
+    # print the number of used files
+    if options.secondaryDSs == {}:
+        tmpLog.info("use %s files" % len(inputFileList))
+    else:
+        tmpLog.info("use %s files in the primary DS" % len(inputFileList))        
 
 # disp datasetname to identify inputs
 commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
@@ -1638,6 +1643,7 @@ isDirectAccess = PsubUtils.isDirectAccess(options.site)
 # runJobs
 indexOffsetMap = {}
 jobsetIDMapForLFN = {}
+numFilesMap = {}
 for iJob in range(options.nJobs):
     jobR = JobSpec()
     jobR.jobDefinitionID   = jobDefinitionID
@@ -1804,6 +1810,11 @@ for iJob in range(options.nJobs):
         jobR.jobParameters += '-i "%s" ' % inList
 	if options.secondaryDSs != {}:
 	    jobR.jobParameters += '--inMap "%s" ' % tmpInputMap
+            # count number of files
+            for tmpStreamName,tmpFileListForCount in tmpInputMap.iteritems():
+                if not numFilesMap.has_key(tmpStreamName):
+                    numFilesMap[tmpStreamName] = 0
+                numFilesMap[tmpStreamName] += len(tmpFileListForCount)
     # DBRelease
     if options.dbRelease != '':
         tmpItems = options.dbRelease.split(':')
@@ -1940,6 +1951,16 @@ for iJob in range(options.nJobs):
         tmpLog.debug(jobR.jobParameters)
     jobList.append(jobR)
 
+# print the number of used files including secondary DSs
+if options.inDS != '' and options.secondaryDSs != {}:
+    tmpStreamKeys = numFilesMap.keys()
+    tmpStreamKeys.sort()
+    msgStr = 'use'
+    for tmpStreamKey in tmpStreamKeys:
+        msgStr += ' %s files for %s,' % (numFilesMap[tmpStreamKey],tmpStreamKey)
+    tmpLog.info(msgStr[:-1])
+    
+        
 # jobsetID
 jobsetID = options.panda_jobsetID
 
