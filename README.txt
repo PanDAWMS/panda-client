@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.6 (10/20/2010)
+  * fixed --eventPick for JSP failures
+
 0.3.5 (10/15/2010)
   * fixed misleading message in prun when --secondaryDSs is used
   * fixes messages in pathena/prun when no jobs are submitted due to lack

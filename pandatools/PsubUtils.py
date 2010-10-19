@@ -1015,7 +1015,7 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
         errStr += ' Must be one of AOD,ESD,RAW'
         tmpLog.error(errStr)
         sys.exit(EC_Config)
-    tmpLog.info('getting dataset names and LFNs from ELSSI for event picking')
+    tmpLog.info('getting dataset names and LFNs from Event Picking service')
     # read
     runEvtList = []
     guids = []
@@ -1043,14 +1043,14 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
             guidListELSSI = elssiIF.doLookup(tmpRunEvtList,tokens=streamRef,extract=True)
         else:
             guidListELSSI = elssiIF.doLookup(tmpRunEvtList,stream=streamName,tokens=streamRef,extract=True)
-        if len(guidListELSSI) == 0 or guidListELSSI == None:
+        if guidListELSSI == None or len(guidListELSSI) == 0:
             if not verbose:
                 print
             errStr = ''    
             for tmpLine in elssiIF.output:
                 errStr += tmpLine + '\n'
             tmpLog.error(errStr)    
-            errStr = "GUID lookup in ELSSI failed"
+            errStr = "failed to get GUID from Event Picking service"
             tmpLog.error(errStr)
             sys.exit(EC_Config)
         # check attribute
@@ -1059,7 +1059,7 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
             for tmpIdx,tmpAttrName in enumerate(attrNames):
                 if tmpAttrName.strip() == attr:
                     return tmpIdx
-            tmpLog.error("cannot find attribute=%s in %s provided by ELSSI" % \
+            tmpLog.error("cannot find attribute=%s in %s provided by Event Picking service" % \
                          (attr,str(attrNames)))
             sys.exit(EC_Config)
         # get index
@@ -1085,7 +1085,7 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
             if tmpguids == []:
                 if not verbose:
                     print
-                errStr = "no GUIDs were found in ELSSI for %s" % paramStr
+                errStr = "no GUIDs were found in Event Picking service for %s" % paramStr
                 tmpLog.error(errStr)
                 sys.exit(EC_Config)
             # append
