@@ -96,11 +96,13 @@ sys.path = [tmpDir]+sys.path
 class PBookCore:
 
     # constructor
-    def __init__(self,enforceEnter=False,verbose=False):
+    def __init__(self,enforceEnter=False,verbose=False,restoreDB=False):
         # verbose
         self.verbose = verbose
+        # restore database
+        self.restoreDB = restoreDB
         # initialize database
-        PdbUtils.initialzieDB(self.verbose)
+        PdbUtils.initialzieDB(self.verbose,self.restoreDB)
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy('',enforceEnter,self.verbose)
 
@@ -118,6 +120,12 @@ class PBookCore:
         syncTime = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         # set sync time for the first attempt
         bookConf = BookConfig.getConfig()
+        if self.restoreDB:
+            # reset last_synctime to restore database 
+            bookConf.last_synctime = ''
+	    # disable
+	    self.restoreDB = False
+	    tmpLog.info("It may take several minutes to restore local repository ...")
         if bookConf.last_synctime == '':
             bookConf.last_synctime = datetime.datetime.utcnow()-datetime.timedelta(days=180)
             bookConf.last_synctime = bookConf.last_synctime.strftime('%Y-%m-%d %H:%M:%S')
@@ -486,8 +494,12 @@ class PBookCore:
                     return
             # check status of buildJob
             if not localJob.buildStatus in ['','finished']:
-                tmpLog.warning('Cannot retry since status of buildJob %s is %s (!= finished)' \
-                               % (localJob.PandaID.split(',')[0],localJob.buildStatus))
+                tmpMsgStr = 'Cannot retry since status of buildJob %s is %s (!= finished). ' \
+                            % (localJob.PandaID.split(',')[0],localJob.buildStatus)
+                tmpMsgStr += 'Please execute %s with the same input/output datasets (or containers). ' % localJob.jobType
+                tmpMsgStr += 'It will run only on failed/cancelled/unused input files '
+                tmpMsgStr += 'and append output files to the output dataset container'
+                tmpLog.warning(tmpMsgStr)
                 if isJobset:
                     continue
                 else:
@@ -803,24 +815,42 @@ For more info, do help(show) for example."""
         
                                         
     # show status
-    def show(JobID=None,forceUpdate=False,showPandaIDinState='',longFormat=False):
-        """Print job records. All jobs will be shown if JobID is omitted. Only running jobs and last N jobs will be shown if show('running') and show(-N), respectively. If forceUpdate=True, it will try to retrieve job infomation from the panda server. This may be useful to fix the local DB when synchronization between the local DB and the panda DB is lost somehow. When longFormat=True, jobs in the job set will be individually shown. showPandaIDinState takes a list of states so that PandaIDs in one of those states will be shown.
+    def show(JobID=None,upperJobID=None,forceUpdate=False,showPandaIDinState='',longFormat=False):
+        """Print job records. All jobs will be shown if JobID is omitted. Jobs between JobID and upperJobID are shown when upperJobID is specified. Only running jobs and last N jobs will be shown if show('running') and show(-N), respectively. If forceUpdate=True, it will try to retrieve job infomation from the panda server. This may be useful to fix the local DB when synchronization between the local DB and the panda DB is lost somehow. When longFormat=True, jobs in the job set will be individually shown. showPandaIDinState takes a list of states so that PandaIDs in one of those states will be shown.
         
          example:
            >>> show()
            >>> show(12)
+           >>> show(12,15)           
            >>> show(-5)
            >>> show('running')
            >>> show(15,showPandaIDinState='activated,running')
            >>> show(15,longFormat=True)
          """
-        if JobID == None or JobID < 0:
+        if JobID == None or JobID < 0 or upperJobID != None:
+            # check range
+            if upperJobID != None:
+                if JobID > upperJobID:
+                    tmpLog = PLogger.getPandaLogger()
+                    tmpLog.error("upper JobID must be larger than %s" % JobID)
+                    return
+                if JobID < 0:
+                    tmpLog = PLogger.getPandaLogger()
+                    tmpLog.error("JobID must be positive when upper JobID is given")
+                    return
             # show all local info
             jobList = pbookCore.getLocalJobList()
             if JobID < 0:
                 jobList = jobList[JobID:]
             # print
             for job in jobList:
+                if upperJobID != None:
+                    if hasattr(job,'JobID'):
+                        if job.JobID < JobID or job.JobID > upperJobID:
+                            continue
+                    else:
+                        if long(job.JobsetID) < JobID or long(job.JobsetID) > upperJobID:
+                            continue
                 print "======================================"
                 if showPandaIDinState != '':
                     job.flag_showSubstatus = showPandaIDinState
@@ -864,7 +894,7 @@ For more info, do help(show) for example."""
 
     # kill
     def kill(JobID,upperJobID=None):
-        """Kill all subJobs in JobID. JobID and UpperJobID will be killed if upperJobID is given
+        """Kill all subJobs in JobID. Jobs bwtween JobID and UpperJobID will be killed if upperJobID is given
 
          example:
            >>> kill(15)
@@ -1006,6 +1036,8 @@ if __name__ == "__main__":
                       help="use GUI")
     parser.add_option('-c',action='store',dest='comString',default='',type='string',
                       help='execute a command in the batch mode')
+    parser.add_option("--restoreDB",action="store_true",dest="restoreDB",default=False,
+                      help="restore local database")
     parser.add_option("--noPass",action="store_true",dest="noPass",default=False,
                       help="disable to enter pass phrase for GUI")
     parser.add_option('--version',action='store_const',const=True,dest='version',default=False,
@@ -1041,7 +1073,7 @@ if __name__ == "__main__":
             guimain(pbookCore)
         else:
             # instantiate core
-            pbookCore = PBookCore(False,options.verbose)
+            pbookCore = PBookCore(False,options.verbose,options.restoreDB)
             # CUI
             intmain(pbookCore,options.comString)
     else:

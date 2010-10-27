@@ -10,6 +10,7 @@ import pickle
 import Client
 import MyproxyUtils
 import PLogger
+import AthenaUtils
 
 # error code
 EC_Config    = 10
@@ -349,13 +350,13 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
     # check convention
     if re.match(matStrO,outDS) != None:
         outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)        
-        tmpStr  = "You are still using the old naming convention for --outDS (%s.XYZ). " % outDsPrefixO
-        tmpStr += "DQ2 will enforce the new convention and refuse the old one as of 2nd Aug 2010. "
+        tmpStr  = "You are still using the old naming convention for --outDS (%s.XYZ), " % outDsPrefixO
+        tmpStr += "which is not allowed any more. "
         tmpStr += "Please use user.nickname.XYZ instead. If you don't know your nickname, "
         tmpStr += "see https://savannah.cern.ch/forum/forum.php?forum_id=1259"
         print
-        tmpLog.warning(tmpStr)
-        print
+        tmpLog.error(tmpStr)
+        return False
     # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
     maxLength = 200
     maxLengthCont = 132
@@ -856,6 +857,9 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # one liner
     if not '--panda_singleLine' in fullExecString and singleLine != '':
         fullExecString += ' --panda_singleLine=%s' % urllib.quote(singleLine)
+    # jobOs with fullpath
+    if not '--panda_fullPathJobOs' in fullExecString and AthenaUtils.fullPathJobOs != {}:
+        fullExecString += ' --panda_fullPathJobOs=%s' % AthenaUtils.convFullPathJobOsToStr()
     # run pathena
     if anotherTry:
         if isMissing:
@@ -1011,7 +1015,7 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
         errStr += ' Must be one of AOD,ESD,RAW'
         tmpLog.error(errStr)
         sys.exit(EC_Config)
-    tmpLog.info('getting dataset names and LFNs from ELSSI for event picking')
+    tmpLog.info('getting dataset names and LFNs from Event Lookup service')
     # read
     runEvtList = []
     guids = []
@@ -1039,14 +1043,14 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
             guidListELSSI = elssiIF.doLookup(tmpRunEvtList,tokens=streamRef,extract=True)
         else:
             guidListELSSI = elssiIF.doLookup(tmpRunEvtList,stream=streamName,tokens=streamRef,extract=True)
-        if len(guidListELSSI) == 0 or guidListELSSI == None:
+        if guidListELSSI == None or len(guidListELSSI) == 0:
             if not verbose:
                 print
             errStr = ''    
             for tmpLine in elssiIF.output:
                 errStr += tmpLine + '\n'
             tmpLog.error(errStr)    
-            errStr = "GUID lookup in ELSSI failed"
+            errStr = "failed to get GUID from Event Lookup service"
             tmpLog.error(errStr)
             sys.exit(EC_Config)
         # check attribute
@@ -1055,7 +1059,7 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
             for tmpIdx,tmpAttrName in enumerate(attrNames):
                 if tmpAttrName.strip() == attr:
                     return tmpIdx
-            tmpLog.error("cannot find attribute=%s in %s provided by ELSSI" % \
+            tmpLog.error("cannot find attribute=%s in %s provided by Event Lookup service" % \
                          (attr,str(attrNames)))
             sys.exit(EC_Config)
         # get index
@@ -1081,7 +1085,7 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
             if tmpguids == []:
                 if not verbose:
                     print
-                errStr = "no GUIDs were found in ELSSI for %s" % paramStr
+                errStr = "no GUIDs were found in Event Lookup service for %s" % paramStr
                 tmpLog.error(errStr)
                 sys.exit(EC_Config)
             # append

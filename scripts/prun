@@ -56,6 +56,8 @@ optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName
                 type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
 optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
+optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
+                help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
 optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
                 help='Name of an output dataset. OUTDS will contain all output files')
 optP.add_option('--destSE',action='store', dest='destSE',default='',type='string',
@@ -95,7 +97,7 @@ optP.add_option('--nFiles',action='store',dest='nFiles',default=0,type='int',
 optP.add_option('--nSkipFiles',action='store',dest='nSkipFiles',default=0,type='int',
                 help='Skip N files in the input dataset')
 optP.add_option('--nFilesPerJob',action='store',dest='nFilesPerJob',default=None,type='int',
-                help='Number of files on which each sub-job runs (default 50)')
+                help='Number of files on which each sub-job runs (default 50). Note that this is the number of files per sub-job in the primary dataset even if --secondaryDSs is used')
 optP.add_option('--nJobs',action='store',dest='nJobs',default=-1,type='int',
                 help='Maximum number of sub-jobs. If the number of input files (N_in) is less than nJobs*nFilesPerJob, only N_in/nFilesPerJob sub-jobs will be instantiated')
 optP.add_option('--nGBPerJob',action='store',dest='nGBPerJob',default=-1,
@@ -162,6 +164,8 @@ optP.add_option('--outputPath',action='store',dest='outputPath', default='',
                 type='string', help='Physical path of output directory relative to a root path')
 optP.add_option('--useOldStyleOutput',action='store_const',const=True,dest='useOldStyleOutput',default=False,
                 help="use output dataset and long LFN instead of output dataset container and short LFN")
+optP.add_option('--disableRebrokerage',action='store_const',const=True,dest='disableRebrokerage',default=False,
+                help="disable auto-rebrokerage")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
                 type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
 # internal parameters
@@ -416,6 +420,8 @@ if options.useAthenaPackages:
         runDir = runDir[1:]
     runDir = runDir+'/'
 elif options.athenaTag != '':
+    # get list of Athena projects
+    listProjects = Client.getCachePrefixes(options.verbose)
     items = options.athenaTag.split(',')
     for item in items:
         # releases
@@ -423,11 +429,11 @@ elif options.athenaTag != '':
         if match != None:
             athenaVer = 'Atlas-%s' % match.group(1)
             # cache
-	    cmatch = re.search('^(\d+\.\d+\.\d+\.\d+)$',item)
+	    cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
 	    if cmatch != None:
 		cacheVer += '_%s' % cmatch.group(1)
         # project
-        if item.startswith('Atlas'):
+        if item.startswith('Atlas') or item in listProjects:
             # ignore AtlasOffline
             if item in ['AtlasOffline']:
                 continue
@@ -443,7 +449,12 @@ elif options.athenaTag != '':
                 sys.exit(EC_Config)
     # check cache
     if re.search('^-.+_.+$',cacheVer) == None:
-        cacheVer = ''
+        if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) != None:
+            # use AtlasProduction
+            cacheVer = '-AtlasProduction'+cacheVer
+        else:
+            # unknown
+            cacheVer = ''
 
 # good run list
 if options.goodRunListXML != '':
@@ -811,7 +822,9 @@ if options.inDS != '':
             break
     if not unUsedFlag:
         # exit
-        tmpMsg = "Done. All input files were (or are being) processed for the outDS"
+	tmpMsg  = "Done. No jobs to be submitted since all input files were (or are being) processed for the outDS. "
+	tmpMsg += "The intention is to avoid duplication in the outDS. " 
+	tmpMsg += "If you need to run again on the input dataset please use new outDS"
         tmpLog.info(tmpMsg)
         sys.exit(0)
     # sort
@@ -1465,6 +1478,8 @@ elif options.libDS == '':
         jobB.AtlasRelease  = athenaVer
         jobB.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobB.transformation    = '%s/buildGen-00-00-01' % Client.baseURLSUB
+    if options.express:
+        jobB.specialHandling = 'express'
     jobB.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
     if nickName == '':
         # old convention
@@ -1617,8 +1632,11 @@ if options.inDS != '':
             tmpLog.info("all files in the primary DS are available at %s" % options.site)            
     else:
         tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
-    tmpLog.info("use %s files" % len(inputFileList)) 
-
+    # print the number of used files
+    if options.secondaryDSs == {}:
+        tmpLog.info("use %s files" % len(inputFileList))
+    else:
+        tmpLog.info("use %s files in the primary DS" % len(inputFileList))        
 
 # disp datasetname to identify inputs
 commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
@@ -1629,6 +1647,7 @@ isDirectAccess = PsubUtils.isDirectAccess(options.site)
 # runJobs
 indexOffsetMap = {}
 jobsetIDMapForLFN = {}
+numFilesMap = {}
 for iJob in range(options.nJobs):
     jobR = JobSpec()
     jobR.jobDefinitionID   = jobDefinitionID
@@ -1646,6 +1665,8 @@ for iJob in range(options.nJobs):
         jobR.AtlasRelease  = athenaVer
         jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
+    if options.express:
+        jobR.specialHandling = 'express'
     jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
     # memory
     if options.memory != -1:
@@ -1795,6 +1816,11 @@ for iJob in range(options.nJobs):
         jobR.jobParameters += '-i "%s" ' % inList
 	if options.secondaryDSs != {}:
 	    jobR.jobParameters += '--inMap "%s" ' % tmpInputMap
+            # count number of files
+            for tmpStreamName,tmpFileListForCount in tmpInputMap.iteritems():
+                if not numFilesMap.has_key(tmpStreamName):
+                    numFilesMap[tmpStreamName] = 0
+                numFilesMap[tmpStreamName] += len(tmpFileListForCount)
     # DBRelease
     if options.dbRelease != '':
         tmpItems = options.dbRelease.split(':')
@@ -1931,6 +1957,16 @@ for iJob in range(options.nJobs):
         tmpLog.debug(jobR.jobParameters)
     jobList.append(jobR)
 
+# print the number of used files including secondary DSs
+if options.inDS != '' and options.secondaryDSs != {}:
+    tmpStreamKeys = numFilesMap.keys()
+    tmpStreamKeys.sort()
+    msgStr = 'use'
+    for tmpStreamKey in tmpStreamKeys:
+        msgStr += ' %s files for %s,' % (numFilesMap[tmpStreamKey],tmpStreamKey)
+    tmpLog.info(msgStr[:-1])
+    
+        
 # jobsetID
 jobsetID = options.panda_jobsetID
 
@@ -1988,7 +2024,7 @@ if not options.nosubmit:
             Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpLibDsLocation)
 
     # submit
-    tmpLog.info("submit to %s" % options.site)
+    tmpLog.info("submit %s subjobs to %s" % (len(jobList),options.site))
     status,out = Client.submitJobs(jobList,options.verbose)
     if not Client.PandaSites[options.site]['status'] in ['online','brokeroff']:
 	tmpLog.warning("%s is %s. Your jobs will wait until it becomes online" % \
