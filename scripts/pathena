@@ -93,6 +93,8 @@ optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName
                 type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
 optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
+optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
+                help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
 optP.add_option('--useCommonHalo', action='store_const', const=False, dest='useCommonHalo',  default=True,
                 help="use an integrated DS for BeamHalo")
 optP.add_option('--beamHaloDS',  action='store', dest='beamHaloDS',  default='',
@@ -2420,6 +2422,8 @@ elif options.libDS == '':
     jobB.AtlasRelease      = 'Atlas-%s' % athenaVer
     jobB.homepackage       = 'AnalysisTransforms'+cacheVer+nightVer
     jobB.transformation    = '%s/buildJob-00-00-03' % Client.baseURLSUB
+    if options.express:
+        jobB.specialHandling = 'express'
     jobB.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
     if options.provenanceID != -1:
         jobB.jobExecutionID = options.provenanceID
@@ -2578,6 +2582,8 @@ for iSubJob in range(options.split):
     jobR.AtlasRelease      = 'Atlas-%s' % athenaVer
     jobR.homepackage       = 'AnalysisTransforms'+cacheVer+nightVer
     jobR.transformation    = '%s/runAthena-00-00-11' % Client.baseURLSUB
+    if options.express:
+        jobR.specialHandling = 'express'
     jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
     jobR.destinationDBlock = options.outDS
     if Client.isDQ2free(options.site):
@@ -3230,7 +3236,7 @@ if not options.nosubmit:
                 Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpLibDsLocation)
 
         # submit
-        tmpLog.info("submit to %s" % options.site)
+        tmpLog.info("submit %s subjobs to %s" % (len(jobList),options.site))
         status,out = Client.submitJobs(jobList,options.verbose)
         if not Client.PandaSites[options.site]['status'] in ['online','brokeroff']:
             tmpLog.warning("%s is %s. Your jobs will wait until it becomes online" % \
