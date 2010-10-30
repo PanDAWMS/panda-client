@@ -7,6 +7,7 @@ import re
 import sys
 import time
 import copy
+import shutil
 import atexit
 import commands
 import optparse
@@ -245,6 +246,10 @@ optP.add_option('--useAIDA', action='store_const', const=True, dest='useAIDA',  
                 help="use AIDA")
 optP.add_option('--inputType', action='store', dest='inputType', default='',
                 type='string', help='File type in input dataset which contains multiple file types')
+optP.add_option('--outTarBall', action='store', dest='outTarBall', default='',
+                type='string', help='Save a copy of local files which is the input to buildXYZ')
+optP.add_option('--inTarBall', action='store', dest='inTarBall', default='',
+                type='string', help='Use a saved copy of local files as input to buildXYZ')
 optP.add_option('--mcData', action='store', dest='mcData', default='',
                 type='string', help='Create a symlink with linkName to .dat which is contained in input file')
 optP.add_option('--pfnList', action='store', dest='pfnList', default='',
@@ -671,6 +676,12 @@ if options.destSE != '':
     if not PsubUtils.checkDestSE(options.destSE,options.outDS,options.verbose):
         sys.exit(EC_Config)
 
+# convert in/outTarBall to full path
+if options.inTarBall != '':
+    options.inTarBall = os.path.abspath(os.path.expanduser(options.inTarBall))
+if options.outTarBall != '':
+    options.outTarBall = os.path.abspath(os.path.expanduser(options.outTarBall))
+    
 # save current dir
 currentDir = os.path.realpath(os.getcwd())
 
@@ -1025,74 +1036,88 @@ if options.panda_srcName != '':
     if options.panda_fullPathJobOs != '':
         AthenaUtils.fullPathJobOs = AthenaUtils.convStrToFullPathJobOs(options.panda_fullPathJobOs)
 else:
-    # extract jobOs with full pathnames
-    for tmpItem in jobO.split():
-        if re.search('^/.*\.py$',tmpItem) != None:
-            # set random name to avoid overwriting
-            tmpName = tmpItem.split('/')[-1]
-            tmpName = '%s_%s' % (commands.getoutput('uuidgen'),tmpName)
-            # set
-            AthenaUtils.fullPathJobOs[tmpItem] = tmpName
-            
-    # copy some athena specific files
-    AthenaUtils.copyAthenaStuff(currentDir)
+    if options.inTarBall == '':
+        # extract jobOs with full pathnames
+        for tmpItem in jobO.split():
+            if re.search('^/.*\.py$',tmpItem) != None:
+                # set random name to avoid overwriting
+                tmpName = tmpItem.split('/')[-1]
+                tmpName = '%s_%s' % (commands.getoutput('uuidgen'),tmpName)
+                # set
+                AthenaUtils.fullPathJobOs[tmpItem] = tmpName
 
-    # set extFile
-    AthenaUtils.setExtFile(options.extFile)
+        # copy some athena specific files
+        AthenaUtils.copyAthenaStuff(currentDir)
 
-    archiveName = ""
-    if options.libDS == '' and not options.nobuild:
-        # archive sources
-	archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,currentDir,tmpDir,
-                                                                     options.verbose,options.gluePackages) 
+        # set extFile
+        AthenaUtils.setExtFile(options.extFile)
+
+        archiveName = ""
+        if options.libDS == '' and not options.nobuild:
+            # archive sources
+            archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,currentDir,tmpDir,
+                                                                         options.verbose,options.gluePackages) 
+        else:
+            # archive jobO
+            archiveName,archiveFullName = AthenaUtils.archiveJobOFiles(workArea,runDir,currentDir,
+                                                                       tmpDir,options.verbose)
+
+        # archive InstallArea
+        if options.libDS == '':
+            AthenaUtils.archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
+                                           tmpDir,options.nobuild,options.verbose)
+
+        # back to tmp dir        
+        os.chdir(tmpDir)
+
+        # remove some athena specific files
+        AthenaUtils.deleteAthenaStuff(currentDir)
+
+        # compress
+        status,out = commands.getstatusoutput('gzip %s' % archiveName)
+        archiveName += '.gz'
+        if status != 0 or options.verbose:
+            print out
+
+        # check archive
+        status,out = commands.getstatusoutput('ls -l %s' % archiveName)
+        if status != 0:
+            print out
+            tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'") 
+            sys.exit(EC_Archive)
+
+        # check symlinks
+        tmpLog.info("checking symbolic links")
+        status,out = commands.getstatusoutput('tar tvfz %s' % archiveName)
+        if status != 0:
+            tmpLog.error("Failed to expand archive")
+            sys.exit(EC_Archive)
+        symlinks = []    
+        for line in out.split('\n'):
+            items = line.split()
+            if items[0].startswith('l') and items[-1].startswith('/'):
+                symlinks.append(line)
+        if symlinks != []:
+            tmpStr  = "Found some unresolved symlinks which may cause a problem\n"
+            tmpStr += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
+            tmpStr += "   Please ignore if you believe they are harmless"
+            tmpLog.warning(tmpStr)
+            for symlink in symlinks:
+                print "  %s" % symlink
     else:
-        # archive jobO
-	archiveName,archiveFullName = AthenaUtils.archiveJobOFiles(workArea,runDir,currentDir,
-                                                                   tmpDir,options.verbose)
+        # go to tmp dir
+        os.chdir(tmpDir)
+        # use a saved copy
+        if options.libDS == '' and not options.nobuild:
+            archiveName     = 'sources.%s.tar' % commands.getoutput('uuidgen')
+            archiveFullName = "%s/%s" % (tmpDir,archiveName)
+        else:
+            archiveName     = 'jobO.%s.tar' % commands.getoutput('uuidgen')
+            archiveFullName = "%s/%s" % (tmpDir,archiveName)
+        # make copy to avoid name duplication
+        shutil.copy(options.inTarBall,archiveFullName)
 
-    # archive InstallArea
-    if options.libDS == '':
-	AthenaUtils.archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
-                                       tmpDir,options.nobuild,options.verbose)
-
-    # back to tmp dir        
-    os.chdir(tmpDir)
-
-    # remove some athena specific files
-    AthenaUtils.deleteAthenaStuff(currentDir)
-
-    # compress
-    status,out = commands.getstatusoutput('gzip %s' % archiveName)
-    archiveName += '.gz'
-    if status != 0 or options.verbose:
-        print out
-
-    # check archive
-    status,out = commands.getstatusoutput('ls -l %s' % archiveName)
-    if status != 0:
-        print out
-        tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'") 
-        sys.exit(EC_Archive)
-
-    # check symlinks
-    tmpLog.info("checking symbolic links")
-    status,out = commands.getstatusoutput('tar tvfz %s' % archiveName)
-    if status != 0:
-        tmpLog.error("Failed to expand archive")
-        sys.exit(EC_Archive)
-    symlinks = []    
-    for line in out.split('\n'):
-        items = line.split()
-        if items[0].startswith('l') and items[-1].startswith('/'):
-            symlinks.append(line)
-    if symlinks != []:
-        tmpStr  = "Found some unresolved symlinks which may cause a problem\n"
-        tmpStr += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
-        tmpStr += "   Please ignore if you believe they are harmless"
-        tmpLog.warning(tmpStr)
-        for symlink in symlinks:
-            print "  %s" % symlink
-
+        
     # put sources/jobO via HTTP POST
     if not options.nosubmit:
         tmpLog.info("uploading source/jobO files")
@@ -1101,6 +1126,10 @@ else:
             print out
             tmpLog.error("Failed with %s" % status)
             sys.exit(EC_Post)
+
+    # save
+    if options.outTarBall != '':
+        shutil.copy(archiveName,options.outTarBall)
 
 
 ####################################################################

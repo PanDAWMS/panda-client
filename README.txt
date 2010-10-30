@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added --in/outTarBall to pathena/prun
+
 0.3.7 (10/27/2010)
   * added --express to pathena/prun
 
