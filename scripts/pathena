@@ -1439,7 +1439,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         inputFileMap,inputDsString  = Client.queryFilesInDataset(options.inDS,options.verbose,getDsString=True)
         # remove files
         for tmpKey in options.removeFileList:
-            if inputFileMap.has_key():
+            if inputFileMap.has_key(tmpKey):
                 del inputFileMap[tmpKey]
         # separate normal input filelist and wildcard list
         normalInPatList   = []
