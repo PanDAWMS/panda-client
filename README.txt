@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.8 (10/31/2010)
   * added --in/outTarBall to pathena/prun
+  * fixed --removeFile in pathena
 
 0.3.7 (10/27/2010)
   * added --express to pathena/prun
