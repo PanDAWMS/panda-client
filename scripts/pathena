@@ -1262,7 +1262,7 @@ useTagParentLookup = False
 if options.panda_tagParentFile != '':
     useTagParentLookup = True
     # load parent info
-    tagParentInfo,parentLfnToTagMap = PsubUtils.loadParentInfo(options.panda_tagParentFile)
+    tagParentInfo,parentLfnToTagMap = PsubUtils.loadTagParentInfo(options.panda_tagParentFile)
 elif runConfig.input.inColl and options.parentDS == '' and options.inDS != '' and not options.shipinput \
        and not options.notUseTagLookup:
     useTagParentLookup = True
@@ -1863,7 +1863,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                                 options.panda_devidedByGUID,options.panda_dbRelease,
                                                 options.panda_jobsetID,orig_trfStr,options.singleLine,
-                                                True,eventPickRunEvtDat,options.verbose)
+                                                True,eventPickRunEvtDat,useTagParentLookup,options.verbose)
                 # exit        
                 sys.exit(0)
         # make list
@@ -1956,7 +1956,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                     options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                     options.panda_devidedByGUID,options.panda_dbRelease,
                                     options.panda_jobsetID,orig_trfStr,options.singleLine,
-                                    False,eventPickRunEvtDat,options.verbose)
+                                    False,eventPickRunEvtDat,useTagParentLookup,options.verbose)
             # exit        
             sys.exit(0)
         else:
@@ -3622,7 +3622,7 @@ if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                                 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                 options.panda_devidedByGUID,options.panda_dbRelease,
                                 jobsetID,orig_trfStr,options.singleLine,
-                                True,eventPickRunEvtDat,options.verbose)
+                                True,eventPickRunEvtDat,useTagParentLookup,options.verbose)
 # succeeded
 sys.exit(0)
 

@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.10 (11/3/2010)
+  * fixed a bug related to useTagParent
+
 0.3.9 (11/3/2010)
   * updated TAG analysis framework in pathena to use TagGUIDCount svc 
   * added --notUseTagLookup to pathena not to use TagGUIDCount svc 

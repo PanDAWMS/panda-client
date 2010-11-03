@@ -769,7 +769,7 @@ def checkDestSE(destSEs,dsName,verbose):
 # run pathena recursively
 def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,
                   removedDS,inDS,goodRunListXML,eventPickEvtList,devidedByGUID,dbRelease,jobsetID,trfStr,
-                  singleLine,isMissing,eventPickRunEvtDat,verbose):
+                  singleLine,isMissing,eventPickRunEvtDat,useTagParentLookup,verbose):
     anotherTry = True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -853,7 +853,7 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
         fullExecString += ' --panda_jobsetID=%s' % jobsetID
 
     # TAG parent
-    if not '--panda_tagParentFile' in fullExecString:
+    if useTagParentLookup and not '--panda_tagParentFile' in fullExecString:
         tmpTagParentFile = dumpTagParentInfo(tmpDir)
         fullExecString += ' --panda_tagParentFile=%s' % tmpTagParentFile
     # trf string
