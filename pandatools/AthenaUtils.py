@@ -442,6 +442,11 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
                         # append _ref
                         tmpRef += '_ref'
                     inputConfig['collRefName'] = tmpRef
+                # TAG Query
+                if match[0].startswith('Input=COLLQUERY'):
+                    tmpQuery = re.sub('Input=COLLQUERY','',match[0])
+                    tmpQuery = tmpQuery.strip()
+                    inputConfig['tagQuery'] = tmpQuery
                 # Minimum bias
                 if match[0]=='Input=MINBIAS':
                     inputConfig['inMinBias'] = True

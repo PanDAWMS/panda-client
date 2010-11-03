@@ -851,6 +851,11 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # set jobsetID
     if not '--panda_jobsetID' in fullExecString and not jobsetID in [None,'NULL',-1]:
         fullExecString += ' --panda_jobsetID=%s' % jobsetID
+
+    # TAG parent
+    if not '--panda_tagParentFile' in fullExecString:
+        tmpTagParentFile = dumpTagParentInfo(tmpDir)
+        fullExecString += ' --panda_tagParentFile=%s' % tmpTagParentFile
     # trf string
     if not '--panda_trf' in fullExecString and trfStr != '':
         fullExecString += ' --panda_trf=%s' % urllib.quote(trfStr)
@@ -1131,6 +1136,153 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
             sys.exit(EC_Config)
     # return
     return dsLFNs,guidRunEvtMap
+
+
+# get mapping between TAG and parent GUIDs
+mapTAGandParentGUIDs = {}
+def getMapTAGandParentGUIDs(dsName,tagQuery,streamRef,verbose=False):
+    # remove _tidXYZ
+    dsNameForLookUp = re.sub('_tid\d+(_\d+)*$','',dsName)
+    # reuse
+    if mapTAGandParentGUIDs.has_key(dsNameForLookUp):
+        return mapTAGandParentGUIDs[dsNameForLookUp]
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # set X509_USER_PROXY
+    if not os.environ.has_key('X509_USER_PROXY') or os.environ['X509_USER_PROXY'] == '':
+        os.environ['X509_USER_PROXY'] = Client._x509()
+    # set
+    from countGuidsClient import countGuidsClient
+    tagIF = countGuidsClient()
+    tagIF.debug = verbose
+    tagResults = tagIF.countGuids(dsNameForLookUp,tagQuery,streamRef+',StreamTAG')
+    if tagResults == None:
+        if not verbose:
+            print
+        errStr = ''    
+        for tmpLine in tagIF.output:
+            if tmpLine == '\n':
+                continue
+            errStr += tmpLine
+        tmpLog.error(errStr)    
+        errStr2  = "invalid return from Event Lookup service. "
+        if "No collection in the catalog matches the dataset name" in errStr:
+            errStr2 += "Note that only merged TAG is uploaded to the TAG DB, "
+            errStr2 += "so you need to use merged TAG datasets (or container) for inDS"
+        tmpLog.error(errStr2)
+        sys.exit(EC_Config)
+    # empty
+    if not tagResults[0]:
+        errStr = "No GUIDs found for %s" % dsName
+        tmpLog.error(errStr)
+        sys.exit(EC_Config)
+    # collect
+    retMap = {}
+    for guidCount,guids in tagResults[1]:
+        parentGUID,tagGUID = guids
+        # append TAG GUID
+        if not retMap.has_key(tagGUID):
+            retMap[tagGUID] = {}
+        # append parent GUID and the number of selected events
+        if retMap[tagGUID].has_key(parentGUID):
+            errStr = "GUIDs=%s is duplicated" % parentGUID
+            tmpLog.error(errStr)
+            sys.exit(EC_Config)
+        retMap[tagGUID][parentGUID] = long(guidCount)
+    # keep to avoid redundant lookup    
+    mapTAGandParentGUIDs[dsNameForLookUp] = retMap
+    # return
+    return retMap
+
+
+# get TAG files and parent DS/files using TAG query
+tagParentInfo = {}
+parentLfnToTagMap = {}
+def getTagParentInfoUsingTagQuery(tagDsStr,tagQuery,streamRef,verbose):
+    # avoid redundant lookup
+    global tagParentInfo
+    global parentLfnToTagMap
+    if tagParentInfo != {}:
+        return tagParentInfo,parentLfnToTagMap
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # set empty if Query is undefined
+    if tagQuery == False:
+        tagQuery = ''
+    # loop over all tags
+    tmpLog.info('getting parent dataset names and LFNs from TAG DB using EventSelector.Query="%s"' % tagQuery)
+    for tagDS in tagDsStr.split(','):
+        if tagDS.endswith('/'):
+            # get elements in container
+            elements = Client.getElementsFromContainer(tagDS,verbose)
+        else:
+            elements = [tagDS,]
+        # loop over all elemets
+        for dsName in elements:
+            if not verbose:
+                sys.stdout.write('.')
+                sys.stdout.flush()
+            else:
+                tmpLog.debug("DS=%s Query=%s Ref:%s" % (dsName,tagQuery,streamRef))
+            guidMap = getMapTAGandParentGUIDs(dsName,tagQuery,streamRef,verbose)
+            # convert TAG GUIDs to LFNs
+            tmpRetMap,tmpAllMap = Client.listDatasetsByGUIDs(guidMap.keys(),'',verbose)
+            for tagGUID in guidMap.keys():
+                # not found
+                if not tmpRetMap.has_key(tagGUID):
+                    errStr = 'TAG GUID=%s not found in DQ2' % tagGUID 
+                    tmpLog.error(errStr)
+                    sys.exit(EC_Config)
+                # append
+                tagElementDS,tagLFN = tmpRetMap[tagGUID]
+                # convert parent GUIDs to LFNs
+                tmpParentRetMap,tmpParentAllMap = Client.listDatasetsByGUIDs(guidMap[tagGUID].keys(),'',verbose)
+                for parentGUID in guidMap[tagGUID].keys():
+                    # not found
+                    if not tmpParentRetMap.has_key(parentGUID):
+                        errStr = '%s GUID=%s not found in DQ2' % (re.sub('_ref$','',StreamRef),parentGUID)
+                        tmpLog.error(errStr)
+                        sys.exit(EC_Config)
+                    # append parent dataset
+                    tmpParentDS,tmpParentLFN = tmpParentRetMap[parentGUID] 
+                    if not tagParentInfo.has_key(tmpParentDS):
+                        tagParentInfo[tmpParentDS] = {'tagToParentLFNmap':{},'tagDS':tagDS,'tagElementDS':tagElementDS}
+                    # append tag LFN
+                    if not tagParentInfo[tmpParentDS]['tagToParentLFNmap'].has_key(tagLFN):
+                        tagParentInfo[tmpParentDS]['tagToParentLFNmap'][tagLFN] = []
+                    # append parent LFN
+                    if not tmpParentLFN in tagParentInfo[tmpParentDS]['tagToParentLFNmap'][tagLFN]:
+                        tagParentInfo[tmpParentDS]['tagToParentLFNmap'][tagLFN].append(tmpParentLFN)
+                    # append parent/TAG LFN map
+                    parentLfnToTagMap[tmpParentLFN] = {'lfn':tagLFN,'tagDS':tagDS,'nEvents':guidMap[tagGUID][parentGUID]}
+        if not verbose:
+            print
+    # empty
+    if tagParentInfo == {}:
+        errStr = 'No events selected from TAG DB. Please make sure that you use proper EventSelector.Query and inDS'
+        tmpLog.error(errStr)
+        sys.exit(EC_Config)
+    # return
+    return tagParentInfo,parentLfnToTagMap
+
+
+# dump TAG parent Info
+def dumpTagParentInfo(tmpDir):
+    tmpFileName = '%s/tagparenttmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
+    cFile = open(tmpFileName,'w')
+    pickle.dump((tagParentInfo,parentLfnToTagMap),cFile)
+    cFile.close()
+    return tmpFileName
+
+
+# load TAG parent Info
+def loadTagParentInfo(tmpFileName):
+    global tagParentInfo
+    global parentLfnToTagMap
+    cFile = open(tmpFileName)
+    tagParentInfo,parentLfnToTagMap = pickle.load(cFile)
+    cFile.close()
+    return tagParentInfo,parentLfnToTagMap
 
 
 # check unmerge dataset

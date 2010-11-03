@@ -53,6 +53,12 @@ if hasattr(EventSelector,'InputCollections') and hasattr(EventSelector.InputColl
                 _printConfig('Input=COLLREF %s' % EventSelector.RefName)
         except:
             pass
+        # query
+        try:
+            if EventSelector.Query != None:
+                _printConfig('Input=COLLQUERY %s' % EventSelector.Query)
+        except:
+            pass
     else:
         # normal POOL
         _printConfig('Input=POOL')

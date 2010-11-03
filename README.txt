@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.3.9 (11/3/2010)
+  * updated TAG analysis framework in pathena to use TagGUIDCount svc 
+  * added --notUseTagLookup to pathena not to use TagGUIDCount svc 
+
 0.3.8 (10/31/2010)
   * added --in/outTarBall to pathena/prun
   * fixed --removeFile in pathena

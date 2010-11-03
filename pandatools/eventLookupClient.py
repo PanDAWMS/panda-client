@@ -15,7 +15,9 @@ class eventLookupClient:
    #workerHost = "voatlas69.cern.ch"
    workerPort = '10004'
    connectionRefusedSleep = 20
+   errorPattern = "(Exception)|(Error)|(Lookup cannot be run)|(invalid)|(NOT EXISTING)"
 
+   
    def __init__(self):
       self.output = ""
       self.guids = {}
@@ -24,7 +26,6 @@ class eventLookupClient:
       self.certProxy = ""
       self.debug = None
       self.remoteFile = None
-      self.workerURL = "http://" + self.workerHost + ":" + self.workerPort
       try:
          self.certProxyFileName = os.environ['X509_USER_PROXY']
       except KeyError:
@@ -37,7 +38,9 @@ class eventLookupClient:
       finally:
          proxy.close()
          
-   
+   def workerURL(self):
+      return "http://" + self.workerHost + ":" + self.workerPort
+ 
    def doLookup(self, inputEvents, async=None, stream="", tokens="", extract=False):
       """ contact the server and return a list of GUIDs
       inputEvents  - list of run-event pairs
@@ -65,7 +68,7 @@ class eventLookupClient:
          async = "false"
 
       query_args = { 'key': self.key,
-                     'worker': self.workerURL,
+                     'worker': self.workerURL(),
                      'runs_events': runs_events,
                      'cert_proxy': self.certProxy,
                      'async': async,
@@ -119,6 +122,9 @@ class eventLookupClient:
       stage = None
       tokpat = re.compile(r'[[]DB=(?P<FID>.*?)[]]')
       for line in self.output:
+         if re.search(self.errorPattern, line, re.I):
+            #print " -- Error line matched: " + line
+            return None
          if stage == "readTags":
             if line[0:1] == ":":
                # break the line up into attributes, extract GUIDs
@@ -133,9 +139,6 @@ class eventLookupClient:
                continue
             else:
                return (self.tagAttributes, self.tags)
-         if re.search("(Exception)|(Error)|(Lookup cannot be run)|(invalid)|(NOT EXISTING)", line):
-            #print " -- Error line matched: " + line
-            return None
          if re.match("\{.*\}$", line):
             guids = eval(line)
             if type(guids).__name__!='dict':
@@ -157,7 +160,7 @@ class eventLookupClient:
       Retrieve the file and scan for GUIDs - return them if found
       """
       query_args = { 'key': self.key,
-                     'worker': self.workerURL,
+                     'worker': self.workerURL(),
                      'file' : file,
                      'wait_time' : "45"
                      }

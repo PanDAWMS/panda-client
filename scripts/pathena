@@ -96,6 +96,8 @@ optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
+optP.add_option('--notUseTagLookup',action='store_const',const=True,dest='notUseTagLookup',default=False,
+                help="don't use Event Lookup service to retrieve relation between TAG and parent datasets")
 optP.add_option('--useCommonHalo', action='store_const', const=False, dest='useCommonHalo',  default=True,
                 help="use an integrated DS for BeamHalo")
 optP.add_option('--beamHaloDS',  action='store', dest='beamHaloDS',  default='',
@@ -300,6 +302,8 @@ optP.add_option('--panda_suppressMsg',action='store_const',const=True,dest='pand
                 help='internal parameter')
 optP.add_option('--panda_fullPathJobOs',action='store', dest='panda_fullPathJobOs', default='',
                 type='string', help='internal parameter')
+optP.add_option('--panda_tagParentFile',action='store', dest='panda_tagParentFile', default='',
+                type='string', help='internal parameter')
 
 # parse options
 options,args = optP.parse_args()
@@ -392,6 +396,7 @@ if not original_outDS_Name.endswith('/'):
 usingContainerForOut = original_outDS_Name.endswith('/')
 
 # set inDS for recursive goodRunListXML
+orig_inDS = options.inDS
 if options.panda_inDS != '':
     options.inDS = options.panda_inDS
     options.goodRunListXML = ''
@@ -1251,7 +1256,59 @@ if options.libDS != '' and not Client.isDQ2free(options.site):
         options.cloud = Client.PandaSites[convID]['cloud']
         tmpLog.info("set site:%s cloud:%s because libDS:%s exists at %s" % \
                     (options.site,options.cloud,options.libDS,libDSlocations))                
-        
+
+# get parent datasets for TAG
+useTagParentLookup = False
+if options.panda_tagParentFile != '':
+    useTagParentLookup = True
+    # load parent info
+    tagParentInfo,parentLfnToTagMap = PsubUtils.loadParentInfo(options.panda_tagParentFile)
+elif runConfig.input.inColl and options.parentDS == '' and options.inDS != '' and not options.shipinput \
+       and not options.notUseTagLookup:
+    useTagParentLookup = True
+    # get parent info from TAG DB
+    tagParentInfo,parentLfnToTagMap = PsubUtils.getTagParentInfoUsingTagQuery(options.inDS,runConfig.input.tagQuery,
+                                                                                 runConfig.input.collRefName,options.verbose)
+    # set parent datasets to inDS since job splitting uses parent file boundary
+    tmpItems = tagParentInfo.keys()
+    tmpItems.sort()
+    options.inDS = ''
+    newFileList = []
+    for tmpItem in tmpItems:
+        # check when input files are specified
+        if options.filelist != []:
+            matchInput = False
+            for tmpOptInFileName in options.filelist:
+                if tagParentInfo[tmpItem]['tagToParentLFNmap'].has_key(tmpOptInFileName):
+                    matchInput = True
+                    for tmpParentLFN in tagParentInfo[tmpItem]['tagToParentLFNmap'][tmpOptInFileName]:
+                        if not tmpParentLFN in newFileList:
+                            newFileList.append(tmpParentLFN)
+            if not matchInput:
+                continue
+        else:
+            for tmpParentLFNs in tagParentInfo[tmpItem]['tagToParentLFNmap'].values():
+                for tmpParentLFN in tmpParentLFNs:
+                    if not tmpParentLFN in newFileList:
+                        newFileList.append(tmpParentLFN)
+        options.inDS += '%s,' % tmpItem
+    options.inDS = options.inDS[:-1]
+    # set input file list
+    options.filelist = newFileList
+    
+# set TAG datasets to parentDS to reuse the framework
+if useTagParentLookup:
+    tmpTagDsList = []
+    options.parentDS = ''
+    for tmpParentDS,tmpTagInfo in tagParentInfo.iteritems():
+        if not tmpTagInfo['tagElementDS'] in tmpTagDsList:
+            tmpTagDsList.append(tmpTagInfo['tagElementDS'])
+            options.parentDS += '%s,' % tmpTagInfo['tagElementDS']
+    options.parentDS = options.parentDS[:-1]
+    # get file map in TAG datasets
+    tagFilesMap = Client.queryFilesInDataset(options.parentDS,options.verbose)
+    
+    
 # parent datasets
 parentDSlocations = None
 if options.parentDS != '':
@@ -1733,6 +1790,33 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # choose min missList
             if options.verbose:
                 tmpLog.debug("%s holds %s files" % (dsLocation,len(inputFileMap)-len(missList)))
+        # check availability of TAG files
+        if useTagParentLookup:
+            tagFileList = {}
+            tagToParentMap = {}
+            tmpLog.info("checking files in %s" % orig_inDS)
+            for tmpInputFileName,tmpInputFileVal in inputFileMap.iteritems():
+                # ignore missing or shadow files
+                if tmpInputFileName in missList or tmpInputFileName in shadowList:
+                    continue
+                # collect TAG files
+                tmpTagFileName = parentLfnToTagMap[tmpInputFileName]['lfn']
+                tagFileList[tmpTagFileName] = tagFilesMap[tmpTagFileName]
+                # keep TAG to parent LFC map
+                if not tagToParentMap.has_key(tmpTagFileName):
+                    tagToParentMap[tmpTagFileName] = []
+                if not tmpInputFileName in tagToParentMap[tmpTagFileName]:
+                    tagToParentMap[tmpTagFileName].append(tmpInputFileName)
+            # check with LFC
+            tagMissFiles = Client.getMissLFNsFromLFC(tagFileList,options.site,True,options.verbose,
+                                                     dsStr=options.parentDS)
+            for tmpTagMissFile in tagMissFiles:
+                # remove missing TAG files
+                del tagFileList[tmpTagMissFile]
+                # add parent files to missing list when corresponding TAG is unavailable
+                for tmpParentFileName in tagToParentMap[tmpTagMissFile]:
+                    if not tmpParentFileName in missList:
+                        missList.append(tmpParentFileName)
         # No files available
         if len(inputFileMap) == len(missList) and shadowList == []:
             tmpStr = "No files available on disk at %s" % options.site
@@ -1906,16 +1990,24 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
     #@ split other file types in chunks of 50 files.
     #
     if options.nEventsPerJob != -1:
-        if options.nEventsPerFile == 0:
-            options.nEventsPerFile = Client.nEvents(options.inDS,options.verbose,(not options.shipinput),inputFileList,currentDir)
-	if options.nEventsPerJob > options.nEventsPerFile:
-	    tmpDiv,tmpMod = divmod(options.nEventsPerJob,options.nEventsPerFile)
-	    options.nFilesPerJob = tmpDiv
-	    if tmpMod != 0:
-		options.nFilesPerJob += 1
-	    options.nEventsPerJob = -1
-
-	    
+        if not useTagParentLookup:
+            # static info
+            if options.nEventsPerFile == 0:
+                options.nEventsPerFile = Client.nEvents(options.inDS,options.verbose,(not options.shipinput),inputFileList,currentDir)
+            if options.nEventsPerJob > options.nEventsPerFile:
+                tmpDiv,tmpMod = divmod(options.nEventsPerJob,options.nEventsPerFile)
+                options.nFilesPerJob = tmpDiv
+                if tmpMod != 0:
+                    options.nFilesPerJob += 1
+                options.nEventsPerJob = -1
+        else:
+            # the number of events is avaliable via TAG DB
+            tmpTotalEvents = 0
+            for fileName in inputFileList:
+                tmpTotalEvents += parentLfnToTagMap[fileName]['nEvents']
+            options.split,tmpMod = divmod(tmpTotalEvents,options.nEventsPerJob)
+            if tmpMod != 0:
+                options.split += 1
     if options.split == -1:
         # count total size for inputs
         totalSize = 0 
@@ -1936,7 +2028,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             if tmpMod != 0:
                 tmpNSplit += 1
             # check size limit
-            if totalSize/tmpNSplit > maxTotalSize-dbrDsSize-safetySize:
+            if totalSize/tmpNSplit > maxTotalSize-dbrDsSize-safetySize or useTagParentLookup:
                 # reset to meet the size limit
                 tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize-dbrDsSize-safetySize)
                 if tmpMod != 0:
@@ -1945,6 +2037,25 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 divF,modF = divmod(len(inputFileList),tmpNSplit)
 		if divF == 0:
 		    divF = 1
+                # take TAG into account
+                if useTagParentLookup:
+                    tmpTagList = []
+                    tmpTagSize = 0
+                    for fileName in inputFileList[:divF]:
+                        tmpTagFileName = parentLfnToTagMap[fileName]['lfn']
+                        if not tmpTagFileName in tmpTagList:
+                            tmpTagList.append(tmpTagFileName)
+                            tmpTagSize += long(tagFileList[tmpTagFileName]['fsize'])
+                    # recalculate
+                    tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize-dbrDsSize-safetySize-tmpTagSize)
+                    if tmpMod != 0:
+                        tmpNSplit += 1
+                    # calculate N files
+                    divF,modF = divmod(len(inputFileList),tmpNSplit)
+                    if divF == 0:
+                        divF = 1
+                    if divF > defaultNFile:
+                        divF = defaultNFile
 		# reset tmpNSplit
                 tmpNSplit,tmpMod = divmod(len(inputFileList),divF)
                 if tmpMod != 0:
@@ -2587,7 +2698,17 @@ if options.inDS != '' and options.burstSubmit == '':
         tmpLog.info("all files are available at %s" % options.site)
     else:
         tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
-    tmpLog.info("use %s files" % len(inputFileList)) 
+    if not useTagParentLookup:    
+        tmpLog.info("use %s files" % len(inputFileList))
+    else:
+        tmpParentType = 'parent'
+        try:
+            if runConfig.input.collRefName.startswith('Stream'):
+                tmpParentType = re.sub('^Stream','',runConfig.input.collRefName)
+                tmpParentType = re.sub('_ref','',tmpParentType)
+        except:
+            pass
+        tmpLog.info("use %s %s files" % (len(inputFileList),tmpParentType))
 
 # disp datasetname to identify inputs
 commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
@@ -2596,6 +2717,7 @@ commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
 isDirectAccess = PsubUtils.isDirectAccess(options.site,runConfig.input.inBS,options.trf,options.ara)
 
 # split job
+nUsedByPreviousLoop = 0
 #@ Loop for jobs here
 for iSubJob in range(options.split):
     # terminate condition: no remaining files
@@ -2668,36 +2790,68 @@ for iSubJob in range(options.split):
     if options.inDS != '' or options.shipinput or options.pfnList != '':
         # calculate N files
         if options.nGBPerJob == -1:
-            (divF,modF) = divmod(len(inputFileList),options.split)
-            if modF != 0:
-                divF += 1
+	    (divF,modF) = divmod(len(inputFileList),options.split)
+	    if modF != 0:
+		divF += 1
             # if split by files was specified
             if options.nFilesPerJob > 0:
-                divF = options.nFilesPerJob 
+		divF = options.nFilesPerJob 
             # if split by events was specified then
             if options.nEventsPerJob > 0:
-               #@Calculate how many events to skip
-               nEventsToSkip = nSkips*options.nEventsPerJob
-               # @Increment number of skipped blocks
-               nSkips = nSkips + 1
-               #Take just one file
-               divF = 1
-               # @ If splitting of file per event is complete then take the next file
-               if nEventsToSkip >= options.nEventsPerFile :
-                   nEventsToSkip = 0
-                   nSkips        = 1
-                   indexFiles   += divF
+		if not useTagParentLookup:    
+                    #@Calculate how many events to skip
+                    nEventsToSkip = nSkips*options.nEventsPerJob
+                    # @Increment number of skipped blocks
+                    nSkips = nSkips + 1
+                    #Take just one file
+                    divF = 1
+                    # @ If splitting of file per event is complete then take the next file
+                    if nEventsToSkip >= options.nEventsPerFile :
+                        nEventsToSkip = 0
+                        nSkips        = 1
+                        indexFiles   += divF
+                else:
+                    # the number of events is available via TAG
+                    divF = 1
+                    nEventsToSkip = nUsedByPreviousLoop
+                    tmpSubTotalEvents = -nUsedByPreviousLoop
+                    nUsedFilesForEventSplit = 0
+                    for fileName in inputFileList[indexFiles:]:
+                        if (tmpSubTotalEvents + parentLfnToTagMap[fileName]['nEvents']) > options.nEventsPerJob:
+                            # set the number of used events
+                            nUsedByPreviousLoop += (options.nEventsPerJob - tmpSubTotalEvents)
+                            break    
+                        else:
+                            tmpSubTotalEvents += parentLfnToTagMap[fileName]['nEvents']
+                            # increment file count since all events should be used
+                            nUsedFilesForEventSplit += 1
+                            # reset
+                            nUsedByPreviousLoop = 0
+                            # next file is not used
+                            if tmpSubTotalEvents == options.nEventsPerJob:
+                                break
+                            # increment the number of files used by the subjob 
+                            divF += 1
         else:
             # calculate number of files for nGBPerJob
             divF = 0
             tmpSubTotal = 0
             tmpSubNumFiles = 0
+            tmpTagList = []
+            tmpTagSize = 0
             for fileName in inputFileList[indexFiles:]:
                 vals = inputFileMap[fileName]
                 tmpSize = long(vals['fsize'])
                 tmpSubNumFiles += 1
-                if tmpSubTotal+tmpSize > options.nGBPerJob-dbrDsSize-safetySize \
-                       or tmpSubNumFiles > PsubUtils.limit_maxNumInputs:
+                # take TAG into account
+                if useTagParentLookup:
+                    tmpTagFileName = parentLfnToTagMap[fileName]['lfn']
+                    if not tmpTagFileName in tmpTagList:
+                        tmpTagList.append(tmpTagFileName)
+                        tmpTagSize += long(tagFileList[tmpTagFileName]['fsize'])
+                # check    
+                if tmpSubTotal+tmpSize+tmpTagSize > options.nGBPerJob-dbrDsSize-safetySize \
+                       or tmpSubNumFiles+len(tmpTagList) > PsubUtils.limit_maxNumInputs:
                     break
                 divF += 1
                 tmpSubTotal += tmpSize
@@ -2708,6 +2862,9 @@ for iSubJob in range(options.split):
         tmpList = inputFileList[indexFiles:indexFiles+divF]
         if options.inDS != '' and not options.shipinput:
             totalSize = 0
+            totalTagSize = 0
+            tmpTagList = []
+            inTagListStr = ''
 	    for fileName in tmpList:
                 vals = inputFileMap[fileName]
                 # instantiate  FileSpec
@@ -2733,12 +2890,41 @@ for iSubJob in range(options.split):
                     totalSize += long(file.fsize)
                 except:
                     pass
+                # TAG
+                if useTagParentLookup:
+                    # collect parent GUIDs
+                    guidBoundary.append(file.GUID)
+                    # get TAG spec
+                    tmpTagFileName = parentLfnToTagMap[fileName]['lfn']
+                    if not tmpTagFileName in tmpTagList:
+                        tmpTagList.append(tmpTagFileName)
+                        inTagListStr += '%s,' % tmpTagFileName
+                        vals = tagFileList[tmpTagFileName]
+                        # instantiate FileSpec for TAG                   
+                        file = FileSpec()
+                        file.lfn            = tmpTagFileName
+                        file.GUID           = vals['guid']
+                        file.fsize          = vals['fsize']
+                        file.md5sum         = vals['md5sum']
+                        file.dataset        = parentLfnToTagMap[fileName]['tagDS']
+                        file.prodDBlock     = file.dataset
+                        file.dispatchDBlock = commonDispName
+                        file.type           = 'input'
+                        file.status         = 'ready'
+                        # set noshadow since single TAG may point to multiple parent files
+                        file.destinationDBlockToken = 'noshadow'
+                        jobR.addFile(file)
+                        inList.append(tmpTagFileName)
+                        totalTagSize += long(file.fsize)
+            inTagListStr = inTagListStr[:-1]
             # size check    
-            if (not isDirectAccess) and totalSize > maxTotalSize-dbrDsSize and len(tmpList) > 1:
-                tmpStr  = "A subjob has %s input files and requires %sMB of disk space " \
+            if (not isDirectAccess) and totalSize > maxTotalSize-dbrDsSize-totalTagSize and len(tmpList) > 1:
+                tmpStr  = "A subjob has %s input files and requires %sMB of disk space" \
                           % (len(tmpList), ((totalSize+dbrDsSize) >> 20))
                 if dbrDsSize != 0:
-                    tmpStr += "(DBRelease=%sMB)" % (dbrDsSize>>20)
+                    tmpStr += " (DBRelease=%sMB)" % (dbrDsSize>>20)
+                if useTagParentLookup:
+                    tmpStr += " (TAG=%sMB)" % (totalTagSize>>20)
                 tmpStr += ". It must be less than %sMB to avoid overflowing the remote disk. " \
                           % (maxTotalSize >> 20)
                 tmpStr += "Please split the job using --nFilesPerJob. If file sizes vary in large range "
@@ -2932,9 +3118,10 @@ for iSubJob in range(options.split):
         #@ Done with an input files description of the job.
         # Increment pointer (index) to a next block of files
         #@ If split by events is requested Index file is incremented in a different place (above)
-
         if options.nEventsPerJob < 0:
-          indexFiles += divF
+	    indexFiles += divF
+        if options.nEventsPerJob > 0 and useTagParentLookup:
+            indexFiles += nUsedFilesForEventSplit
     elif options.trf and options.nEventsPerJob > 0 :
         # Calculate how many events to skip mainly to set event number for evgen
         nEventsToSkip = nSkips*options.nEventsPerJob
@@ -3084,10 +3271,12 @@ for iSubJob in range(options.split):
         param += '-e '
     if options.shipinput:
         param += '--shipInput '
-        # GUID boundaries
-        if devidedByGUID:
-            param += '--guidBoundary "%s" ' % guidBoundary
-            param += '--collRefName %s ' % runConfig.input.collRefName
+    # GUID boundaries
+    if (options.shipinput and devidedByGUID) or useTagParentLookup:
+        param += '--guidBoundary "%s" ' % guidBoundary
+        param += '--collRefName %s ' % runConfig.input.collRefName
+    if useTagParentLookup and inTagListStr != '':
+        param += '--tagFileList %s ' % inTagListStr
     pStr1 = ''    
     if runConfig.other.rndmStream != []:
         pStr1 = "AtRndmGenSvc=Service('AtRndmGenSvc');AtRndmGenSvc.Seeds=["
