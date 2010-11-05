@@ -1566,3 +1566,266 @@ def writeJobDefID(jobID):
     tmpJobIdFile = open(jobid_file,'w')
     tmpJobIdFile.write(str(jobID))
     tmpJobIdFile.close()
+
+
+# calculate the number of subjobs
+def calculateNumSplit(nFilesPerJob,nGBPerJob,nEventsPerJob,
+                      maxTotalSize,dbrDsSize,safetySize,useTagParentLookup,
+                      inputFileList,inputFileMap,tagFileList,parentLfnToTagMap):
+    # count total size for inputs
+    totalSize = 0 
+    for fileName in inputFileList:
+        try:
+            vals = inputFileMap[fileName]
+            totalSize += long(vals['fsize'])
+        except:
+            pass
+    #@ If number of jobs is not defined then....
+    #@ For splitting by files case
+    if nEventsPerJob == -1 and nGBPerJob == -1:
+        if nFilesPerJob > 0:
+            defaultNFile = nFilesPerJob
+        else:
+            defaultNFile = 50
+        tmpNSplit,tmpMod = divmod(len(inputFileList),defaultNFile)
+        if tmpMod != 0:
+            tmpNSplit += 1
+        # check size limit
+        if totalSize/tmpNSplit > maxTotalSize-dbrDsSize-safetySize or useTagParentLookup:
+            # reset to meet the size limit
+            tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize-dbrDsSize-safetySize)
+            if tmpMod != 0:
+                tmpNSplit += 1
+            # calculate N files
+            divF,modF = divmod(len(inputFileList),tmpNSplit)
+            if divF == 0:
+                divF = 1
+            # take TAG into account
+            if useTagParentLookup:
+                tmpTagList = []
+                tmpTagSize = 0
+                for fileName in inputFileList[:divF]:
+                    tmpTagFileName = parentLfnToTagMap[fileName]['lfn']
+                    if not tmpTagFileName in tmpTagList:
+                        tmpTagList.append(tmpTagFileName)
+                        tmpTagSize += long(tagFileList[tmpTagFileName]['fsize'])
+                # recalculate
+                tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize-dbrDsSize-safetySize-tmpTagSize)
+                if tmpMod != 0:
+                    tmpNSplit += 1
+                # calculate N files
+                divF,modF = divmod(len(inputFileList),tmpNSplit)
+                if divF == 0:
+                    divF = 1
+                if divF > defaultNFile:
+                    divF = defaultNFile
+            # reset tmpNSplit
+            tmpNSplit,tmpMod = divmod(len(inputFileList),divF)
+            if tmpMod != 0:
+                tmpNSplit += 1
+            # check again just in case
+            iDiv = 0
+            subTotal = 0
+            for fileName in inputFileList:
+                vals = inputFileMap[fileName]
+                try:
+                    subTotal += long(vals['fsize'])
+                except:
+                    pass
+                iDiv += 1
+                if iDiv >= divF:
+                    # check
+                    if subTotal > maxTotalSize-dbrDsSize-safetySize:
+                        # recalcurate
+                        if divF != 1:
+                            divF -= 1
+                        tmpNSplit,tmpMod = divmod(len(inputFileList),divF)
+                        if tmpMod != 0:
+                            tmpNSplit += 1
+                        break
+                    # reset
+                    iDiv = 0
+                    subTotal = 0
+        # set            
+        split = tmpNSplit
+    #@ For splitting by events case
+    elif nGBPerJob == -1:
+        #@ split by number of events defined
+        defaultNFile=1 #Each job has one input file in this case
+        #@ tmpNSplit - number of jobs per file in case of splitting by event number
+        tmpNSplit, tmpMod = divmod(nEventsPerFile, nEventsPerJob)
+        if tmpMod != 0:
+            tmpNSplit +=1
+        #@ Number of Jobs calculated here:
+        split = tmpNSplit*len(inputFileList)
+    else:
+        # calcurate number of jobs for nGBPerJob
+        split = 0
+        tmpSubTotal = 0
+        tmpSubNumFiles = 0
+        for fileName in inputFileList:
+            vals = inputFileMap[fileName]
+            tmpSize = long(vals['fsize'])
+            tmpSubNumFiles += 1    
+            singleLargeFile = False
+            if tmpSubTotal+tmpSize > nGBPerJob-dbrDsSize-safetySize \
+                   or tmpSubNumFiles > limit_maxNumInputs:
+                split += 1
+                tmpSubNumFiles = 0
+                # single large file uses one job
+                if tmpSubTotal == 0:
+                    singleLargeFile = True
+                tmpSubTotal = 0
+            if not singleLargeFile:
+                tmpSubTotal += tmpSize
+        # remaining
+        if tmpSubTotal != 0:
+            split += 1    
+    # return
+    return split
+
+
+# calculate the number of subjobs when EventsPerJob is used
+def calculateNumSplitEvent(nEventsPerJob,inputFileList,shipinput,currentDir,nEventsPerFile,nFilesPerJob,inDS,verbose):
+    # get the number of events per file
+    if nEventsPerFile == 0:
+        nEventsPerFile = Client.nEvents(inDS,verbose,(not shipinput),inputFileList,currentDir)
+    # use file-boundaries since the number of events per job is larger than the number of events per file
+    if nEventsPerJob > nEventsPerFile:
+        tmpDiv,tmpMod = divmod(nEventsPerJob,nEventsPerFile)
+        # set nFilesPerJob
+        nFilesPerJob = tmpDiv
+        if tmpMod != 0:
+            nFilesPerJob += 1
+        # reset    
+        nEventsPerJob = -1
+    # return
+    return nEventsPerFile,nFilesPerJob,nEventsPerJob
+
+
+# calculate the number of subjobs when TAG parent is used
+def calculateNumSplitTAG(nEventsPerJob,inputFileList,parentLfnToTagMap):
+    # the number of events is avaliable via TAG DB
+    tmpTotalEvents = 0
+    for fileName in inputFileList:
+        tmpTotalEvents += parentLfnToTagMap[fileName]['nEvents']
+    split,tmpMod = divmod(tmpTotalEvents,nEventsPerJob)
+    if tmpMod != 0:
+        split += 1
+    # return
+    return split
+    
+
+# group files by dataset
+def groupFilesByDataset(inDS,inputDsString,inputFileList,verbose):
+    if inputDsString == '':
+        # normal inDS
+        dsString = inDS
+    else:
+        # wildcard and/or comma is used in inDS
+        dsString = inputDsString
+    # loop over all datasets
+    retMap = {}
+    for tmpDS in dsString.split(','):
+        if tmpDS.endswith('/'):
+            # get elements in container
+            elements = Client.getElementsFromContainer(tmpDS,verbose)
+        else:
+            elements = [tmpDS,]
+        # loop over all elements
+        for element in elements:
+            # get file map
+            tmpFileMap = Client.queryFilesInDataset(element,verbose)
+            # collect files
+            tmpFileList = []
+            for tmpLFN in tmpFileMap.keys():
+                # append
+                if tmpLFN in inputFileList:
+                    tmpFileList.append(tmpLFN)
+            # sort
+            tmpFileList.sort()
+            # append to return map
+            if tmpFileList != []:
+                retMap[element] = tmpFileList
+    # return
+    return retMap
+
+
+# splitter for prun
+def calculateNumSplitPrun(nFilesPerJob,nGBPerJob,inputFileList,inputFileMap,maxTotalSize,dbrDsSize,safetySize):
+    if nFilesPerJob == None and nGBPerJob < 0:
+        # count total size for inputs
+        totalSize = 0
+        for tmpLFN in inputFileList:
+            vals = inputFileMap[tmpLFN]
+            try:
+                totalSize += long(vals['fsize'])
+            except:
+                pass
+        # the number of files per max total
+        tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize-dbrDsSize-safetySize)
+        if tmpMod != 0:
+            tmpNSplit += 1
+        tmpNFiles,tmpMod = divmod(len(inputFileList),tmpNSplit)
+        # set upper limit
+        upperLimitOnFiles = 50
+        if tmpNFiles > upperLimitOnFiles:
+            tmpNFiles = upperLimitOnFiles
+        # check again just in case
+        iDiv = 0
+        subTotal = 0
+        for tmpLFN in inputFileList:
+            vals =inputFileMap[tmpLFN]
+            try:
+                subTotal += long(vals['fsize'])
+            except:
+                pass
+            iDiv += 1
+            if iDiv >= tmpNFiles:
+                # check
+                if subTotal > maxTotalSize-dbrDsSize-safetySize:
+                    # decrement
+                    tmpNFiles -= 1
+                    break
+                # reset
+                iDiv = 0
+                subTotal = 0
+        # set
+        nFilesPerJob = tmpNFiles
+    else:
+        # nGBPerJob
+        nFilesEachSubJob = []
+        subNFiles = 0
+        subTotal = dbrDsSize+safetySize
+        for tmpLFN in inputFileList:
+            vals = inputFileMap[tmpLFN]
+            fsize = long(vals['fsize'])
+            if (subTotal+fsize > maxTotalSize) or (subNFiles+1) > limit_maxNumInputs:
+                if subNFiles == 0:
+                    nFilesEachSubJob.append(1)
+                    subNFiles = 0
+                else:
+                    nFilesEachSubJob.append(subNFiles)
+                    subNFiles = 1
+                    subTotal = dbrDsSize+safetySize+fsize
+            else:
+                subNFiles += 1
+                subTotal += fsize
+        # remain
+        if subNFiles != 0:
+            nFilesEachSubJob.append(subNFiles)
+    # return
+    return nFilesPerJob,nFilesEachSubJob
+    
+
+# extract Nth field from dataset name
+def extractNthFieldFromDS(datasetName,nth):
+    items = datasetName.split('.')
+    if len(items) < (nth-1):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        errStr = "%s has only % fields < --useNthFieldForLFN=%s" % (datasetName,len(items),nth)
+        tmpLog.error(errStr)
+        sys.exit(EC_Config)
+    # return
+    return items[nth-1]

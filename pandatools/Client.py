@@ -1618,7 +1618,7 @@ def nEvents(name, verbose=False, askServer=True, fileList = {}, scanDir = '.', a
             if askServer:
                 print "Could not get the # of events from MetaDB for %s " % name
             while True:
-                str = raw_input("Enter the number of events per file : ")
+                str = raw_input("Enter the number of events per file (or set --nEventsPerFile) : ")
                 try:
                     nEvents = int(str)
                     break
@@ -1793,7 +1793,7 @@ def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList
     # get PFNS
     pfnMap = _getPFNsLFC(tmpFileMap,site,explicitSE,verbose,nFiles)
     for lfn,vals in fileMap.iteritems():
-        if not vals['guid'] in pfnMap.keys():
+        if (not vals['guid'] in pfnMap.keys()) and (not lfn in shadowList):
             missList.append(lfn)
     # return
     return missList

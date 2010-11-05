@@ -59,6 +59,10 @@ optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
+optP.add_option('--useContElementBoundary',action='store_const',const=True,dest='useContElementBoundary',default=False,
+                help="Split job in such a way that sub job do not mix files of different datasets in the input container. See --useNthFieldForLFN too")
+optP.add_option('--useNthFieldForLFN',action='store',dest='useNthFieldForLFN',default=2,type='int',
+                help="all output files from a dataset in the input container have the same middle name in LFN, when --useContElementBoundary is used. The middle name is extracted from the dataset name. The second field is used by default. i.e., if the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is used and LFN is something like user.hoge.JOBSETID.00160387.blha. One can change the extracted field using this option")
 optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
                 help='Name of an output dataset. OUTDS will contain all output files')
 optP.add_option('--destSE',action='store', dest='destSE',default='',type='string',
@@ -798,6 +802,7 @@ if options.dbRelease != '':
     dbrDsSize += long(dbrFiles[tmpDbrLFN]['fsize'])
 
 # get files in input dataset
+inputGroupFilesMap = {}
 if options.inDS != '':
     # query files in shadow dataset
     shadowList = []
@@ -1087,6 +1092,11 @@ if options.inDS != '':
     # truncate
     if options.nFiles != 0:
         inputFileList = inputFileList[:options.nFiles]
+    # group files by dataset
+    if options.useContElementBoundary:
+        tmpLog.info("checking boundaries of container elements")
+        inputGroupFilesMap = PsubUtils.groupFilesByDataset(options.inDS,inputDsString,
+                                                           inputFileList,options.verbose)
 else:
     # set cloud for no input dataset
     if options.site == "AUTO":
@@ -1367,86 +1377,6 @@ if options.nGBPerJob != -1:
         options.nGBPerJob = long(int(options.nGBPerJob)*1024*1024*1024)
         maxTotalSize = options.nGBPerJob
 
-# set number of files per job
-if options.inDS != '':
-    if options.nFilesPerJob == None and options.nGBPerJob < 0:
-        # count total size for inputs
-        totalSize = 0
-        for tmpLFN in inputFileList:
-            vals = inputFileMap[tmpLFN]
-            try:
-                totalSize += long(vals['fsize'])
-            except:
-                pass
-        # the number of files per max total
-        tmpNSplit,tmpMod = divmod(totalSize,maxTotalSize-dbrDsSize-safetySize)
-        if tmpMod != 0:
-            tmpNSplit += 1
-        tmpNFiles,tmpMod = divmod(len(inputFileList),tmpNSplit)
-        # set upper limit
-        upperLimitOnFiles = 50
-        if tmpNFiles > upperLimitOnFiles:
-            tmpNFiles = upperLimitOnFiles
-        # check again just in case
-        iDiv = 0
-        subTotal = 0
-        for tmpLFN in inputFileList:
-            vals =inputFileMap[tmpLFN]
-            try:
-                subTotal += long(vals['fsize'])
-            except:
-                pass
-            iDiv += 1
-            if iDiv >= tmpNFiles:
-                # check
-                if subTotal > maxTotalSize-dbrDsSize-safetySize:
-                    # decrement
-                    tmpNFiles -= 1
-                    break
-                # reset
-                iDiv = 0
-                subTotal = 0
-        # set
-        options.nFilesPerJob = tmpNFiles
-    else:
-        # nGBPerJob
-        nFilesEachSubJob = []
-        subNFiles = 0
-        subTotal = dbrDsSize+safetySize
-        for tmpLFN in inputFileList:
-            vals = inputFileMap[tmpLFN]
-            fsize = long(vals['fsize'])
-            if (subTotal+fsize > maxTotalSize) or (subNFiles+1) > PsubUtils.limit_maxNumInputs:
-                if subNFiles == 0:
-                    nFilesEachSubJob.append(1)
-                    subNFiles = 0
-                else:
-                    nFilesEachSubJob.append(subNFiles)
-                    subNFiles = 1
-                    subTotal = dbrDsSize+safetySize+fsize
-            else:
-                subNFiles += 1
-                subTotal += fsize
-        # remain
-        if subNFiles != 0:
-            nFilesEachSubJob.append(subNFiles)
-        
-
-# calculate number of jobs
-if options.nJobs == -1:
-    if options.inDS == '':
-        options.nJobs = 1
-    elif options.nGBPerJob < 0:
-        rest = len(inputFileList) % options.nFilesPerJob
-        if rest == 0:
-            options.nJobs = len(inputFileList) / options.nFilesPerJob
-        else:
-            options.nJobs = (len(inputFileList)-rest) / options.nFilesPerJob
-            options.nJobs += 1
-    else:
-        # nGBPerJob
-        options.nJobs = len(nFilesEachSubJob)
-
 # read jobID
 jobDefinitionID = 1
 jobid_file = '%s/pjobid.dat' % os.environ['PANDA_CONFIG_ROOT']
@@ -1673,318 +1603,358 @@ commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
 # check access method
 isDirectAccess = PsubUtils.isDirectAccess(options.site)
 
-# runJobs
-indexOffsetMap = {}
-jobsetIDMapForLFN = {}
-numFilesMap = {}
-for iJob in range(options.nJobs):
-    jobR = JobSpec()
-    jobR.jobDefinitionID   = jobDefinitionID
-    if not options.panda_jobsetID in [None,'NULL']:
-        jobR.jobsetID      = options.panda_jobsetID
-    jobR.jobName           = jobName
-    jobR.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
-    if options.provenanceID != -1:
-        jobR.jobExecutionID = options.provenanceID
-    if options.panda_origFullExecString == '':
-        jobR.metadata = fullExecString
-    else:
-        jobR.metadata = urllib.unquote(options.panda_origFullExecString)
-    if athenaVer != '':
-        jobR.AtlasRelease  = athenaVer
-        jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
-    jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
-    if options.express:
-        jobR.specialHandling = 'express'
-    jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
-    # memory
-    if options.memory != -1:
-        jobR.minRamCount = options.memory
-    # CPU count
-    if options.maxCpuCount != -1:
-        jobR.maxCpuCount = options.maxCpuCount
-    jobR.destinationDBlock = original_outDS_Name
-    if Client.isDQ2free(options.site):
-        # flag to use non-DQ2 output
-        jobR.destinationSE = 'local'
-    elif options.destSE != '':
-        # write outputs to destSE
-        jobR.destinationSE = options.destSE
-    else:                
-        jobR.destinationSE = options.site
-    jobR.prodSourceLabel   = 'user'
-    if options.processingType != '':
-        jobR.processingType = options.processingType
-    if options.seriesLabel != '':    
-        jobR.prodSeriesLabel = options.seriesLabel
-    jobR.workingGroup      = options.workingGroup    
-    jobR.assignedPriority  = 1000
-    jobR.computingSite     = options.site
-    jobR.cloud             = Client.PandaSites[options.site]['cloud']
-    jobR.jobParameters     = '-j "%s" ' % jobScript
-    # source URL
-    matchURL = re.search("(http.*://[^/]+)/",Client.baseURLSSL)
-    if matchURL != None:
-        jobR.jobParameters += "--sourceURL %s " % matchURL.group(1)
-    # use Athena packages
-    if options.useAthenaPackages:
-        jobR.jobParameters += "--useAthenaPackages "
-    # write input to txt
-    if options.writeInputToTxt != '':
-        jobR.jobParameters += "--writeInputToTxt %s " % options.writeInputToTxt       
-    if options.jobParams != '':
-        # random seed
-        tmpJobO = options.jobParams
-        for tmpItem in tmpJobO.split():
-            match = re.search('%RNDM=(\d+)( |$|\'|\"|;)',tmpItem)
-            if match:
-                tmpRndmNum = int(match.group(1)) + iJob
-                # replace parameters
-                tmpJobO = re.sub(match.group(0),'%s%s' % (tmpRndmNum,match.group(2)),tmpJobO)
-        # DBR
-        if '%DB:LATEST' in tmpJobO and options.dbRelease != '':
-            tmpJobO = tmpJobO.replace('%DB:LATEST',options.dbRelease.split(':')[-1])
-        jobR.jobParameters += '-p "%s" ' % urllib.quote(tmpJobO)
-    # source files
-    if not options.nobuild:
-        fileS = FileSpec()
-        fileS.lfn            = fileBO.lfn
-        fileS.GUID           = fileBO.GUID
-        fileS.type           = 'input'
-        fileS.status         = fileBO.status
-        fileS.dataset        = fileBO.destinationDBlock
-        fileS.dispatchDBlock = fileBO.destinationDBlock
-        jobR.addFile(fileS)
-        jobR.jobParameters  += '-l %s ' % fileS.lfn    
-    # additional files for libDS or noBuild
-    if options.libDS != "" or options.nobuild:
-        jobR.jobParameters += '-a %s ' % archiveName
-    # input files
+# create single submission block when ContElementBoundary is not used
+if inputGroupFilesMap=={} or not options.useContElementBoundary:
     if options.inDS != '':
-        totalSize = 0
-        if options.nGBPerJob < 0:
-            indexIn = iJob*options.nFilesPerJob
-            inList = inputFileList[indexIn:indexIn+options.nFilesPerJob]
+        inputGroupFilesMap[options.inDS] = inputFileList
+    else:
+        inputGroupFilesMap['singleblock'] = []
+
+# loop over all blocks
+totalIndexJob     = 0
+for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
+    b_nJobs        = options.nJobs
+    b_nFilesPerJob = options.nFilesPerJob
+    # set number of files per job
+    if options.inDS != '':
+        b_nFilesPerJob,nFilesEachSubJob = PsubUtils.calculateNumSplitPrun(b_nFilesPerJob,options.nGBPerJob,
+                                                                          b_inputFileList,inputFileMap,maxTotalSize,
+                                                                          dbrDsSize,safetySize)
+    # calculate number of jobs
+    if b_nJobs == -1:
+        if options.inDS == '':
+            b_nJobs = 1
+        elif options.nGBPerJob < 0:
+            rest = len(b_inputFileList) % b_nFilesPerJob
+            if rest == 0:
+                b_nJobs = len(b_inputFileList) / b_nFilesPerJob
+            else:
+                b_nJobs = (len(b_inputFileList)-rest) / b_nFilesPerJob
+                b_nJobs += 1
         else:
             # nGBPerJob
-            indexIn = 0
-            for tmpNFiles in nFilesEachSubJob[:iJob]:
-                indexIn += tmpNFiles
-            inList = inputFileList[indexIn:indexIn+nFilesEachSubJob[iJob]]    
-        if inList == []:
-            break
-        for tmpLFN in inList:
-            vals = inputFileMap[tmpLFN]
-            fileI = FileSpec()
-            fileI.lfn        = tmpLFN
-            fileI.GUID       = vals['guid']
-	    fileI.fsize      = vals['fsize']
-	    fileI.md5sum     = vals['md5sum']
-            if vals.has_key('dataset'):
-                fileI.dataset    = vals['dataset']
+            b_nJobs = len(nFilesEachSubJob)
+    # LFN description
+    b_descriptionInLFN = options.descriptionInLFN
+    if options.useContElementBoundary:
+        tmpDescription = PsubUtils.extractNthFieldFromDS(b_inputDatasetName,options.useNthFieldForLFN)
+        if b_descriptionInLFN != '':
+            b_descriptionInLFN += '.%s' % tmpDescription
+        else:
+            b_descriptionInLFN = tmpDescription            
+    # runJobs
+    indexOffsetMap    = {}
+    jobsetIDMapForLFN = {}
+    numFilesMap       = {}
+    for iJob in range(b_nJobs):
+        jobR = JobSpec()
+        jobR.jobDefinitionID   = jobDefinitionID
+        if not options.panda_jobsetID in [None,'NULL']:
+            jobR.jobsetID      = options.panda_jobsetID
+        jobR.jobName           = jobName
+        jobR.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
+        if options.provenanceID != -1:
+            jobR.jobExecutionID = options.provenanceID
+        if options.panda_origFullExecString == '':
+            jobR.metadata = fullExecString
+        else:
+            jobR.metadata = urllib.unquote(options.panda_origFullExecString)
+        if athenaVer != '':
+            jobR.AtlasRelease  = athenaVer
+            jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
+        jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
+        if options.express:
+            jobR.specialHandling = 'express'
+        jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
+        # memory
+        if options.memory != -1:
+            jobR.minRamCount = options.memory
+        # CPU count
+        if options.maxCpuCount != -1:
+            jobR.maxCpuCount = options.maxCpuCount
+        jobR.destinationDBlock = original_outDS_Name
+        if Client.isDQ2free(options.site):
+            # flag to use non-DQ2 output
+            jobR.destinationSE = 'local'
+        elif options.destSE != '':
+            # write outputs to destSE
+            jobR.destinationSE = options.destSE
+        else:                
+            jobR.destinationSE = options.site
+        jobR.prodSourceLabel   = 'user'
+        if options.processingType != '':
+            jobR.processingType = options.processingType
+        if options.seriesLabel != '':    
+            jobR.prodSeriesLabel = options.seriesLabel
+        jobR.workingGroup      = options.workingGroup    
+        jobR.assignedPriority  = 1000
+        jobR.computingSite     = options.site
+        jobR.cloud             = Client.PandaSites[options.site]['cloud']
+        jobR.jobParameters     = '-j "%s" ' % jobScript
+        # source URL
+        matchURL = re.search("(http.*://[^/]+)/",Client.baseURLSSL)
+        if matchURL != None:
+            jobR.jobParameters += "--sourceURL %s " % matchURL.group(1)
+        # use Athena packages
+        if options.useAthenaPackages:
+            jobR.jobParameters += "--useAthenaPackages "
+        # write input to txt
+        if options.writeInputToTxt != '':
+            jobR.jobParameters += "--writeInputToTxt %s " % options.writeInputToTxt       
+        if options.jobParams != '':
+            # random seed
+            tmpJobO = options.jobParams
+            for tmpItem in tmpJobO.split():
+                match = re.search('%RNDM=(\d+)( |$|\'|\"|;)',tmpItem)
+                if match:
+                    tmpRndmNum = int(match.group(1)) + iJob
+                    # replace parameters
+                    tmpJobO = re.sub(match.group(0),'%s%s' % (tmpRndmNum,match.group(2)),tmpJobO)
+            # DBR
+            if '%DB:LATEST' in tmpJobO and options.dbRelease != '':
+                tmpJobO = tmpJobO.replace('%DB:LATEST',options.dbRelease.split(':')[-1])
+            jobR.jobParameters += '-p "%s" ' % urllib.quote(tmpJobO)
+        # source files
+        if not options.nobuild:
+            fileS = FileSpec()
+            fileS.lfn            = fileBO.lfn
+            fileS.GUID           = fileBO.GUID
+            fileS.type           = 'input'
+            fileS.status         = fileBO.status
+            fileS.dataset        = fileBO.destinationDBlock
+            fileS.dispatchDBlock = fileBO.destinationDBlock
+            jobR.addFile(fileS)
+            jobR.jobParameters  += '-l %s ' % fileS.lfn    
+        # additional files for libDS or noBuild
+        if options.libDS != "" or options.nobuild:
+            jobR.jobParameters += '-a %s ' % archiveName
+        # input files
+        if options.inDS != '':
+            totalSize = 0
+            if options.nGBPerJob < 0:
+                indexIn = iJob*b_nFilesPerJob
+                inList = b_inputFileList[indexIn:indexIn+b_nFilesPerJob]
             else:
-                fileI.dataset    = options.inDS
-            fileI.prodDBlock = fileI.dataset
-            fileI.type       = 'input'
-            fileI.status     = 'ready'
-            fileI.dispatchDBlock = commonDispName
-            jobR.addFile(fileI)
-            try:
-                totalSize += long(fileI.fsize)
-            except:
-                pass
-        tmpInputMap = {'IN': copy.deepcopy(inList)}  
-        # secondary datasets
-        secMap = {}
-        for tmpSecDS,tmpSecVal in options.secondaryDSs.iteritems():
-            tmpIndexSec = iJob*tmpSecVal['nFiles']
-            tmpSecList  = tmpSecVal['files'][tmpIndexSec:tmpIndexSec+tmpSecVal['nFiles']]
-            # check length
-            if len(tmpSecList) < tmpSecVal['nFiles']:
-                errStr  = "only %s files in %s are available at %s which is insufficient for splitting. " % \
-                          (len(tmpSecVal['files']),tmpSecDS,options.site)
-                errStr += "nJobs*nFilesPerJob=%s*%s=%s files are required" % (options.nJobs,tmpSecVal['nFiles'],
-                                                                              options.nJobs*tmpSecVal['nFiles'])
-                tmpLog.error(errStr)            
-                sys.exit(EC_Split)
-            # add FileSpec
-            tmpSecLfnList = []
-            for vals in tmpSecList:
+                # nGBPerJob
+                indexIn = 0
+                for tmpNFiles in nFilesEachSubJob[:iJob]:
+                    indexIn += tmpNFiles
+                inList = b_inputFileList[indexIn:indexIn+nFilesEachSubJob[iJob]]    
+            if inList == []:
+                break
+            for tmpLFN in inList:
+                vals = inputFileMap[tmpLFN]
                 fileI = FileSpec()
-                fileI.lfn        = vals['LFN']
+                fileI.lfn        = tmpLFN
                 fileI.GUID       = vals['guid']
                 fileI.fsize      = vals['fsize']
                 fileI.md5sum     = vals['md5sum']
-                fileI.dataset    = tmpSecDS
-                fileI.prodDBlock = tmpSecDS
+                if vals.has_key('dataset'):
+                    fileI.dataset    = vals['dataset']
+                else:
+                    fileI.dataset    = options.inDS
+                fileI.prodDBlock = fileI.dataset
                 fileI.type       = 'input'
                 fileI.status     = 'ready'
                 fileI.dispatchDBlock = commonDispName
                 jobR.addFile(fileI)
-                inList.append(fileI.lfn)
-                tmpSecLfnList.append(fileI.lfn)
                 try:
                     totalSize += long(fileI.fsize)
                 except:
                     pass
-            # append to map    
-            tmpInputMap[tmpSecVal['streamName']] = tmpSecLfnList
-        # size check    
-        if (not isDirectAccess) and totalSize > maxTotalSize-dbrDsSize:
-            errStr  = "A subjob has %s input files and requires %sMB of disk space " \
-                  % (len(inList), ((totalSize+dbrDsSize) >> 20))
-            if dbrDsSize != 0:
-                errStr += "(DBRelease=%sMB)" % (dbrDsSize>>20)
-            errStr += ". It must be less than %sMB to avoid overflowing the remote disk. " \
-                  % (maxTotalSize >> 20)
-            errStr += "Please split the job using --nFilesPerJob. If file sizes vary in large range "
-	    errStr += "--nGBPerJob may help. e.g., --nGBPerJob=MAX"
-            tmpLog.error(errStr)            
-            sys.exit(EC_Split)
-        # set parameter
-        jobR.jobParameters += '-i "%s" ' % inList
-	if options.secondaryDSs != {}:
-	    jobR.jobParameters += '--inMap "%s" ' % tmpInputMap
-            # count number of files
-            for tmpStreamName,tmpFileListForCount in tmpInputMap.iteritems():
-                if not numFilesMap.has_key(tmpStreamName):
-                    numFilesMap[tmpStreamName] = 0
-                numFilesMap[tmpStreamName] += len(tmpFileListForCount)
-    # DBRelease
-    if options.dbRelease != '':
-        tmpItems = options.dbRelease.split(':')
-        tmpDbrDS  = tmpItems[0]
-        tmpDbrLFN = tmpItems[1]
-        # instantiate  FileSpec
-        fileName = tmpDbrLFN
-        vals     = dbrFiles[tmpDbrLFN]
-        file = FileSpec()
-        file.lfn            = fileName
-        file.GUID           = vals['guid']
-        file.fsize          = vals['fsize']
-        file.md5sum         = vals['md5sum']
-        file.dataset        = tmpDbrDS
-        file.prodDBlock     = tmpDbrDS
-        file.dispatchDBlock = tmpDbrDS
-        file.type       = 'input'
-        file.status     = 'ready'
-        jobR.addFile(file)
-        # set DBRelease parameter
-        jobR.jobParameters += '--dbrFile %s ' % file.lfn
-        if options.dbRunNumber != '':
-            jobR.jobParameters += '--dbrRun %s ' % options.dbRunNumber
-        # expansion
-        if options.notExpandDBR:
-            jobR.jobParameters += '--notExpandDBR '
-    # output files
-    outMap = {}
-    dsNameWoSlash = re.sub('/$','',original_outDS_Name)
-    lfnPrefixForLog = dsNameWoSlash 
-    if options.outputs != '':
-        for tmpLFN in options.outputs.split(','):
-            # set offset to 0 for fresh output dataset
-            if existingFilesInOutDS == {}:
-                indexOffsetMap[tmpLFN] = 0
-                jobsetIDMapForLFN[tmpLFN] = ''
-                if dsNameWoSlash.startswith('group'):
-		    # append group job SN since group.xyz.jobsetID may be duplicated
-                    jobsetIDMapForLFN[tmpLFN] += "$GROUPJOBSN_"
-                jobsetIDMapForLFN[tmpLFN] += '$JOBSETID'    
-            # offset is already obtained
-            if indexOffsetMap.has_key(tmpLFN):
-                idxOffset = indexOffsetMap[tmpLFN]
-                getOffset = False
-            else:
-                idxOffset = 0
-                getOffset = True
-            # new LFN
-            matchLFN = re.search('^([^\.]+)\.([^\.]+)\.',dsNameWoSlash)
-            if matchLFN != None and original_outDS_Name.endswith('/'):
-                flagUseNewLFN = True
-                if jobsetIDMapForLFN.has_key(tmpLFN) and jobsetIDMapForLFN[tmpLFN] != None:
-                    lfnPrefix = '%s.%s.%s' % (matchLFN.group(1),matchLFN.group(2),jobsetIDMapForLFN[tmpLFN])
-                else:
-                    lfnPrefix = '%s.%s.$JOBSETID' % (matchLFN.group(1),matchLFN.group(2))                    
-		if options.descriptionInLFN != '':
-		    lfnPrefix += '.%s' % options.descriptionInLFN
-            else:
-                flagUseNewLFN = False
-                lfnPrefix = dsNameWoSlash
-            tmpNewLFN = '%s._%05d.%s' % (lfnPrefix,idxOffset+iJob+1,tmpLFN)
-            lfnPrefixForLog = lfnPrefix
-            # change * to XYZ and add .tgz
-	    if tmpNewLFN.find('*') != -1:
-		tmpNewLFN = tmpNewLFN.replace('*','XYZ')
-		tmpNewLFN = '%s.tgz' % tmpNewLFN
-            # get offset
-            if getOffset:
-                oldHead = '%s._%05d.' % (lfnPrefix,idxOffset+iJob+1)
-                if not flagUseNewLFN:
-                    # old LFN format : Datasetname.XYZ
-                    filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % lfnPrefix)
-                    # get offset    
-                    idxOffset = PsubUtils.getMaxIndex(existingFilesInOutDS,filePatt)
-                    # append
-                    indexOffsetMap[tmpLFN] = idxOffset
-                    # correct
-                    newHead = '%s._%05d.' % (dsNameWoSlash,idxOffset+iJob+1)
-                    tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)                    
-                else:
-                    # short LFN : user.nickname.XYZ
-                    filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % lfnPrefix.replace('$JOBSETID','([_\d]+)'))
-                    # get offset    
-                    idxOffset,jobsetIDinLFN = PsubUtils.getMaxIndex(existingFilesInOutDS,filePatt,shortLFN=True)
-                    # append
-                    indexOffsetMap[tmpLFN] = idxOffset
-                    jobsetIDMapForLFN[tmpLFN] = jobsetIDinLFN
-                    # correct
-                    if jobsetIDinLFN != None:
-                        newHead = '%s._%05d.' % (lfnPrefix.replace('$JOBSETID',jobsetIDinLFN),idxOffset+iJob+1)
-                        tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)
-                    elif dsNameWoSlash.startswith('group'):
-			# append group job SN since group.xyz.jobsetID may be duplicated 
-                        newHead = '%s._%05d.' % (lfnPrefix.replace('$JOBSETID','$GROUPJOBSN_$JOBSETID'),idxOffset+iJob+1)
-                        tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)
-            # set file spec
+            tmpInputMap = {'IN': copy.deepcopy(inList)}  
+            # secondary datasets
+            secMap = {}
+            for tmpSecDS,tmpSecVal in options.secondaryDSs.iteritems():
+                tmpIndexSec = iJob*tmpSecVal['nFiles']
+                tmpSecList  = tmpSecVal['files'][tmpIndexSec:tmpIndexSec+tmpSecVal['nFiles']]
+                # check length
+                if len(tmpSecList) < tmpSecVal['nFiles']:
+                    errStr  = "only %s files in %s are available at %s which is insufficient for splitting. " % \
+                              (len(tmpSecVal['files']),tmpSecDS,options.site)
+                    errStr += "nJobs*nFilesPerJob=%s*%s=%s files are required" % (b_nJobs,tmpSecVal['nFiles'],
+                                                                                  b_nJobs*tmpSecVal['nFiles'])
+                    tmpLog.error(errStr)            
+                    sys.exit(EC_Split)
+                # add FileSpec
+                tmpSecLfnList = []
+                for vals in tmpSecList:
+                    fileI = FileSpec()
+                    fileI.lfn        = vals['LFN']
+                    fileI.GUID       = vals['guid']
+                    fileI.fsize      = vals['fsize']
+                    fileI.md5sum     = vals['md5sum']
+                    fileI.dataset    = tmpSecDS
+                    fileI.prodDBlock = tmpSecDS
+                    fileI.type       = 'input'
+                    fileI.status     = 'ready'
+                    fileI.dispatchDBlock = commonDispName
+                    jobR.addFile(fileI)
+                    inList.append(fileI.lfn)
+                    tmpSecLfnList.append(fileI.lfn)
+                    try:
+                        totalSize += long(fileI.fsize)
+                    except:
+                        pass
+                # append to map    
+                tmpInputMap[tmpSecVal['streamName']] = tmpSecLfnList
+            # size check    
+            if (not isDirectAccess) and totalSize > maxTotalSize-dbrDsSize:
+                errStr  = "A subjob has %s input files and requires %sMB of disk space " \
+                      % (len(inList), ((totalSize+dbrDsSize) >> 20))
+                if dbrDsSize != 0:
+                    errStr += "(DBRelease=%sMB)" % (dbrDsSize>>20)
+                errStr += ". It must be less than %sMB to avoid overflowing the remote disk. " \
+                      % (maxTotalSize >> 20)
+                errStr += "Please split the job using --nFilesPerJob. If file sizes vary in large range "
+                errStr += "--nGBPerJob may help. e.g., --nGBPerJob=MAX"
+                tmpLog.error(errStr)            
+                sys.exit(EC_Split)
+            # set parameter
+            jobR.jobParameters += '-i "%s" ' % inList
+            if options.secondaryDSs != {}:
+                jobR.jobParameters += '--inMap "%s" ' % tmpInputMap
+                # count number of files
+                for tmpStreamName,tmpFileListForCount in tmpInputMap.iteritems():
+                    if not numFilesMap.has_key(tmpStreamName):
+                        numFilesMap[tmpStreamName] = 0
+                    numFilesMap[tmpStreamName] += len(tmpFileListForCount)
+        # DBRelease
+        if options.dbRelease != '':
+            tmpItems = options.dbRelease.split(':')
+            tmpDbrDS  = tmpItems[0]
+            tmpDbrLFN = tmpItems[1]
+            # instantiate  FileSpec
+            fileName = tmpDbrLFN
+            vals     = dbrFiles[tmpDbrLFN]
             file = FileSpec()
-            file.lfn               = tmpNewLFN              
-            file.type              = 'output'
-            file.dataset           = original_outDS_Name
-            file.destinationSE     = jobR.destinationSE
-            file.destinationDBlock = options.outDS
+            file.lfn            = fileName
+            file.GUID           = vals['guid']
+            file.fsize          = vals['fsize']
+            file.md5sum         = vals['md5sum']
+            file.dataset        = tmpDbrDS
+            file.prodDBlock     = tmpDbrDS
+            file.dispatchDBlock = tmpDbrDS
+            file.type       = 'input'
+            file.status     = 'ready'
             jobR.addFile(file)
-            outMap[tmpLFN] = file.lfn
-        # set parameter
-        jobR.jobParameters += '-o "%s" ' % str(outMap)
-    # log
-    file = FileSpec()
-    file.lfn               = '%s._$PANDAID.log.tgz' % lfnPrefixForLog
-    file.type              = 'log'
-    file.dataset           = original_outDS_Name
-    file.destinationSE     = jobR.destinationSE
-    file.destinationDBlock = options.outDS
-    jobR.addFile(file)
-    jobR.jobParameters += '-r %s ' % runDir
-    # set space token
-    for file in jobR.Files:
-        if file.type in ['output','log']:
-            if options.spaceToken != '':
-		if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
-		    file.destinationDBlockToken = options.spaceToken
-            else:
-                defaulttoken = Client.PandaSites[options.site]['defaulttoken']
-                file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
-    # set prodDBlock
-    jobR.prodDBlock = PsubUtils.getProdDBlock(jobR,options.inDS)
-    # write outputs to Chirp Server
-    if options.useChirpServer != '':
-        PsubUtils.setCHIRPtokenToOutput(jobR,options.useChirpServer)
-    # check job spec
-    PsubUtils.checkJobSpec(jobR)
-    # append
-    if options.verbose:    
-        tmpLog.debug(jobR.jobParameters)
-    jobList.append(jobR)
+            # set DBRelease parameter
+            jobR.jobParameters += '--dbrFile %s ' % file.lfn
+            if options.dbRunNumber != '':
+                jobR.jobParameters += '--dbrRun %s ' % options.dbRunNumber
+            # expansion
+            if options.notExpandDBR:
+                jobR.jobParameters += '--notExpandDBR '
+        # output files
+        outMap = {}
+        dsNameWoSlash = re.sub('/$','',original_outDS_Name)
+        lfnPrefixForLog = dsNameWoSlash 
+        if options.outputs != '':
+            for tmpLFN in options.outputs.split(','):
+                # set offset to 0 for fresh output dataset
+                if existingFilesInOutDS == {}:
+                    indexOffsetMap[tmpLFN] = 0
+                    jobsetIDMapForLFN[tmpLFN] = ''
+                    if dsNameWoSlash.startswith('group'):
+                        # append group job SN since group.xyz.jobsetID may be duplicated
+                        jobsetIDMapForLFN[tmpLFN] += "$GROUPJOBSN_"
+                    jobsetIDMapForLFN[tmpLFN] += '$JOBSETID'    
+                # offset is already obtained
+                if indexOffsetMap.has_key(tmpLFN):
+                    idxOffset = indexOffsetMap[tmpLFN]
+                    getOffset = False
+                else:
+                    idxOffset = 0
+                    getOffset = True
+                # new LFN
+                matchLFN = re.search('^([^\.]+)\.([^\.]+)\.',dsNameWoSlash)
+                if matchLFN != None and original_outDS_Name.endswith('/'):
+                    flagUseNewLFN = True
+                    if jobsetIDMapForLFN.has_key(tmpLFN) and jobsetIDMapForLFN[tmpLFN] != None:
+                        lfnPrefix = '%s.%s.%s' % (matchLFN.group(1),matchLFN.group(2),jobsetIDMapForLFN[tmpLFN])
+                    else:
+                        lfnPrefix = '%s.%s.$JOBSETID' % (matchLFN.group(1),matchLFN.group(2))                    
+                    if b_descriptionInLFN != '':
+                        lfnPrefix += '.%s' % b_descriptionInLFN
+                else:
+                    flagUseNewLFN = False
+                    lfnPrefix = dsNameWoSlash
+                tmpNewLFN = '%s._%05d.%s' % (lfnPrefix,idxOffset+totalIndexJob+1,tmpLFN)
+                lfnPrefixForLog = lfnPrefix
+                # change * to XYZ and add .tgz
+                if tmpNewLFN.find('*') != -1:
+                    tmpNewLFN = tmpNewLFN.replace('*','XYZ')
+                    tmpNewLFN = '%s.tgz' % tmpNewLFN
+                # get offset
+                if getOffset:
+                    oldHead = '%s._%05d.' % (lfnPrefix,idxOffset+totalIndexJob+1)
+                    if not flagUseNewLFN:
+                        # old LFN format : Datasetname.XYZ
+                        filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % lfnPrefix)
+                        # get offset    
+                        idxOffset = PsubUtils.getMaxIndex(existingFilesInOutDS,filePatt)
+                        # append
+                        indexOffsetMap[tmpLFN] = idxOffset
+                        # correct
+                        newHead = '%s._%05d.' % (dsNameWoSlash,idxOffset+totalIndexJob+1)
+                        tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)                    
+                    else:
+                        # short LFN : user.nickname.XYZ
+                        filePatt = tmpNewLFN.replace(oldHead,'%s\._(\d+)\.' % lfnPrefix.replace('$JOBSETID','([_\d]+)'))
+                        # get offset    
+                        idxOffset,jobsetIDinLFN = PsubUtils.getMaxIndex(existingFilesInOutDS,filePatt,shortLFN=True)
+                        # append
+                        indexOffsetMap[tmpLFN] = idxOffset
+                        jobsetIDMapForLFN[tmpLFN] = jobsetIDinLFN
+                        # correct
+                        if jobsetIDinLFN != None:
+                            newHead = '%s._%05d.' % (lfnPrefix.replace('$JOBSETID',jobsetIDinLFN),idxOffset+totalIndexJob+1)
+                            tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)
+                        elif dsNameWoSlash.startswith('group'):
+                            # append group job SN since group.xyz.jobsetID may be duplicated 
+                            newHead = '%s._%05d.' % (lfnPrefix.replace('$JOBSETID','$GROUPJOBSN_$JOBSETID'),idxOffset+totalIndexJob+1)
+                            tmpNewLFN = tmpNewLFN.replace(oldHead,newHead)
+                # set file spec
+                file = FileSpec()
+                file.lfn               = tmpNewLFN              
+                file.type              = 'output'
+                file.dataset           = original_outDS_Name
+                file.destinationSE     = jobR.destinationSE
+                file.destinationDBlock = options.outDS
+                jobR.addFile(file)
+                outMap[tmpLFN] = file.lfn
+            # set parameter
+            jobR.jobParameters += '-o "%s" ' % str(outMap)
+        # log
+        file = FileSpec()
+        file.lfn               = '%s._$PANDAID.log.tgz' % lfnPrefixForLog
+        file.type              = 'log'
+        file.dataset           = original_outDS_Name
+        file.destinationSE     = jobR.destinationSE
+        file.destinationDBlock = options.outDS
+        jobR.addFile(file)
+        jobR.jobParameters += '-r %s ' % runDir
+        # set space token
+        for file in jobR.Files:
+            if file.type in ['output','log']:
+                if options.spaceToken != '':
+                    if Client.PandaSites[options.site]['setokens'].has_key(options.spaceToken):
+                        file.destinationDBlockToken = options.spaceToken
+                else:
+                    defaulttoken = Client.PandaSites[options.site]['defaulttoken']
+                    file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
+        # set prodDBlock
+        jobR.prodDBlock = PsubUtils.getProdDBlock(jobR,options.inDS)
+        # write outputs to Chirp Server
+        if options.useChirpServer != '':
+            PsubUtils.setCHIRPtokenToOutput(jobR,options.useChirpServer)
+        # check job spec
+        PsubUtils.checkJobSpec(jobR)
+        # append
+        if options.verbose:    
+            tmpLog.debug(jobR.jobParameters)
+        jobList.append(jobR)
+        totalIndexJob += 1
 
 # print the number of used files including secondary DSs
 if options.inDS != '' and options.secondaryDSs != {}:
@@ -2000,6 +1970,10 @@ if options.inDS != '' and options.secondaryDSs != {}:
 jobsetID = options.panda_jobsetID
 
 # no submit 
+if options.nosubmit:
+    tmpLog.info("%s subjobs to be submitted to %s" % (len(jobList),options.site))
+
+# submit 
 if not options.nosubmit:
 
     # upload proxy for glexec

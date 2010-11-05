@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed treatment of used files
+  * added --useContElementBoundary to pathena/prun 
+
 0.3.10 (11/3/2010)
   * fixed a bug related to useTagParent
 
