@@ -25,6 +25,7 @@ current
   * fixed treatment of used files
   * added --useContElementBoundary to pathena/prun 
   * added --prodSourceLabel to prun
+  * fixed --excludeFile of prun
 
 0.3.10 (11/3/2010)
   * fixed a bug related to useTagParent

@@ -1264,8 +1264,16 @@ else:
 		    workDirFiles.append(tmpPath)
 		    emptyFlag = False
 		# add empty directory		
-		if emptyFlag and tmpDirs==[]:
+		if emptyFlag and tmpDirs==[] and tmpFiles==[]:
 		    tmpPath = re.sub('^\./','',tmpRoot)
+		    # check exclude pattern
+		    excludePatFlag = False
+		    for tmpPatt in AthenaUtils.excludeFile:
+			if re.search(tmpPatt,tmpPath) != None:
+			    excludePatFlag = True
+			    break
+		    if excludePatFlag:
+			continue
 		    # skip tmpDir
 		    if tmpPath.split('/')[-1] == tmpDir.split('/')[-1]:
 			continue
