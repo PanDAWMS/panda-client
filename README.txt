@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.12 (11/9/2010)
+  * fixed splitter for prun
+
 0.3.11 (11/9/2010)
   * added --useContElementBoundary to pathena/prun 
   * added --prodSourceLabel to prun
