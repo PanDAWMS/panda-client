@@ -21,9 +21,13 @@ pathena -h
 
 ** Release Note
 
-current
-  * fixed treatment of used files
+0.3.12 (11/9/2010)
+  * fixed splitter for prun
+
+0.3.11 (11/9/2010)
   * added --useContElementBoundary to pathena/prun 
+  * added --prodSourceLabel to prun
+  * fixed --excludeFile of prun
 
 0.3.10 (11/3/2010)
   * fixed a bug related to useTagParent

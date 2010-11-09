@@ -1753,6 +1753,7 @@ def groupFilesByDataset(inDS,inputDsString,inputFileList,verbose):
 
 # splitter for prun
 def calculateNumSplitPrun(nFilesPerJob,nGBPerJob,inputFileList,inputFileMap,maxTotalSize,dbrDsSize,safetySize):
+    nFilesEachSubJob = []
     if nFilesPerJob == None and nGBPerJob < 0:
         # count total size for inputs
         totalSize = 0
@@ -1794,7 +1795,6 @@ def calculateNumSplitPrun(nFilesPerJob,nGBPerJob,inputFileList,inputFileMap,maxT
         nFilesPerJob = tmpNFiles
     else:
         # nGBPerJob
-        nFilesEachSubJob = []
         subNFiles = 0
         subTotal = dbrDsSize+safetySize
         for tmpLFN in inputFileList:
