@@ -21,8 +21,7 @@ pathena -h
 
 ** Release Note
 
-current
-  * fixed treatment of used files
+0.3.11 (11/9/2010)
   * added --useContElementBoundary to pathena/prun 
   * added --prodSourceLabel to prun
   * fixed --excludeFile of prun
