@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.13 (11/13/2010)
+  * fixed getRunningPandaJobs() in psequencer
+
 0.3.12 (11/9/2010)
   * fixed splitter for prun
 
