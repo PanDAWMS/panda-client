@@ -21,6 +21,12 @@ pathena -h
 
 ** Release Note
 
+0.3.14 (11/15/2010)
+  * fixed interference between --split and --nEventsPerJob in pathena
+
+0.3.13 (11/13/2010)
+  * fixed getRunningPandaJobs() in psequencer
+
 0.3.12 (11/9/2010)
   * fixed splitter for prun
 

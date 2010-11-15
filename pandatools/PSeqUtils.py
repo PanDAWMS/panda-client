@@ -52,7 +52,10 @@ class RunningPandaFactory:
         for tmpJob in localJobs:
             if tmpJob.dbStatus != 'frozen':
                 # instantiate PStep
-                pStep = self.pandaFactory(tmpJob.JobID)
+                if hasattr(tmpJob,'JobID'):
+                    pStep = self.pandaFactory(tmpJob.JobID)
+                else:
+                    pStep = self.pandaFactory(tmpJob.JobsetID)
                 # append
                 rJobs.append(pStep)
         # return

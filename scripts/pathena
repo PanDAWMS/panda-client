@@ -2554,7 +2554,9 @@ if options.inDS != '' and options.burstSubmit == '':
         tmpLog.info("all files are available at %s" % options.site)
     else:
         tmpLog.info("%s files are missing or unchecked at %s" % (len(missList),options.site))
-    if not useTagParentLookup:    
+    if options.nEventsPerJob != -1:
+        pass
+    elif not useTagParentLookup:    
         tmpLog.info("use %s files" % len(inputFileList))
     else:
         tmpParentType = 'parent'
@@ -2586,25 +2588,25 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
     b_nEventsPerJob  = options.nEventsPerJob
     b_split          = options.split
     # set # of split
-    if b_split < 0:
-        if b_nEventsPerJob != -1:
-            if not useTagParentLookup:
-                #  number of events is avaliable in panda mon
-                b_nEventsPerFile,b_nFilesPerJob,b_nEventsPerJob = PsubUtils.calculateNumSplitEvent(b_nEventsPerJob,
-                                                                                                   b_inputFileList,
-                                                                                                   options.shipinput,currentDir,
-                                                                                                   b_nEventsPerFile,
-                                                                                                   b_nFilesPerJob,
-                                                                                                   b_inputDatasetName,
-                                                                                                   options.verbose)
-            else:
-                # the number of events is avaliable via TAG DB
+    if b_nEventsPerJob != -1:
+        if not useTagParentLookup:
+            #  number of events is avaliable in panda mon
+            b_nEventsPerFile,b_nFilesPerJob,b_nEventsPerJob = PsubUtils.calculateNumSplitEvent(b_nEventsPerJob,
+                                                                                               b_inputFileList,
+                                                                                               options.shipinput,currentDir,
+                                                                                               b_nEventsPerFile,
+                                                                                               b_nFilesPerJob,
+                                                                                               b_inputDatasetName,
+                                                                                               options.verbose)
+        else:
+            # the number of events is avaliable via TAG DB
+            if b_split < 0:
                 b_split = PsubUtils.calculateNumSplitTAG(b_nEventsPerJob,b_inputFileList,parentLfnToTagMap)
-        if b_split == -1:
-            # calculate # of subjobs using all files
-            b_split = PsubUtils.calculateNumSplit(b_nFilesPerJob,options.nGBPerJob,b_nEventsPerJob,
-                                                  maxTotalSize,dbrDsSize,safetySize,useTagParentLookup,
-                                                  b_inputFileList,inputFileMap,tagFileList,parentLfnToTagMap)
+    if b_split == -1:
+        # calculate # of subjobs using all files
+        b_split = PsubUtils.calculateNumSplit(b_nFilesPerJob,options.nGBPerJob,b_nEventsPerJob,
+                                              maxTotalSize,dbrDsSize,safetySize,useTagParentLookup,
+                                              b_inputFileList,inputFileMap,tagFileList,parentLfnToTagMap)
     # LFN description
     b_descriptionInLFN = options.descriptionInLFN
     if options.useContElementBoundary:
