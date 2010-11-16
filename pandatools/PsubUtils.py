@@ -1569,7 +1569,7 @@ def writeJobDefID(jobID):
 
 
 # calculate the number of subjobs
-def calculateNumSplit(nFilesPerJob,nGBPerJob,nEventsPerJob,
+def calculateNumSplit(nFilesPerJob,nGBPerJob,nEventsPerJob,nEventsPerFile,
                       maxTotalSize,dbrDsSize,safetySize,useTagParentLookup,
                       inputFileList,inputFileMap,tagFileList,parentLfnToTagMap):
     # count total size for inputs
