@@ -5,6 +5,9 @@ import commands
 
 import PLogger
 
+# error code
+EC_Config    = 10
+
 
 # replace parameter with compact LFNs
 def replaceParam(patt,inList,tmpJobO):
@@ -2065,3 +2068,63 @@ except:
     oFile.close()
     # reutrn file name
     return optFileName
+
+
+# convert GoodRunListXML to datasets
+def listFilesUsingAMI(inDsStr,verbose):
+    retMetadataMap = {}
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    if verbose:
+        tmpLog.debug('trying to get file metadata from AMI for %s' % inDsStr) 
+    # import pyAMI
+    try:
+        from pyAMI import pyAMI
+    except:
+        errType,errValue = sys.exc_info()[:2]
+        print "%s %s" % (errType,errValue)
+        tmpLog.error('cannot import pyAMI module')
+        sys.exit(EC_Config)
+    # loop over all datasets
+    for inDS in inDsStr.split(','):
+        # make arguments
+        tmpInDS = re.sub('/$','',inDS)
+        nLookUp = 1000
+        iLookUp = 0
+        while True:
+            amiArgv = ["ListFiles"]
+            amiArgv.append("logicalDatasetName="+tmpInDS)
+            amiArgv.append("limit=%s,%s" % (iLookUp,iLookUp+nLookUp))
+            if verbose:
+                tmpLog.debug(amiArgv)
+            try:
+                amiclient=pyAMI.AMI(False)
+                amiOut = amiclient.execute(amiArgv)
+            except:
+                errType,errValue = sys.exc_info()[:2]
+                tmpLog.error("%s %s" % (errType,errValue))
+                errStr  = 'pyAMI failed. '
+                errStr += 'If %s is not an official dataset, ' % inDS
+                errStr += 'please manually set --nEventsPerFile '
+                errStr += 'since metata is unavailable in AMI'
+                tmpLog.error(errStr)
+                sys.exit(EC_Config)
+            # get file metadata
+            amiOutDict = amiOut.getDict()
+            if verbose:
+                tmpLog.debug(amiOutDict)
+            # no more files
+            if amiOutDict == {}:
+                break
+            for tmpEleKey,tmpEleVal in amiOutDict.iteritems():
+                for tmpRowKey,tmpRowVal in tmpEleVal.iteritems():
+                    tmpLFN = str(tmpRowVal['LFN'])
+                    tmpNumEvents = long(tmpRowVal['events'])
+                    # append
+                    retMetadataMap[tmpLFN] = {'nEvents':tmpNumEvents}
+            # increment
+            iLookUp += nLookUp
+    if verbose:
+        tmpLog.debug('metadata from AMI : %s' % str(retMetadataMap))
+    # return        
+    return retMetadataMap

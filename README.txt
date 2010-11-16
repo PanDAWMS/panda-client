@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added --useAMIEventLevelSplit to pathena
+
 0.3.14 (11/15/2010)
   * fixed interference between --split and --nEventsPerJob in pathena
 

@@ -1628,7 +1628,7 @@ def nEvents(name, verbose=False, askServer=True, fileList = {}, scanDir = '.', a
             print "ERROR : Could not get the # of events from MetaDB for %s " % name
             sys.exit(EC_Failed)
     if verbose:
-       print "Dataset ", name, "has ", nEvents, " per file"
+       print "Dataset %s has %s evetns per file" % (name,nEvents)
     return int(nEvents)
 
 
