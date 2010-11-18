@@ -2630,7 +2630,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                     b_split = PsubUtils.calculateNumSplitTAG(b_nEventsPerJob,b_inputFileList,amiFileMetadataMap)
     if b_split == -1:
         # calculate # of subjobs using all files
-        b_split = PsubUtils.calculateNumSplit(b_nFilesPerJob,options.nGBPerJob,b_nEventsPerJob,
+        b_split = PsubUtils.calculateNumSplit(b_nFilesPerJob,options.nGBPerJob,b_nEventsPerJob,b_nEventsPerFile,
                                               maxTotalSize,dbrDsSize,safetySize,useTagParentLookup,
                                               b_inputFileList,inputFileMap,tagFileList,parentLfnToTagMap)
     # LFN description
