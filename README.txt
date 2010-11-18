@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.16 (11/18/2010)
+  * fixed for CERN EOS
+  
 0.3.15 (11/16/2010)
   * added --useAMIEventLevelSplit to pathena
   * fixed nEventsPerFile in pathena
