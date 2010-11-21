@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.17 (11/21/2010)
+  * fixed filename duplication for AANT in --individualOutDS of pathena
+
 0.3.16 (11/18/2010)
   * fixed for CERN EOS
   
