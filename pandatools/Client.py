@@ -1228,6 +1228,9 @@ def convSrmV2ID(tmpSite):
             tmpSite = re.sub('_PERF-[A-Z,0-9]+$','DISK',tmpSite)
             tmpSite = re.sub('_TRIG-DAQ$','DISK',tmpSite)            
             return tmpSite
+    # parch for CERN EOS
+    if tmpSite.startswith('CERN-PROD_EOS'):
+        return 'CERN-PROD_EOSDISK'
     # patch for SRM v2
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)

@@ -21,8 +21,15 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.17 (11/21/2010)
+  * fixed filename duplication for AANT in --individualOutDS of pathena
+
+0.3.16 (11/18/2010)
+  * fixed for CERN EOS
+  
+0.3.15 (11/16/2010)
   * added --useAMIEventLevelSplit to pathena
+  * fixed nEventsPerFile in pathena
 
 0.3.14 (11/15/2010)
   * fixed interference between --split and --nEventsPerJob in pathena
