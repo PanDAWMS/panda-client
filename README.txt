@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.18 (11/21/2010)
+  * fixed --pfnList of pathena
+
 0.3.17 (11/21/2010)
   * fixed filename duplication for AANT in --individualOutDS of pathena
 

@@ -1664,8 +1664,11 @@ def calculateNumSplit(nFilesPerJob,nGBPerJob,nEventsPerJob,nEventsPerFile,
         tmpSubTotal = 0
         tmpSubNumFiles = 0
         for fileName in inputFileList:
-            vals = inputFileMap[fileName]
-            tmpSize = long(vals['fsize'])
+            if inputFileMap.has_key(fileName):
+                vals = inputFileMap[fileName]
+                tmpSize = long(vals['fsize'])
+            else:
+                tmpSize = 0
             tmpSubNumFiles += 1    
             singleLargeFile = False
             if tmpSubTotal+tmpSize > nGBPerJob-dbrDsSize-safetySize \

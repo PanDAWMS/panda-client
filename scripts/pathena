@@ -1911,6 +1911,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 inputFileList.append(line)
         rFile.close()
         inputFileList.sort()
+        inputFileMap = {}
     else:
         # ship input files
         devidedByGUID = False 
