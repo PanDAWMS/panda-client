@@ -786,7 +786,8 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
     tmpLocations,dsUsedDsMap = getLocations(dsStr,[],'',False,verbose,getDQ2IDs=True,
                                             removedDatasets=removedDS,
                                             useOutContainer=True,
-                                            includeIncomplete=True)
+                                            includeIncomplete=True,
+                                            notSiteStatusCheck=True)
     # get all sites matching with site's DQ2ID here, to work with brokeroff sites
     fullSiteList = convertDQ2toPandaIDList(PandaSites[siteID]['ddm'])
     # get datasets at the site
@@ -1293,7 +1294,8 @@ def isOnlineSite(origTmpSite):
 # get locations
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
                  getTapeSites=False,getDQ2IDs=False,locCandidates=None,removeDS=False,
-                 removedDatasets=[],useOutContainer=False,includeIncomplete=False):
+                 removedDatasets=[],useOutContainer=False,includeIncomplete=False,
+                 notSiteStatusCheck=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1450,7 +1452,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 # get PandaID
                 tmpPandaSite = convertDQ2toPandaID(origTmpSite)
                 # check status
-                if PandaSites.has_key(tmpPandaSite) and PandaSites[tmpPandaSite]['status'] == 'online':
+                if PandaSites.has_key(tmpPandaSite) and (notSiteStatusCheck or PandaSites[tmpPandaSite]['status'] == 'online'):
                     # don't use TAPE
                     if isTapeSite(origTmpSite):
                         if not origTmpSite in resTapeSites:
@@ -1511,7 +1513,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                     if woFileCheck:    
                         break
                     # append site
-                    if tmpSpec['status'] == 'online':
+                    if tmpSpec['status'] == 'online' or notSiteStatusCheck:
                         # return sites in a cloud when it is specified or all sites
                         if tmpSpec['cloud'] == cloud or (not expCloud):
                             appendMap = retSiteMap

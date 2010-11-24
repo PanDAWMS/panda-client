@@ -21,7 +21,10 @@ pathena -h
 
 ** Release Note
 
-0.3.18 (11/21/2010)
+0.3.19 (11/24/2010)
+  * fixed metadata check to ignore site status
+
+0.3.18 (11/23/2010)
   * fixed --pfnList of pathena
 
 0.3.17 (11/21/2010)
