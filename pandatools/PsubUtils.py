@@ -722,7 +722,7 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
     # official TRF doesn't work with direct dcap/xrootd
     if usingTRF and (not usingARA):
         if newPrefix.startswith('root:') or newPrefix.startswith('dcap:') or \
-           newPrefix.startswith('dcache:'):
+               newPrefix.startswith('dcache:') or newPrefix.startswith('gsidcap:'):
             return False
     # return
     return True

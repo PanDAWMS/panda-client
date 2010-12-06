@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.20 (12/6/2010)
+  * fixed --trf of pathena for gsidcap sites
+
 0.3.19 (11/24/2010)
   * fixed metadata check to ignore site status
 
