@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * updated LFC scan to try another site when timed out
+
 0.3.20 (12/6/2010)
   * fixed --trf of pathena for gsidcap sites
 
