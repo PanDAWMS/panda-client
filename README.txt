@@ -21,8 +21,31 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.22 (1/6/2011)
+  * added --in/outRunConfig to pathena
+
+0.3.21 (1/6/2011)
+  * updated LFC scan to try another site when timed out
+  * fixed --useAMIEventLevelSplit of pathena
+
+0.3.20 (12/6/2010)
+  * fixed --trf of pathena for gsidcap sites
+
+0.3.19 (11/24/2010)
+  * fixed metadata check to ignore site status
+
+0.3.18 (11/23/2010)
+  * fixed --pfnList of pathena
+
+0.3.17 (11/21/2010)
+  * fixed filename duplication for AANT in --individualOutDS of pathena
+
+0.3.16 (11/18/2010)
+  * fixed for CERN EOS
+  
+0.3.15 (11/16/2010)
   * added --useAMIEventLevelSplit to pathena
+  * fixed nEventsPerFile in pathena
 
 0.3.14 (11/15/2010)
   * fixed interference between --split and --nEventsPerJob in pathena
