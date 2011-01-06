@@ -2661,6 +2661,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
     # split job
     nUsedByPreviousLoop = 0
     #@ Loop for jobs here
+    aaaTotal = 0
     for iSubJob in range(b_split):
         # terminate condition: no remaining files
         if (options.inDS != '' or options.shipinput or options.pfnList != '') and indexFiles >= len(b_inputFileList):
@@ -2756,7 +2757,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                         # the number of events is available via TAG or AMI
                         divF = 1
                         nEventsToSkip = nUsedByPreviousLoop
-                        tmpSubTotalEvents = -nUsedByPreviousLoop
+                        tmpSubTotalEvents = 0 - nUsedByPreviousLoop
                         nUsedFilesForEventSplit = 0
                         if useTagParentLookup:
                             # use TAG for metadata source
@@ -2767,7 +2768,10 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                         for fileName in b_inputFileList[indexFiles:]:
                             if (tmpSubTotalEvents + fileMetadataMapForEventSplit[fileName]['nEvents']) > b_nEventsPerJob:
                                 # set the number of used events
-                                nUsedByPreviousLoop += (b_nEventsPerJob - tmpSubTotalEvents)
+				if tmpSubTotalEvents > 0:
+				    nUsedByPreviousLoop += (b_nEventsPerJob - tmpSubTotalEvents)
+                                else:
+                                    nUsedByPreviousLoop += b_nEventsPerJob
                                 break    
                             else:
                                 tmpSubTotalEvents += fileMetadataMapForEventSplit[fileName]['nEvents']

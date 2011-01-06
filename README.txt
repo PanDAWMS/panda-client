@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.21 (1/6/2011)
   * updated LFC scan to try another site when timed out
+  * fixed --useAMIEventLevelSplit of pathena
 
 0.3.20 (12/6/2010)
   * fixed --trf of pathena for gsidcap sites
