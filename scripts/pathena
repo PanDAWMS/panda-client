@@ -2661,7 +2661,6 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
     # split job
     nUsedByPreviousLoop = 0
     #@ Loop for jobs here
-    aaaTotal = 0
     for iSubJob in range(b_split):
         # terminate condition: no remaining files
         if (options.inDS != '' or options.shipinput or options.pfnList != '') and indexFiles >= len(b_inputFileList):
