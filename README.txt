@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.22 (1/6/2011)
+  * added --in/outRunConfig to pathena
+
 0.3.21 (1/6/2011)
   * updated LFC scan to try another site when timed out
   * fixed --useAMIEventLevelSplit of pathena
