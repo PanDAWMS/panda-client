@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.24 (1/10/2011)
+  * fixed pbook.retry() for multiple reattempts
+
 0.3.23 (1/10/2011)
   * fixed pbook.retry() for automatic freezing
 

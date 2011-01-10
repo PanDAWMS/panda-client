@@ -633,7 +633,7 @@ class PBookCore:
                             if retryMatch == None:
                                 file.destinationDBlock += '_r1'
                             else:
-                                tmpDestinationDBlock = re.sub('_r(\d+)$',file.destinationDBlock)
+                                tmpDestinationDBlock = re.sub('_r(\d+)$','',file.destinationDBlock)
                                 file.destinationDBlock = tmpDestinationDBlock + '_r%d' % (1+int(retryMatch.group(1)))
                         # add attempt nr
                         oldName  = file.lfn
