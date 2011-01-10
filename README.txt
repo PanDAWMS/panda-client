@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.23 (1/10/2011)
+  * fixed pbook.retry() for automatic freezing
+
 0.3.22 (1/6/2011)
   * added --in/outRunConfig to pathena
 
