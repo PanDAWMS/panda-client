@@ -722,7 +722,7 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
     # official TRF doesn't work with direct dcap/xrootd
     if usingTRF and (not usingARA):
         if newPrefix.startswith('root:') or newPrefix.startswith('dcap:') or \
-           newPrefix.startswith('dcache:'):
+               newPrefix.startswith('dcache:') or newPrefix.startswith('gsidcap:'):
             return False
     # return
     return True
@@ -1569,7 +1569,7 @@ def writeJobDefID(jobID):
 
 
 # calculate the number of subjobs
-def calculateNumSplit(nFilesPerJob,nGBPerJob,nEventsPerJob,
+def calculateNumSplit(nFilesPerJob,nGBPerJob,nEventsPerJob,nEventsPerFile,
                       maxTotalSize,dbrDsSize,safetySize,useTagParentLookup,
                       inputFileList,inputFileMap,tagFileList,parentLfnToTagMap):
     # count total size for inputs
@@ -1664,8 +1664,11 @@ def calculateNumSplit(nFilesPerJob,nGBPerJob,nEventsPerJob,
         tmpSubTotal = 0
         tmpSubNumFiles = 0
         for fileName in inputFileList:
-            vals = inputFileMap[fileName]
-            tmpSize = long(vals['fsize'])
+            if inputFileMap.has_key(fileName):
+                vals = inputFileMap[fileName]
+                tmpSize = long(vals['fsize'])
+            else:
+                tmpSize = 0
             tmpSubNumFiles += 1    
             singleLargeFile = False
             if tmpSubTotal+tmpSize > nGBPerJob-dbrDsSize-safetySize \
