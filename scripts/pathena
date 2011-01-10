@@ -258,6 +258,10 @@ optP.add_option('--outTarBall', action='store', dest='outTarBall', default='',
                 type='string', help='Save a copy of local files which is the input to buildXYZ')
 optP.add_option('--inTarBall', action='store', dest='inTarBall', default='',
                 type='string', help='Use a saved copy of local files as input to buildXYZ')
+optP.add_option('--outRunConfig', action='store', dest='outRunConfig', default='',
+                type='string', help='Save extracted config information to a local file')
+optP.add_option('--inRunConfig', action='store', dest='inRunConfig', default='',
+                type='string', help='Use a saved config information to skip config extraction')
 optP.add_option('--mcData', action='store', dest='mcData', default='',
                 type='string', help='Create a symlink with linkName to .dat which is contained in input file')
 optP.add_option('--pfnList', action='store', dest='pfnList', default='',
@@ -700,6 +704,12 @@ if options.inTarBall != '':
     options.inTarBall = os.path.abspath(os.path.expanduser(options.inTarBall))
 if options.outTarBall != '':
     options.outTarBall = os.path.abspath(os.path.expanduser(options.outTarBall))
+
+# convert n/outRunConfig to full path
+if options.inRunConfig != '':
+    options.inRunConfig = os.path.abspath(os.path.expanduser(options.inRunConfig))
+if options.outRunConfig != '':
+    options.outRunConfig = os.path.abspath(os.path.expanduser(options.outRunConfig))
     
 # save current dir
 currentDir = os.path.realpath(os.getcwd())
@@ -835,7 +845,7 @@ if options.ara:
     options.trf = jobO
 
 
-if options.panda_runConfig == '':
+if options.panda_runConfig == '' and options.inRunConfig == '':
     # extract run configuration    
     tmpLog.info('extracting run configuration')
     # run ConfigExtractor for normal jobO 
@@ -843,7 +853,15 @@ if options.panda_runConfig == '':
                                                  options.trf,verbose=options.verbose,
 						 useAMI=options.useAMIAutoConf,inDS=options.inDS,
 						 tmpDir=tmpDir)
+    # save runconfig
+    if options.outRunConfig != '':
+        cFile = open(options.outRunConfig,'w')
+        pickle.dump(runConfig,cFile)
+        cFile.close()
 else:
+    # use a saved file
+    if options.panda_runConfig == '':
+        options.panda_runConfig = options.inRunConfig
     # load from file
     ret = True
     tmpRunConfFile = open(options.panda_runConfig)
@@ -1911,6 +1929,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 inputFileList.append(line)
         rFile.close()
         inputFileList.sort()
+        inputFileMap = {}
     else:
         # ship input files
         devidedByGUID = False 
@@ -2630,7 +2649,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                     b_split = PsubUtils.calculateNumSplitTAG(b_nEventsPerJob,b_inputFileList,amiFileMetadataMap)
     if b_split == -1:
         # calculate # of subjobs using all files
-        b_split = PsubUtils.calculateNumSplit(b_nFilesPerJob,options.nGBPerJob,b_nEventsPerJob,
+        b_split = PsubUtils.calculateNumSplit(b_nFilesPerJob,options.nGBPerJob,b_nEventsPerJob,b_nEventsPerFile,
                                               maxTotalSize,dbrDsSize,safetySize,useTagParentLookup,
                                               b_inputFileList,inputFileMap,tagFileList,parentLfnToTagMap)
     # LFN description
@@ -2755,7 +2774,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                         # the number of events is available via TAG or AMI
                         divF = 1
                         nEventsToSkip = nUsedByPreviousLoop
-                        tmpSubTotalEvents = -nUsedByPreviousLoop
+                        tmpSubTotalEvents = 0 - nUsedByPreviousLoop
                         nUsedFilesForEventSplit = 0
                         if useTagParentLookup:
                             # use TAG for metadata source
@@ -2766,7 +2785,10 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                         for fileName in b_inputFileList[indexFiles:]:
                             if (tmpSubTotalEvents + fileMetadataMapForEventSplit[fileName]['nEvents']) > b_nEventsPerJob:
                                 # set the number of used events
-                                nUsedByPreviousLoop += (b_nEventsPerJob - tmpSubTotalEvents)
+				if tmpSubTotalEvents > 0:
+				    nUsedByPreviousLoop += (b_nEventsPerJob - tmpSubTotalEvents)
+                                else:
+                                    nUsedByPreviousLoop += b_nEventsPerJob
                                 break    
                             else:
                                 tmpSubTotalEvents += fileMetadataMapForEventSplit[fileName]['nEvents']
