@@ -722,7 +722,7 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
     # official TRF doesn't work with direct dcap/xrootd
     if usingTRF and (not usingARA):
         if newPrefix.startswith('root:') or newPrefix.startswith('dcap:') or \
-           newPrefix.startswith('dcache:'):
+               newPrefix.startswith('dcache:') or newPrefix.startswith('gsidcap:'):
             return False
     # return
     return True
@@ -1471,11 +1471,16 @@ def execWithModifiedParams(jobs,newOpts,verbose):
         newKey = re.sub('^--','',tmpKey)
         tmpOpts[newKey] = newOpts[tmpKey]
     newOpts = tmpOpts
+    # look for excludedSite
+    matchEx = re.search('--excludedSite[ =].( )*([^ "]+)',jobs[0].metadata)
     # set excludedSite
     if newOpts.has_key('excludedSite'):
         newOpts['excludedSite'] += ',%s' % jobs[0].computingSite
     else:
-        newOpts['excludedSite'] = '%s' % jobs[0].computingSite
+        if matchEx != None:
+            newOpts['excludedSite'] = '%s,%s' % (matchEx.group(2),jobs[0].computingSite)
+        else:        
+            newOpts['excludedSite'] = '%s' % jobs[0].computingSite
     # set provenanceID
     newOpts['provenanceID'] = jobs[0].jobExecutionID
     # get inputs
@@ -1494,7 +1499,7 @@ def execWithModifiedParams(jobs,newOpts,verbose):
     # remove opts which comflict with --inDS
     for removedOpt in ['goodRunListXML','eventPickEvtList','inputFileList',
                        'inDS','retryID']:
-        commandOps = re.sub("--%s[ =].( )*[^ ]+" % removedOpt," ",commandOps)
+        commandOps = re.sub('\"*--%s[ =].( )*[^ ]+' % removedOpt," ",commandOps)
     # set inDS
     inputTmpfileName = ''
     if inDSs != []:
@@ -1527,7 +1532,7 @@ def execWithModifiedParams(jobs,newOpts,verbose):
     newCommand = "%s %s" %  (jobs[0].processingType,commandOps)
     if verbose:
         tmpLog.debug(newCommand)
-    # execute    
+    # execute
     comStat = os.system(newCommand)
     # remove
     if inputTmpfileName != '':
@@ -1569,7 +1574,7 @@ def writeJobDefID(jobID):
 
 
 # calculate the number of subjobs
-def calculateNumSplit(nFilesPerJob,nGBPerJob,nEventsPerJob,
+def calculateNumSplit(nFilesPerJob,nGBPerJob,nEventsPerJob,nEventsPerFile,
                       maxTotalSize,dbrDsSize,safetySize,useTagParentLookup,
                       inputFileList,inputFileMap,tagFileList,parentLfnToTagMap):
     # count total size for inputs
@@ -1664,8 +1669,11 @@ def calculateNumSplit(nFilesPerJob,nGBPerJob,nEventsPerJob,
         tmpSubTotal = 0
         tmpSubNumFiles = 0
         for fileName in inputFileList:
-            vals = inputFileMap[fileName]
-            tmpSize = long(vals['fsize'])
+            if inputFileMap.has_key(fileName):
+                vals = inputFileMap[fileName]
+                tmpSize = long(vals['fsize'])
+            else:
+                tmpSize = 0
             tmpSubNumFiles += 1    
             singleLargeFile = False
             if tmpSubTotal+tmpSize > nGBPerJob-dbrDsSize-safetySize \

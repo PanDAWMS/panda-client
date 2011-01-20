@@ -627,6 +627,14 @@ class PBookCore:
                     elif file.type in ('output','log'):
                         file.destinationSE = retryDestSE
                         file.destinationDBlock = re.sub('_sub\d+$','',file.destinationDBlock)
+			# add retry num
+                        if file.dataset.endswith('/'):
+                            retryMatch = re.search('_r(\d+)$',file.destinationDBlock)
+                            if retryMatch == None:
+                                file.destinationDBlock += '_r1'
+                            else:
+                                tmpDestinationDBlock = re.sub('_r(\d+)$','',file.destinationDBlock)
+                                file.destinationDBlock = tmpDestinationDBlock + '_r%d' % (1+int(retryMatch.group(1)))
                         # add attempt nr
                         oldName  = file.lfn
                         file.lfn = re.sub("\.\d+$","",file.lfn)
@@ -728,6 +736,24 @@ class PBookCore:
                 else:
                     tmpLog.error("Failed to submit jobs to Panda server")                
                 return
+            # register datasets
+            tmpOutDsLocation = Client.PandaSites[retryJobs[-1].computingSite]['ddm']
+            addedDataset = []
+            shadowDSname = None
+            for tmpFile in retryJobs[-1].Files:
+                if tmpFile.type in ['output','log'] and tmpFile.dataset.endswith('/'):
+                    # add shadow
+                    if shadowDSname == None and tmpFile.type == 'log':
+                        shadowDSname = "%s%s" % (tmpFile.destinationDBlock,Client.suffixShadow)
+                        Client.addDataset(shadowDSname,self.verbose)
+                    # add datasets    
+                    if not tmpFile.destinationDBlock in addedDataset:
+                        # create dataset
+                        Client.addDataset(tmpFile.destinationDBlock,self.verbose,location=tmpOutDsLocation)
+                        # add to container
+                        Client.addDatasetsToContainer(tmpFile.dataset,[tmpFile.destinationDBlock],self.verbose)
+                        # append
+                        addedDataset.append(tmpFile.destinationDBlock)
             # submit
             tmpLog.info("Submitting job ...")            
             status,out = Client.submitJobs(retryJobs,verbose=self.verbose)

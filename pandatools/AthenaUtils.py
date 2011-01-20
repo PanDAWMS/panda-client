@@ -1165,7 +1165,7 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
             for sName in runConfig.output.outTHIST:
                 getFilesWithSuffix(tmpList,sName)
         if runConfig.output.outAANT:
-            for sName in runConfig.output.outAANT:
+            for aName,sName in runConfig.output.outAANT:
                 getFilesWithSuffix(tmpList,sName)
         if runConfig.output.outIROOT:
             for sIndex,sName in enumerate(runConfig.output.outIROOT):
