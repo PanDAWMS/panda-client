@@ -1471,11 +1471,16 @@ def execWithModifiedParams(jobs,newOpts,verbose):
         newKey = re.sub('^--','',tmpKey)
         tmpOpts[newKey] = newOpts[tmpKey]
     newOpts = tmpOpts
+    # look for excludedSite
+    matchEx = re.search('--excludedSite[ =].( )*([^ "]+)',jobs[0].metadata)
     # set excludedSite
     if newOpts.has_key('excludedSite'):
         newOpts['excludedSite'] += ',%s' % jobs[0].computingSite
     else:
-        newOpts['excludedSite'] = '%s' % jobs[0].computingSite
+        if matchEx != None:
+            newOpts['excludedSite'] = '%s,%s' % (matchEx.group(2),jobs[0].computingSite)
+        else:        
+            newOpts['excludedSite'] = '%s' % jobs[0].computingSite
     # set provenanceID
     newOpts['provenanceID'] = jobs[0].jobExecutionID
     # get inputs
@@ -1494,7 +1499,7 @@ def execWithModifiedParams(jobs,newOpts,verbose):
     # remove opts which comflict with --inDS
     for removedOpt in ['goodRunListXML','eventPickEvtList','inputFileList',
                        'inDS','retryID']:
-        commandOps = re.sub("--%s[ =].( )*[^ ]+" % removedOpt," ",commandOps)
+        commandOps = re.sub('\"*--%s[ =].( )*[^ ]+' % removedOpt," ",commandOps)
     # set inDS
     inputTmpfileName = ''
     if inDSs != []:
@@ -1527,7 +1532,7 @@ def execWithModifiedParams(jobs,newOpts,verbose):
     newCommand = "%s %s" %  (jobs[0].processingType,commandOps)
     if verbose:
         tmpLog.debug(newCommand)
-    # execute    
+    # execute
     comStat = os.system(newCommand)
     # remove
     if inputTmpfileName != '':

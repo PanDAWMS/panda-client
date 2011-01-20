@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.3.25 (1/20/2011)
+  * fixed pbook.retry(newSite=True) for multiple reattempts
+  * changed URL for dev server
+
 0.3.24 (1/10/2011)
   * fixed pbook.retry() for multiple reattempts
 
