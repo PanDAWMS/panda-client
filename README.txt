@@ -25,7 +25,7 @@ pathena -h
   * added --individualOutDS to prun
 
 0.3.25 (1/20/2011)
-  * fixed pbook.retry(newSite=True) for multiple reattempts
+  * fixed pbook.retry(newSite=True)
   * changed URL for dev server
 
 0.3.24 (1/10/2011)
