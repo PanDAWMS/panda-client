@@ -73,6 +73,8 @@ optP.add_option('--removedDS', action='store', dest='removedDS', default='',
                 type='string', help="don't use datasets in the input dataset container")
 optP.add_option('--noBuild', action='store_const',const=True,dest='nobuild',default=False,
                 help='Skip buildGen')
+optP.add_option('--individualOutDS',action='store_const',const=True,dest='individualOutDS',default=False,
+                help='Create individual output dataset for each data-type. By default, all output files are added to one output dataset')
 optP.add_option('--secondaryDSs',action='store',dest='secondaryDSs',default='',type='string',
                 help='List of secondary datasets when the job requires multiple inputs. See PandaRun wiki page for detail')
 optP.add_option('--site',action='store',dest='site',default=defaultSite,type='string',
@@ -672,6 +674,7 @@ if options.destSE != '':
 # check if output dataset already exists
 outputDSexist = False
 outputContExist = False
+outputIndvDSlist = {}
 if not Client.isDQ2free(options.site):
     tmpDatasets = Client.getDatasets(options.outDS,options.verbose)
     if len(tmpDatasets) != 0:
@@ -681,6 +684,9 @@ if not Client.isDQ2free(options.site):
             outputDSexist = True
         # get real datasetname for case sensitivity    
         options.outDS = PsubUtils.getRealDatasetName(options.outDS,tmpDatasets)
+# get exsisting individualOutDS
+if (outputDSexist or outputContExist) and options.individualOutDS:
+    outputIndvDSlist = Client.getDatasets("%s*" % re.sub('/$','',options.outDS),options.verbose,True)    
 
 # check if shadow dataset exists
 shadowDSexist = False
@@ -1587,14 +1593,25 @@ if original_outDS_Name.endswith('/'):
 # get files in existing output dataset
 existingFilesInOutDS = {}
 if options.outputs != '' and (outputDSexist or outputContExist):
-    # query files in dataset from DDM
-    tmpLog.info("query files in %s" % original_outDS_Name)
-    existingFilesInOutDS = Client.queryFilesInDataset(original_outDS_Name,options.verbose)
-    # query files in dataset from Panda
-    status,tmpMap = Client.queryLastFilesInDataset([original_outDS_Name],options.verbose)
-    for tmpLFN in tmpMap[original_outDS_Name]:
-        if not tmpLFN in existingFilesInOutDS:
-            existingFilesInOutDS[tmpLFN] = None
+    tmpOutDsNameList = [original_outDS_Name]
+    if options.outputs != '' and options.individualOutDS:
+        for tmpLFN in options.outputs.split(','):
+            tmpOutDsName = re.sub('/$','_%s/' % tmpLFN,original_outDS_Name)
+            if not tmpOutDsName in tmpOutDsNameList:
+                tmpOutDsNameList.append(tmpOutDsName)
+    # loop over all output datasets        
+    for tmpOutDsName in tmpOutDsNameList:
+        # query files in dataset from DDM
+        tmpLog.info("query files in %s" % tmpOutDsName)
+        tmpMap = Client.queryFilesInDataset(tmpOutDsName,options.verbose)
+        for tmpLFN in tmpMap.keys():
+            if not tmpLFN in existingFilesInOutDS:
+                existingFilesInOutDS[tmpLFN] = None
+        # query files in dataset from Panda
+        status,tmpMap = Client.queryLastFilesInDataset([tmpOutDsName],options.verbose)
+        for tmpLFN in tmpMap[tmpOutDsName]:
+            if not tmpLFN in existingFilesInOutDS:
+                existingFilesInOutDS[tmpLFN] = None
 
 if options.inDS != '':
     if len(missList) == 0:
@@ -1935,8 +1952,12 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                 file.lfn               = tmpNewLFN              
                 file.type              = 'output'
                 file.dataset           = original_outDS_Name
+                if options.individualOutDS:
+                    file.dataset = re.sub('/$','_%s/' % tmpLFN,original_outDS_Name)
                 file.destinationSE     = jobR.destinationSE
                 file.destinationDBlock = options.outDS
+                if options.individualOutDS:
+                    file.destinationDBlock = options.outDS + '_%s' % tmpLFN
                 jobR.addFile(file)
                 outMap[tmpLFN] = file.lfn
             # set parameter
@@ -1980,6 +2001,17 @@ if options.inDS != '' and options.secondaryDSs != {}:
     for tmpStreamKey in tmpStreamKeys:
         msgStr += ' %s files for %s,' % (numFilesMap[tmpStreamKey],tmpStreamKey)
     tmpLog.info(msgStr[:-1])
+
+# check output dataset length for individualOutDS
+tmpIdvOutDsList = []
+if options.individualOutDS:
+    for tmpFile in jobList[-1].Files:
+        if tmpFile.type in ['output','log']:
+            if not tmpFile.dataset in tmpIdvOutDsList:
+                if not PsubUtils.checkOutDsName(tmpFile.dataset,distinguishedName,options.official,nickName,options.site,vomsFQAN):
+                    tmpLog.info("a suffix is added to datasetname for each output stream when --individualOutDS is used. e.g. outDS_suffix:%s. Please use shorter name for --outDS" % tmpFile.dataset)
+                    sys.exit(EC_Config)
+                tmpIdvOutDsList.append(tmpFile.dataset)
     
         
 # jobsetID
@@ -2022,17 +2054,41 @@ if not options.nosubmit:
     # dataset registration
     if not Client.isDQ2free(options.site):
         # register output dataset
+        tmpIdvOutDsList = []
+        tmpDsContMap = {}
         if (not outputDSexist) or options.destSE != '':
-            Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
-
+            if not options.individualOutDS:
+                Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
+                tmpIdvOutDsList.append(options.outDS)
+        if options.individualOutDS:        
+            # register individual datasets
+            for tmpFile in jobList[-1].Files:
+                if tmpFile.type in ['output','log']:
+                    if (not outputIndvDSlist.has_key(tmpFile.destinationDBlock)) and (not tmpFile.destinationDBlock in tmpIdvOutDsList):
+                        Client.addDataset(tmpFile.destinationDBlock,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
+                        tmpIdvOutDsList.append(tmpFile.destinationDBlock)
+                    tmpDsContMap[tmpFile.destinationDBlock] = tmpFile.dataset
+                
         # register output dataset container
         if original_outDS_Name.endswith('/'):
             # create
             if not outputContExist:
+                tmpIdvContList = []
                 Client.createContainer(original_outDS_Name,options.verbose)
+                tmpIdvContList.append(original_outDS_Name)
+                if options.individualOutDS:
+                    for tmpFile in jobList[-1].Files:
+                        if tmpFile.type in ['output','log'] and tmpFile.dataset.endswith('/'):
+                            if not tmpFile.dataset in tmpIdvContList:
+                                Client.createContainer(tmpFile.dataset,options.verbose)
+                                tmpIdvContList.append(tmpFile.dataset)
             # add dataset
             if not outputDSexist:
-                Client.addDatasetsToContainer(original_outDS_Name,[options.outDS],options.verbose)
+                for tmpIdvOutDS in tmpIdvOutDsList:
+                    if not options.individualOutDS:
+                        Client.addDatasetsToContainer(original_outDS_Name,[options.outDS],options.verbose)
+                    else:
+                        Client.addDatasetsToContainer(tmpDsContMap[tmpIdvOutDS],[tmpIdvOutDS],options.verbose)
 
         # register shadow dataset
         if not outputDSexist:
