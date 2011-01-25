@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.3.27 (1/25/2011)
+  * fixed update for twiki.cern.ch's cert
+  * fixed Client.convSrmV2ID for MWT2
+
 0.3.26 (1/24/2011)
   * added --individualOutDS to prun
 
