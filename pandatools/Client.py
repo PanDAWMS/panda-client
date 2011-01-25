@@ -1262,6 +1262,8 @@ def convSrmV2ID(tmpSite):
         tmpSite = re.sub('_PERF-[A-Z,0-9]+$','',tmpSite)                
     if tmpSite == 'NET2':
         tmpSite = 'BU'
+    if tmpSite == 'MWT2_UC':
+        tmpSite = 'MWT2'
     # return    
     return tmpSite
 
