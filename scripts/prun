@@ -183,6 +183,10 @@ optP.add_option('--disableRebrokerage',action='store_const',const=True,dest='dis
                 help="disable auto-rebrokerage")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
                 type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
+optP.add_option('--enableJEM',action='store_const',const=True,dest='enableJEM',default=False,
+                help="enable JEM")
+optP.add_option('--configJEM', action='store', dest='configJEM', default='',
+                type='string', help='configration parameters for JEM')
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -1746,7 +1750,12 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             jobR.jobParameters += "--rootVer %s " % options.rootVer
         # write input to txt
         if options.writeInputToTxt != '':
-            jobR.jobParameters += "--writeInputToTxt %s " % options.writeInputToTxt       
+            jobR.jobParameters += "--writeInputToTxt %s " % options.writeInputToTxt
+        # JEM
+        if options.enableJEM:
+            jobR.jobParameters += "--enable-jem "
+            if options.configJEM != '':
+                jobR.jobParameters += "--jem-config %s " % options.configJEM
         if options.jobParams != '':
             # random seed
             tmpJobO = options.jobParams

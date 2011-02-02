@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added --enableJEM and --configJEM to pathena/prun
+
 0.3.28 (2/2/2011)
   * added --rootVer to prun
 

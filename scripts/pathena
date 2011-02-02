@@ -276,6 +276,10 @@ optP.add_option('--disableRebrokerage',action='store_const',const=True,dest='dis
                 help="disable auto-rebrokerage")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
                 type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
+optP.add_option('--enableJEM',action='store_const',const=True,dest='enableJEM',default=False,
+                help="enable JEM")
+optP.add_option('--configJEM', action='store', dest='configJEM', default='',
+                type='string', help='configration parameters for JEM')
 # athena options
 optP.add_option('-c',action='store',dest='singleLine',type='string',default='',metavar='COMMAND',
                 help='One-liner, runs before any jobOs')
@@ -3315,6 +3319,11 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         # use code tracer 
         if options.codeTrace:
             param += '--codeTrace '
+        # JEM
+        if options.enableJEM:
+            param += "--enable-jem "
+            if options.configJEM != '':
+                param += "--jem-config %s " % options.configJEM
         # assign    
         jobR.jobParameters = param
 
