@@ -618,7 +618,7 @@ def matchExtFile(fileName):
 specialFilesForAthena = ['dblookup.xml']
 
 # archive source files
-def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]):
+def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[],dereferenceSymLinks=False):
     # archive sources
     tmpLog = PLogger.getPandaLogger()
     tmpLog.info('archiving source files')
@@ -797,7 +797,10 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                                     print out
                     continue
                 # else
-                cmd = 'tar rf %s %s/%s --exclude %s' % (_archiveFullName,pack,item,excludePattern)
+                if dereferenceSymLinks:
+                    cmd = 'tar rfh %s %s/%s --exclude %s' % (_archiveFullName,pack,item,excludePattern)
+                else:
+                    cmd = 'tar rf %s %s/%s --exclude %s' % (_archiveFullName,pack,item,excludePattern)
                 out = commands.getoutput(cmd)
                 if verbose:
                     print "%s/%s" % (pack,item)
