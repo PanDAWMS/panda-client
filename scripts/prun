@@ -114,7 +114,7 @@ optP.add_option('--maxFileSize',action='store',dest='maxFileSize',default=1024*1
 optP.add_option('--athenaTag',action='store',dest='athenaTag',default='',type='string',
                 help='Tags to setup Athena on remote WNs, e.g., --athenaTag=AtlasProduction,14.2.24.3')
 optP.add_option('--rootVer',action='store',dest='rootVer',default='',type='string',
-                help='Specify a ROOT version which is not included in Athena. This option can not be used together with --noBuild, e.g., --rootVer=5.28')
+                help='Specify a ROOT version which is not included in Athena. This option can not be used together with --noBuild, e.g., --rootVer=5.28/00')
 optP.add_option('--workDir',action='store',dest='workDir',default='.',type='string',
                 help='All files under WORKDIR will be transfered to WNs (default=./)')
 optP.add_option('--extFile',action='store',dest='extFile',default='',
@@ -353,9 +353,13 @@ if options.eventPickEvtList != '':
         sys.exit(EC_Config)
 
 # check rootVer
-if options.rootVer != '' and options.nobuild:
-    tmpLog.error("--rootVer cannot be used together with --noBuild since ROOT is prepared in the build step")
-    sys.exit(EC_Config)
+if options.rootVer != '':
+    if options.nobuild:
+        tmpLog.error("--rootVer cannot be used together with --noBuild since ROOT is prepared in the build step")
+        sys.exit(EC_Config)
+    # change / to .
+    options.rootVer = re.sub('/','.',options.rootVer)
+    
 
 # check writeInputToTxt
 if options.writeInputToTxt != '':

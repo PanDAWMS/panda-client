@@ -23,6 +23,8 @@ pathena -h
 
 current
   * added --enableJEM and --configJEM to pathena/prun
+  * added dereferenceSymLinks to archiveSourceFiles
+  * modified --rootVer to follow versioning convention of ROOT
 
 0.3.28 (2/2/2011)
   * added --rootVer to prun
