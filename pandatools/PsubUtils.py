@@ -993,7 +993,7 @@ def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose):
 
     
 # get list of datasets and files by list of runs/events
-def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbose=False):
+def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbose=False,amiTag=""):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # set X509_USER_PROXY
@@ -1045,9 +1045,11 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
         sys.stdout.flush()
         # check with ELSSI
         if streamName == '':
-            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,tokens=streamRef,extract=True)
+            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,tokens=streamRef,
+                                             amitag=amiTag,extract=True)
         else:
-            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,stream=streamName,tokens=streamRef,extract=True)
+            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,stream=streamName,tokens=streamRef,
+                                             amitag=amiTag,extract=True)
         if guidListELSSI == None or len(guidListELSSI) == 0:
             if not verbose:
                 print
@@ -1130,7 +1132,7 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
         # duplicated    
         if len(tmpLFNs) != 1:
             paramStr = 'Run:%s Evt:%s Stream:%s' % (runNr,evtNr,streamName)            
-            errStr = "multiple LFNs %s were found in ELSSI for %s. Please set --eventPickDS and/or --eventPickStreamName correctly" \
+            errStr = "multiple LFNs %s were found in ELSSI for %s. Please set --eventPickDS and/or --eventPickStreamName and/or --eventPickAmiTag correctly" \
                      % (str(tmpLFNs),paramStr)
             tmpLog.error(errStr)
             sys.exit(EC_Config)

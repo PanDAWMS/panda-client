@@ -94,6 +94,8 @@ optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName
                 type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
 optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
+optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
+                type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
 optP.add_option('--notUseTagLookup',action='store_const',const=True,dest='notUseTagLookup',default=False,
@@ -789,7 +791,8 @@ if options.eventPickEvtList != '':
                                                               options.eventPickDataType,
                                                               options.eventPickStreamName,
                                                               options.eventPickDS,
-                                                              options.verbose)
+                                                              options.verbose,
+                                                              options.eventPickAmiTag)
     # set param
     options.inDS = ''
     options.filelist = []
