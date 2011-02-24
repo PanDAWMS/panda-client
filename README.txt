@@ -21,7 +21,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.30 (2/24/2011)
+  * added --eventPickAmiTag to pathena/prun
+
+0.3.29 (2/9/2011)
   * added --enableJEM and --configJEM to pathena/prun
   * added dereferenceSymLinks to archiveSourceFiles
   * modified --rootVer to follow versioning convention of ROOT
