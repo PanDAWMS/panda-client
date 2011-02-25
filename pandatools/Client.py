@@ -2071,9 +2071,9 @@ def getDefaultSpaceToken(fqans,defaulttoken):
 # use dev server
 def useDevServer():
     global baseURL
-    baseURL = 'http://lxbuild002.cern.ch:25080/server/panda'
+    baseURL = 'http://voatlas04.cern.ch:25080/server/panda'
     global baseURLSSL
-    baseURLSSL = 'https://lxbuild002.cern.ch:25443/server/panda'    
+    baseURLSSL = 'https://voatlas04.cern.ch:25443/server/panda'    
 
 
 # set server
