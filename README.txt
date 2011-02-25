@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.3.31 (2/25/2011)
+  * modified doc on --useNextEvent in pathena
+  * added --randomMin/Cav to pathena
+
 0.3.30 (2/24/2011)
   * added --eventPickAmiTag to pathena/prun
 

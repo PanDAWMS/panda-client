@@ -72,10 +72,14 @@ optP.add_option('--minDS',  action='store', dest='minDS',  default='',
                 type='string', help='Dataset name for minimum bias stream')
 optP.add_option('--nMin',  action='store', dest='nMin',  default=-1,
                 type='int', help='Number of minimum bias files per one signal file')
+optP.add_option('--randomMin',action='store_const',const=True,dest='randomMin',default=False,
+                help='randomize files in minimum bias dataset')
 optP.add_option('--cavDS',  action='store', dest='cavDS',  default='',
                 type='string', help='Dataset name for cavern stream')
 optP.add_option('--nCav',  action='store', dest='nCav',  default=-1,
                 type='int', help='Number of cavern files per one signal file')
+optP.add_option('--randomCav',action='store_const',const=True,dest='randomCav',default=False,
+                help='randomize files in cavern dataset')
 optP.add_option('--libDS', action='store', dest='libDS', default='',
                 type='string', help='Name of a library dataset')
 optP.add_option('--goodRunListXML', action='store', dest='goodRunListXML', default='',
@@ -233,7 +237,7 @@ optP.add_option('--prestage', action='store_const', const=True, dest='prestage',
 optP.add_option('--voms', action='store', dest='vomsRoles',  default=None, type='string',
                 help="generate proxy with paticular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot")
 optP.add_option('--useNextEvent', action='store_const', const=True, dest='useNextEvent',  default=False,
-                help="Set this option if your jobO uses theApp.nextEvent() e.g. for G4")
+                help="Set this option if your jobO uses theApp.nextEvent(), e.g. for G4. Note that this option is not required when you run transformations using --trf")
 optP.add_option('--ara', action='store_const', const=True, dest='ara',  default=False,
                 help='obsolete. Please use prun instead')
 optP.add_option('--ares', action='store_const', const=True, dest='ares',  default=False,
@@ -2060,6 +2064,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             minbiasList.append((item,tmpList[item]))
         # sort
         minbiasList.sort()
+        # randomize
+        if options.randomMin:
+            random.shuffle(minbiasList)
         # number of files per one signal
         if options.nMin < 0:
             while True:
@@ -2092,6 +2099,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             cavernList.append((item,tmpList[item]))
         # sort
         cavernList.sort()
+        # randomize
+        if options.randomCav:
+            random.shuffle(cavernList)
         # number of files per one signal
         if options.nCav < 0:
             while True:
