@@ -2071,9 +2071,9 @@ def getDefaultSpaceToken(fqans,defaulttoken):
 # use dev server
 def useDevServer():
     global baseURL
-    baseURL = 'http://lxbuild002.cern.ch:25080/server/panda'
+    baseURL = 'http://voatlas04.cern.ch:25080/server/panda'
     global baseURLSSL
-    baseURLSSL = 'https://lxbuild002.cern.ch:25443/server/panda'    
+    baseURLSSL = 'https://voatlas04.cern.ch:25443/server/panda'    
 
 
 # set server
@@ -2475,7 +2475,7 @@ def getCachePrefixes(verbose):
 
 # get files in dataset with filte
 def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose,dsStringFlag=False,isRecursive=False,
-                                antiFilter=''):
+                                antiFilter='',notSkipLog=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # query files in dataset
@@ -2505,10 +2505,11 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
     filesPassFilter = []
     for tmpLFN in tmpKeys:
         # remove log
-        if re.search('\.log(\.tgz)*(\.\d+)*$',tmpLFN) != None or \
-               re.search('\.log(\.\d+)*(\.tgz)*$',tmpLFN) != None:
-            del inputFileMap[tmpLFN]            
-            continue
+        if not notSkipLog:
+            if re.search('\.log(\.tgz)*(\.\d+)*$',tmpLFN) != None or \
+                   re.search('\.log(\.\d+)*(\.tgz)*$',tmpLFN) != None:
+                del inputFileMap[tmpLFN]            
+                continue
         # filename matching
         if filter != '':
             matchFlag = False

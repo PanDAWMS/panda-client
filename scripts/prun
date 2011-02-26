@@ -57,6 +57,8 @@ optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName
                 type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
 optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
+optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
+                type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
 optP.add_option('--useContElementBoundary',action='store_const',const=True,dest='useContElementBoundary',default=False,
@@ -85,6 +87,8 @@ optP.add_option('--match',action='store',dest='match',default='',type='string',
                 help='Use only files matching with given pattern')
 optP.add_option('--antiMatch',action='store',dest='antiMatch',default='',type='string',
                 help='Skip files matching with given pattern')
+optP.add_option('--notSkipLog',action='store_const',const=True,dest='notSkipLog',default=False,
+                help="Don't skip log files in input datasets")
 optP.add_option('--skipScan',action='store_const',const=True,dest='skipScan',default=False,
                 help='Skip LFC lookup at job submission')
 optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
@@ -114,7 +118,7 @@ optP.add_option('--maxFileSize',action='store',dest='maxFileSize',default=1024*1
 optP.add_option('--athenaTag',action='store',dest='athenaTag',default='',type='string',
                 help='Tags to setup Athena on remote WNs, e.g., --athenaTag=AtlasProduction,14.2.24.3')
 optP.add_option('--rootVer',action='store',dest='rootVer',default='',type='string',
-                help='Specify a ROOT version which is not included in Athena. This option can not be used together with --noBuild, e.g., --rootVer=5.28/00')
+                help='Specify a ROOT version which is not included in Athena. This option can not be used together with --noBuild, e.g., --rootVer=5.28/00' )
 optP.add_option('--workDir',action='store',dest='workDir',default='.',type='string',
                 help='All files under WORKDIR will be transfered to WNs (default=./)')
 optP.add_option('--extFile',action='store',dest='extFile',default='',
@@ -523,7 +527,8 @@ if options.eventPickEvtList != '':
                                                               options.eventPickDataType,
                                                               options.eventPickStreamName,
                                                               options.eventPickDS,
-                                                              options.verbose)
+                                                              options.verbose,
+                                                              options.eventPickAmiTag)
     # set param
     options.inDS = ''
     options.filelist = []
@@ -839,7 +844,7 @@ if options.inDS != '':
         recursiveFlag = False
     inputFileMap,inputDsString = Client.getFilesInDatasetWithFilter(options.inDS,options.match,shadowList,options.inputFileListName,
                                                                     options.verbose,dsStringFlag=True,isRecursive=recursiveFlag,
-                                                                    antiFilter=options.antiMatch)
+                                                                    antiFilter=options.antiMatch,notSkipLog=options.notSkipLog)
     # empty
     if inputFileMap == {} and shadowList == []:
         errStr = "No files were found in %s (log.tgz was ignored). " % options.inDS
@@ -872,7 +877,8 @@ if options.inDS != '':
     missList = []
     # query files in secondary datasets
     for tmpDsName,tmpValMap in options.secondaryDSs.iteritems():
-        tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose)
+        tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose,
+                                                           notSkipLog=options.notSkipLog)
         # append
         options.secondaryDSs[tmpDsName]['fileMap'] = tmpSecFileMap
     # get locations
