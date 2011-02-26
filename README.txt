@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.32 (2/26/2011)
+  * added --notSkipLog to prun
+
 0.3.31 (2/25/2011)
   * modified doc on --useNextEvent in pathena
   * added --randomMin/Cav to pathena
