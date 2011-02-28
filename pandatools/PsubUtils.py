@@ -632,7 +632,7 @@ def updatePackage(verbose=False):
     if status != 0:
         tmpLog.error('failed to download tarball : %s' % status)
         # delete tarball just in case
-        commands.getoutput('rm %' % packageName)    
+        commands.getoutput('rm %s' % packageName)    
         return False
     # install
     if not rpmInstall:
@@ -1242,7 +1242,7 @@ def getTagParentInfoUsingTagQuery(tagDsStr,tagQuery,streamRef,verbose):
                 for parentGUID in guidMap[tagGUID].keys():
                     # not found
                     if not tmpParentRetMap.has_key(parentGUID):
-                        errStr = '%s GUID=%s not found in DQ2' % (re.sub('_ref$','',StreamRef),parentGUID)
+                        errStr = '%s GUID=%s not found in DQ2' % (re.sub('_ref$','',streamRef),parentGUID)
                         tmpLog.error(errStr)
                         sys.exit(EC_Config)
                     # append parent dataset
