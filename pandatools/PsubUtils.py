@@ -874,8 +874,8 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
             tmpLog.debug(com)
         status = os.system(com)
         # delete tmp files
-        commands.getoutput('\rm -f %s' % inputTmpfile)
-        commands.getoutput('\rm -f %s' % conTmpfile)            
+        commands.getoutput('rm -f %s' % inputTmpfile)
+        commands.getoutput('rm -f %s' % conTmpfile)            
         # exit
         sys.exit(status)
     # exit
@@ -966,7 +966,7 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
             tmpLog.debug(com)
         status = os.system(com)
         # delete tmp files
-        commands.getoutput('\rm -f %s' % inputTmpfile)
+        commands.getoutput('rm -f %s' % inputTmpfile)
         # exit
         sys.exit(status)
     # exit
@@ -1834,7 +1834,7 @@ def extractNthFieldFromDS(datasetName,nth):
     if len(items) < (nth-1):
         # get logger
         tmpLog = PLogger.getPandaLogger()
-        errStr = "%s has only % fields < --useNthFieldForLFN=%s" % (datasetName,len(items),nth)
+        errStr = "%s has only %s fields < --useNthFieldForLFN=%s" % (datasetName,len(items),nth)
         tmpLog.error(errStr)
         sys.exit(EC_Config)
     # return
