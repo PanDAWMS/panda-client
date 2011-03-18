@@ -110,6 +110,8 @@ optP.add_option('--useNthFieldForLFN',action='store',dest='useNthFieldForLFN',de
                 help="all output files from a dataset in the input container have the same middle name in LFN, when --useContElementBoundary is used. The middle name is extracted from the dataset name. The second field is used by default. i.e., if the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is used and LFN is something like user.hoge.JOBSETID.00160387.blha. One can change the extracted field using this option")
 optP.add_option('--useAMIEventLevelSplit',action='store_const',const=True,dest='useAMIEventLevelSplit',default=None,
                 help="retrive the number of events per file from AMI to split the job using --nEventsPerJob")
+optP.add_option('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
+                help="DO NOT USE FOR NOW !!!  merge output files")
 optP.add_option('--useCommonHalo', action='store_const', const=False, dest='useCommonHalo',  default=True,
                 help="use an integrated DS for BeamHalo")
 optP.add_option('--beamHaloDS',  action='store', dest='beamHaloDS',  default='',
@@ -953,7 +955,7 @@ else:
             # get full command string
             fullCommand = ''
             for amiStr in amiOut.split('\n'):
-                if amiStr != '':
+                if amiStr != '' and not amiStr.startswith('#') and not amiStr.startswith('*'):
                     fullCommand = amiStr
             # failed to extract configration        
             if fullCommand == '':
@@ -3337,6 +3339,9 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             param += "--enable-jem "
             if options.configJEM != '':
                 param += "--jem-config %s " % options.configJEM
+        # merge
+        if options.mergeOutput:
+            param += "--mergeOutput "            
         # assign    
         jobR.jobParameters = param
 

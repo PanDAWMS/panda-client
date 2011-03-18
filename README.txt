@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed AMI lookup in --trf of pathena
+
 0.3.32 (2/26/2011)
   * added --notSkipLog to prun
 
