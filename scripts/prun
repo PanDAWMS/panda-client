@@ -2034,6 +2034,11 @@ if options.inDS != '' and options.secondaryDSs != {}:
         msgStr += ' %s files for %s,' % (numFilesMap[tmpStreamKey],tmpStreamKey)
     tmpLog.info(msgStr[:-1])
 
+
+# check the number of output files
+if not PsubUtils.checkNumOutputFiles(jobList):
+    sys.exit(EC_Config)
+
 # check output dataset length for individualOutDS
 tmpIdvOutDsList = []
 if options.individualOutDS:

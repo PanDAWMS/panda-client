@@ -377,6 +377,31 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
     return True
 
 
+# check the number of output files
+def checkNumOutputFiles(jobList):
+    numFilesMap = {}
+    # count the number of output files per dataset
+    for tmpJob in jobList:
+        # loop over all files
+        for tmpFile in tmpJob.Files:
+            if tmpFile.type in ['output','log']:
+                if not numFilesMap.has_key(tmpFile.destinationDBlock):
+                    numFilesMap[tmpFile.destinationDBlock] = 0
+                # increment
+                numFilesMap[tmpFile.destinationDBlock] += 1
+    # check
+    maxNumOutputFiles = 10000
+    for tmpDestinationDBlock,tmpNumFiles in numFilesMap.iteritems():
+        if tmpNumFiles > maxNumOutputFiles:
+            # get logger
+            tmpLog = PLogger.getPandaLogger()
+            errStr  = "Too many output files %s>%s(limit). DQ2 doesn't allow too large dataset. " % (tmpNumFiles,maxNumOutputFiles)
+            errStr += "Please reduce the number of output files, e.g., by splitting the job more coarsely"
+            tmpLog.error(errStr)
+            return False
+    # all OK    
+    return True   
+
 # get maximum index in a dataset
 def getMaxIndex(list,pattern,shortLFN=False):
     maxIndex = 0

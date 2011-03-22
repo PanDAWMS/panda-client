@@ -3361,6 +3361,10 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         jobList.append(jobR)
 
 
+# check the number of output files
+if not PsubUtils.checkNumOutputFiles(jobList):
+    sys.exit(EC_Config)
+    
 # check output dataset length for individualOutDS
 tmpIdvOutDsList = []
 if options.individualOutDS:

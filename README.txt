@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.33 (3/22/2011)
   * fixed AMI lookup in --trf of pathena
+  * added limitation on the number of output files to avoid producing too large datasets
 
 0.3.32 (2/26/2011)
   * added --notSkipLog to prun
