@@ -21,7 +21,21 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.33 (3/22/2011)
+  * fixed AMI lookup in --trf of pathena
+  * added limitation on the number of output files to avoid producing too large datasets
+
+0.3.32 (2/26/2011)
+  * added --notSkipLog to prun
+
+0.3.31 (2/25/2011)
+  * modified doc on --useNextEvent in pathena
+  * added --randomMin/Cav to pathena
+
+0.3.30 (2/24/2011)
+  * added --eventPickAmiTag to pathena/prun
+
+0.3.29 (2/9/2011)
   * added --enableJEM and --configJEM to pathena/prun
   * added dereferenceSymLinks to archiveSourceFiles
   * modified --rootVer to follow versioning convention of ROOT
