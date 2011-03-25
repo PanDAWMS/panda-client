@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * removing whiles paces from --outputs and --extOutFile
+
 0.3.33 (3/22/2011)
   * fixed AMI lookup in --trf of pathena
   * added limitation on the number of output files to avoid producing too large datasets

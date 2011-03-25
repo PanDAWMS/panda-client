@@ -268,6 +268,10 @@ PsubUtils.checkPandaClientVer(options.verbose)
 # suffix for shadow dataset
 suffixShadow = Client.suffixShadow
 
+# remove whitespaces
+if options.outputs != '':
+    options.outputs = re.sub(' ','',options.outputs)
+
 # exclude sites
 if options.excludedSite != '':
     Client.excludeSite(options.excludedSite)

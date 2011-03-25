@@ -551,6 +551,7 @@ if options.eventPickEvtList != '':
     
 # additinal files
 options.extFile = options.extFile.split(',')
+options.extOutFile = re.sub(' ','',options.extOutFile)
 options.extOutFile = options.extOutFile.split(',')
 try:
     options.extOutFile.remove('')
