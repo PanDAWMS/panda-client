@@ -72,10 +72,14 @@ optP.add_option('--minDS',  action='store', dest='minDS',  default='',
                 type='string', help='Dataset name for minimum bias stream')
 optP.add_option('--nMin',  action='store', dest='nMin',  default=-1,
                 type='int', help='Number of minimum bias files per one signal file')
+optP.add_option('--randomMin',action='store_const',const=True,dest='randomMin',default=False,
+                help='randomize files in minimum bias dataset')
 optP.add_option('--cavDS',  action='store', dest='cavDS',  default='',
                 type='string', help='Dataset name for cavern stream')
 optP.add_option('--nCav',  action='store', dest='nCav',  default=-1,
                 type='int', help='Number of cavern files per one signal file')
+optP.add_option('--randomCav',action='store_const',const=True,dest='randomCav',default=False,
+                help='randomize files in cavern dataset')
 optP.add_option('--libDS', action='store', dest='libDS', default='',
                 type='string', help='Name of a library dataset')
 optP.add_option('--goodRunListXML', action='store', dest='goodRunListXML', default='',
@@ -94,6 +98,8 @@ optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName
                 type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
 optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
+optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
+                type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
 optP.add_option('--notUseTagLookup',action='store_const',const=True,dest='notUseTagLookup',default=False,
@@ -104,6 +110,8 @@ optP.add_option('--useNthFieldForLFN',action='store',dest='useNthFieldForLFN',de
                 help="all output files from a dataset in the input container have the same middle name in LFN, when --useContElementBoundary is used. The middle name is extracted from the dataset name. The second field is used by default. i.e., if the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is used and LFN is something like user.hoge.JOBSETID.00160387.blha. One can change the extracted field using this option")
 optP.add_option('--useAMIEventLevelSplit',action='store_const',const=True,dest='useAMIEventLevelSplit',default=None,
                 help="retrive the number of events per file from AMI to split the job using --nEventsPerJob")
+optP.add_option('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
+                help="DO NOT USE FOR NOW !!!  merge output files")
 optP.add_option('--useCommonHalo', action='store_const', const=False, dest='useCommonHalo',  default=True,
                 help="use an integrated DS for BeamHalo")
 optP.add_option('--beamHaloDS',  action='store', dest='beamHaloDS',  default='',
@@ -231,7 +239,7 @@ optP.add_option('--prestage', action='store_const', const=True, dest='prestage',
 optP.add_option('--voms', action='store', dest='vomsRoles',  default=None, type='string',
                 help="generate proxy with paticular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot")
 optP.add_option('--useNextEvent', action='store_const', const=True, dest='useNextEvent',  default=False,
-                help="Set this option if your jobO uses theApp.nextEvent() e.g. for G4")
+                help="Set this option if your jobO uses theApp.nextEvent(), e.g. for G4. Note that this option is not required when you run transformations using --trf")
 optP.add_option('--ara', action='store_const', const=True, dest='ara',  default=False,
                 help='obsolete. Please use prun instead')
 optP.add_option('--ares', action='store_const', const=True, dest='ares',  default=False,
@@ -543,6 +551,7 @@ if options.eventPickEvtList != '':
     
 # additinal files
 options.extFile = options.extFile.split(',')
+options.extOutFile = re.sub(' ','',options.extOutFile)
 options.extOutFile = options.extOutFile.split(',')
 try:
     options.extOutFile.remove('')
@@ -789,7 +798,8 @@ if options.eventPickEvtList != '':
                                                               options.eventPickDataType,
                                                               options.eventPickStreamName,
                                                               options.eventPickDS,
-                                                              options.verbose)
+                                                              options.verbose,
+                                                              options.eventPickAmiTag)
     # set param
     options.inDS = ''
     options.filelist = []
@@ -946,7 +956,7 @@ else:
             # get full command string
             fullCommand = ''
             for amiStr in amiOut.split('\n'):
-                if amiStr != '':
+                if amiStr != '' and not amiStr.startswith('#') and not amiStr.startswith('*'):
                     fullCommand = amiStr
             # failed to extract configration        
             if fullCommand == '':
@@ -2057,6 +2067,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             minbiasList.append((item,tmpList[item]))
         # sort
         minbiasList.sort()
+        # randomize
+        if options.randomMin:
+            random.shuffle(minbiasList)
         # number of files per one signal
         if options.nMin < 0:
             while True:
@@ -2089,6 +2102,9 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             cavernList.append((item,tmpList[item]))
         # sort
         cavernList.sort()
+        # randomize
+        if options.randomCav:
+            random.shuffle(cavernList)
         # number of files per one signal
         if options.nCav < 0:
             while True:
@@ -3324,6 +3340,9 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             param += "--enable-jem "
             if options.configJEM != '':
                 param += "--jem-config %s " % options.configJEM
+        # merge
+        if options.mergeOutput:
+            param += "--mergeOutput "            
         # assign    
         jobR.jobParameters = param
 
@@ -3341,6 +3360,10 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         PsubUtils.checkJobSpec(jobR)
         # append
         jobList.append(jobR)
+
+
+# split jobs by the number of output files
+splitJobList = PsubUtils.splitJobsNumOutputFiles(jobList)
 
 
 # check output dataset length for individualOutDS
@@ -3386,24 +3409,26 @@ if not options.nosubmit:
 		tmpOutDsLocation = Client.PandaSites[options.site]['setokens'][options.spaceToken]
 	# always use site's SE for libDS
       	tmpLibDsLocation = tmpOutDsLocation
-
         # dataset registration
         if not Client.isDQ2free(options.site):
             # register output dataset
             tmpIdvOutDsList = []
             tmpDsContMap = {}
-            if (not outputDSexist) or options.destSE != '':
-                if not options.individualOutDS:
-                    Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
-                    tmpIdvOutDsList.append(options.outDS)
-            if options.individualOutDS:        
-                # register individual datasets
-                for tmpFile in jobList[-1].Files:
-                    if tmpFile.type in ['output','log']:
-                        if (not outputIndvDSlist.has_key(tmpFile.destinationDBlock)) and (not tmpFile.destinationDBlock in tmpIdvOutDsList):
-                            Client.addDataset(tmpFile.destinationDBlock,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
-                            tmpIdvOutDsList.append(tmpFile.destinationDBlock)
-                        tmpDsContMap[tmpFile.destinationDBlock] = tmpFile.dataset
+            # loop over all job lists
+            for serIndex,tmpJobList in enumerate(splitJobList): 
+                if (not outputDSexist) or options.destSE != '':
+                    if not options.individualOutDS:
+                        tmpDsName = options.outDS+PsubUtils.getSuffixToSplitJobList(serIndex)
+                        Client.addDataset(tmpDsName,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
+                        tmpIdvOutDsList.append(tmpDsName)
+                if options.individualOutDS:        
+                    # register individual datasets
+                    for tmpFile in tmpJobList[-1].Files:
+                        if tmpFile.type in ['output','log']:
+                            if (not outputIndvDSlist.has_key(tmpFile.destinationDBlock)) and (not tmpFile.destinationDBlock in tmpIdvOutDsList):
+                                Client.addDataset(tmpFile.destinationDBlock,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
+                                tmpIdvOutDsList.append(tmpFile.destinationDBlock)
+                            tmpDsContMap[tmpFile.destinationDBlock] = tmpFile.dataset
 
             # register output dataset container
             if original_outDS_Name.endswith('/'):
@@ -3429,7 +3454,10 @@ if not options.nosubmit:
 
             # register shadow dataset
             if not outputDSexist:
-                Client.addDataset("%s%s" % (options.outDS,suffixShadow),options.verbose)
+                # loop over all job lists
+                for serIndex,tmpJobList in enumerate(splitJobList):
+                    tmpDsName = options.outDS+PsubUtils.getSuffixToSplitJobList(serIndex)+suffixShadow
+                    Client.addDataset(tmpDsName,options.verbose)
 
             # register libDS
             if options.libDS == '' and (not options.nobuild):
@@ -3437,7 +3465,19 @@ if not options.nosubmit:
 
         # submit
         tmpLog.info("submit %s subjobs to %s" % (len(jobList),options.site))
-        status,out = Client.submitJobs(jobList,options.verbose)
+        out = []
+        tmpJobsetID = jobsetID
+        for tmpJobList in splitJobList:
+            # set jobsetID
+            if not tmpJobsetID in [None,'NULL']:
+                for tmpJob in tmpJobList:
+                    tmpJob.jobsetID = tmpJobsetID
+            status,tmpOut = Client.submitJobs(tmpJobList,options.verbose)
+            out += tmpOut
+            # get jobsetID
+            if tmpJobsetID in [None,'NULL',-1]:
+                if out != [] and out[0] != None:
+                    tmpJobsetID = out[0][2]['jobsetID']
         if not Client.PandaSites[options.site]['status'] in ['online','brokeroff']:
             tmpLog.warning("%s is %s. Your jobs will wait until it becomes online" % \
                            (options.site,Client.PandaSites[options.site]['status']))

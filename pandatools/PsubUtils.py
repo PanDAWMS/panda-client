@@ -377,6 +377,84 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
     return True
 
 
+# get suffix to split job list
+def getSuffixToSplitJobList(sIndex):
+    if sIndex == 0:
+        return ''
+    else:
+        return '_%s' % sIndex
+    
+
+# split job list by the number of output files
+def splitJobsNumOutputFiles(jobList):
+    nJobs = 0
+    tmpJobList = []
+    splitJobList = []
+    numFilesMap = {}
+    # max
+    maxNumOutputFiles = 10000
+    maxNumJobs        = 4000
+    # count the number of output files per dataset
+    for tmpJob in jobList:
+        # loop over all files
+        for tmpFile in tmpJob.Files:
+            if tmpFile.type in ['output','log']:
+                if not numFilesMap.has_key(tmpFile.destinationDBlock):
+                    numFilesMap[tmpFile.destinationDBlock] = 0
+                # increment
+                numFilesMap[tmpFile.destinationDBlock] += 1
+        # check the number of files
+        newBunch = False
+        for tmpDestinationDBlock,tmpNumFiles in numFilesMap.iteritems():
+            if tmpNumFiles > maxNumOutputFiles:
+                # append
+                if tmpJobList != []:
+                    splitJobList.append(tmpJobList)
+                # reset
+                nJobs = 0
+                tmpJobList = []
+                numFilesMap = {}
+                newBunch = True
+                break
+        # check the number of jobs    
+        if not newBunch and nJobs+1 > maxNumJobs:
+            # append
+            if tmpJobList != []:
+                splitJobList.append(tmpJobList)
+            # reset
+            nJobs = 0
+            tmpJobList = []
+            numFilesMap = {}
+            newBunch = True
+        # count again since map was reset
+        if newBunch:
+            for tmpFile in tmpJob.Files:
+                if tmpFile.type in ['output','log']:
+                    if not numFilesMap.has_key(tmpFile.destinationDBlock):
+                        numFilesMap[tmpFile.destinationDBlock] = 0
+                    # increment
+                    numFilesMap[tmpFile.destinationDBlock] += 1
+        # increment
+        nJobs += 1
+        # append
+        tmpJobList.append(tmpJob)
+    # remaining
+    if tmpJobList != []:
+        splitJobList.append(tmpJobList)
+    # change dataset names
+    for serIndex,tmpJobList in enumerate(splitJobList):
+        # don't change the first bunch
+        if serIndex == 0:
+            continue
+        # loop over all jobs
+        for tmpJob in tmpJobList:
+            for tmpFile in tmpJob.Files:
+                if tmpFile.type in ['output','log']:
+                    tmpFile.destinationDBlock += getSuffixToSplitJobList(serIndex)
+    # return
+    return splitJobList
+
+
 # get maximum index in a dataset
 def getMaxIndex(list,pattern,shortLFN=False):
     maxIndex = 0
@@ -632,7 +710,7 @@ def updatePackage(verbose=False):
     if status != 0:
         tmpLog.error('failed to download tarball : %s' % status)
         # delete tarball just in case
-        commands.getoutput('rm %' % packageName)    
+        commands.getoutput('rm %s' % packageName)    
         return False
     # install
     if not rpmInstall:
@@ -874,8 +952,8 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
             tmpLog.debug(com)
         status = os.system(com)
         # delete tmp files
-        commands.getoutput('\rm -f %s' % inputTmpfile)
-        commands.getoutput('\rm -f %s' % conTmpfile)            
+        commands.getoutput('rm -f %s' % inputTmpfile)
+        commands.getoutput('rm -f %s' % conTmpfile)            
         # exit
         sys.exit(status)
     # exit
@@ -966,7 +1044,7 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
             tmpLog.debug(com)
         status = os.system(com)
         # delete tmp files
-        commands.getoutput('\rm -f %s' % inputTmpfile)
+        commands.getoutput('rm -f %s' % inputTmpfile)
         # exit
         sys.exit(status)
     # exit
@@ -993,7 +1071,7 @@ def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose):
 
     
 # get list of datasets and files by list of runs/events
-def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbose=False):
+def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbose=False,amiTag=""):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # set X509_USER_PROXY
@@ -1045,9 +1123,11 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
         sys.stdout.flush()
         # check with ELSSI
         if streamName == '':
-            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,tokens=streamRef,extract=True)
+            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,tokens=streamRef,
+                                             amitag=amiTag,extract=True)
         else:
-            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,stream=streamName,tokens=streamRef,extract=True)
+            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,stream=streamName,tokens=streamRef,
+                                             amitag=amiTag,extract=True)
         if guidListELSSI == None or len(guidListELSSI) == 0:
             if not verbose:
                 print
@@ -1130,7 +1210,7 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
         # duplicated    
         if len(tmpLFNs) != 1:
             paramStr = 'Run:%s Evt:%s Stream:%s' % (runNr,evtNr,streamName)            
-            errStr = "multiple LFNs %s were found in ELSSI for %s. Please set --eventPickDS and/or --eventPickStreamName correctly" \
+            errStr = "multiple LFNs %s were found in ELSSI for %s. Please set --eventPickDS and/or --eventPickStreamName and/or --eventPickAmiTag correctly" \
                      % (str(tmpLFNs),paramStr)
             tmpLog.error(errStr)
             sys.exit(EC_Config)
@@ -1240,7 +1320,7 @@ def getTagParentInfoUsingTagQuery(tagDsStr,tagQuery,streamRef,verbose):
                 for parentGUID in guidMap[tagGUID].keys():
                     # not found
                     if not tmpParentRetMap.has_key(parentGUID):
-                        errStr = '%s GUID=%s not found in DQ2' % (re.sub('_ref$','',StreamRef),parentGUID)
+                        errStr = '%s GUID=%s not found in DQ2' % (re.sub('_ref$','',streamRef),parentGUID)
                         tmpLog.error(errStr)
                         sys.exit(EC_Config)
                     # append parent dataset
@@ -1832,7 +1912,7 @@ def extractNthFieldFromDS(datasetName,nth):
     if len(items) < (nth-1):
         # get logger
         tmpLog = PLogger.getPandaLogger()
-        errStr = "%s has only % fields < --useNthFieldForLFN=%s" % (datasetName,len(items),nth)
+        errStr = "%s has only %s fields < --useNthFieldForLFN=%s" % (datasetName,len(items),nth)
         tmpLog.error(errStr)
         sys.exit(EC_Config)
     # return
