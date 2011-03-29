@@ -377,9 +377,23 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
     return True
 
 
-# check the number of output files
-def checkNumOutputFiles(jobList):
+# get suffix to split job list
+def getSuffixToSplitJobList(sIndex):
+    if sIndex == 0:
+        return ''
+    else:
+        return '_%s' % sIndex
+    
+
+# split job list by the number of output files
+def splitJobsNumOutputFiles(jobList):
+    nJobs = 0
+    tmpJobList = []
+    splitJobList = []
     numFilesMap = {}
+    # max
+    maxNumOutputFiles = 10000
+    maxNumJobs        = 4000
     # count the number of output files per dataset
     for tmpJob in jobList:
         # loop over all files
@@ -389,18 +403,57 @@ def checkNumOutputFiles(jobList):
                     numFilesMap[tmpFile.destinationDBlock] = 0
                 # increment
                 numFilesMap[tmpFile.destinationDBlock] += 1
-    # check
-    maxNumOutputFiles = 10000
-    for tmpDestinationDBlock,tmpNumFiles in numFilesMap.iteritems():
-        if tmpNumFiles > maxNumOutputFiles:
-            # get logger
-            tmpLog = PLogger.getPandaLogger()
-            errStr  = "Too many output files %s>%s(limit). DQ2 doesn't allow too large dataset. " % (tmpNumFiles,maxNumOutputFiles)
-            errStr += "Please reduce the number of output files, e.g., by splitting the job more coarsely"
-            tmpLog.error(errStr)
-            return False
-    # all OK    
-    return True   
+        # check the number of files
+        newBunch = False
+        for tmpDestinationDBlock,tmpNumFiles in numFilesMap.iteritems():
+            if tmpNumFiles > maxNumOutputFiles:
+                # append
+                if tmpJobList != []:
+                    splitJobList.append(tmpJobList)
+                # reset
+                nJobs = 0
+                tmpJobList = []
+                numFilesMap = {}
+                newBunch = True
+                break
+        # check the number of jobs    
+        if not newBunch and nJobs+1 > maxNumJobs:
+            # append
+            if tmpJobList != []:
+                splitJobList.append(tmpJobList)
+            # reset
+            nJobs = 0
+            tmpJobList = []
+            numFilesMap = {}
+            newBunch = True
+        # count again since map was reset
+        if newBunch:
+            for tmpFile in tmpJob.Files:
+                if tmpFile.type in ['output','log']:
+                    if not numFilesMap.has_key(tmpFile.destinationDBlock):
+                        numFilesMap[tmpFile.destinationDBlock] = 0
+                    # increment
+                    numFilesMap[tmpFile.destinationDBlock] += 1
+        # increment
+        nJobs += 1
+        # append
+        tmpJobList.append(tmpJob)
+    # remaining
+    if tmpJobList != []:
+        splitJobList.append(tmpJobList)
+    # change dataset names
+    for serIndex,tmpJobList in enumerate(splitJobList):
+        # don't change the first bunch
+        if serIndex == 0:
+            continue
+        # loop over all jobs
+        for tmpJob in tmpJobList:
+            for tmpFile in tmpJob.Files:
+                if tmpFile.type in ['output','log']:
+                    tmpFile.destinationDBlock += getSuffixToSplitJobList(serIndex)
+    # return
+    return splitJobList
+
 
 # get maximum index in a dataset
 def getMaxIndex(list,pattern,shortLFN=False):

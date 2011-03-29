@@ -2040,8 +2040,8 @@ if options.inDS != '' and options.secondaryDSs != {}:
 
 
 # check the number of output files
-if not PsubUtils.checkNumOutputFiles(jobList):
-    sys.exit(EC_Config)
+splitJobList = PsubUtils.splitJobsNumOutputFiles(jobList)
+
 
 # check output dataset length for individualOutDS
 tmpIdvOutDsList = []
@@ -2097,18 +2097,21 @@ if not options.nosubmit:
         # register output dataset
         tmpIdvOutDsList = []
         tmpDsContMap = {}
-        if (not outputDSexist) or options.destSE != '':
-            if not options.individualOutDS:
-                Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
-                tmpIdvOutDsList.append(options.outDS)
-        if options.individualOutDS:        
-            # register individual datasets
-            for tmpFile in jobList[-1].Files:
-                if tmpFile.type in ['output','log']:
-                    if (not outputIndvDSlist.has_key(tmpFile.destinationDBlock)) and (not tmpFile.destinationDBlock in tmpIdvOutDsList):
-                        Client.addDataset(tmpFile.destinationDBlock,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
-                        tmpIdvOutDsList.append(tmpFile.destinationDBlock)
-                    tmpDsContMap[tmpFile.destinationDBlock] = tmpFile.dataset
+        # loop over all job lists                                                                                                                   
+        for serIndex,tmpJobList in enumerate(splitJobList):
+            if (not outputDSexist) or options.destSE != '':
+                if not options.individualOutDS:
+                    tmpDsName = options.outDS+PsubUtils.getSuffixToSplitJobList(serIndex)
+                    Client.addDataset(tmpDsName,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
+                    tmpIdvOutDsList.append(tmpDsName)
+            if options.individualOutDS:        
+                # register individual datasets
+                for tmpFile in tmpJobList[-1].Files:
+                    if tmpFile.type in ['output','log']:
+                        if (not outputIndvDSlist.has_key(tmpFile.destinationDBlock)) and (not tmpFile.destinationDBlock in tmpIdvOutDsList):
+                            Client.addDataset(tmpFile.destinationDBlock,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
+                            tmpIdvOutDsList.append(tmpFile.destinationDBlock)
+                        tmpDsContMap[tmpFile.destinationDBlock] = tmpFile.dataset
                 
         # register output dataset container
         if original_outDS_Name.endswith('/'):
@@ -2127,13 +2130,16 @@ if not options.nosubmit:
             if not outputDSexist:
                 for tmpIdvOutDS in tmpIdvOutDsList:
                     if not options.individualOutDS:
-                        Client.addDatasetsToContainer(original_outDS_Name,[options.outDS],options.verbose)
+                        Client.addDatasetsToContainer(original_outDS_Name,[tmpIdvOutDS],options.verbose)
                     else:
                         Client.addDatasetsToContainer(tmpDsContMap[tmpIdvOutDS],[tmpIdvOutDS],options.verbose)
 
         # register shadow dataset
         if not outputDSexist:
-            Client.addDataset("%s%s" % (options.outDS,suffixShadow),options.verbose)
+            # loop over all job lists
+            for serIndex,tmpJobList in enumerate(splitJobList):
+                tmpDsName = options.outDS+PsubUtils.getSuffixToSplitJobList(serIndex)+suffixShadow
+                Client.addDataset(tmpDsName,options.verbose)
 
         # register libDS
         if options.libDS == '' and not options.nobuild:
@@ -2141,7 +2147,19 @@ if not options.nosubmit:
 
     # submit
     tmpLog.info("submit %s subjobs to %s" % (len(jobList),options.site))
-    status,out = Client.submitJobs(jobList,options.verbose)
+    out = []
+    tmpJobsetID = jobsetID
+    for tmpJobList in splitJobList:
+        # set jobsetID
+        if not tmpJobsetID in [None,'NULL']:
+            for tmpJob in tmpJobList:
+                tmpJob.jobsetID = tmpJobsetID
+        status,tmpOut = Client.submitJobs(tmpJobList,options.verbose)
+        out += tmpOut
+        # get jobsetID
+        if tmpJobsetID in [None,'NULL',-1]:
+            if out != [] and out[0] != None:
+                tmpJobsetID = out[0][2]['jobsetID']
     if not Client.PandaSites[options.site]['status'] in ['online','brokeroff']:
 	tmpLog.warning("%s is %s. Your jobs will wait until it becomes online" % \
 	    (options.site,Client.PandaSites[options.site]['status']))

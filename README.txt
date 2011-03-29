@@ -21,12 +21,12 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.34 (3/29/2011)
   * removing whiles paces from --outputs and --extOutFile
+  * added automatic splitting to pathena/prun to avoid producing jumbo datasets
 
 0.3.33 (3/22/2011)
   * fixed AMI lookup in --trf of pathena
-  * added limitation on the number of output files to avoid producing too large datasets
 
 0.3.32 (2/26/2011)
   * added --notSkipLog to prun
