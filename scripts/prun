@@ -57,6 +57,8 @@ optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName
                 type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
 optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
+optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
+                type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
 optP.add_option('--useContElementBoundary',action='store_const',const=True,dest='useContElementBoundary',default=False,
@@ -85,6 +87,8 @@ optP.add_option('--match',action='store',dest='match',default='',type='string',
                 help='Use only files matching with given pattern')
 optP.add_option('--antiMatch',action='store',dest='antiMatch',default='',type='string',
                 help='Skip files matching with given pattern')
+optP.add_option('--notSkipLog',action='store_const',const=True,dest='notSkipLog',default=False,
+                help="Don't skip log files in input datasets")
 optP.add_option('--skipScan',action='store_const',const=True,dest='skipScan',default=False,
                 help='Skip LFC lookup at job submission')
 optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
@@ -114,7 +118,7 @@ optP.add_option('--maxFileSize',action='store',dest='maxFileSize',default=1024*1
 optP.add_option('--athenaTag',action='store',dest='athenaTag',default='',type='string',
                 help='Tags to setup Athena on remote WNs, e.g., --athenaTag=AtlasProduction,14.2.24.3')
 optP.add_option('--rootVer',action='store',dest='rootVer',default='',type='string',
-                help='Specify a ROOT version which is not included in Athena. This option can not be used together with --noBuild, e.g., --rootVer=5.28/00')
+                help='Specify a ROOT version which is not included in Athena. This option can not be used together with --noBuild, e.g., --rootVer=5.28/00' )
 optP.add_option('--workDir',action='store',dest='workDir',default='.',type='string',
                 help='All files under WORKDIR will be transfered to WNs (default=./)')
 optP.add_option('--extFile',action='store',dest='extFile',default='',
@@ -263,6 +267,10 @@ PsubUtils.checkPandaClientVer(options.verbose)
 
 # suffix for shadow dataset
 suffixShadow = Client.suffixShadow
+
+# remove whitespaces
+if options.outputs != '':
+    options.outputs = re.sub(' ','',options.outputs)
 
 # exclude sites
 if options.excludedSite != '':
@@ -523,7 +531,8 @@ if options.eventPickEvtList != '':
                                                               options.eventPickDataType,
                                                               options.eventPickStreamName,
                                                               options.eventPickDS,
-                                                              options.verbose)
+                                                              options.verbose,
+                                                              options.eventPickAmiTag)
     # set param
     options.inDS = ''
     options.filelist = []
@@ -839,7 +848,7 @@ if options.inDS != '':
         recursiveFlag = False
     inputFileMap,inputDsString = Client.getFilesInDatasetWithFilter(options.inDS,options.match,shadowList,options.inputFileListName,
                                                                     options.verbose,dsStringFlag=True,isRecursive=recursiveFlag,
-                                                                    antiFilter=options.antiMatch)
+                                                                    antiFilter=options.antiMatch,notSkipLog=options.notSkipLog)
     # empty
     if inputFileMap == {} and shadowList == []:
         errStr = "No files were found in %s (log.tgz was ignored). " % options.inDS
@@ -872,7 +881,8 @@ if options.inDS != '':
     missList = []
     # query files in secondary datasets
     for tmpDsName,tmpValMap in options.secondaryDSs.iteritems():
-        tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose)
+        tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose,
+                                                           notSkipLog=options.notSkipLog)
         # append
         options.secondaryDSs[tmpDsName]['fileMap'] = tmpSecFileMap
     # get locations
@@ -2028,6 +2038,11 @@ if options.inDS != '' and options.secondaryDSs != {}:
         msgStr += ' %s files for %s,' % (numFilesMap[tmpStreamKey],tmpStreamKey)
     tmpLog.info(msgStr[:-1])
 
+
+# check the number of output files
+splitJobList = PsubUtils.splitJobsNumOutputFiles(jobList)
+
+
 # check output dataset length for individualOutDS
 tmpIdvOutDsList = []
 if options.individualOutDS:
@@ -2082,18 +2097,21 @@ if not options.nosubmit:
         # register output dataset
         tmpIdvOutDsList = []
         tmpDsContMap = {}
-        if (not outputDSexist) or options.destSE != '':
-            if not options.individualOutDS:
-                Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
-                tmpIdvOutDsList.append(options.outDS)
-        if options.individualOutDS:        
-            # register individual datasets
-            for tmpFile in jobList[-1].Files:
-                if tmpFile.type in ['output','log']:
-                    if (not outputIndvDSlist.has_key(tmpFile.destinationDBlock)) and (not tmpFile.destinationDBlock in tmpIdvOutDsList):
-                        Client.addDataset(tmpFile.destinationDBlock,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
-                        tmpIdvOutDsList.append(tmpFile.destinationDBlock)
-                    tmpDsContMap[tmpFile.destinationDBlock] = tmpFile.dataset
+        # loop over all job lists                                                                                                                   
+        for serIndex,tmpJobList in enumerate(splitJobList):
+            if (not outputDSexist) or options.destSE != '':
+                if not options.individualOutDS:
+                    tmpDsName = options.outDS+PsubUtils.getSuffixToSplitJobList(serIndex)
+                    Client.addDataset(tmpDsName,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
+                    tmpIdvOutDsList.append(tmpDsName)
+            if options.individualOutDS:        
+                # register individual datasets
+                for tmpFile in tmpJobList[-1].Files:
+                    if tmpFile.type in ['output','log']:
+                        if (not outputIndvDSlist.has_key(tmpFile.destinationDBlock)) and (not tmpFile.destinationDBlock in tmpIdvOutDsList):
+                            Client.addDataset(tmpFile.destinationDBlock,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
+                            tmpIdvOutDsList.append(tmpFile.destinationDBlock)
+                        tmpDsContMap[tmpFile.destinationDBlock] = tmpFile.dataset
                 
         # register output dataset container
         if original_outDS_Name.endswith('/'):
@@ -2112,13 +2130,16 @@ if not options.nosubmit:
             if not outputDSexist:
                 for tmpIdvOutDS in tmpIdvOutDsList:
                     if not options.individualOutDS:
-                        Client.addDatasetsToContainer(original_outDS_Name,[options.outDS],options.verbose)
+                        Client.addDatasetsToContainer(original_outDS_Name,[tmpIdvOutDS],options.verbose)
                     else:
                         Client.addDatasetsToContainer(tmpDsContMap[tmpIdvOutDS],[tmpIdvOutDS],options.verbose)
 
         # register shadow dataset
         if not outputDSexist:
-            Client.addDataset("%s%s" % (options.outDS,suffixShadow),options.verbose)
+            # loop over all job lists
+            for serIndex,tmpJobList in enumerate(splitJobList):
+                tmpDsName = options.outDS+PsubUtils.getSuffixToSplitJobList(serIndex)+suffixShadow
+                Client.addDataset(tmpDsName,options.verbose)
 
         # register libDS
         if options.libDS == '' and not options.nobuild:
@@ -2126,7 +2147,19 @@ if not options.nosubmit:
 
     # submit
     tmpLog.info("submit %s subjobs to %s" % (len(jobList),options.site))
-    status,out = Client.submitJobs(jobList,options.verbose)
+    out = []
+    tmpJobsetID = jobsetID
+    for tmpJobList in splitJobList:
+        # set jobsetID
+        if not tmpJobsetID in [None,'NULL']:
+            for tmpJob in tmpJobList:
+                tmpJob.jobsetID = tmpJobsetID
+        status,tmpOut = Client.submitJobs(tmpJobList,options.verbose)
+        out += tmpOut
+        # get jobsetID
+        if tmpJobsetID in [None,'NULL',-1]:
+            if out != [] and out[0] != None:
+                tmpJobsetID = out[0][2]['jobsetID']
     if not Client.PandaSites[options.site]['status'] in ['online','brokeroff']:
 	tmpLog.warning("%s is %s. Your jobs will wait until it becomes online" % \
 	    (options.site,Client.PandaSites[options.site]['status']))
