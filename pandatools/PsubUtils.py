@@ -392,21 +392,33 @@ def splitJobsNumOutputFiles(jobList):
     splitJobList = []
     numFilesMap = {}
     # max
-    maxNumOutputFiles = 10000
-    maxNumJobs        = 4000
-    # count the number of output files per dataset
+    maxNumFiles = 10000
+    maxNumJobs  = 4000
+    # count the number of files per dataset
     for tmpJob in jobList:
         # loop over all files
         for tmpFile in tmpJob.Files:
             if tmpFile.type in ['output','log']:
+                # count the number of files per output dataset                
                 if not numFilesMap.has_key(tmpFile.destinationDBlock):
                     numFilesMap[tmpFile.destinationDBlock] = 0
                 # increment
                 numFilesMap[tmpFile.destinationDBlock] += 1
+            else:
+                # count the number of input files for shadow dataset
+                if tmpFile.lfn.endswith('lib.tgz'):
+                    continue
+                if tmpFile.lfn.startswith('DBRelease'):
+                    continue
+                # use dummy dataset for input
+                if not numFilesMap.has_key('input'):
+                    numFilesMap['input'] = 0
+                # increment
+                numFilesMap['input'] += 1
         # check the number of files
         newBunch = False
-        for tmpDestinationDBlock,tmpNumFiles in numFilesMap.iteritems():
-            if tmpNumFiles > maxNumOutputFiles:
+        for tmpDBlock,tmpNumFiles in numFilesMap.iteritems():
+            if tmpNumFiles > maxNumFiles:
                 # append
                 if tmpJobList != []:
                     splitJobList.append(tmpJobList)
@@ -434,6 +446,15 @@ def splitJobsNumOutputFiles(jobList):
                         numFilesMap[tmpFile.destinationDBlock] = 0
                     # increment
                     numFilesMap[tmpFile.destinationDBlock] += 1
+                else:
+                    if tmpFile.lfn.endswith('lib.tgz'):
+                        continue
+                    if tmpFile.lfn.startswith('DBRelease'):
+                        continue
+                    if not numFilesMap.has_key('input'):
+                        numFilesMap['input'] = 0
+                    # increment
+                    numFilesMap['input'] += 1
         # increment
         nJobs += 1
         # append

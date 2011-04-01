@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.35 (4/1/2011)
+  * added protection not to produce jumbo shadow datasets
+
 0.3.34 (3/29/2011)
   * removing whiles paces from --outputs and --extOutFile
   * added automatic splitting to pathena/prun to avoid producing jumbo datasets
