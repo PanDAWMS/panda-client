@@ -73,6 +73,8 @@ optP.add_option('--libDS',action='store',dest='libDS',default='',type='string',
                 help='Name of a library dataset')
 optP.add_option('--removedDS', action='store', dest='removedDS', default='',
                 type='string', help="don't use datasets in the input dataset container")
+optP.add_option('--useHomeDir', action='store_const',const=True,dest='useHomeDir',default=False,
+                help='execute prun just under the HOME dir')
 optP.add_option('--noBuild', action='store_const',const=True,dest='nobuild',default=False,
                 help='Skip buildGen')
 optP.add_option('--individualOutDS',action='store_const',const=True,dest='individualOutDS',default=False,
@@ -411,6 +413,21 @@ if options.workDir != curDir and (not curDir.startswith(options.workDir+'/')):
     tmpLog.error("you need to run prun in a directory under %s" % options.workDir)
     sys.exit(EC_Config)
 
+# avoid gathering up the home dir
+if os.environ.has_key('HOME') and not options.useHomeDir and not options.useAthenaPackages \
+       and os.path.realpath(os.path.expanduser(os.environ['HOME'])) == options.workDir:
+    tmpStr  = 'prun is executed just under the HOME directoy '
+    tmpStr += 'and is going to send all files under the dir including ~/Mail/* and ~/private/*. '
+    tmpStr += 'Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)'
+    tmpLog.warning(tmpStr)
+    while True:
+        tmpAnswer = raw_input('y/N: ')
+        tmpAnswer = tmpAnswer.strip()
+        if tmpAnswer in ['y','N']:
+            break
+    if tmpAnswer == 'N':
+        sys.exit(EC_Config)
+        
 # run dir
 runDir = '.'
 if curDir != options.workDir:
@@ -1325,9 +1342,9 @@ else:
 	    # collect files
 	    for tmpFile in workDirFiles:
 		if os.path.islink(tmpFile):
-		    status,out = commands.getstatusoutput('tar -rh %s -f %s' % (tmpFile,archiveFullName))
+		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -rh %s -f %s" % (tmpFile,archiveFullName))
 		else:
-		    status,out = commands.getstatusoutput('tar rf %s %s' % (archiveFullName,tmpFile))
+		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -rf %s %s" % (archiveFullName,tmpFile))
 		if options.verbose:
 		    print tmpFile
 		if status != 0 or out != '':

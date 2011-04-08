@@ -21,6 +21,11 @@ pathena -h
 
 ** Release Note
 
+current
+  * added protection against extremely fain-grained jobs
+  * added protection to prun not to send files just under HOME
+  * fixed prun not to send hidden files
+
 0.3.35 (4/1/2011)
   * added protection not to produce jumbo shadow datasets
 

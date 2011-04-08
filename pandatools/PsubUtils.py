@@ -392,10 +392,11 @@ def splitJobsNumOutputFiles(jobList):
     splitJobList = []
     numFilesMap = {}
     # max
-    maxNumFiles = 10000
-    maxNumJobs  = 4000
+    maxNumFiles   = 10000
+    maxNumJobs    = 4000
+    maxNumTotJobs = 100000
     # count the number of files per dataset
-    for tmpJob in jobList:
+    for tmpJob in jobList[:maxNumTotJobs]:
         # loop over all files
         for tmpFile in tmpJob.Files:
             if tmpFile.type in ['output','log']:
