@@ -2696,3 +2696,31 @@ def getLatestDBRelease(verbose=False):
     retVal = '%s:%s' % (latestDBR,tmpList.keys()[0])
     tmpLog.info('use %s' % retVal)
     return retVal
+
+
+# get inconsistent datasets which are complete in DQ2 but not in LFC 
+def getInconsistentDS(missList,newUsedDsList):
+    if missList == [] or newUsedDsList == []:
+        return []
+    inconDSs = []
+    # loop over all datasets
+    for tmpDS in newUsedDsList:
+        # escape
+        if missList == []:
+            break
+        # get file list
+        tmpList = queryFilesInDataset(tmpDS)
+        newMissList = []
+        # look for missing files
+        for tmpFile in missList:
+            if tmpList.has_key(tmpFile):
+                # append
+                if not tmpDS in inconDSs:
+                    inconDSs.append(tmpDS)
+            else:
+                # keep as missing
+                newMissList.append(tmpFile)
+        # use new missing list for the next dataset
+        missList = newMissList
+    # return
+    return inconDSs

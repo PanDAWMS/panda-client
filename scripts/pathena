@@ -1638,6 +1638,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 # wildcard is used
                 amiFileMetadataMap = AthenaUtils.listFilesUsingAMI(inputDsString,options.verbose)
         # get locations when site==AUTO
+        newUsedDsList = []
         if options.site == "AUTO":
             if inputDsString == '':
                 # not using wildcard
@@ -1824,6 +1825,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                         # ignore expiring datasets
                         if not tmpDsUsedDsValItem in expFilesMap['datasets']:
                             options.removedDS.append(tmpDsUsedDsValItem)
+                            newUsedDsList.append(tmpDsUsedDsValItem) 
                     break
         # reset max input size
         if not Client.PandaSites[options.site]['maxinputsize'] in [0,'']:
@@ -1851,6 +1853,11 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                      options.nfiles+options.nSkipFiles)
             else:
                 missList = []
+            # remove datasets from removedDS if they are incomplete in LFC
+            tmpInconDsList = Client.getInconsistentDS(missList,newUsedDsList)
+            for tmpInconDS in tmpInconDsList:
+                if tmpInconDS in options.removedDS:
+                    options.removedDS.remove(tmpInconDS)
             # choose min missList
             if options.verbose:
                 tmpLog.debug("%s holds %s files" % (dsLocation,len(inputFileMap)-len(missList)))

@@ -903,6 +903,7 @@ if options.inDS != '':
         # append
         options.secondaryDSs[tmpDsName]['fileMap'] = tmpSecFileMap
     # get locations
+    newUsedDsList = []
     if inputFileList != []:
         if options.site == "AUTO":
             if inputDsString == '':
@@ -1027,6 +1028,7 @@ if options.inDS != '':
                         # ignore expiring datasets
                         if not tmpDsUsedDsValItem in expFilesMap['datasets']:
                             options.removedDS.append(tmpDsUsedDsValItem)
+                            newUsedDsList.append(tmpDsUsedDsValItem)                             
                     break
         # scan local replica catalog
         dsLocation = Client.PandaSites[options.site]['ddm']
@@ -1049,6 +1051,11 @@ if options.inDS != '':
             missList = Client.getMissLFNsFromLRC(inputFileMap,Client.getLRC(dsLocation),options.verbose)
         else:
             missList = []
+        # remove datasets from removedDS if they are incomplete in LFC
+        tmpInconDsList = Client.getInconsistentDS(missList,newUsedDsList)
+        for tmpInconDS in tmpInconDsList:
+            if tmpInconDS in options.removedDS:
+                options.removedDS.remove(tmpInconDS)
         if options.verbose:
             tmpLog.debug("%s holds %s files" % (options.site,len(inputFileList)-len(missList)))
         # no files available
