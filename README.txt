@@ -26,6 +26,7 @@ current
   * added a protection to prun not to send files just under HOME
   * fixed prun not to send hidden files
   * added a protection when DQ2 complete dataset is incomplete in LFC
+  * fixed pbook to set parentSetID in retry(newSite=True)
 
 0.3.35 (4/1/2011)
   * added protection not to produce jumbo shadow datasets

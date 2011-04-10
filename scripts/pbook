@@ -727,6 +727,9 @@ class PBookCore:
 		continue
             # invoke pathena/prun to send job to new site
             if newSite:
+                # set parent jobID and jobsetID
+                newOpts['provenanceID'] = retryJobs[0].jobExecutionID
+                newOpts['panda_parentJobsetID'] = retryJobs[0].sourceSite
                 tmpLog.info("Constrcuting job spec again to be sent to another site ...")
                 comStat= PsubUtils.execWithModifiedParams(retryJobs,newOpts,self.verbose)
                 if comStat == 0:

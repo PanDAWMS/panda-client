@@ -206,6 +206,8 @@ optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFu
                 type='string', help='internal parameter')
 optP.add_option('--panda_jobsetID',action='store',dest='panda_jobsetID',default=-1,
                 type='int', help='internal parameter for jobsetID')
+optP.add_option('--panda_parentJobsetID',action='store',dest='panda_parentJobsetID',default=-1,
+                type='int', help='internal parameter for jobsetID')
 optP.add_option('--panda_dbRelease', action='store', dest='panda_dbRelease', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_exec', action='store', dest='panda_exec', default='',
@@ -1490,6 +1492,8 @@ elif options.libDS == '':
     jobB.jobDefinitionID   = jobDefinitionID
     if not options.panda_jobsetID in [None,'NULL']:
         jobB.jobsetID      = options.panda_jobsetID
+    if options.panda_parentJobsetID != -1:
+        jobB.sourceSite    = options.panda_parentJobsetID
     jobB.jobName           = jobName
     jobB.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
     if options.provenanceID != -1:
@@ -1733,6 +1737,8 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         jobR.jobDefinitionID   = jobDefinitionID
         if not options.panda_jobsetID in [None,'NULL']:
             jobR.jobsetID      = options.panda_jobsetID
+        if options.panda_parentJobsetID != -1:
+            jobR.sourceSite    = options.panda_parentJobsetID
         jobR.jobName           = jobName
         jobR.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
         if options.provenanceID != -1:
