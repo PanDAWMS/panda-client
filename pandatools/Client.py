@@ -33,6 +33,8 @@ baseURLDQ2     = 'http://atlddmcat-reader.cern.ch/dq2'
 baseURLDQ2SSL  = 'https://atlddmcat-writer.cern.ch:443/dq2'
 baseURLSUB     = "http://pandaserver.cern.ch:25080/trf/user"
 baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
+baseURLCSRV    = "http://pandacache.cern.ch:25080/server/panda"
+baseURLCSRVSSL = "http://pandacache.cern.ch:25443/server/panda"
 
 # exit code
 EC_Failed = 255
@@ -60,6 +62,17 @@ try:
     res = urllib.urlopen(getServerURL)
     # overwrite URL
     baseURLSSL = "https://%s/server/panda" % res.read()
+except:
+    type, value, traceBack = sys.exc_info()
+    print type,value
+    print "ERROR : could not getServer from %s" % getServerURL
+    sys.exit(EC_Failed)
+# get panda cache server's name
+try:
+    getServerURL = baseURLCSRV + '/getServer'
+    res = urllib.urlopen(getServerURL)
+    # overwrite URL
+    baseURLCSRVSSL = "https://%s/server/panda" % res.read()
 except:
     type, value, traceBack = sys.exc_info()
     print type,value
@@ -553,7 +566,7 @@ def queryLastFilesInDataset(datasets,verbose=False):
 
 
 # put file
-def putFile(file,verbose=False):
+def putFile(file,verbose=False,useCacheSrv=False):
     # size check for noBuild
     sizeLimit = 10*1024*1024
     if not file.startswith('sources.'):
@@ -572,7 +585,10 @@ def putFile(file,verbose=False):
     curl.sslKey  = _x509()
     curl.verbose = verbose
     # execute
-    url = baseURLSSL + '/putFile'
+    if useCacheSrv:
+        url = baseURLCSRVSSL + '/putFile'
+    else:
+        url = baseURLSSL + '/putFile'
     data = {'file':file}
     return curl.put(url,data)
 
@@ -2082,6 +2098,14 @@ def setServer(urls):
     baseURL = urls.split(',')[0]
     global baseURLSSL
     baseURLSSL = urls.split(',')[-1]
+
+
+# set cache server
+def setCacheServer(urls):
+    global baseURLCSRV
+    baseURLCSRV = urls.split(',')[0]
+    global baseURLSSL
+    baseURLCSRVSSL = urls.split(',')[-1]
     
 
 # register proxy key

@@ -196,6 +196,8 @@ optP.add_option('--configJEM', action='store', dest='configJEM', default='',
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
+optP.add_option('--panda_cacheSrvURL', action='store', dest='panda_cacheSrvURL', default='',
+                type='string', help='internal parameter')
 optP.add_option('--panda_srcName', action='store', dest='panda_srcName', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_inDS', action='store', dest='panda_inDS', default='',
@@ -265,6 +267,8 @@ if options.devSrv:
 # set server
 if options.panda_srvURL != '':
     Client.setServer(options.panda_srvURL)
+if options.panda_cacheSrvURL != '':
+    Client.setCacheServer(options.panda_cacheSrvURL)
 
 # version check
 PsubUtils.checkPandaClientVer(options.verbose)
@@ -1556,7 +1560,7 @@ elif options.libDS == '':
         jobB.jobParameters += '--bexec "%s" ' % urllib.quote(options.bexec)
         jobB.jobParameters += '-r %s ' % runDir
     # source URL
-    matchURL = re.search("(http.*://[^/]+)/",Client.baseURLSSL)
+    matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
     if matchURL != None:
         jobB.jobParameters += "--sourceURL %s " % matchURL.group(1)
     # use Athena packages
@@ -1783,7 +1787,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         jobR.cloud             = Client.PandaSites[options.site]['cloud']
         jobR.jobParameters     = '-j "%s" ' % jobScript
         # source URL
-        matchURL = re.search("(http.*://[^/]+)/",Client.baseURLSSL)
+        matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
         if matchURL != None:
             jobR.jobParameters += "--sourceURL %s " % matchURL.group(1)
         # use Athena packages
@@ -2108,7 +2112,7 @@ if not options.nosubmit:
     # upload sources via HTTP POST
     if options.panda_srcName == '':
         tmpLog.info("upload source files")
-        status,out = Client.putFile(archiveName,options.verbose)
+        status,out = Client.putFile(archiveName,options.verbose,useCacheSrv=True)
         if out != 'True':
             print out
             tmpLog.error("failed to upload source files with %s" % status)
