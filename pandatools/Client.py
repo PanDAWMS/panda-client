@@ -1329,7 +1329,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         retSiteMap    = {}
         resRetSiteMap = {}
         resBadStSites = {}
-        resTapeSites  = []
+        resTapeSites  = {}
         retDQ2IDs     = []
         retDQ2IDmap   = {}
         allOut        = {}
@@ -1395,8 +1395,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                         for tmpEleLoc in tmpEleLocs[1]:
                             # don't use TAPE
                             if isTapeSite(tmpEleLoc):
-                                if not tmpEleLoc in resTapeSites:
-                                    resTapeSites.append(tmpEleLoc)
+                                if not resTapeSites.has_key(tmpEleLoc):
+                                    resTapeSites[tmpEleLoc] = []
+                                if not tmpEleName in resTapeSites[tmpEleLoc]:    
+                                    resTapeSites[tmpEleLoc].append(tmpEleName)
                                 continue
                             # append
                             if not outTmp.has_key(tmpEleLoc):
@@ -1414,8 +1416,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             for tmpEleLoc in tmpEleLocs[0]:
                                 # don't use TAPE
                                 if isTapeSite(tmpEleLoc):
-                                    if not tmpEleLoc in resTapeSites:
-                                        resTapeSites.append(tmpEleLoc)
+                                    if not resTapeSites.has_key(tmpEleLoc):
+                                        resTapeSites[tmpEleLoc] = []
+                                    if not tmpEleName in resTapeSites[tmpEleLoc]:    
+                                        resTapeSites[tmpEleLoc].append(tmpEleName)
                                     continue
                                 # append
                                 if not outTmp.has_key(tmpEleLoc):
@@ -1432,8 +1436,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 for tmpOutKey,tmpOutVar in out.iteritems():
                     # don't use TAPE
                     if isTapeSite(tmpOutKey):
-                        if not tmpOutKey in resTapeSites:
-                            resTapeSites.append(tmpOutKey)
+                        if not resTapeSites.has_key(tmpOutKey):
+                            resTapeSites[tmpOutKey] = []
+                        if not tmpName in resTapeSites[tmpOutKey]:
+                            resTapeSites[tmpOutKey].append(tmpName)
                         continue
                     # protection against unchecked
                     tmpNfound = tmpOutVar[0]['found']
@@ -1473,8 +1479,11 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 if PandaSites.has_key(tmpPandaSite) and (notSiteStatusCheck or PandaSites[tmpPandaSite]['status'] == 'online'):
                     # don't use TAPE
                     if isTapeSite(origTmpSite):
-                        if not origTmpSite in resTapeSites:
-                            resTapeSites.append(origTmpSite)
+                        if not resTapeSites.has_key(origTmpSite):
+                            if origTmpInfo[0].has_key('useddatasets'):
+                                resTapeSites[origTmpSite] = origTmpInfo[0]['useddatasets']
+                            else:
+                                resTapeSites[origTmpSite] = names
                         continue
                     # check the number of available files
                     if tmpMaxFiles < origTmpInfo[0]['found']:
@@ -1491,8 +1500,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         for origTmpSite,origTmpInfo in out.iteritems():
             # don't use TAPE
             if isTapeSite(origTmpSite):
-                if not origTmpSite in resTapeSites:
-                    resTapeSites.append(origTmpSite)
+                if not resTapeSites.has_key(origTmpSite):
+                    resTapeSites[origTmpSite] = origTmpInfo[0]['useddatasets']
                 continue
             # collect DQ2 IDs
             if not origTmpSite in retDQ2IDs:

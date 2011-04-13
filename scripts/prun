@@ -933,13 +933,20 @@ if options.inDS != '':
                     dsUsedDsMap = tmpDsUsedDsMap
                 # no location
                 if tmpDsLocationMap == {} and tmpDsLocationMapBack == {}:
-		    if dsTapeSites != []:
-			tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
+		    if dsTapeSites != {}:
+			errStr = "Tape sites hold datasets as follows:\n\n"
+                        for tmpKey,tmpVal in dsTapeSites.iteritems():
+                            errStr += "  %s:%s\n" % (tmpKey,str(tmpVal))
+                        errStr += "\nPlease request subscription to disk area first if needed. "
+                        errStr += "This error could happen if your excluded sites have DISK replicas, "
+                        errStr += "or the sites where DISK replicas are available have been blacklisted by DDM (usually downtime) or HammerCloud, "
+                        errStr += "or there is no DISK replica."                        
+			tmpLog.error(errStr)
                     if options.crossSite in [0,maxCrossSite] or options.verbose:
                         if expCloudFlag:
-                            tmpLog.error("could not find supported/online sites in the %s cloud for %s" % (options.cloud,tmpDsForLookUp))
+                            tmpLog.error("Could not find supported/online sites in the %s cloud for %s" % (options.cloud,tmpDsForLookUp))
                         else:
-                            tmpLog.error("could not find supported/online sites for %s" % tmpDsForLookUp)
+                            tmpLog.error("Could not find supported/online sites for %s" % tmpDsForLookUp)
                     else:
                         errStr = "could not find supported/online sites for the missing files"
                         tmpLog.error(errStr)

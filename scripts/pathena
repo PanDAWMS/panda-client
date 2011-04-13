@@ -1751,8 +1751,15 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                             del dsLocationMapBack[tmpSite]
 	    # no location
             if dsLocationMap == {} and dsLocationMapBack == {}:
-		if dsTapeSites != []:
-		    tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
+		if dsTapeSites != {}:
+		    errStr = "Tape sites hold datasets as follows:\n\n"
+		    for tmpKey,tmpVal in dsTapeSites.iteritems():
+                        errStr += "  %s:%s\n" % (tmpKey,str(tmpVal))
+                    errStr += "\nPlease request subscription to disk area first if needed. "
+                    errStr += "This error could happen if your excluded sites have DISK replicas, "
+                    errStr += "or the sites where DISK replicas are available have been blacklisted by DDM (usually downtime) or HammerCloud, "
+                    errStr += "or there is no DISK replica."                        
+                    tmpLog.error(errStr)
                 if dbrMissingSites != []:
                     tmpLog.error("%s is missing at %s although input dataset is available" % (dbrDsString,str(dbrMissingSites)))
                 for secDsString,secMissingSites in secMissingSites.iteritems():

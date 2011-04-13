@@ -1578,13 +1578,13 @@ def execWithModifiedParams(jobs,newOpts,verbose):
         tmpOpts[newKey] = newOpts[tmpKey]
     newOpts = tmpOpts
     # look for excludedSite
-    matchEx = re.search('--excludedSite[ =].( )*([^ "]+)',jobs[0].metadata)
+    matchEx = re.search('--excludedSite[ =]+\s*([^ "]+)',jobs[0].metadata)
     # set excludedSite
     if newOpts.has_key('excludedSite'):
         newOpts['excludedSite'] += ',%s' % jobs[0].computingSite
     else:
         if matchEx != None:
-            newOpts['excludedSite'] = '%s,%s' % (matchEx.group(2),jobs[0].computingSite)
+            newOpts['excludedSite'] = '%s,%s' % (matchEx.group(1),jobs[0].computingSite)
         else:        
             newOpts['excludedSite'] = '%s' % jobs[0].computingSite
     # set provenanceID
@@ -1602,10 +1602,10 @@ def execWithModifiedParams(jobs,newOpts,verbose):
                     inFiles.append(tmpFile.lfn)
     # modify command-line params
     commandOps = jobs[0].metadata
-    # remove opts which comflict with --inDS
+    # remove opts which conflict with --inDS
     for removedOpt in ['goodRunListXML','eventPickEvtList','inputFileList',
-                       'inDS','retryID']:
-        commandOps = re.sub('\"*--%s[ =].( )*[^ ]+' % removedOpt," ",commandOps)
+                       'inDS','retryID','site']:
+        commandOps = re.sub('\"*--%s[ =]+\s*[^ ]+' % removedOpt," ",commandOps)
     # set inDS
     inputTmpfileName = ''
     if inDSs != []:
@@ -1629,10 +1629,10 @@ def execWithModifiedParams(jobs,newOpts,verbose):
                 commandOps += ' -%s' % tmpOpt
             else:
                 commandOps += ' --%s' % tmpOpt
-        elif re.search("--%s( |$)" % tmpOpt,commandOps) == None:
+        elif re.search("--%s( |=)" % tmpOpt,commandOps) == None:
             commandOps += ' --%s %s' % (tmpOpt,tmpArg)
         else:    
-            commandOps = re.sub("--%s[ =].( )*[^ ]+" % tmpOpt,"--%s %s" % (tmpOpt,tmpArg),commandOps)
+            commandOps = re.sub("\"*--%s[ =]+\s*[^ ]+" % tmpOpt,"--%s %s" % (tmpOpt,tmpArg),commandOps)
     if verbose:
         commandOps += ' -v'
     newCommand = "%s %s" %  (jobs[0].processingType,commandOps)

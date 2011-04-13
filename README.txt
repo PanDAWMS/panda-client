@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.36 (4/13/2011)
   * added a protection against extremely fain-grained jobs
   * added a protection to prun not to send files just under HOME
   * fixed prun not to send hidden files
@@ -29,6 +29,9 @@ current
   * fixed pbook to set parentSetID in retry(newSite=True)
   * using new cache server to upload source files
   * fixed pathena to use the latest DBR when DBRelease is unset in --trf
+  * fixed truncation of --execludedSite in pbook.retry(newSite=True)
+  * fixed string replacement in pbook.retry(newSite=True)
+  * improved error message related to TAPE in pathena/prun
 
 0.3.35 (4/1/2011)
   * added protection not to produce jumbo shadow datasets

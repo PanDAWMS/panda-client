@@ -730,7 +730,7 @@ class PBookCore:
                 # set parent jobID and jobsetID
                 newOpts['provenanceID'] = retryJobs[0].jobExecutionID
                 newOpts['panda_parentJobsetID'] = retryJobs[0].sourceSite
-                tmpLog.info("Constrcuting job spec again to be sent to another site ...")
+                tmpLog.info("Constructing job spec again to be sent to another site ...")
                 comStat= PsubUtils.execWithModifiedParams(retryJobs,newOpts,self.verbose)
                 if comStat == 0:
                     # update database
