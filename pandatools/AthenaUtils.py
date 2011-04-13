@@ -744,6 +744,8 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
     # archive files
     def archiveFiles(_workArea,_packages,_archiveFullName):
         excludePattern = '.svn'
+        for tmpPatt in excludeFile:
+            excludePattern += " --exclude '%s'"%tmpPatt
         _curdir = os.getcwd()
         # change dir
         os.chdir(_workArea)

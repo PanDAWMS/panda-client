@@ -727,7 +727,10 @@ class PBookCore:
 		continue
             # invoke pathena/prun to send job to new site
             if newSite:
-                tmpLog.info("Constrcuting job spec again to be sent to another site ...")
+                # set parent jobID and jobsetID
+                newOpts['provenanceID'] = retryJobs[0].jobExecutionID
+                newOpts['panda_parentJobsetID'] = retryJobs[0].sourceSite
+                tmpLog.info("Constructing job spec again to be sent to another site ...")
                 comStat= PsubUtils.execWithModifiedParams(retryJobs,newOpts,self.verbose)
                 if comStat == 0:
                     # update database
@@ -941,12 +944,13 @@ For more info, do help(show) for example."""
 
     # retry
     def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False):
-        """Retry failed/cancelled subJobs in JobID or JobsetID. Jobs between JobID and UpperJobID will be retried if upperJobID is given. Set newSite=True when you want to retry at new site, which essentially runs pathena/prun again because new sub jobs need to be created for the new site. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission.  newOpts is a map of options and new arguments which is passed to pathena/prun. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True
+        """Retry failed/cancelled subJobs in JobID or JobsetID. Jobs between JobID and UpperJobID will be retried if upperJobID is given. Set newSite=True when you want to retry at new site, which essentially runs pathena/prun again because new sub jobs need to be created for the new site. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. When newSite=True, one can use newOpts which is a map of options  and new arguments like {'nGBperJob':10,'excludedSite':'ABC,XYZ'} and is passed to pathena/prun as new parameters. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True
 
          example:
            >>> retry(15)
            >>> retry(15,20)
            >>> retry(15,newSite=True)
+           >>> retry(15,newSite=True,newOpt={'nGBperJob':10})
            >>> retry(15,ignoreDuplication=True)
         """
         if upperJobID != None:

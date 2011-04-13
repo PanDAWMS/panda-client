@@ -377,6 +377,106 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
     return True
 
 
+# get suffix to split job list
+def getSuffixToSplitJobList(sIndex):
+    if sIndex == 0:
+        return ''
+    else:
+        return '_%s' % sIndex
+    
+
+# split job list by the number of output files
+def splitJobsNumOutputFiles(jobList):
+    nJobs = 0
+    tmpJobList = []
+    splitJobList = []
+    numFilesMap = {}
+    # max
+    maxNumFiles   = 10000
+    maxNumJobs    = 4000
+    maxNumTotJobs = 100000
+    # count the number of files per dataset
+    for tmpJob in jobList[:maxNumTotJobs]:
+        # loop over all files
+        for tmpFile in tmpJob.Files:
+            if tmpFile.type in ['output','log']:
+                # count the number of files per output dataset                
+                if not numFilesMap.has_key(tmpFile.destinationDBlock):
+                    numFilesMap[tmpFile.destinationDBlock] = 0
+                # increment
+                numFilesMap[tmpFile.destinationDBlock] += 1
+            else:
+                # count the number of input files for shadow dataset
+                if tmpFile.lfn.endswith('lib.tgz'):
+                    continue
+                if tmpFile.lfn.startswith('DBRelease'):
+                    continue
+                # use dummy dataset for input
+                if not numFilesMap.has_key('input'):
+                    numFilesMap['input'] = 0
+                # increment
+                numFilesMap['input'] += 1
+        # check the number of files
+        newBunch = False
+        for tmpDBlock,tmpNumFiles in numFilesMap.iteritems():
+            if tmpNumFiles > maxNumFiles:
+                # append
+                if tmpJobList != []:
+                    splitJobList.append(tmpJobList)
+                # reset
+                nJobs = 0
+                tmpJobList = []
+                numFilesMap = {}
+                newBunch = True
+                break
+        # check the number of jobs    
+        if not newBunch and nJobs+1 > maxNumJobs:
+            # append
+            if tmpJobList != []:
+                splitJobList.append(tmpJobList)
+            # reset
+            nJobs = 0
+            tmpJobList = []
+            numFilesMap = {}
+            newBunch = True
+        # count again since map was reset
+        if newBunch:
+            for tmpFile in tmpJob.Files:
+                if tmpFile.type in ['output','log']:
+                    if not numFilesMap.has_key(tmpFile.destinationDBlock):
+                        numFilesMap[tmpFile.destinationDBlock] = 0
+                    # increment
+                    numFilesMap[tmpFile.destinationDBlock] += 1
+                else:
+                    if tmpFile.lfn.endswith('lib.tgz'):
+                        continue
+                    if tmpFile.lfn.startswith('DBRelease'):
+                        continue
+                    if not numFilesMap.has_key('input'):
+                        numFilesMap['input'] = 0
+                    # increment
+                    numFilesMap['input'] += 1
+        # increment
+        nJobs += 1
+        # append
+        tmpJobList.append(tmpJob)
+    # remaining
+    if tmpJobList != []:
+        splitJobList.append(tmpJobList)
+    # change dataset names
+    for serIndex,tmpJobList in enumerate(splitJobList):
+        # don't change the first bunch
+        if serIndex == 0:
+            continue
+        # loop over all jobs
+        for tmpJob in tmpJobList:
+            for tmpFile in tmpJob.Files:
+                if tmpFile.type in ['output','log']:
+                    tmpFile.destinationDBlock += getSuffixToSplitJobList(serIndex)
+    # return
+    return splitJobList
+
+
 # get maximum index in a dataset
 def getMaxIndex(list,pattern,shortLFN=False):
     maxIndex = 0
@@ -632,7 +732,7 @@ def updatePackage(verbose=False):
     if status != 0:
         tmpLog.error('failed to download tarball : %s' % status)
         # delete tarball just in case
-        commands.getoutput('rm %' % packageName)    
+        commands.getoutput('rm %s' % packageName)    
         return False
     # install
     if not rpmInstall:
@@ -837,6 +937,8 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # server URL
     if not '--panda_srvURL' in fullExecString:
         fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
+    if not '--panda_cacheSrvURL' in fullExecString:
+        fullExecString += ' --panda_cacheSrvURL=%s,%s' % (Client.baseURLCSRV,Client.baseURLCSRVSSL)
     # devidedByGUID
     if devidedByGUID and not '--panda_devidedByGUID' in fullExecString:
         fullExecString += ' --panda_devidedByGUID'
@@ -874,8 +976,8 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
             tmpLog.debug(com)
         status = os.system(com)
         # delete tmp files
-        commands.getoutput('\rm -f %s' % inputTmpfile)
-        commands.getoutput('\rm -f %s' % conTmpfile)            
+        commands.getoutput('rm -f %s' % inputTmpfile)
+        commands.getoutput('rm -f %s' % conTmpfile)            
         # exit
         sys.exit(status)
     # exit
@@ -946,6 +1048,8 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
     # server URL
     if not '--panda_srvURL' in fullExecString:
         fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
+    if not '--panda_cacheSrvURL' in fullExecString:
+        fullExecString += ' --panda_cacheSrvURL=%s,%s' % (Client.baseURLCSRV,Client.baseURLCSRVSSL)
     # set DBR
     if dbRelease != '' and not '--panda_dbRelease' in fullExecString:
         fullExecString += ' --panda_dbRelease=%s' % dbRelease
@@ -966,7 +1070,7 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
             tmpLog.debug(com)
         status = os.system(com)
         # delete tmp files
-        commands.getoutput('\rm -f %s' % inputTmpfile)
+        commands.getoutput('rm -f %s' % inputTmpfile)
         # exit
         sys.exit(status)
     # exit
@@ -993,7 +1097,7 @@ def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose):
 
     
 # get list of datasets and files by list of runs/events
-def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbose=False):
+def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbose=False,amiTag=""):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # set X509_USER_PROXY
@@ -1045,9 +1149,11 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
         sys.stdout.flush()
         # check with ELSSI
         if streamName == '':
-            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,tokens=streamRef,extract=True)
+            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,tokens=streamRef,
+                                             amitag=amiTag,extract=True)
         else:
-            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,stream=streamName,tokens=streamRef,extract=True)
+            guidListELSSI = elssiIF.doLookup(tmpRunEvtList,stream=streamName,tokens=streamRef,
+                                             amitag=amiTag,extract=True)
         if guidListELSSI == None or len(guidListELSSI) == 0:
             if not verbose:
                 print
@@ -1130,7 +1236,7 @@ def getDSsFilesByRunsEvents(curDir,runEventTxt,dsType,streamName,dsPatt='',verbo
         # duplicated    
         if len(tmpLFNs) != 1:
             paramStr = 'Run:%s Evt:%s Stream:%s' % (runNr,evtNr,streamName)            
-            errStr = "multiple LFNs %s were found in ELSSI for %s. Please set --eventPickDS and/or --eventPickStreamName correctly" \
+            errStr = "multiple LFNs %s were found in ELSSI for %s. Please set --eventPickDS and/or --eventPickStreamName and/or --eventPickAmiTag correctly" \
                      % (str(tmpLFNs),paramStr)
             tmpLog.error(errStr)
             sys.exit(EC_Config)
@@ -1240,7 +1346,7 @@ def getTagParentInfoUsingTagQuery(tagDsStr,tagQuery,streamRef,verbose):
                 for parentGUID in guidMap[tagGUID].keys():
                     # not found
                     if not tmpParentRetMap.has_key(parentGUID):
-                        errStr = '%s GUID=%s not found in DQ2' % (re.sub('_ref$','',StreamRef),parentGUID)
+                        errStr = '%s GUID=%s not found in DQ2' % (re.sub('_ref$','',streamRef),parentGUID)
                         tmpLog.error(errStr)
                         sys.exit(EC_Config)
                     # append parent dataset
@@ -1472,13 +1578,13 @@ def execWithModifiedParams(jobs,newOpts,verbose):
         tmpOpts[newKey] = newOpts[tmpKey]
     newOpts = tmpOpts
     # look for excludedSite
-    matchEx = re.search('--excludedSite[ =].( )*([^ "]+)',jobs[0].metadata)
+    matchEx = re.search('--excludedSite[ =]+\s*([^ "]+)',jobs[0].metadata)
     # set excludedSite
     if newOpts.has_key('excludedSite'):
         newOpts['excludedSite'] += ',%s' % jobs[0].computingSite
     else:
         if matchEx != None:
-            newOpts['excludedSite'] = '%s,%s' % (matchEx.group(2),jobs[0].computingSite)
+            newOpts['excludedSite'] = '%s,%s' % (matchEx.group(1),jobs[0].computingSite)
         else:        
             newOpts['excludedSite'] = '%s' % jobs[0].computingSite
     # set provenanceID
@@ -1496,10 +1602,10 @@ def execWithModifiedParams(jobs,newOpts,verbose):
                     inFiles.append(tmpFile.lfn)
     # modify command-line params
     commandOps = jobs[0].metadata
-    # remove opts which comflict with --inDS
+    # remove opts which conflict with --inDS
     for removedOpt in ['goodRunListXML','eventPickEvtList','inputFileList',
-                       'inDS','retryID']:
-        commandOps = re.sub('\"*--%s[ =].( )*[^ ]+' % removedOpt," ",commandOps)
+                       'inDS','retryID','site']:
+        commandOps = re.sub('\"*--%s[ =]+\s*[^ ]+' % removedOpt," ",commandOps)
     # set inDS
     inputTmpfileName = ''
     if inDSs != []:
@@ -1523,10 +1629,10 @@ def execWithModifiedParams(jobs,newOpts,verbose):
                 commandOps += ' -%s' % tmpOpt
             else:
                 commandOps += ' --%s' % tmpOpt
-        elif re.search("--%s( |$)" % tmpOpt,commandOps) == None:
+        elif re.search("--%s( |=)" % tmpOpt,commandOps) == None:
             commandOps += ' --%s %s' % (tmpOpt,tmpArg)
         else:    
-            commandOps = re.sub("--%s[ =].( )*[^ ]+" % tmpOpt,"--%s %s" % (tmpOpt,tmpArg),commandOps)
+            commandOps = re.sub("\"*--%s[ =]+\s*[^ ]+" % tmpOpt,"--%s %s" % (tmpOpt,tmpArg),commandOps)
     if verbose:
         commandOps += ' -v'
     newCommand = "%s %s" %  (jobs[0].processingType,commandOps)
@@ -1832,7 +1938,7 @@ def extractNthFieldFromDS(datasetName,nth):
     if len(items) < (nth-1):
         # get logger
         tmpLog = PLogger.getPandaLogger()
-        errStr = "%s has only % fields < --useNthFieldForLFN=%s" % (datasetName,len(items),nth)
+        errStr = "%s has only %s fields < --useNthFieldForLFN=%s" % (datasetName,len(items),nth)
         tmpLog.error(errStr)
         sys.exit(EC_Config)
     # return

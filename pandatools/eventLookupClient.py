@@ -5,13 +5,14 @@ import urllib, re, string, os, time
 
 class eventLookupClient:
 
-   #serverURL = "http://j2eeps.cern.ch/test-Athenaeum/"
    serverURL = "http://j2eeps.cern.ch/atlas-project-Athenaeum/"
+   #serverURL = "http://j2eeps.cern.ch/test-Athenaeum/"
    #serverURL = "http://j2eeps.cern.ch/test-eventPicking/"
    lookupPage = "EventLookup.jsp"
    getPage = "EventLookupGet.jsp"
    key = "insider"
-   workerHost = "atlddm10.cern.ch"
+   workerHost = "atlas-tagservices.cern.ch"
+   #workerHost = "atlddm10.cern.ch"   #this is at the moment the real host aliased by atlas-tagservices
    #workerHost = "voatlas69.cern.ch"
    workerPort = '10004'
    connectionRefusedSleep = 20
@@ -37,16 +38,24 @@ class eventLookupClient:
             self.certProxy += line
       finally:
          proxy.close()
+
          
    def workerURL(self):
-      return "http://" + self.workerHost + ":" + self.workerPort
+      if self.workerHost.find(":") > 0:
+         # port number together with the host name, possibly from commandline option         
+         return "http://" + self.workerHost
+      else:
+         return "http://" + self.workerHost + ":" + self.workerPort
+
  
-   def doLookup(self, inputEvents, async=None, stream="", tokens="", extract=False):
+   def doLookup(self, inputEvents, async=None, stream="", tokens="",
+                amitag="", extract=False):
       """ contact the server and return a list of GUIDs
       inputEvents  - list of run-event pairs
       async - request query procesing in a separate process, client will poll for results
       stream - stream
       tokens - token names
+      amitag - used to select reprocessing pass (default empty means the latest)
       """
       if inputEvents == []:
          return []
@@ -63,28 +72,37 @@ class eventLookupClient:
          if len(runs) > 50 or len(inputEvents) > 1000:
             async = True
       if async:
-         async = "true"
+         asyncStr = "true"
       else:
-         async = "false"
+         asyncStr = "false"
 
       query_args = { 'key': self.key,
                      'worker': self.workerURL(),
                      'runs_events': runs_events,
                      'cert_proxy': self.certProxy,
-                     'async': async,
+                     'async': asyncStr,
                      'stream': stream,
+                     'amitag': amitag,
                      'tokens': tokens
                      }
       if extract:
          query_args['extract'] = "true"
 
       self.talkToServer(self.serverURL + self.lookupPage, query_args)
+      if not async:
+         for line in self.output:
+            if re.search("502 Bad Gateway", line):
+               # usually signifies a timeout on the J2EE server
+               print "Timeout detected. Retrying in asynchronous mode"
+               query_args['async'] = "true"
+               self.talkToServer(self.serverURL + self.lookupPage, query_args)
+               break
 
       self.remoteFile = None
       for line in self.output:
          m = re.search("FILE=(.+)$", line)
          if m:
-            return self.waitForFile( m.group(1) )
+            return self.waitForFile( m.group(1) )         
 
       return self.scanOutputForGuids()
    
