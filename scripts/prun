@@ -57,6 +57,8 @@ optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName
                 type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
 optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
+optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
+                type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
 optP.add_option('--useContElementBoundary',action='store_const',const=True,dest='useContElementBoundary',default=False,
@@ -71,6 +73,8 @@ optP.add_option('--libDS',action='store',dest='libDS',default='',type='string',
                 help='Name of a library dataset')
 optP.add_option('--removedDS', action='store', dest='removedDS', default='',
                 type='string', help="don't use datasets in the input dataset container")
+optP.add_option('--useHomeDir', action='store_const',const=True,dest='useHomeDir',default=False,
+                help='execute prun just under the HOME dir')
 optP.add_option('--noBuild', action='store_const',const=True,dest='nobuild',default=False,
                 help='Skip buildGen')
 optP.add_option('--individualOutDS',action='store_const',const=True,dest='individualOutDS',default=False,
@@ -85,6 +89,8 @@ optP.add_option('--match',action='store',dest='match',default='',type='string',
                 help='Use only files matching with given pattern')
 optP.add_option('--antiMatch',action='store',dest='antiMatch',default='',type='string',
                 help='Skip files matching with given pattern')
+optP.add_option('--notSkipLog',action='store_const',const=True,dest='notSkipLog',default=False,
+                help="Don't skip log files in input datasets")
 optP.add_option('--skipScan',action='store_const',const=True,dest='skipScan',default=False,
                 help='Skip LFC lookup at job submission')
 optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
@@ -114,7 +120,7 @@ optP.add_option('--maxFileSize',action='store',dest='maxFileSize',default=1024*1
 optP.add_option('--athenaTag',action='store',dest='athenaTag',default='',type='string',
                 help='Tags to setup Athena on remote WNs, e.g., --athenaTag=AtlasProduction,14.2.24.3')
 optP.add_option('--rootVer',action='store',dest='rootVer',default='',type='string',
-                help='Specify a ROOT version which is not included in Athena. This option can not be used together with --noBuild, e.g., --rootVer=5.28/00')
+                help='Specify a ROOT version which is not included in Athena. This option can not be used together with --noBuild, e.g., --rootVer=5.28/00' )
 optP.add_option('--workDir',action='store',dest='workDir',default='.',type='string',
                 help='All files under WORKDIR will be transfered to WNs (default=./)')
 optP.add_option('--extFile',action='store',dest='extFile',default='',
@@ -190,6 +196,8 @@ optP.add_option('--configJEM', action='store', dest='configJEM', default='',
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
+optP.add_option('--panda_cacheSrvURL', action='store', dest='panda_cacheSrvURL', default='',
+                type='string', help='internal parameter')
 optP.add_option('--panda_srcName', action='store', dest='panda_srcName', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_inDS', action='store', dest='panda_inDS', default='',
@@ -199,6 +207,8 @@ optP.add_option('--panda_inDSForEP', action='store', dest='panda_inDSForEP', def
 optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_jobsetID',action='store',dest='panda_jobsetID',default=-1,
+                type='int', help='internal parameter for jobsetID')
+optP.add_option('--panda_parentJobsetID',action='store',dest='panda_parentJobsetID',default=-1,
                 type='int', help='internal parameter for jobsetID')
 optP.add_option('--panda_dbRelease', action='store', dest='panda_dbRelease', default='',
                 type='string', help='internal parameter')
@@ -257,12 +267,18 @@ if options.devSrv:
 # set server
 if options.panda_srvURL != '':
     Client.setServer(options.panda_srvURL)
+if options.panda_cacheSrvURL != '':
+    Client.setCacheServer(options.panda_cacheSrvURL)
 
 # version check
 PsubUtils.checkPandaClientVer(options.verbose)
 
 # suffix for shadow dataset
 suffixShadow = Client.suffixShadow
+
+# remove whitespaces
+if options.outputs != '':
+    options.outputs = re.sub(' ','',options.outputs)
 
 # exclude sites
 if options.excludedSite != '':
@@ -403,6 +419,21 @@ if options.workDir != curDir and (not curDir.startswith(options.workDir+'/')):
     tmpLog.error("you need to run prun in a directory under %s" % options.workDir)
     sys.exit(EC_Config)
 
+# avoid gathering up the home dir
+if os.environ.has_key('HOME') and not options.useHomeDir and not options.useAthenaPackages \
+       and os.path.realpath(os.path.expanduser(os.environ['HOME'])) == options.workDir:
+    tmpStr  = 'prun is executed just under the HOME directoy '
+    tmpStr += 'and is going to send all files under the dir including ~/Mail/* and ~/private/*. '
+    tmpStr += 'Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)'
+    tmpLog.warning(tmpStr)
+    while True:
+        tmpAnswer = raw_input('y/N: ')
+        tmpAnswer = tmpAnswer.strip()
+        if tmpAnswer in ['y','N']:
+            break
+    if tmpAnswer == 'N':
+        sys.exit(EC_Config)
+        
 # run dir
 runDir = '.'
 if curDir != options.workDir:
@@ -523,7 +554,8 @@ if options.eventPickEvtList != '':
                                                               options.eventPickDataType,
                                                               options.eventPickStreamName,
                                                               options.eventPickDS,
-                                                              options.verbose)
+                                                              options.verbose,
+                                                              options.eventPickAmiTag)
     # set param
     options.inDS = ''
     options.filelist = []
@@ -839,7 +871,7 @@ if options.inDS != '':
         recursiveFlag = False
     inputFileMap,inputDsString = Client.getFilesInDatasetWithFilter(options.inDS,options.match,shadowList,options.inputFileListName,
                                                                     options.verbose,dsStringFlag=True,isRecursive=recursiveFlag,
-                                                                    antiFilter=options.antiMatch)
+                                                                    antiFilter=options.antiMatch,notSkipLog=options.notSkipLog)
     # empty
     if inputFileMap == {} and shadowList == []:
         errStr = "No files were found in %s (log.tgz was ignored). " % options.inDS
@@ -872,10 +904,12 @@ if options.inDS != '':
     missList = []
     # query files in secondary datasets
     for tmpDsName,tmpValMap in options.secondaryDSs.iteritems():
-        tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose)
+        tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose,
+                                                           notSkipLog=options.notSkipLog)
         # append
         options.secondaryDSs[tmpDsName]['fileMap'] = tmpSecFileMap
     # get locations
+    newUsedDsList = []
     if inputFileList != []:
         if options.site == "AUTO":
             if inputDsString == '':
@@ -899,13 +933,20 @@ if options.inDS != '':
                     dsUsedDsMap = tmpDsUsedDsMap
                 # no location
                 if tmpDsLocationMap == {} and tmpDsLocationMapBack == {}:
-		    if dsTapeSites != []:
-			tmpLog.error("Tape sites %s hold the dataset. Please request subscription to disk area first if needed" % dsTapeSites)
+		    if dsTapeSites != {}:
+			errStr = "Tape sites hold datasets as follows:\n\n"
+                        for tmpKey,tmpVal in dsTapeSites.iteritems():
+                            errStr += "  %s:%s\n" % (tmpKey,str(tmpVal))
+                        errStr += "\nPlease request subscription to disk area first if needed. "
+                        errStr += "This error could happen if your excluded sites have DISK replicas, "
+                        errStr += "or the sites where DISK replicas are available have been blacklisted by DDM (usually downtime) or HammerCloud, "
+                        errStr += "or there is no DISK replica."                        
+			tmpLog.error(errStr)
                     if options.crossSite in [0,maxCrossSite] or options.verbose:
                         if expCloudFlag:
-                            tmpLog.error("could not find supported/online sites in the %s cloud for %s" % (options.cloud,tmpDsForLookUp))
+                            tmpLog.error("Could not find supported/online sites in the %s cloud for %s" % (options.cloud,tmpDsForLookUp))
                         else:
-                            tmpLog.error("could not find supported/online sites for %s" % tmpDsForLookUp)
+                            tmpLog.error("Could not find supported/online sites for %s" % tmpDsForLookUp)
                     else:
                         errStr = "could not find supported/online sites for the missing files"
                         tmpLog.error(errStr)
@@ -1000,6 +1041,7 @@ if options.inDS != '':
                         # ignore expiring datasets
                         if not tmpDsUsedDsValItem in expFilesMap['datasets']:
                             options.removedDS.append(tmpDsUsedDsValItem)
+                            newUsedDsList.append(tmpDsUsedDsValItem)                             
                     break
         # scan local replica catalog
         dsLocation = Client.PandaSites[options.site]['ddm']
@@ -1022,6 +1064,11 @@ if options.inDS != '':
             missList = Client.getMissLFNsFromLRC(inputFileMap,Client.getLRC(dsLocation),options.verbose)
         else:
             missList = []
+        # remove datasets from removedDS if they are incomplete in LFC
+        tmpInconDsList = Client.getInconsistentDS(missList,newUsedDsList)
+        for tmpInconDS in tmpInconDsList:
+            if tmpInconDS in options.removedDS:
+                options.removedDS.remove(tmpInconDS)
         if options.verbose:
             tmpLog.debug("%s holds %s files" % (options.site,len(inputFileList)-len(missList)))
         # no files available
@@ -1315,9 +1362,9 @@ else:
 	    # collect files
 	    for tmpFile in workDirFiles:
 		if os.path.islink(tmpFile):
-		    status,out = commands.getstatusoutput('tar -rh %s -f %s' % (tmpFile,archiveFullName))
+		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -rh %s -f %s" % (tmpFile,archiveFullName))
 		else:
-		    status,out = commands.getstatusoutput('tar rf %s %s' % (archiveFullName,tmpFile))
+		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -rf %s %s" % (archiveFullName,tmpFile))
 		if options.verbose:
 		    print tmpFile
 		if status != 0 or out != '':
@@ -1456,6 +1503,8 @@ elif options.libDS == '':
     jobB.jobDefinitionID   = jobDefinitionID
     if not options.panda_jobsetID in [None,'NULL']:
         jobB.jobsetID      = options.panda_jobsetID
+    if options.panda_parentJobsetID != -1:
+        jobB.sourceSite    = options.panda_parentJobsetID
     jobB.jobName           = jobName
     jobB.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
     if options.provenanceID != -1:
@@ -1518,7 +1567,7 @@ elif options.libDS == '':
         jobB.jobParameters += '--bexec "%s" ' % urllib.quote(options.bexec)
         jobB.jobParameters += '-r %s ' % runDir
     # source URL
-    matchURL = re.search("(http.*://[^/]+)/",Client.baseURLSSL)
+    matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
     if matchURL != None:
         jobB.jobParameters += "--sourceURL %s " % matchURL.group(1)
     # use Athena packages
@@ -1699,6 +1748,8 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         jobR.jobDefinitionID   = jobDefinitionID
         if not options.panda_jobsetID in [None,'NULL']:
             jobR.jobsetID      = options.panda_jobsetID
+        if options.panda_parentJobsetID != -1:
+            jobR.sourceSite    = options.panda_parentJobsetID
         jobR.jobName           = jobName
         jobR.lockedby          = 'panda-client-%s' % PandaToolsPkgInfo.release_version
         if options.provenanceID != -1:
@@ -1743,7 +1794,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         jobR.cloud             = Client.PandaSites[options.site]['cloud']
         jobR.jobParameters     = '-j "%s" ' % jobScript
         # source URL
-        matchURL = re.search("(http.*://[^/]+)/",Client.baseURLSSL)
+        matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
         if matchURL != None:
             jobR.jobParameters += "--sourceURL %s " % matchURL.group(1)
         # use Athena packages
@@ -2028,6 +2079,11 @@ if options.inDS != '' and options.secondaryDSs != {}:
         msgStr += ' %s files for %s,' % (numFilesMap[tmpStreamKey],tmpStreamKey)
     tmpLog.info(msgStr[:-1])
 
+
+# check the number of output files
+splitJobList = PsubUtils.splitJobsNumOutputFiles(jobList)
+
+
 # check output dataset length for individualOutDS
 tmpIdvOutDsList = []
 if options.individualOutDS:
@@ -2063,7 +2119,7 @@ if not options.nosubmit:
     # upload sources via HTTP POST
     if options.panda_srcName == '':
         tmpLog.info("upload source files")
-        status,out = Client.putFile(archiveName,options.verbose)
+        status,out = Client.putFile(archiveName,options.verbose,useCacheSrv=True)
         if out != 'True':
             print out
             tmpLog.error("failed to upload source files with %s" % status)
@@ -2082,18 +2138,21 @@ if not options.nosubmit:
         # register output dataset
         tmpIdvOutDsList = []
         tmpDsContMap = {}
-        if (not outputDSexist) or options.destSE != '':
-            if not options.individualOutDS:
-                Client.addDataset(options.outDS,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
-                tmpIdvOutDsList.append(options.outDS)
-        if options.individualOutDS:        
-            # register individual datasets
-            for tmpFile in jobList[-1].Files:
-                if tmpFile.type in ['output','log']:
-                    if (not outputIndvDSlist.has_key(tmpFile.destinationDBlock)) and (not tmpFile.destinationDBlock in tmpIdvOutDsList):
-                        Client.addDataset(tmpFile.destinationDBlock,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
-                        tmpIdvOutDsList.append(tmpFile.destinationDBlock)
-                    tmpDsContMap[tmpFile.destinationDBlock] = tmpFile.dataset
+        # loop over all job lists                                                                                                                   
+        for serIndex,tmpJobList in enumerate(splitJobList):
+            if (not outputDSexist) or options.destSE != '':
+                if not options.individualOutDS:
+                    tmpDsName = options.outDS+PsubUtils.getSuffixToSplitJobList(serIndex)
+                    Client.addDataset(tmpDsName,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
+                    tmpIdvOutDsList.append(tmpDsName)
+            if options.individualOutDS:        
+                # register individual datasets
+                for tmpFile in tmpJobList[-1].Files:
+                    if tmpFile.type in ['output','log']:
+                        if (not outputIndvDSlist.has_key(tmpFile.destinationDBlock)) and (not tmpFile.destinationDBlock in tmpIdvOutDsList):
+                            Client.addDataset(tmpFile.destinationDBlock,options.verbose,location=tmpOutDsLocation,dsExist=outputDSexist)
+                            tmpIdvOutDsList.append(tmpFile.destinationDBlock)
+                        tmpDsContMap[tmpFile.destinationDBlock] = tmpFile.dataset
                 
         # register output dataset container
         if original_outDS_Name.endswith('/'):
@@ -2112,13 +2171,16 @@ if not options.nosubmit:
             if not outputDSexist:
                 for tmpIdvOutDS in tmpIdvOutDsList:
                     if not options.individualOutDS:
-                        Client.addDatasetsToContainer(original_outDS_Name,[options.outDS],options.verbose)
+                        Client.addDatasetsToContainer(original_outDS_Name,[tmpIdvOutDS],options.verbose)
                     else:
                         Client.addDatasetsToContainer(tmpDsContMap[tmpIdvOutDS],[tmpIdvOutDS],options.verbose)
 
         # register shadow dataset
         if not outputDSexist:
-            Client.addDataset("%s%s" % (options.outDS,suffixShadow),options.verbose)
+            # loop over all job lists
+            for serIndex,tmpJobList in enumerate(splitJobList):
+                tmpDsName = options.outDS+PsubUtils.getSuffixToSplitJobList(serIndex)+suffixShadow
+                Client.addDataset(tmpDsName,options.verbose)
 
         # register libDS
         if options.libDS == '' and not options.nobuild:
@@ -2126,7 +2188,19 @@ if not options.nosubmit:
 
     # submit
     tmpLog.info("submit %s subjobs to %s" % (len(jobList),options.site))
-    status,out = Client.submitJobs(jobList,options.verbose)
+    out = []
+    tmpJobsetID = jobsetID
+    for tmpJobList in splitJobList:
+        # set jobsetID
+        if not tmpJobsetID in [None,'NULL']:
+            for tmpJob in tmpJobList:
+                tmpJob.jobsetID = tmpJobsetID
+        status,tmpOut = Client.submitJobs(tmpJobList,options.verbose)
+        out += tmpOut
+        # get jobsetID
+        if tmpJobsetID in [None,'NULL',-1]:
+            if out != [] and out[0] != None:
+                tmpJobsetID = out[0][2]['jobsetID']
     if not Client.PandaSites[options.site]['status'] in ['online','brokeroff']:
 	tmpLog.warning("%s is %s. Your jobs will wait until it becomes online" % \
 	    (options.site,Client.PandaSites[options.site]['status']))

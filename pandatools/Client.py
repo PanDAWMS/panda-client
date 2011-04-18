@@ -33,6 +33,8 @@ baseURLDQ2     = 'http://atlddmcat-reader.cern.ch/dq2'
 baseURLDQ2SSL  = 'https://atlddmcat-writer.cern.ch:443/dq2'
 baseURLSUB     = "http://pandaserver.cern.ch:25080/trf/user"
 baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
+baseURLCSRV    = "http://pandacache.cern.ch:25080/server/panda"
+baseURLCSRVSSL = "http://pandacache.cern.ch:25443/server/panda"
 
 # exit code
 EC_Failed = 255
@@ -60,6 +62,17 @@ try:
     res = urllib.urlopen(getServerURL)
     # overwrite URL
     baseURLSSL = "https://%s/server/panda" % res.read()
+except:
+    type, value, traceBack = sys.exc_info()
+    print type,value
+    print "ERROR : could not getServer from %s" % getServerURL
+    sys.exit(EC_Failed)
+# get panda cache server's name
+try:
+    getServerURL = baseURLCSRV + '/getServer'
+    res = urllib.urlopen(getServerURL)
+    # overwrite URL
+    baseURLCSRVSSL = "https://%s/server/panda" % res.read()
 except:
     type, value, traceBack = sys.exc_info()
     print type,value
@@ -553,7 +566,7 @@ def queryLastFilesInDataset(datasets,verbose=False):
 
 
 # put file
-def putFile(file,verbose=False):
+def putFile(file,verbose=False,useCacheSrv=False):
     # size check for noBuild
     sizeLimit = 10*1024*1024
     if not file.startswith('sources.'):
@@ -572,7 +585,10 @@ def putFile(file,verbose=False):
     curl.sslKey  = _x509()
     curl.verbose = verbose
     # execute
-    url = baseURLSSL + '/putFile'
+    if useCacheSrv:
+        url = baseURLCSRVSSL + '/putFile'
+    else:
+        url = baseURLSSL + '/putFile'
     data = {'file':file}
     return curl.put(url,data)
 
@@ -1313,7 +1329,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         retSiteMap    = {}
         resRetSiteMap = {}
         resBadStSites = {}
-        resTapeSites  = []
+        resTapeSites  = {}
         retDQ2IDs     = []
         retDQ2IDmap   = {}
         allOut        = {}
@@ -1379,8 +1395,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                         for tmpEleLoc in tmpEleLocs[1]:
                             # don't use TAPE
                             if isTapeSite(tmpEleLoc):
-                                if not tmpEleLoc in resTapeSites:
-                                    resTapeSites.append(tmpEleLoc)
+                                if not resTapeSites.has_key(tmpEleLoc):
+                                    resTapeSites[tmpEleLoc] = []
+                                if not tmpEleName in resTapeSites[tmpEleLoc]:    
+                                    resTapeSites[tmpEleLoc].append(tmpEleName)
                                 continue
                             # append
                             if not outTmp.has_key(tmpEleLoc):
@@ -1398,8 +1416,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             for tmpEleLoc in tmpEleLocs[0]:
                                 # don't use TAPE
                                 if isTapeSite(tmpEleLoc):
-                                    if not tmpEleLoc in resTapeSites:
-                                        resTapeSites.append(tmpEleLoc)
+                                    if not resTapeSites.has_key(tmpEleLoc):
+                                        resTapeSites[tmpEleLoc] = []
+                                    if not tmpEleName in resTapeSites[tmpEleLoc]:    
+                                        resTapeSites[tmpEleLoc].append(tmpEleName)
                                     continue
                                 # append
                                 if not outTmp.has_key(tmpEleLoc):
@@ -1416,8 +1436,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 for tmpOutKey,tmpOutVar in out.iteritems():
                     # don't use TAPE
                     if isTapeSite(tmpOutKey):
-                        if not tmpOutKey in resTapeSites:
-                            resTapeSites.append(tmpOutKey)
+                        if not resTapeSites.has_key(tmpOutKey):
+                            resTapeSites[tmpOutKey] = []
+                        if not tmpName in resTapeSites[tmpOutKey]:
+                            resTapeSites[tmpOutKey].append(tmpName)
                         continue
                     # protection against unchecked
                     tmpNfound = tmpOutVar[0]['found']
@@ -1457,8 +1479,11 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 if PandaSites.has_key(tmpPandaSite) and (notSiteStatusCheck or PandaSites[tmpPandaSite]['status'] == 'online'):
                     # don't use TAPE
                     if isTapeSite(origTmpSite):
-                        if not origTmpSite in resTapeSites:
-                            resTapeSites.append(origTmpSite)
+                        if not resTapeSites.has_key(origTmpSite):
+                            if origTmpInfo[0].has_key('useddatasets'):
+                                resTapeSites[origTmpSite] = origTmpInfo[0]['useddatasets']
+                            else:
+                                resTapeSites[origTmpSite] = names
                         continue
                     # check the number of available files
                     if tmpMaxFiles < origTmpInfo[0]['found']:
@@ -1475,8 +1500,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         for origTmpSite,origTmpInfo in out.iteritems():
             # don't use TAPE
             if isTapeSite(origTmpSite):
-                if not origTmpSite in resTapeSites:
-                    resTapeSites.append(origTmpSite)
+                if not resTapeSites.has_key(origTmpSite):
+                    resTapeSites[origTmpSite] = origTmpInfo[0]['useddatasets']
                 continue
             # collect DQ2 IDs
             if not origTmpSite in retDQ2IDs:
@@ -2071,9 +2096,9 @@ def getDefaultSpaceToken(fqans,defaulttoken):
 # use dev server
 def useDevServer():
     global baseURL
-    baseURL = 'http://lxbuild002.cern.ch:25080/server/panda'
+    baseURL = 'http://voatlas04.cern.ch:25080/server/panda'
     global baseURLSSL
-    baseURLSSL = 'https://lxbuild002.cern.ch:25443/server/panda'    
+    baseURLSSL = 'https://voatlas04.cern.ch:25443/server/panda'    
 
 
 # set server
@@ -2082,7 +2107,15 @@ def setServer(urls):
     baseURL = urls.split(',')[0]
     global baseURLSSL
     baseURLSSL = urls.split(',')[-1]
-    
+
+
+# set cache server
+def setCacheServer(urls):
+    global baseURLCSRV
+    baseURLCSRV = urls.split(',')[0]
+    global baseURLCSRVSSL
+    baseURLCSRVSSL = urls.split(',')[-1]
+
 
 # register proxy key
 def registerProxyKey(credname,origin,myproxy,verbose=False):
@@ -2475,7 +2508,7 @@ def getCachePrefixes(verbose):
 
 # get files in dataset with filte
 def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose,dsStringFlag=False,isRecursive=False,
-                                antiFilter=''):
+                                antiFilter='',notSkipLog=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # query files in dataset
@@ -2505,10 +2538,11 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
     filesPassFilter = []
     for tmpLFN in tmpKeys:
         # remove log
-        if re.search('\.log(\.tgz)*(\.\d+)*$',tmpLFN) != None or \
-               re.search('\.log(\.\d+)*(\.tgz)*$',tmpLFN) != None:
-            del inputFileMap[tmpLFN]            
-            continue
+        if not notSkipLog:
+            if re.search('\.log(\.tgz)*(\.\d+)*$',tmpLFN) != None or \
+                   re.search('\.log(\.\d+)*(\.tgz)*$',tmpLFN) != None:
+                del inputFileMap[tmpLFN]            
+                continue
         # filename matching
         if filter != '':
             matchFlag = False
@@ -2627,6 +2661,9 @@ def getLatestDBRelease(verbose=False):
         # ignore CDRelease
         if ".CDRelease." in tmpName:
             continue
+        # ignore user
+        if tmpName.startswith('ddo.user'):
+            continue
         match = re.search('\.v(\d+)(_*[^\.]*)$',tmpName)
         if match == None:
             tmpLog.warning('cannot extract version number from %s' % tmpName)
@@ -2695,3 +2732,31 @@ def getLatestDBRelease(verbose=False):
     retVal = '%s:%s' % (latestDBR,tmpList.keys()[0])
     tmpLog.info('use %s' % retVal)
     return retVal
+
+
+# get inconsistent datasets which are complete in DQ2 but not in LFC 
+def getInconsistentDS(missList,newUsedDsList):
+    if missList == [] or newUsedDsList == []:
+        return []
+    inconDSs = []
+    # loop over all datasets
+    for tmpDS in newUsedDsList:
+        # escape
+        if missList == []:
+            break
+        # get file list
+        tmpList = queryFilesInDataset(tmpDS)
+        newMissList = []
+        # look for missing files
+        for tmpFile in missList:
+            if tmpList.has_key(tmpFile):
+                # append
+                if not tmpDS in inconDSs:
+                    inconDSs.append(tmpDS)
+            else:
+                # keep as missing
+                newMissList.append(tmpFile)
+        # use new missing list for the next dataset
+        missList = newMissList
+    # return
+    return inconDSs

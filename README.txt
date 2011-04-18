@@ -21,7 +21,43 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.37 (4/18/2011)
+  * updated DBR lookup to ignore ddo.user.*
+  * fixed cache server lookup
+
+0.3.36 (4/13/2011)
+  * added a protection against extremely fain-grained jobs
+  * added a protection to prun not to send files just under HOME
+  * fixed prun not to send hidden files
+  * added a protection when DQ2 complete dataset is incomplete in LFC
+  * fixed pbook to set parentSetID in retry(newSite=True)
+  * using new cache server to upload source files
+  * fixed pathena to use the latest DBR when DBRelease is unset in --trf
+  * fixed truncation of --execludedSite in pbook.retry(newSite=True)
+  * fixed string replacement in pbook.retry(newSite=True)
+  * improved error message related to TAPE in pathena/prun
+
+0.3.35 (4/1/2011)
+  * added protection not to produce jumbo shadow datasets
+
+0.3.34 (3/29/2011)
+  * removing whiles paces from --outputs and --extOutFile
+  * added automatic splitting to pathena/prun to avoid producing jumbo datasets
+
+0.3.33 (3/22/2011)
+  * fixed AMI lookup in --trf of pathena
+
+0.3.32 (2/26/2011)
+  * added --notSkipLog to prun
+
+0.3.31 (2/25/2011)
+  * modified doc on --useNextEvent in pathena
+  * added --randomMin/Cav to pathena
+
+0.3.30 (2/24/2011)
+  * added --eventPickAmiTag to pathena/prun
+
+0.3.29 (2/9/2011)
   * added --enableJEM and --configJEM to pathena/prun
   * added dereferenceSymLinks to archiveSourceFiles
   * modified --rootVer to follow versioning convention of ROOT
