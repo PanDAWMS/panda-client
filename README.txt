@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.3.37 (4/18/2011)
+  * updated DBR lookup to ignore ddo.user.*
+  * fixed cache server lookup
+
 0.3.36 (4/13/2011)
   * added a protection against extremely fain-grained jobs
   * added a protection to prun not to send files just under HOME

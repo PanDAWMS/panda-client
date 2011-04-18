@@ -2113,9 +2113,9 @@ def setServer(urls):
 def setCacheServer(urls):
     global baseURLCSRV
     baseURLCSRV = urls.split(',')[0]
-    global baseURLSSL
+    global baseURLCSRVSSL
     baseURLCSRVSSL = urls.split(',')[-1]
-    
+
 
 # register proxy key
 def registerProxyKey(credname,origin,myproxy,verbose=False):
@@ -2660,6 +2660,9 @@ def getLatestDBRelease(verbose=False):
     for tmpName in ddoDatasets:
         # ignore CDRelease
         if ".CDRelease." in tmpName:
+            continue
+        # ignore user
+        if tmpName.startswith('ddo.user'):
             continue
         match = re.search('\.v(\d+)(_*[^\.]*)$',tmpName)
         if match == None:
