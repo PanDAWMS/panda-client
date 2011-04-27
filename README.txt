@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.38 (4/27/2011)
   * fixed excludePattern in archiveFiles
+  * added more conservative definition for LATEST DBR
 
 0.3.37 (4/18/2011)
   * updated DBR lookup to ignore ddo.user.*
