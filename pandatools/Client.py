@@ -2637,6 +2637,38 @@ def checkQueuedAnalJobs(site,verbose=False):
         tmpLog.error("checkQueuedAnalJobs %s %s" % (type,value))
 
 
+# check if enough sites have DBR
+def checkEnoughSitesHaveDBR(dq2IDs):
+    # collect sites correspond to DQ2 IDs
+    nOnlineWithDBR = 0
+    sitesWithDBR = []
+    for tmpDQ2ID in dq2IDs:
+        tmpPandaSiteList = convertDQ2toPandaIDList(tmpDQ2ID)
+        for tmpPandaSite in tmpPandaSiteList:
+            if PandaSites.has_key(tmpPandaSite) and PandaSites[tmpPandaSite]['status'] == 'online':
+                if isExcudedSite(tmpPandaSite):
+                    continue
+                sitesWithDBR.append(tmpPandaSite)
+    # count the number of online sites with DBR
+    nOnline = 0
+    for tmpPandaSite,tmpSiteStat in PandaSites.iteritems():
+        if tmpSiteStat['status'] == 'online':
+            # exclude test,long,local
+            if isExcudedSite(tmpPandaSite):
+                continue
+            # DQ2 free
+            if tmpSiteStat['ddm'] == 'local':
+                continue
+            nOnline += 1
+            if tmpPandaSite in sitesWithDBR:
+                nOnlineWithDBR += 1
+    # threshold 90%
+    if float(nOnlineWithDBR)/float(nOnline) >= 0.9:
+        return True
+    else:
+        return False
+    
+
 # get latest DBRelease
 def getLatestDBRelease(verbose=False):
     # get logger
@@ -2707,7 +2739,7 @@ def getLatestDBRelease(verbose=False):
                         continue
         # check replica locations to use well distributed DBRelease. i.e. to avoid DBR just created
         tmpLocations = getLocations(tmpName,[],'',False,verbose,getDQ2IDs=True)
-        if len(tmpLocations) < 40:
+        if len(tmpLocations) < 40 or not checkEnoughSitesHaveDBR(tmpLocations):
             continue
         # check contents to exclude reprocessing DBR
         tmpDbrFileMap = queryFilesInDataset(tmpName,verbose)
