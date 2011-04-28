@@ -19,7 +19,9 @@ class LocalJobSpec(object):
         'releaseVar'    : 'VARCHAR(128)',
         'cacheVar'      : 'VARCHAR(128)',
         'retryJobsetID' : 'INTEGER',
-        'parentJobsetID': 'INTEGER', 
+        'parentJobsetID': 'INTEGER',
+        'mergeJobStatus': 'VARCHAR(20)',
+        'mergeJobID'    : 'TEXT',
         }
     
     _attributes += tuple(appended.keys())
@@ -136,6 +138,9 @@ class LocalJobSpec(object):
         strOut += strFormat % ("libDS",        str(self.libDS))
         strOut += strFormat % ("retryID",      self.retryID)        
         strOut += strFormat % ("provenanceID", self.provenanceID)
+        if not self.mergeJobStatus in ['NA']:
+            strOut += strFormat % ("mergeJobStatus", self.mergeJobStatus)
+            strOut += strFormat % ("mergeJobID",     self.mergeJobID)            
         strOut += strFormat % ("creationTime", self.creationTime.strftime('%Y-%m-%d %H:%M:%S'))
         strOut += strFormat % ("lastUpdate",   self.lastUpdate.strftime('%Y-%m-%d %H:%M:%S'))
         strOut += strFormat % ("params",       self.jobParams)
@@ -314,9 +319,19 @@ class LocalJobSpec(object):
         ret['jobStatus'] = sStr[:-1]
         # job parameters
         ret['jobParams'] = urllib.quote(self.jobParams)
+        # set merge job status
+        if '--mergeOutput' in self.jobParams and not self.jobType in ['usermerge']:
+            if not self.mergeJobStatus in ['NA','standby','generating','generated','aborted']:
+                self.mergeJobStatus = 'standby'
+        else:
+            self.mergeJobStatus = 'NA'
         # set dbStatus
         if toBeFrozen:
-            self.dbStatus = 'frozen'
+            if self.mergeJobStatus in ['standby','generating']:
+                # intermediate state while generating merge jobs
+                self.dbStatus = 'running'
+            else:
+                self.dbStatus = 'frozen'
         else:
             if self.commandToPilot=='tobekilled':
                 self.dbStatus = 'killing'
@@ -325,6 +340,14 @@ class LocalJobSpec(object):
         # return
         return ret
 
+
+    # merge job generation is active
+    def activeMergeGen(self):
+        if '--mergeOutput' in self.jobParams and self.mergeJobStatus in ['standby','generating'] \
+               and not self.jobType in ['usermerge']:
+            return True
+        return False
+    
         
     # return column names for INSERT or full SELECT
     def columnNames(cls):

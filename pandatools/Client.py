@@ -2344,6 +2344,30 @@ def getPandIDsWithJobID(jobID,dn=None,nJobs=0,verbose=False):
         return EC_Failed,None
 
 
+# check merge job generation for a JobID
+def checkMergeGenerationStatus(jobID,dn=None,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/checkMergeGenerationStatus'
+    data = {'jobID':jobID}
+    if dn != None:
+        data['dn'] = dn
+    status,output = curl.post(url,data)
+    if status!=0:
+        print output
+        return status,None
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR checkMergeGenerationStatus : %s %s" % (type,value)
+        return EC_Failed,None
+
+
 # get full job status
 def getFullJobStatus(ids,verbose):
     # serialize

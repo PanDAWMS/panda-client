@@ -43,7 +43,9 @@ class LocalJobsetSpec(object):
         # loop over all jobs
         totalBuild = 0
         totalRun   = 0
-        totalJobStatus = {} 
+        totalMerge = 0
+        totalJobStatus = {}
+        usingMerge = False
         for jobID in jobIDs:
             job = self.JobMap[jobID]
             if firstJob:
@@ -88,6 +90,9 @@ class LocalJobsetSpec(object):
                     if not statusMap.has_key(tmpStatus):
                         statusMap[tmpStatus] = 0
                     statusMap[tmpStatus] += tmpCount
+            # merge
+            if not job.mergeJobStatus in ['NA']:
+                usingMerge = True
             # get PandaIDs for each status 
             pandaIDstatusMap = {}
             tmpStatusList  = job.jobStatus.split(',')
@@ -121,10 +126,16 @@ class LocalJobsetSpec(object):
                 # including buildJob
                 nJobsStr = "%d + 1(build)" % (nJobs-1)
                 totalBuild += 1
-                totalRun += (nJobs-1)
+                if usingMerge and job.jobType in ['usermerge']:
+                    totalMerge += (nJobs-1)
+                else:
+                    totalRun += (nJobs-1)
             else:
                 nJobsStr = "%d" % nJobs
-                totalRun += nJobs
+                if usingMerge and job.jobType in ['usermerge']:
+                    totalMerge += nJobs
+                else:
+                    totalRun += nJobs
             # job specific string representation
             if self.flag_longFormat:
                 strOutJob += '\n'
@@ -137,6 +148,8 @@ class LocalJobsetSpec(object):
                 strOutJob += strFormat % ("jobStatus",    statusStr)
         # number of jobs
         nJobsStr = "%d" % totalRun
+        if usingMerge:
+            nJobsStr += " + %s(merge)" % totalMerge
         if totalBuild != 0:
             nJobsStr += " + %s(build)" % totalBuild
         strOut1 += strFormat % ("nJobs",        nJobsStr)

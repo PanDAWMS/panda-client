@@ -175,6 +175,8 @@ optP.add_option('--dbRunNumber',action='store',dest='dbRunNumber', default='',
                 type='string', help='RunNumber for DBRelease or CDRelease. If this option is used some redundant files are removed to save disk usage when unpacking DBRelease tarball. e.g., 0091890')
 optP.add_option('--notExpandDBR',action='store_const',const=True,dest='notExpandDBR',default=False,
                 help='By default, DBRelease.tar.gz is expanded on WN and gets deleted after changing environment variables accordingly. If you need tar.gz, use this option')
+optP.add_option('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
+                help="merge output files")
 optP.add_option('--provenanceID',action='store',dest='provenanceID',default=-1,type='int',
                 help='provenanceID')
 optP.add_option('-v',action='store_const',const=True,dest='verbose',default=False,
@@ -1811,6 +1813,9 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             jobR.jobParameters += "--enable-jem "
             if options.configJEM != '':
                 jobR.jobParameters += "--jem-config %s " % options.configJEM
+        # merge
+        if options.mergeOutput:
+            jobR.jobParameters += "--mergeOutput "
         if options.jobParams != '':
             # random seed
             tmpJobO = options.jobParams

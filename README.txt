@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+current
+  * added --mergeOutout to pathena/prun
+  * updated pbook to allow reattempt for merge jobs
+
 0.3.38 (4/27/2011)
   * fixed excludePattern in archiveFiles
   * added more conservative definition for LATEST DBR

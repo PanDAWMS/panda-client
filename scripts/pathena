@@ -111,7 +111,7 @@ optP.add_option('--useNthFieldForLFN',action='store',dest='useNthFieldForLFN',de
 optP.add_option('--useAMIEventLevelSplit',action='store_const',const=True,dest='useAMIEventLevelSplit',default=None,
                 help="retrive the number of events per file from AMI to split the job using --nEventsPerJob")
 optP.add_option('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
-                help="DO NOT USE FOR NOW !!!  merge output files")
+                help="merge output files")
 optP.add_option('--useCommonHalo', action='store_const', const=False, dest='useCommonHalo',  default=True,
                 help="use an integrated DS for BeamHalo")
 optP.add_option('--beamHaloDS',  action='store', dest='beamHaloDS',  default='',

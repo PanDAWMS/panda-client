@@ -176,6 +176,10 @@ class PBookCore:
                 pandaJobForSiteID = tmpPandaJobs[0]
             # convert to local job spec
             localJob = PdbUtils.convertPtoD(pandaJobs,pandaIDstatus,job,pandaFileInfo,pandaJobForSiteID)
+            # check merge job generation
+            status = self.setMergeJobStatus(localJob)
+            if not status:
+                return
             # update database 
             if not remoteJobID in localJobIDs:
                 # insert to DB
@@ -204,6 +208,31 @@ class PBookCore:
         BookConfig.updateConfig(bookConf)
         tmpLog.info("Synchronization Completed")
         
+
+    # set merge job status
+    def setMergeJobStatus(self,job,forceUpdate=False):
+        # only whenmerge job generation is active
+        if not forceUpdate and not job.activeMergeGen():
+            return True
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # check status of merge job generation
+        status,genStauts = Client.checkMergeGenerationStatus(job.JobID,verbose=self.verbose)
+        if status != 0:
+            tmpLog.error(genStauts)
+            tmpLog.error("Failed to check status of merge job generation for JobID=%s" % job.JobID)
+            return False
+        # set status
+        job.mergeJobStatus = genStauts['status']
+        # set merge job IDs
+        if genStauts['mergeIDs'] != []:
+            job.mergeJobID = ''
+            for tmpID in genStauts['mergeIDs']:
+                job.mergeJobID += '%s,' % tmpID
+            job.mergeJobID = job.mergeJobID[:-1]
+        # return
+        return True
+
 
     # get local job info
     def getJobInfo(self,JobID):
@@ -288,6 +317,10 @@ class PBookCore:
                 pandaJob = tmpPandaJobs[0]
             # convert to local job spec
             job = PdbUtils.convertPtoD([],pandaIDstatus,job,pandaJobForSiteID=pandaJob)
+            # check merge job generation
+            status = self.setMergeJobStatus(job,forceUpdate)
+            if not status:
+                return None
             # update DB
             try:
                 PdbUtils.updateJobDB(job,self.verbose)
@@ -308,9 +341,26 @@ class PBookCore:
         else:
             # jobset
             tmpJobs = []
+            tmpMergeIdList = []
             for tmpJobID in tmpJobIDList:
                 tmpJob = self.status(tmpJobID,forceUpdate)
+		if tmpJob == None:
+		    return None
                 tmpJobs.append(tmpJob)
+                if tmpJob.mergeJobID != '':
+                    for tmpMergeID in tmpJob.mergeJobID.split(','):
+                        tmpMergeIdList.append(long(tmpMergeID))
+            # check merge jobs are already got
+            tmpIDtoBeChecked = []  
+            for tmpMergeID in tmpMergeIdList:
+                if not tmpMergeID in tmpJobIDList:
+                    tmpIDtoBeChecked.append(tmpMergeID)
+            # sync to get merge job info        
+            if tmpIDtoBeChecked != []:
+                self.sync()
+                for tmpJobID in tmpIDtoBeChecked:
+                    tmpJob = self.status(tmpJobID,forceUpdate)
+                    tmpJobs.append(tmpJob)
             # make jobset
             job = self.makeJobsetSpec(tmpJobs)
         # return     
@@ -629,12 +679,16 @@ class PBookCore:
                         file.destinationDBlock = re.sub('_sub\d+$','',file.destinationDBlock)
 			# add retry num
                         if file.dataset.endswith('/'):
+                            oldOutDsName = file.destinationDBlock
                             retryMatch = re.search('_r(\d+)$',file.destinationDBlock)
                             if retryMatch == None:
                                 file.destinationDBlock += '_r1'
                             else:
                                 tmpDestinationDBlock = re.sub('_r(\d+)$','',file.destinationDBlock)
                                 file.destinationDBlock = tmpDestinationDBlock + '_r%d' % (1+int(retryMatch.group(1)))
+                            if job.processingType == 'usermerge':
+                                job.jobParameters = job.jobParameters.replace(' %s ' % oldOutDsName,
+                                                                              ' %s ' % file.destinationDBlock)
                         # add attempt nr
                         oldName  = file.lfn
                         file.lfn = re.sub("\.\d+$","",file.lfn)
@@ -726,7 +780,7 @@ class PBookCore:
 	    if noSubmit:
 		continue
             # invoke pathena/prun to send job to new site
-            if newSite:
+            if newSite and retryJobs[0].processingType != 'usermerge':
                 # set parent jobID and jobsetID
                 newOpts['provenanceID'] = retryJobs[0].jobExecutionID
                 newOpts['panda_parentJobsetID'] = retryJobs[0].sourceSite
@@ -900,18 +954,7 @@ For more info, do help(show) for example."""
                         show(long(job.JobsetID),forceUpdate=forceUpdate,
                              showPandaIDinState=showPandaIDinState,longFormat=longFormat)
         else:
-            tmpJobIDList = pbookCore.getJobIDsWithSetID(JobID)
-            if tmpJobIDList == None:
-                # not a jobset
-                job = pbookCore.status(JobID,forceUpdate)
-            else:
-                # jobset
-                tmpJobs = []
-                for tmpJobID in tmpJobIDList:
-                    tmpJob = pbookCore.status(tmpJobID,forceUpdate)
-                    tmpJobs.append(tmpJob)
-                # make jobset
-                job = pbookCore.makeJobsetSpec(tmpJobs)
+            job = pbookCore.statusJobJobset(JobID,forceUpdate)
             # print
             print "======================================"
             if showPandaIDinState:
