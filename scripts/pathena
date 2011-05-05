@@ -401,6 +401,8 @@ siteSpecified = True
 if options.site == 'AUTO':
     siteSpecified = False
 
+brokerageLogs = []
+
 # use outputPath as outDS
 if Client.isDQ2free(options.site):
     if options.outDS != '':
@@ -1262,7 +1264,7 @@ if outputDSexist and options.destSE == '':
 	    convID = tmpConvIDs[0]
         else:
             # run brokerage to be sent to free site
-            convID = PsubUtils.runBrokerageForCompSite(tmpConvIDs,'Atlas-%s' % athenaVer,cacheVer,options.verbose)
+            convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,'Atlas-%s' % athenaVer,cacheVer,options.verbose)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -1302,7 +1304,7 @@ if options.libDS != '' and not Client.isDQ2free(options.site):
 	    convID = tmpConvIDs[0]
         else:
             # run brokerage to be sent to free site
-            convID = PsubUtils.runBrokerageForCompSite(tmpConvIDs,'Atlas-%s' % athenaVer,cacheVer,options.verbose)
+            convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,'Atlas-%s' % athenaVer,cacheVer,options.verbose)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -1797,10 +1799,13 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                         tmpSites.append(tmpItem)
 		if tmpSites == []:
                     continue
-                status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer)
+                status,outMap = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
+                                                    loggingFlag=True)
                 if status != 0:
-                    tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
+                    tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)
                     sys.exit(EC_Config)
+                out = outMap['site']
+                brokerageLogs = outMap['logInfo']
                 if out.startswith('ERROR :'):
 		    if idxDsLocationMap == 0:
 			tmpBrokerErr += out
@@ -2386,12 +2391,15 @@ if options.site == "AUTO":
     tmpBrokerErr = ''
     for idxTmpSites,tmpSites in enumerate(tmpSitesList):
         if tmpSites != []:
-            status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer)
+            status,outMap = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
+                                                loggingFlag=True)
         else:
-            status,out = 0,'ERROR : site list is empty.' 
+            status,outMap = 0,{'site':'ERROR : site list is empty.','logInfo':[]} 
         if status != 0:
-            tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
+            tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)  
             sys.exit(EC_Config)
+        out = outMap['site']
+        brokerageLogs = outMap['logInfo']
         if out.startswith('ERROR :'):
             tmpBrokerErr += out
             if idxTmpSites == 0:
@@ -3640,6 +3648,8 @@ if not options.nosubmit:
     print ' JobID  : %s' % jobID
     print ' Status : %d' % status
     print outstr
+    if status == 0 and brokerageLogs != []:
+        Client.sendBrokerageLog(jobID,jobsetID,brokerageLogs,options.verbose)
 
     # create dir for DB
     dbdir = os.path.expanduser(os.environ['PANDA_CONFIG_ROOT'])
