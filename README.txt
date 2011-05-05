@@ -21,9 +21,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.39 (5/5/2011)
   * added --mergeOutout to pathena/prun
   * updated pbook to allow reattempt for merge jobs
+  * updated pathena/prun for brokerage logging
 
 0.3.38 (4/27/2011)
   * fixed excludePattern in archiveFiles
