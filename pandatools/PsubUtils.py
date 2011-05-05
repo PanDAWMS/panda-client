@@ -1262,7 +1262,7 @@ def getMapTAGandParentGUIDs(dsName,tagQuery,streamRef,verbose=False):
     from countGuidsClient import countGuidsClient
     tagIF = countGuidsClient()
     tagIF.debug = verbose
-    tagResults = tagIF.countGuids(dsNameForLookUp,tagQuery,streamRef+',StreamTAG')
+    tagResults = tagIF.countGuids(dsNameForLookUp,tagQuery,streamRef+',StreamTAG_ref')
     if tagResults == None:
         if not verbose:
             print

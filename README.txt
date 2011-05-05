@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.40 (5/5/2011)
+  * changed TAG reference names to StreamTAG_ref
+
 0.3.39 (5/5/2011)
   * added --mergeOutout to pathena/prun
   * updated pbook to allow reattempt for merge jobs
