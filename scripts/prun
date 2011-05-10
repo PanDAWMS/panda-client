@@ -1084,6 +1084,8 @@ if options.inDS != '':
 	    if options.crossSite == 0:
 		tmpLog.error(tmpStr)
 		sys.exit(EC_Dataset)
+            elif options.crossSite == 1:
+                tmpLog.warning(tmpStr)
             else:
                 tmpLog.info(tmpStr)
         # remove missing files

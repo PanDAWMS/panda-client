@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * updated pathena/prun to give warning message if files are missing
+
 0.3.40 (5/5/2011)
   * changed TAG reference names to StreamTAG_ref
 
