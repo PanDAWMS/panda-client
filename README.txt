@@ -21,9 +21,17 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.41 (5/11/2011)
+  * updated pathena/prun to give warning message if files are missing
+  * fixed pathena for TAG with trf
+
+0.3.40 (5/5/2011)
+  * changed TAG reference names to StreamTAG_ref
+
+0.3.39 (5/5/2011)
   * added --mergeOutout to pathena/prun
   * updated pbook to allow reattempt for merge jobs
+  * updated pathena/prun for brokerage logging
 
 0.3.38 (4/27/2011)
   * fixed excludePattern in archiveFiles
