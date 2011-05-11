@@ -3291,7 +3291,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         if bgasList != []:
             param += '--beamGas "%s" ' % bgasList
         param += '-o "%s" ' % outMap
-        if runConfig.input.inColl:
+        if runConfig.input.inColl or (options.trf and 'inputTAGFile=' in jobO):
             param += '-c '
         if runConfig.input.inBS:
             param += '-b '
