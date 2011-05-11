@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+current
+  * increased maxCrossSite to 50
+  * fixed pathena/prun for ssc5
+
 0.3.41 (5/11/2011)
   * updated pathena/prun to give warning message if files are missing
   * fixed pathena for TAG with trf
