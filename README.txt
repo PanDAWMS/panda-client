@@ -21,9 +21,11 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.42 (5/18/2011)
   * increased maxCrossSite to 50
   * fixed pathena/prun for ssc5
+  * added a protection to DBR lookup for DQ2 failure 
+  * fixed pathena to check the size of MinimumBias,Cavern,BeamHalo,BeamGas files
 
 0.3.41 (5/11/2011)
   * updated pathena/prun to give warning message if files are missing

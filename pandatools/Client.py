@@ -763,7 +763,12 @@ def getDatasets(name,verbose=False,withWC=False,onlyNames=False):
             # no datasets
             return datasets
         # get names only
-        return out
+        if isinstance(out,types.DictionaryType): 
+            return out
+        else:
+            # wrong format
+            errStr = "ERROR : DQ2 didn't give a dictionary for %s" % name
+            sys.exit(EC_Failed)
         # get VUIDs
         for dsname,idMap in out.iteritems():
             # check format

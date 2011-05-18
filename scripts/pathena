@@ -2882,12 +2882,14 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                 if divF == 0:
                     divF = 1
             # File Selector
+            totalSize = 0
+            numInputFiles = 0
+            totalTagSize = 0
             tmpList = b_inputFileList[indexFiles:indexFiles+divF]
             if options.inDS != '' and not options.shipinput:
-                totalSize = 0
-                totalTagSize = 0
                 tmpTagList = []
                 inTagListStr = ''
+                numInputFiles = len(tmpList)
                 for fileName in tmpList:
                     vals = inputFileMap[fileName]
                     # instantiate  FileSpec
@@ -2940,20 +2942,6 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                             inList.append(tmpTagFileName)
                             totalTagSize += long(file.fsize)
                 inTagListStr = inTagListStr[:-1]
-                # size check    
-                if (not isDirectAccess) and totalSize > maxTotalSize-dbrDsSize-totalTagSize and len(tmpList) > 1:
-                    tmpStr  = "A subjob has %s input files and requires %sMB of disk space" \
-                              % (len(tmpList), ((totalSize+dbrDsSize) >> 20))
-                    if dbrDsSize != 0:
-                        tmpStr += " (DBRelease=%sMB)" % (dbrDsSize>>20)
-                    if useTagParentLookup:
-                        tmpStr += " (TAG=%sMB)" % (totalTagSize>>20)
-                    tmpStr += ". It must be less than %sMB to avoid overflowing the remote disk. " \
-                              % (maxTotalSize >> 20)
-                    tmpStr += "Please split the job using --nFilesPerJob. If file sizes vary in large range "
-                    tmpStr += "--nGBPerJob may help. e.g., --nGBPerJob=MAX"                
-                    tmpLog.error(tmpStr)
-                    sys.exit(EC_Split)
             else:        
                 for fileName in tmpList:
                     # use GUID boundaries or not
@@ -2976,12 +2964,15 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                         if not tmpShipFile in inList:
                             inList.append(tmpShipFile)
             # Minimum Bias
+            totalMinSize = 0
+            numMinFiles  = 0
             if runConfig.input.inMinBias:
                 if indexMin+options.nMin*divF >= len(minbiasList):
                     # re-use files when Minimum-Bias files are not enough   
                     indexMin = 0   
                 tmpList = minbiasList[indexMin:indexMin+options.nMin*divF]
                 indexMin += options.nMin*divF
+                numMinFiles = len(tmpList)
                 for fileName,vals in tmpList:
                     # instantiate  FileSpec
                     file = FileSpec()
@@ -2999,13 +2990,17 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                         file.prodDBlockToken = 'local'
                     jobR.addFile(file)
                     minList.append(fileName)
+                    totalMinSize += long(file.fsize)
             # Cavern
+            totalCavSize = 0
+            numCavFiles  = 0
             if runConfig.input.inCavern:
                 if indexCavern+options.nCav*divF >= len(cavernList):
                     # re-use files when Cavern files are not enough   
                     indexCavern = 0   
                 tmpList = cavernList[indexCavern:indexCavern+options.nCav*divF]
                 indexCavern += options.nCav*divF
+                numCavFiles = len(tmpList)
                 for fileName,vals in tmpList:
                     # instantiate  FileSpec
                     file = FileSpec()
@@ -3023,7 +3018,10 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                         file.prodDBlockToken = 'local'
                     jobR.addFile(file)
                     cavList.append(fileName)
+                    totalCavSize += long(file.fsize)
             # BeamHalo
+            totalBeamHaloSize = 0
+            numBeamHaloFiles  = 0
             if runConfig.input.inBeamHalo:
                 if options.useCommonHalo:
                     # integrated dataset
@@ -3045,6 +3043,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                     indexBHaloA += options.nBeamHaloA
                     indexBHaloC += options.nBeamHaloC
                 tmpIndex = 0
+                numBeamHaloFiles = len(tmpList)
                 for fileName,vals in tmpList:
                     # instantiate  FileSpec
                     file = FileSpec()
@@ -3075,7 +3074,10 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                     jobR.addFile(file)
                     bhaloList.append(fileName)
                     tmpIndex += 1
+                    totalBeamHaloSize += long(file.fsize) 
             # BeamGas
+            totalBeamGasSize = 0
+            numBeamGasFiles  = 0
             if runConfig.input.inBeamGas:        
                 if options.useCommonGas:
                     # integrated dataset
@@ -3102,6 +3104,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                     indexBGasC += options.nBeamGasC
                     indexBGasO += options.nBeamGasO
                 tmpIndex = 0
+                numBeamGasFiles = len(tmpList)
                 for fileName,vals in tmpList:
                     # instantiate  FileSpec
                     file = FileSpec()
@@ -3136,6 +3139,31 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                     jobR.addFile(file)
                     bgasList.append(fileName)
                     tmpIndex += 1
+                    totalBeamGasSize += long(file.fsize)
+            # size check
+            if (not isDirectAccess) and \
+                   totalSize+totalMinSize+totalCavSize+totalBeamHaloSize+totalBeamGasSize+dbrDsSize+totalTagSize > maxTotalSize and \
+                   numInputFiles > 1:
+                tmpStr  = "A subjob has %s input files and requires %sMB of disk space" \
+                          % (numInputFiles, ((totalSize+totalMinSize+totalCavSize+totalBeamHaloSize+totalBeamGasSize+dbrDsSize+totalTagSize) >> 20))
+                if dbrDsSize != 0:
+                    tmpStr += " (DBRelease=%sMB)" % (dbrDsSize>>20)
+                if useTagParentLookup:
+                    tmpStr += " (TAG=%sMB)" % (totalTagSize>>20)
+                if totalMinSize != 0:
+                    tmpStr += " (MinimumBias=%sMB, %sfiles)" % (totalMinSize>>20,numMinFiles)
+                if totalCavSize != 0:
+                    tmpStr += " (Cavern=%sMB, %sfiles)" % (totalCavSize>>20,numCavFiles)
+                if totalBeamHaloSize != 0:
+                    tmpStr += " (BeamHalo=%sMB, %sfiles)" % (totalBeamHaloSize>>20,numBeamHaloFiles)
+                if totalBeamGasSize != 0:
+                    tmpStr += " (BeamGas=%sMB, %sfiles)" % (totalBeamGasSize>>20,numBeamGasFiles)
+                tmpStr += ". It must be less than %sMB to avoid overflowing the remote disk. " \
+                          % (maxTotalSize >> 20)
+                tmpStr += "Please split the job using --nFilesPerJob. If file sizes vary in large range "
+                tmpStr += "--nGBPerJob may help. e.g., --nGBPerJob=MAX"                
+                tmpLog.error(tmpStr)
+                sys.exit(EC_Split)
             #@
             #@ important
             #@ Done with an input files description of the job.
