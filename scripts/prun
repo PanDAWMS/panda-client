@@ -14,13 +14,14 @@ import commands
 import urllib
 import shelve
 import copy
+import types
 
 # default cloud/site
 defaultCloud = None
 defaultSite  = 'AUTO'
 
 # max lookup for cross site option
-maxCrossSite = 10
+maxCrossSite = 50
 
 # error code
 EC_Config    = 10
@@ -298,6 +299,8 @@ PsubUtils.limit_maxNumInputs = options.maxNFilesPerJob
 siteSpecified = True
 if options.site == 'AUTO':
     siteSpecified = False
+
+brokerageLogs = []
 
 # use outputPath as outDS
 if Client.isDQ2free(options.site):
@@ -776,7 +779,7 @@ if outputDSexist and options.destSE == '':
 	    convID = tmpConvIDs[0]
         else:
             # run brokerage to be sent to free site
-            convID = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,options.verbose)
+            convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,options.verbose)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -816,7 +819,7 @@ if options.libDS != '' and not Client.isDQ2free(options.site):
 	    convID = tmpConvIDs[0]
         else:
             # run brokerage to be sent to free site
-            convID = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,options.verbose)
+            convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,options.verbose)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -1004,10 +1007,13 @@ if options.inDS != '':
                         tmpSites.append(tmpItem)
 		if tmpSites == []:
                     continue
-                status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer)
+                status,outMap = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
+                                                    loggingFlag=True)
                 if status != 0:
-                    tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
+                    tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)
                     sys.exit(EC_Config)
+                out = outMap['site']
+                brokerageLogs = outMap['logInfo']
                 if out.startswith('ERROR :'):
 		    if idxDsLocationMap == 0:
 			tmpBrokerErr += out
@@ -1079,6 +1085,8 @@ if options.inDS != '':
 	    if options.crossSite == 0:
 		tmpLog.error(tmpStr)
 		sys.exit(EC_Dataset)
+            elif options.crossSite == 1:
+                tmpLog.warning(tmpStr)
             else:
                 tmpLog.info(tmpStr)
         # remove missing files
@@ -1194,10 +1202,13 @@ else:
         # run brokerage
         tmpBrokerErr = ''
         for idxTmpSites,tmpSites in enumerate(tmpSitesList):
-            status,out = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer)    
+            status,outMap = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
+                                                loggingFlag=True)    
             if status != 0:
-                tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
+                tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)  
                 sys.exit(EC_Config)
+            out = outMap['site']
+            brokerageLogs = outMap['logInfo']
             if out.startswith('ERROR :'):
                 tmpBrokerErr += out
                 if idxTmpSites == 0:
@@ -2204,7 +2215,7 @@ if not options.nosubmit:
         out += tmpOut
         # get jobsetID
         if tmpJobsetID in [None,'NULL',-1]:
-            if out != [] and out[0] != None:
+            if out != [] and out[0] != None and isinstance(out[0][2],types.DictionaryType):
                 tmpJobsetID = out[0][2]['jobsetID']
     if not Client.PandaSites[options.site]['status'] in ['online','brokeroff']:
 	tmpLog.warning("%s is %s. Your jobs will wait until it becomes online" % \
@@ -2231,7 +2242,8 @@ if not options.nosubmit:
                 # set JobID
                 jobID = o[1]
                 # set jobsetID
-                jobsetID = o[2]['jobsetID']
+                if isinstance(o[2],types.DictionaryType):
+                    jobsetID = o[2]['jobsetID']
             if index==0 and options.libDS=='' and not options.nobuild:
                 outstr += "  > build\n"
                 outstr += "    PandaID=%s\n" % o[0]
@@ -2249,6 +2261,8 @@ if not options.nosubmit:
     print ' JobID  : %s' % jobID
     print ' Status : %d' % status
     print outstr
+    if status == 0 and brokerageLogs != []:
+        Client.sendBrokerageLog(jobID,jobsetID,brokerageLogs,options.verbose)
 
     # create dir for DB
     dbdir = os.path.expanduser(os.environ['PANDA_CONFIG_ROOT'])

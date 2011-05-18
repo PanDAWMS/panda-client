@@ -1083,17 +1083,18 @@ def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # run brokerage
-    status,out = Client.runBrokerage(siteIDs,releaseVer,verbose=verbose,trustIS=True,cacheVer=cacheVer)
+    status,outMap = Client.runBrokerage(siteIDs,releaseVer,verbose=verbose,trustIS=True,cacheVer=cacheVer,loggingFlag=True)
     if status != 0:
-        tmpLog.error('failed to run brokerage for composite site: %s' % out)
+        tmpLog.error('failed to run brokerage for composite site: %s' % outMap)
         sys.exit(EC_Config)
+    out = outMap['site']    
     if out.startswith('ERROR :'):
         tmpLog.error(out + '\nbrokerage failed')
         sys.exit(EC_Config)
     if not Client.PandaSites.has_key(out):
         tmpLog.error('brokerage gave wrong PandaSiteID:%s' % out)
         sys.exit(EC_Config)
-    return out
+    return out,outMap['logInfo']
 
     
 # get list of datasets and files by list of runs/events
@@ -1261,7 +1262,7 @@ def getMapTAGandParentGUIDs(dsName,tagQuery,streamRef,verbose=False):
     from countGuidsClient import countGuidsClient
     tagIF = countGuidsClient()
     tagIF.debug = verbose
-    tagResults = tagIF.countGuids(dsNameForLookUp,tagQuery,streamRef+',StreamTAG')
+    tagResults = tagIF.countGuids(dsNameForLookUp,tagQuery,streamRef+',StreamTAG_ref')
     if tagResults == None:
         if not verbose:
             print
