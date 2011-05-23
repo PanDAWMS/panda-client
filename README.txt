@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed --tmpDir of pathena/prun for relative path
+
 0.3.42 (5/18/2011)
   * increased maxCrossSite to 50
   * fixed pathena/prun for ssc5

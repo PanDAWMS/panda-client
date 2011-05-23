@@ -450,7 +450,7 @@ if curDir != options.workDir:
 if options.tmpDir == '':
     tmpDir = '%s/%s' % (curDir,commands.getoutput('uuidgen'))
 else:
-    tmpDir = '%s/%s' % (options.tmpDir,commands.getoutput('uuidgen'))    
+    tmpDir = '%s/%s' % (os.path.abspath(options.tmpDir),commands.getoutput('uuidgen'))    
 os.makedirs(tmpDir)
 
 # exit action

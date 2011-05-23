@@ -739,7 +739,7 @@ currentDir = os.path.realpath(os.getcwd())
 if options.tmpDir == '':
     tmpDir = '%s/%s' % (currentDir,commands.getoutput('uuidgen'))
 else:
-    tmpDir = '%s/%s' % (options.tmpDir,commands.getoutput('uuidgen'))    
+    tmpDir = '%s/%s' % (os.path.abspath(options.tmpDir),commands.getoutput('uuidgen'))    
 os.makedirs(tmpDir)
 
 # set tmp dir in Client
