@@ -42,7 +42,7 @@ nSkips =0
 defaultCloud = None
 
 # max lookup for cross site option
-maxCrossSite = 10
+maxCrossSite = 50
 
 usage = """%prog [options] <jobOption1.py> [<jobOption2.py> [...]]
 
@@ -401,6 +401,8 @@ siteSpecified = True
 if options.site == 'AUTO':
     siteSpecified = False
 
+brokerageLogs = []
+
 # use outputPath as outDS
 if Client.isDQ2free(options.site):
     if options.outDS != '':
@@ -737,7 +739,7 @@ currentDir = os.path.realpath(os.getcwd())
 if options.tmpDir == '':
     tmpDir = '%s/%s' % (currentDir,commands.getoutput('uuidgen'))
 else:
-    tmpDir = '%s/%s' % (options.tmpDir,commands.getoutput('uuidgen'))    
+    tmpDir = '%s/%s' % (os.path.abspath(options.tmpDir),commands.getoutput('uuidgen'))    
 os.makedirs(tmpDir)
 
 # set tmp dir in Client
@@ -1262,7 +1264,7 @@ if outputDSexist and options.destSE == '':
 	    convID = tmpConvIDs[0]
         else:
             # run brokerage to be sent to free site
-            convID = PsubUtils.runBrokerageForCompSite(tmpConvIDs,'Atlas-%s' % athenaVer,cacheVer,options.verbose)
+            convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,'Atlas-%s' % athenaVer,cacheVer,options.verbose)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -1302,7 +1304,7 @@ if options.libDS != '' and not Client.isDQ2free(options.site):
 	    convID = tmpConvIDs[0]
         else:
             # run brokerage to be sent to free site
-            convID = PsubUtils.runBrokerageForCompSite(tmpConvIDs,'Atlas-%s' % athenaVer,cacheVer,options.verbose)
+            convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,'Atlas-%s' % athenaVer,cacheVer,options.verbose)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -1797,10 +1799,13 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                         tmpSites.append(tmpItem)
 		if tmpSites == []:
                     continue
-                status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer)
+                status,outMap = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
+                                                    loggingFlag=True)
                 if status != 0:
-                    tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)
+                    tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)
                     sys.exit(EC_Config)
+                out = outMap['site']
+                brokerageLogs = outMap['logInfo']
                 if out.startswith('ERROR :'):
 		    if idxDsLocationMap == 0:
 			tmpBrokerErr += out
@@ -1905,6 +1910,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             if options.crossSite == 0:
                 tmpLog.error(tmpStr)
                 sys.exit(EC_Dataset)
+            elif options.crossSite == 1:
+                tmpLog.warning(tmpStr)
             else:
                 tmpLog.info(tmpStr)
         # remove missing
@@ -2386,12 +2393,15 @@ if options.site == "AUTO":
     tmpBrokerErr = ''
     for idxTmpSites,tmpSites in enumerate(tmpSitesList):
         if tmpSites != []:
-            status,out = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer)
+            status,outMap = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
+                                                loggingFlag=True)
         else:
-            status,out = 0,'ERROR : site list is empty.' 
+            status,outMap = 0,{'site':'ERROR : site list is empty.','logInfo':[]} 
         if status != 0:
-            tmpLog.error('failed to run brokerage for automatic assignment: %s' % out)  
+            tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)  
             sys.exit(EC_Config)
+        out = outMap['site']
+        brokerageLogs = outMap['logInfo']
         if out.startswith('ERROR :'):
             tmpBrokerErr += out
             if idxTmpSites == 0:
@@ -2872,12 +2882,14 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                 if divF == 0:
                     divF = 1
             # File Selector
+            totalSize = 0
+            numInputFiles = 0
+            totalTagSize = 0
             tmpList = b_inputFileList[indexFiles:indexFiles+divF]
             if options.inDS != '' and not options.shipinput:
-                totalSize = 0
-                totalTagSize = 0
                 tmpTagList = []
                 inTagListStr = ''
+                numInputFiles = len(tmpList)
                 for fileName in tmpList:
                     vals = inputFileMap[fileName]
                     # instantiate  FileSpec
@@ -2930,20 +2942,6 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                             inList.append(tmpTagFileName)
                             totalTagSize += long(file.fsize)
                 inTagListStr = inTagListStr[:-1]
-                # size check    
-                if (not isDirectAccess) and totalSize > maxTotalSize-dbrDsSize-totalTagSize and len(tmpList) > 1:
-                    tmpStr  = "A subjob has %s input files and requires %sMB of disk space" \
-                              % (len(tmpList), ((totalSize+dbrDsSize) >> 20))
-                    if dbrDsSize != 0:
-                        tmpStr += " (DBRelease=%sMB)" % (dbrDsSize>>20)
-                    if useTagParentLookup:
-                        tmpStr += " (TAG=%sMB)" % (totalTagSize>>20)
-                    tmpStr += ". It must be less than %sMB to avoid overflowing the remote disk. " \
-                              % (maxTotalSize >> 20)
-                    tmpStr += "Please split the job using --nFilesPerJob. If file sizes vary in large range "
-                    tmpStr += "--nGBPerJob may help. e.g., --nGBPerJob=MAX"                
-                    tmpLog.error(tmpStr)
-                    sys.exit(EC_Split)
             else:        
                 for fileName in tmpList:
                     # use GUID boundaries or not
@@ -2966,12 +2964,15 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                         if not tmpShipFile in inList:
                             inList.append(tmpShipFile)
             # Minimum Bias
+            totalMinSize = 0
+            numMinFiles  = 0
             if runConfig.input.inMinBias:
                 if indexMin+options.nMin*divF >= len(minbiasList):
                     # re-use files when Minimum-Bias files are not enough   
                     indexMin = 0   
                 tmpList = minbiasList[indexMin:indexMin+options.nMin*divF]
                 indexMin += options.nMin*divF
+                numMinFiles = len(tmpList)
                 for fileName,vals in tmpList:
                     # instantiate  FileSpec
                     file = FileSpec()
@@ -2989,13 +2990,17 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                         file.prodDBlockToken = 'local'
                     jobR.addFile(file)
                     minList.append(fileName)
+                    totalMinSize += long(file.fsize)
             # Cavern
+            totalCavSize = 0
+            numCavFiles  = 0
             if runConfig.input.inCavern:
                 if indexCavern+options.nCav*divF >= len(cavernList):
                     # re-use files when Cavern files are not enough   
                     indexCavern = 0   
                 tmpList = cavernList[indexCavern:indexCavern+options.nCav*divF]
                 indexCavern += options.nCav*divF
+                numCavFiles = len(tmpList)
                 for fileName,vals in tmpList:
                     # instantiate  FileSpec
                     file = FileSpec()
@@ -3013,7 +3018,10 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                         file.prodDBlockToken = 'local'
                     jobR.addFile(file)
                     cavList.append(fileName)
+                    totalCavSize += long(file.fsize)
             # BeamHalo
+            totalBeamHaloSize = 0
+            numBeamHaloFiles  = 0
             if runConfig.input.inBeamHalo:
                 if options.useCommonHalo:
                     # integrated dataset
@@ -3035,6 +3043,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                     indexBHaloA += options.nBeamHaloA
                     indexBHaloC += options.nBeamHaloC
                 tmpIndex = 0
+                numBeamHaloFiles = len(tmpList)
                 for fileName,vals in tmpList:
                     # instantiate  FileSpec
                     file = FileSpec()
@@ -3065,7 +3074,10 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                     jobR.addFile(file)
                     bhaloList.append(fileName)
                     tmpIndex += 1
+                    totalBeamHaloSize += long(file.fsize) 
             # BeamGas
+            totalBeamGasSize = 0
+            numBeamGasFiles  = 0
             if runConfig.input.inBeamGas:        
                 if options.useCommonGas:
                     # integrated dataset
@@ -3092,6 +3104,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                     indexBGasC += options.nBeamGasC
                     indexBGasO += options.nBeamGasO
                 tmpIndex = 0
+                numBeamGasFiles = len(tmpList)
                 for fileName,vals in tmpList:
                     # instantiate  FileSpec
                     file = FileSpec()
@@ -3126,6 +3139,31 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                     jobR.addFile(file)
                     bgasList.append(fileName)
                     tmpIndex += 1
+                    totalBeamGasSize += long(file.fsize)
+            # size check
+            if (not isDirectAccess) and \
+                   totalSize+totalMinSize+totalCavSize+totalBeamHaloSize+totalBeamGasSize+dbrDsSize+totalTagSize > maxTotalSize and \
+                   numInputFiles > 1:
+                tmpStr  = "A subjob has %s input files and requires %sMB of disk space" \
+                          % (numInputFiles, ((totalSize+totalMinSize+totalCavSize+totalBeamHaloSize+totalBeamGasSize+dbrDsSize+totalTagSize) >> 20))
+                if dbrDsSize != 0:
+                    tmpStr += " (DBRelease=%sMB)" % (dbrDsSize>>20)
+                if useTagParentLookup:
+                    tmpStr += " (TAG=%sMB)" % (totalTagSize>>20)
+                if totalMinSize != 0:
+                    tmpStr += " (MinimumBias=%sMB, %sfiles)" % (totalMinSize>>20,numMinFiles)
+                if totalCavSize != 0:
+                    tmpStr += " (Cavern=%sMB, %sfiles)" % (totalCavSize>>20,numCavFiles)
+                if totalBeamHaloSize != 0:
+                    tmpStr += " (BeamHalo=%sMB, %sfiles)" % (totalBeamHaloSize>>20,numBeamHaloFiles)
+                if totalBeamGasSize != 0:
+                    tmpStr += " (BeamGas=%sMB, %sfiles)" % (totalBeamGasSize>>20,numBeamGasFiles)
+                tmpStr += ". It must be less than %sMB to avoid overflowing the remote disk. " \
+                          % (maxTotalSize >> 20)
+                tmpStr += "Please split the job using --nFilesPerJob. If file sizes vary in large range "
+                tmpStr += "--nGBPerJob may help. e.g., --nGBPerJob=MAX"                
+                tmpLog.error(tmpStr)
+                sys.exit(EC_Split)
             #@
             #@ important
             #@ Done with an input files description of the job.
@@ -3281,7 +3319,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         if bgasList != []:
             param += '--beamGas "%s" ' % bgasList
         param += '-o "%s" ' % outMap
-        if runConfig.input.inColl:
+        if runConfig.input.inColl or (options.trf and 'inputTAGFile=' in jobO):
             param += '-c '
         if runConfig.input.inBS:
             param += '-b '
@@ -3505,7 +3543,7 @@ if not options.nosubmit:
             out += tmpOut
             # get jobsetID
             if tmpJobsetID in [None,'NULL',-1]:
-                if out != [] and out[0] != None:
+                if out != [] and out[0] != None and isinstance(out[0][2],types.DictionaryType):
                     tmpJobsetID = out[0][2]['jobsetID']
         if not Client.PandaSites[options.site]['status'] in ['online','brokeroff']:
             tmpLog.warning("%s is %s. Your jobs will wait until it becomes online" % \
@@ -3622,7 +3660,8 @@ if not options.nosubmit:
                 # set JobID
                 jobID = o[1]
                 # set jobsetID
-                jobsetID = o[2]['jobsetID']
+                if isinstance(o[2],types.DictionaryType):
+                    jobsetID = o[2]['jobsetID']
             if index==0 and options.libDS=='' and (not options.nobuild):
                 outstr += "  > build\n"
                 outstr += "    PandaID=%s\n" % o[0]
@@ -3640,6 +3679,8 @@ if not options.nosubmit:
     print ' JobID  : %s' % jobID
     print ' Status : %d' % status
     print outstr
+    if status == 0 and brokerageLogs != []:
+        Client.sendBrokerageLog(jobID,jobsetID,brokerageLogs,options.verbose)
 
     # create dir for DB
     dbdir = os.path.expanduser(os.environ['PANDA_CONFIG_ROOT'])
