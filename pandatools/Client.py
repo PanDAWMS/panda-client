@@ -946,6 +946,8 @@ def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
     # get elements in container
     elements = getElementsFromContainer(contName,verbose)
     for tmpEle in elements:
+        # remove merge
+        tmpEle = re.sub('\.merge$','',tmpEle)
         shadowDsName = "%s%s" % (tmpEle,suffixShadow)
         # check existence
         tmpDatasets = getDatasets(shadowDsName,verbose)

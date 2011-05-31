@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.43 (5/31/2011)
   * fixed --tmpDir of pathena/prun for relative path
+  * fixed pathena/prun to prevent running twice on the same input files for --mergeOutput
 
 0.3.42 (5/18/2011)
   * increased maxCrossSite to 50
