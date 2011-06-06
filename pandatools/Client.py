@@ -763,7 +763,12 @@ def getDatasets(name,verbose=False,withWC=False,onlyNames=False):
             # no datasets
             return datasets
         # get names only
-        return out
+        if isinstance(out,types.DictionaryType): 
+            return out
+        else:
+            # wrong format
+            errStr = "ERROR : DQ2 didn't give a dictionary for %s" % name
+            sys.exit(EC_Failed)
         # get VUIDs
         for dsname,idMap in out.iteritems():
             # check format
@@ -941,6 +946,8 @@ def getFilesInShadowDataset(contName,suffixShadow,verbose=False):
     # get elements in container
     elements = getElementsFromContainer(contName,verbose)
     for tmpEle in elements:
+        # remove merge
+        tmpEle = re.sub('\.merge$','',tmpEle)
         shadowDsName = "%s%s" % (tmpEle,suffixShadow)
         # check existence
         tmpDatasets = getDatasets(shadowDsName,verbose)
@@ -1999,9 +2006,13 @@ def getJobStatusFromMon(id,verbose=False):
 
 
 # run brokerage
-def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType=''):
+def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType='',
+                 loggingFlag=False):
     if sites == []:
-        return 0,'ERROR : no candidate'
+        if not loggingFlag:
+            return 0,'ERROR : no candidate'
+        else:
+            return 0,{'site':'ERROR : no candidate','logInfo':[]}            
     # choose at most 20 sites randomly to avoid too many lookup
     random.shuffle(sites)
     sites = sites[:20]
@@ -2031,7 +2042,20 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
     if processingType != '':
         # set processingType mainly for HC
         data['processingType'] = processingType
-    return curl.get(url,data)
+    # enable logging
+    if loggingFlag:
+        data['loggingFlag'] = True
+    status,output = curl.get(url,data)
+    try:
+        if not loggingFlag:
+            return status,output
+        else:
+            return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print output
+        print "ERROR runBrokerage : %s %s" % (type,value)
+        return EC_Failed,None
 
 
 # run rebrokerage
@@ -2061,6 +2085,28 @@ def runReBrokerage(jobID,libDS='',cloud=None,verbose=False):
         # remove ERROR:
         errMsg = re.sub('ERROR: ','',errMsg)
     return EC_Failed,errMsg
+
+
+# send brokerage log
+def sendBrokerageLog(jobID,jobsetID,brokerageLogs,verbose):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    msgList = []
+    for tmpMsgBody in brokerageLogs:
+        if not jobsetID in [None,'NULL']:
+            tmpMsg = ' : jobset=%s jobdef=%s : %s' % (jobsetID,jobID,tmpMsgBody)
+        else:
+            tmpMsg = ' : jobdef=%s : %s' % (jobsetID,jobID,tmpMsgBody)            
+        msgList.append(tmpMsg)
+    # execute
+    url = baseURLSSL + '/sendLogInfo'
+    data = {'msgType':'analy_brokerage',
+            'msgList':pickle.dumps(msgList)}
+    retVal = curl.post(url,data)
+    return True
 
 
 # exclude long,xrootd,local queues
