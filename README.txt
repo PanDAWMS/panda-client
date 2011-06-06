@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.44 (6/6/2011)
+  * fixed pbook to kill or retry only jobsetIDs by default when uppserJobID is given
+
 0.3.43 (5/31/2011)
   * fixed --tmpDir of pathena/prun for relative path
   * fixed pathena/prun to prevent running twice on the same input files for --mergeOutput

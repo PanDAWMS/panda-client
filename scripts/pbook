@@ -368,7 +368,7 @@ class PBookCore:
     
 
     # kill
-    def kill(self,JobID):
+    def kill(self,JobID,useJobsetID=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
@@ -376,6 +376,10 @@ class PBookCore:
         # get jobset
         jobList = self.getJobIDsWithSetID(JobID)
         if jobList == None:
+            # works only for jobsetID
+            if useJobsetID:
+                return
+            # works with jobID
             jobList = [JobID]
         else:
             tmpMsg = "JobsetID=%s is composed of JobID=" % JobID
@@ -502,7 +506,7 @@ class PBookCore:
                         
 
     # retry
-    def retry(self,JobsetID,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False):
+    def retry(self,JobsetID,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
@@ -511,6 +515,10 @@ class PBookCore:
 	newJobsetID = -1
         jobList = self.getJobIDsWithSetID(JobsetID)
         if jobList == None:
+            # works only for jobsetID
+            if useJobsetID:
+                return
+            # works with jobID   
             isJobset = False
             jobList = [JobsetID]
         else:
@@ -965,8 +973,8 @@ For more info, do help(show) for example."""
 
 
     # kill
-    def kill(JobID,upperJobID=None):
-        """Kill all subJobs in JobID. Jobs bwtween JobID and UpperJobID will be killed if upperJobID is given
+    def kill(JobID,upperJobID=None,useJobsetID=True):
+        """Kill all subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be killed if upperJobID is given. Set useJobsetID=False if you want to kill JobIDs between JobID and UpperJobID
 
          example:
            >>> kill(15)
@@ -980,14 +988,14 @@ For more info, do help(show) for example."""
             else:
                 # kill jobs between the range
                 for tmpJobID in range(JobID,upperJobID+1):
-                    retK = pbookCore.kill(tmpJobID)
+                    retK = pbookCore.kill(tmpJobID,useJobsetID)
         else:            
             retK = pbookCore.kill(JobID)
 
 
     # retry
-    def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False):
-        """Retry failed/cancelled subJobs in JobID or JobsetID. Jobs between JobID and UpperJobID will be retried if upperJobID is given. Set newSite=True when you want to retry at new site, which essentially runs pathena/prun again because new sub jobs need to be created for the new site. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. When newSite=True, one can use newOpts which is a map of options  and new arguments like {'nGBperJob':10,'excludedSite':'ABC,XYZ'} and is passed to pathena/prun as new parameters. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True
+    def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=True):
+        """Retry failed/cancelled subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be retried if upperJobID is given. Set useJobsetID=False if you want to retry JobIDs between JobID and UpperJobID. Set newSite=True when you want to retry at new site, which essentially runs pathena/prun again because new sub jobs need to be created for the new site. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. When newSite=True, one can use newOpts which is a map of options  and new arguments like {'nGBperJob':10,'excludedSite':'ABC,XYZ'} and is passed to pathena/prun as new parameters. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True
 
          example:
            >>> retry(15)
@@ -1004,7 +1012,8 @@ For more info, do help(show) for example."""
             else:
                 # retry jobs between the range
                 for tmpJobID in range(JobID,upperJobID+1):
-                    pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,ignoreDuplication=ignoreDuplication)
+                    pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,ignoreDuplication=ignoreDuplication,
+                                    useJobsetID=useJobsetID)
         else:            
             pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,ignoreDuplication=ignoreDuplication)
 
