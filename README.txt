@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed --extFile of pathena to work with sub directories
+
 0.3.44 (6/6/2011)
   * fixed pbook to kill or retry only jobsetIDs by default when uppserJobID is given
 

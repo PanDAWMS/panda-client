@@ -605,10 +605,16 @@ def matchExtFile(fileName):
             # regular matching
             if patt == baseName:
                 return True
+            # patt may contain / for sub dir 
+            if re.search(patt+'$',fileName) != None:
+                return True
         else:
             # use regex for *
             tmpPatt = patt.replace('*','.*')
             if re.search(tmpPatt,baseName) != None:
+                return True
+            # patt may contain / for sub dir
+            if re.search(tmpPatt+'$',fileName) != None:
                 return True
     # not matched
     return False
