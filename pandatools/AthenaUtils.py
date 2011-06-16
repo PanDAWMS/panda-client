@@ -207,7 +207,6 @@ def getAthenaVer():
             print out
             tmpLog.error("cmt gave wrong info")
             return False,{}
-
     # private work area
     res = re.search('\(in ([^\)]+)\)',lines[0])
     if res==None:
@@ -215,12 +214,12 @@ def getAthenaVer():
         tmpLog.error("could not get path to private work area")
         return False,{}
     workArea = os.path.realpath(res.group(1))
-
     # get Athena version and group area
     athenaVer = ''
     groupArea = ''
     cacheVer  = ''
     nightVer  = ''
+    cmtConfig = ''
     for line in lines[1:]:
         res = re.search('\(in ([^\)]+)\)',line)
         if res != None:
@@ -253,6 +252,9 @@ def getAthenaVer():
             else:
                 # group area
                 groupArea = os.path.realpath(res.group(1))
+    # cmtconfig
+    if os.environ.has_key('CMTCONFIG'):
+        cmtConfig = os.environ['CMTCONFIG']
     # pack return values
     retVal = {
         'workArea' : workArea,
@@ -260,6 +262,7 @@ def getAthenaVer():
         'groupArea': groupArea,
         'cacheVer' : cacheVer,
         'nightVer' : nightVer,
+        'cmtConfig': cmtConfig,
            }
     # check error
     if athenaVer == '':
@@ -605,8 +608,8 @@ def matchExtFile(fileName):
             # regular matching
             if patt == baseName:
                 return True
-            # patt may contain / for sub dir 
-            if re.search(patt+'$',fileName) != None:
+            # patt may contain / for sub dir
+            if patt != '' and re.search(patt+'$',fileName) != None:
                 return True
         else:
             # use regex for *
@@ -614,7 +617,7 @@ def matchExtFile(fileName):
             if re.search(tmpPatt,baseName) != None:
                 return True
             # patt may contain / for sub dir
-            if re.search(tmpPatt+'$',fileName) != None:
+            if patt != '' and re.search(tmpPatt+'$',fileName) != None:
                 return True
     # not matched
     return False
@@ -1798,6 +1801,10 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
 # get CMTCONFIG
 def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
     try:
+        # use user-specified cmtconfig
+        if cmtConfig != None:
+            return cmtConfig
+        # get default cmtconfig according to Atlas release
         if athenaVer != None:
             # remove prefix
             verStr = re.sub('^[^-]+-','',athenaVer)
@@ -1810,7 +1817,6 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
             miVer = int(match.group(2))
             reVer = int(match.group(3))
             # use i686-slc5-gcc43-opt for 15.6.3 or higher
-            # FIXME once the pilot sets cmtconfig properly
             if maVer > 15 or (maVer == 15 and miVer > 6) or (maVer == 15 and miVer == 6 and reVer >= 3):
                 return 'i686-slc5-gcc43-opt'
             # use i686-slc4-gcc34-opt by default
@@ -1819,6 +1825,35 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
     except:
         return None
     
+
+# check CMTCONFIG
+def checkCmtConfig(localCmtConfig,userCmtConfig,noBuild):
+    # didn't specify CMTCONFIG
+    if userCmtConfig in ['',None]:
+        return True
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # check if valid cmtconfig
+    validCmtCofnigList = ['i686-slc4-gcc34-opt','i686-slc5-gcc43-opt','x86_64-slc5-gcc43-opt']
+    if not userCmtConfig in validCmtCofnigList:
+        errStr = '%s is not a valid CMTCONFIG distributed on the grid. The following CMTCONFIGs are allowed:\n' % userCmtConfig
+        for tmpC in validCmtCofnigList:
+            errStr += '   %s\n' % tmpC
+        errStr = errStr[:-1]
+        tmpLog.error(errStr)
+        return False
+    # CMTCONFIG is undefined locally
+    if localCmtConfig in ['',None]:
+        return True
+    # user-specified CMTCONFIG is inconsitent with local CMTCONFIG
+    if userCmtConfig != localCmtConfig and noBuild:
+        errStr  = 'You cannot use --noBuild when --cmtConfig is inconsistent when local CMTCONFIG=%s ' % localCmtConfig
+        errStr += 'since you need re-compile source files on remote worker-node. Please remove --noBuild'
+        tmpLog.error(errStr)
+        return False
+    # return OK
+    return True
+            
 
 # check configuration tag
 def checkConfigTag(oldDSs,newDS):

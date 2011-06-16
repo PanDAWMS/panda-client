@@ -196,6 +196,8 @@ optP.add_option('--enableJEM',action='store_const',const=True,dest='enableJEM',d
                 help="enable JEM")
 optP.add_option('--configJEM', action='store', dest='configJEM', default='',
                 type='string', help='configration parameters for JEM')
+optP.add_option('--cmtConfig', action='store', dest='cmtConfig', default=None,
+                type='string', help='CMTCONFIG=i686-slc5-gcc43-opt is used on remote worker-node by default even if you use another CMTCONFIG locally. This option allows you to use another CMTCONFIG remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt. If you use --libDS together with this option, make sure that the libDS was compiled with the same CMTCONFIG, in order to avoid failures due to inconsistency in binary files')
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -466,6 +468,7 @@ athenaVer = ''
 cacheVer  = ''
 nightVer  = ''
 groupArea = ''
+cmtConfig = ''
 if options.useAthenaPackages:
     # get Athena versions
     stA,retA = AthenaUtils.getAthenaVer()
@@ -478,6 +481,7 @@ if options.useAthenaPackages:
     groupArea = retA['groupArea'] 
     cacheVer  = retA['cacheVer'] 
     nightVer  = retA['nightVer']
+    cmtConfig = retA['cmtConfig']    
     # override run directory
     sString=re.sub('[\+]','.',workArea)
     runDir = re.sub('^%s' % sString, '', curDir)
@@ -525,6 +529,10 @@ elif options.athenaTag != '':
         else:
             # unknown
             cacheVer = ''
+
+# check CMTCONFIG
+if not AthenaUtils.checkCmtConfig(cmtConfig,options.cmtConfig,options.nobuild):
+    sys.exit(EC_Config)
 
 # good run list
 if options.goodRunListXML != '':
@@ -779,7 +787,8 @@ if outputDSexist and options.destSE == '':
 	    convID = tmpConvIDs[0]
         else:
             # run brokerage to be sent to free site
-            convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,options.verbose)
+            convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,
+                                                                     options.verbose,options.cmtConfig)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -819,7 +828,8 @@ if options.libDS != '' and not Client.isDQ2free(options.site):
 	    convID = tmpConvIDs[0]
         else:
             # run brokerage to be sent to free site
-            convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,options.verbose)
+            convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,
+                                                                     options.verbose,options.cmtConfig)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -1008,7 +1018,7 @@ if options.inDS != '':
 		if tmpSites == []:
                     continue
                 status,outMap = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
-                                                    loggingFlag=True)
+                                                    loggingFlag=True,cmtConfig=options.cmtConfig)
                 if status != 0:
                     tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)
                     sys.exit(EC_Config)
@@ -1203,7 +1213,7 @@ else:
         tmpBrokerErr = ''
         for idxTmpSites,tmpSites in enumerate(tmpSitesList):
             status,outMap = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
-                                                loggingFlag=True)    
+                                                loggingFlag=True,cmtConfig=options.cmtConfig)    
             if status != 0:
                 tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)  
                 sys.exit(EC_Config)
@@ -1532,7 +1542,7 @@ elif options.libDS == '':
     jobB.transformation    = '%s/buildGen-00-00-01' % Client.baseURLSUB
     if options.express:
         jobB.specialHandling = 'express'
-    jobB.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
+    jobB.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
     if nickName == '':
         # old convention
         tmpDsPrefix = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
@@ -1777,7 +1787,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
         if options.express:
             jobR.specialHandling = 'express'
-        jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer)
+        jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
         # memory
         if options.memory != -1:
             jobR.minRamCount = options.memory
@@ -2222,8 +2232,8 @@ if not options.nosubmit:
 	    (options.site,Client.PandaSites[options.site]['status']))
 
     # result
-    print '==================='
     if out == []:
+        print '==================='
         tmpLog.error("Job submission was denied")
         sys.exit(EC_Submit)
     # check length
@@ -2256,13 +2266,14 @@ if not options.nosubmit:
             elif index+1==len(out):
                 outstr += "-%s" % o[0]
                 runStr += '-%s' % o[0]
+    if status == 0 and brokerageLogs != []:
+        Client.sendBrokerageLog(jobID,jobsetID,brokerageLogs,options.verbose)
+    print '==================='    
     if not jobsetID in [None,'NULL']:                            
         print ' JobsetID  : %s' % jobsetID
     print ' JobID  : %s' % jobID
     print ' Status : %d' % status
     print outstr
-    if status == 0 and brokerageLogs != []:
-        Client.sendBrokerageLog(jobID,jobsetID,brokerageLogs,options.verbose)
 
     # create dir for DB
     dbdir = os.path.expanduser(os.environ['PANDA_CONFIG_ROOT'])

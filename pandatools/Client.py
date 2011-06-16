@@ -2013,9 +2013,9 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
             return 0,'ERROR : no candidate'
         else:
             return 0,{'site':'ERROR : no candidate','logInfo':[]}            
-    # choose at most 20 sites randomly to avoid too many lookup
+    # choose at most 50 sites randomly to avoid too many lookup
     random.shuffle(sites)
-    sites = sites[:20]
+    sites = sites[:50]
     # serialize
     strSites = pickle.dumps(sites)
     # instantiate curl
