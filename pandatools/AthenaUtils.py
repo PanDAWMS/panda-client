@@ -3,6 +3,7 @@ import re
 import sys
 import commands
 
+import MiscUtils
 import PLogger
 
 # error code
@@ -197,7 +198,7 @@ def getAthenaVer():
     lines,out = getCmtProjects()
     if len(lines)<2:
         # make a tmp dir to execute cmt
-        tmpDir = 'cmttmp.%s' % commands.getoutput('uuidgen')
+        tmpDir = 'cmttmp.%s' % MiscUtils.wrappedUuidGen()
         os.mkdir(tmpDir)
         # try cmt under a subdir since it doesn't work in top dir
         lines,tmpOut = getCmtProjects(tmpDir)
@@ -840,7 +841,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
         tmpLog.debug("== private files ==")
 
     # create archive
-    archiveName     = 'sources.%s.tar' % commands.getoutput('uuidgen')
+    archiveName     = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
     archiveFullName = "%s/%s" % (tmpDir,archiveName)
     # archive private area
     archiveFiles(workArea,packages,archiveFullName)
@@ -919,7 +920,7 @@ def archiveJobOFiles(workArea,runDir,currentDir,tmpDir,verbose):
     os.chdir(workArea)
     getJobOs('%s' % workArea,files)
     # create archive
-    archiveName     = 'jobO.%s.tar' % commands.getoutput('uuidgen')
+    archiveName     = 'jobO.%s.tar' % MiscUtils.wrappedUuidGen()
     archiveFullName = "%s/%s" % (tmpDir,archiveName)
     # archive
     if verbose:
@@ -2085,7 +2086,7 @@ def getJobOtoUseAmiForAutoConf(inDS,tmpDir):
         amiURL = amiURL[:-1]
     inputFiles = [amiURL]
     # create jobO fragment
-    optFileName = tmpDir + '/' + commands.getoutput('uuidgen 2>/dev/null') + '.py'
+    optFileName = tmpDir + '/' + MiscUtils.wrappedUuidGen() + '.py'
     oFile = open(optFileName,'w')
     oFile.write("""
 try:

@@ -6,6 +6,7 @@ import sys
 import getpass
 import commands
 import Client
+import MiscUtils
 
 """Classes with methods to interact with a myproxy server. 
 
@@ -328,7 +329,7 @@ class MyProxyInterface(object):
         cmd  = 'myproxy-init'
 
         # credname
-        credname = re.sub('-','',commands.getoutput('uuidgen'))
+        credname = re.sub('-','',MiscUtils.wrappedUuidGen())
 
         print "=== upload proxy for glexec"
         # command options

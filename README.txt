@@ -24,6 +24,7 @@ pathena -h
 current
   * fixed --extFile of pathena to work with sub directories
   * added --cmtConfig to pathena/prun
+  * using uuid.py when uuidgen is unavailable
 
 0.3.44 (6/6/2011)
   * fixed pbook to kill or retry only jobsetIDs by default when uppserJobID is given

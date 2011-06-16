@@ -240,6 +240,7 @@ from pandatools import Client
 from pandatools import PsubUtils
 from pandatools import AthenaUtils
 from pandatools import GlobalConfig
+from pandatools import MiscUtils
 from pandatools import PLogger
 
 # update panda-client
@@ -450,9 +451,9 @@ if curDir != options.workDir:
 
 # create tmp dir
 if options.tmpDir == '':
-    tmpDir = '%s/%s' % (curDir,commands.getoutput('uuidgen'))
+    tmpDir = '%s/%s' % (curDir,MiscUtils.wrappedUuidGen())
 else:
-    tmpDir = '%s/%s' % (os.path.abspath(options.tmpDir),commands.getoutput('uuidgen'))    
+    tmpDir = '%s/%s' % (os.path.abspath(options.tmpDir),MiscUtils.wrappedUuidGen())    
 os.makedirs(tmpDir)
 
 # exit action
@@ -550,7 +551,7 @@ if options.goodRunListXML != '':
         sys.exit(EC_Config)
     # write input files   
     if options.inputFileListName == '':    
-        options.inputFileListName = '%s/ami_%s.dat' % (curDir,commands.getoutput('uuidgen'))
+        options.inputFileListName = '%s/ami_%s.dat' % (curDir,MiscUtils.wrappedUuidGen())
         evFH = open(options.inputFileListName,'w') 
         for tmpLFN in tmpAmiFileList:
             evFH.write('%s\n' % tmpLFN)
@@ -574,7 +575,7 @@ if options.eventPickEvtList != '':
     options.filelist = []
     tmpDsNameList = []
     tmpLFNList = []    
-    options.inputFileListName = '%s/ep_%s.dat' % (curDir,commands.getoutput('uuidgen'))
+    options.inputFileListName = '%s/ep_%s.dat' % (curDir,MiscUtils.wrappedUuidGen())
     evFH = open(options.inputFileListName,'w') 
     for tmpGUID,tmpDsLFNs in epDsLFNs.iteritems():
         tmpDsName,tmpLFN = tmpDsLFNs
@@ -1376,10 +1377,10 @@ else:
 	    # create archive
 	    if options.libDS != '' or options.nobuild:
 		# use 'jobO' for libDS/noBuild
-		archiveName     = 'jobO.%s.tar' % commands.getoutput('uuidgen')
+		archiveName     = 'jobO.%s.tar' % MiscUtils.wrappedUuidGen()
 	    else:
 		# use 'sources' for normal build
-		archiveName     = 'sources.%s.tar' % commands.getoutput('uuidgen')
+		archiveName     = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
 	    archiveFullName = "%s/%s" % (tmpDir,archiveName)
 
 	    # collect files
@@ -1434,10 +1435,10 @@ else:
         os.chdir(tmpDir)
         # use a saved copy
         if options.libDS == '' and not options.nobuild:
-            archiveName     = 'sources.%s.tar' % commands.getoutput('uuidgen')
+            archiveName     = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
             archiveFullName = "%s/%s" % (tmpDir,archiveName)
         else:
-            archiveName     = 'jobO.%s.tar' % commands.getoutput('uuidgen')
+            archiveName     = 'jobO.%s.tar' % MiscUtils.wrappedUuidGen()
             archiveFullName = "%s/%s" % (tmpDir,archiveName)
         # make copy to avoid name duplication
         shutil.copy(options.inTarBall,archiveFullName)
@@ -1513,7 +1514,7 @@ if options.verbose:
 
 
 # job name
-jobName = 'prun.%s' % commands.getoutput('uuidgen')
+jobName = 'prun.%s' % MiscUtils.wrappedUuidGen()
 
 # make jobs
 jobList = []
@@ -1658,7 +1659,7 @@ else:
             # try lib.tgz for DQ2 free sites as this might be in ArchivedDB 
             fileName = "%s.lib.tgz" % options.libDS
             tmpFileList.append(fileName)
-            tmpGUIDmap[fileName] = commands.getoutput('uuidgen')
+            tmpGUIDmap[fileName] = MiscUtils.wrappedUuidGen()
     # check file list                
     if len(tmpFileList) != 1:
         tmpLog.error("dataset %s contains multiple lib files %s" % (options.libDS,tmpFileList))
@@ -1718,7 +1719,7 @@ if options.inDS != '':
         tmpLog.info("use %s files in the primary DS" % len(inputFileList))        
 
 # disp datasetname to identify inputs
-commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
+commonDispName = 'user_disp.%s' % MiscUtils.wrappedUuidGen()
 
 # check access method
 isDirectAccess = PsubUtils.isDirectAccess(options.site)

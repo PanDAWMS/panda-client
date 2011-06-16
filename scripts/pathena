@@ -348,6 +348,7 @@ from pandatools import Client
 from pandatools import PsubUtils
 from pandatools import AthenaUtils
 from pandatools import GlobalConfig
+from pandatools import MiscUtils 
 from pandatools import PLogger
 
 # update panda-client
@@ -739,9 +740,9 @@ currentDir = os.path.realpath(os.getcwd())
 
 # create tmp dir
 if options.tmpDir == '':
-    tmpDir = '%s/%s' % (currentDir,commands.getoutput('uuidgen'))
+    tmpDir = '%s/%s' % (currentDir,MiscUtils.wrappedUuidGen())
 else:
-    tmpDir = '%s/%s' % (os.path.abspath(options.tmpDir),commands.getoutput('uuidgen'))    
+    tmpDir = '%s/%s' % (os.path.abspath(options.tmpDir),MiscUtils.wrappedUuidGen())    
 os.makedirs(tmpDir)
 
 # set tmp dir in Client
@@ -831,7 +832,7 @@ if options.eventPickEvtList != '':
             options.inDS += '%s,' % tmpDsName
     options.inDS = options.inDS[:-1]
     # make run/event list
-    eventPickRunEvtDat = '%s/ep_%s.dat' % (currentDir,commands.getoutput('uuidgen'))
+    eventPickRunEvtDat = '%s/ep_%s.dat' % (currentDir,MiscUtils.wrappedUuidGen())
     evFH = open(eventPickRunEvtDat,'w') 
     for tmpGUID,tmpRunEvtList in epGuidEvtMap.iteritems():
         for tmpRunNr,rmpEvtNr in tmpRunEvtList:
@@ -1107,7 +1108,7 @@ else:
             if re.search('^/.*\.py$',tmpItem) != None:
                 # set random name to avoid overwriting
                 tmpName = tmpItem.split('/')[-1]
-                tmpName = '%s_%s' % (commands.getoutput('uuidgen'),tmpName)
+                tmpName = '%s_%s' % (MiscUtils.wrappedUuidGen(),tmpName)
                 # set
                 AthenaUtils.fullPathJobOs[tmpItem] = tmpName
 
@@ -1174,10 +1175,10 @@ else:
         os.chdir(tmpDir)
         # use a saved copy
         if options.libDS == '' and not options.nobuild:
-            archiveName     = 'sources.%s.tar' % commands.getoutput('uuidgen')
+            archiveName     = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
             archiveFullName = "%s/%s" % (tmpDir,archiveName)
         else:
-            archiveName     = 'jobO.%s.tar' % commands.getoutput('uuidgen')
+            archiveName     = 'jobO.%s.tar' % MiscUtils.wrappedUuidGen()
             archiveFullName = "%s/%s" % (tmpDir,archiveName)
         # make copy to avoid name duplication
         shutil.copy(options.inTarBall,archiveFullName)
@@ -2503,7 +2504,7 @@ from taskbuffer.FileSpec import FileSpec
 jobList = []
 
 # job name
-jobName = commands.getoutput('uuidgen')
+jobName = MiscUtils.wrappedUuidGen()
 
 # build job
 if options.nobuild:
@@ -2635,7 +2636,7 @@ else:
             # try lib.tgz for DQ2 free sites as this might be in ArchivedDB 
             fileName = "%s.lib.tgz" % options.libDS
             tmpFileList.append(fileName)
-            tmpGUIDmap[fileName] = commands.getoutput('uuidgen')
+            tmpGUIDmap[fileName] = MiscUtils.wrappedUuidGen()
     # check file list                
     if len(tmpFileList) != 1:
         tmpLog.error("dataset %s contains multiple lib.tgz files : %s" % (options.libDS,tmpFileList))
@@ -2671,7 +2672,7 @@ if options.inDS != '' and options.burstSubmit == '':
         tmpLog.info("use %s %s files" % (len(inputFileList),tmpParentType))
 
 # disp datasetname to identify inputs
-commonDispName = 'user_disp.%s' % commands.getoutput('uuidgen')
+commonDispName = 'user_disp.%s' % MiscUtils.wrappedUuidGen()
 
 # check access method
 isDirectAccess = PsubUtils.isDirectAccess(options.site,runConfig.input.inBS,options.trf,options.ara)
