@@ -12,5 +12,5 @@ def wrappedUuidGen():
         try:
             import uuid
         except:
-            raise ImportError,'uuidgen and uuid.py are unavailable on your system'
+            raise ImportError,'uuidgen and uuid.py are unavailable on your system. Please install one of them'
         return str(uuid.uuid4())
