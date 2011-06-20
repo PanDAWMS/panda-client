@@ -21,12 +21,13 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.45 (6/20/2011)
   * fixed --extFile of pathena to work with sub directories
   * added --cmtConfig to pathena/prun
   * using uuid.py when uuidgen is unavailable
   * updated brokerage to take --memory into account
   * added site/cloud/libDS/outDS info to brokerage logging
+  * added retryBuild to pbook.retry() 
 
 0.3.44 (6/6/2011)
   * fixed pbook to kill or retry only jobsetIDs by default when uppserJobID is given

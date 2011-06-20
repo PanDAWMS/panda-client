@@ -473,7 +473,7 @@ class PBookCore:
 
 
     # kill and retry
-    def killAndRetry(self,JobID,newSite=False,newOpts={},ignoreDuplication=False):
+    def killAndRetry(self,JobID,newSite=False,newOpts={},ignoreDuplication=False,retryBuild=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # kill
@@ -501,12 +501,12 @@ class PBookCore:
                 tmpLog.info('Max attempts exceeded. Please try later')
                 return False
         # retry
-        self.retry(JobID,newSite=newSite,newOpts=newOpts,ignoreDuplication=ignoreDuplication)
+        self.retry(JobID,newSite=newSite,newOpts=newOpts,ignoreDuplication=ignoreDuplication,retryBuild=retryBuild)
         return
                         
 
     # retry
-    def retry(self,JobsetID,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=False):
+    def retry(self,JobsetID,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=False,retryBuild=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
@@ -551,12 +551,13 @@ class PBookCore:
                     tmpLog.warning('This job was already retried by JobID=%s' % localJob.retryID)
                     return
             # check status of buildJob
-            if not localJob.buildStatus in ['','finished']:
+            if not retryBuild and not localJob.buildStatus in ['','finished']:
                 tmpMsgStr = 'Cannot retry since status of buildJob %s is %s (!= finished). ' \
                             % (localJob.PandaID.split(',')[0],localJob.buildStatus)
                 tmpMsgStr += 'Please execute %s with the same input/output datasets (or containers). ' % localJob.jobType
                 tmpMsgStr += 'It will run only on failed/cancelled/unused input files '
-                tmpMsgStr += 'and append output files to the output dataset container'
+                tmpMsgStr += 'and append output files to the output dataset container. '
+                tmpMsgStr += 'Or you may set retryBuild=True in pbook.retry() '                
                 tmpLog.warning(tmpMsgStr)
                 if isJobset:
                     continue
@@ -613,6 +614,9 @@ class PBookCore:
             retryDestSE  = None
 	    outDsName    = None
 	    shadowList   = []
+            oldLibDS     = None
+            newLibDS     = None
+	    newLibTgz    = None
             for idx in range(len(jobList)):
                 job = pandaJobs[idx]
                 # skip exired
@@ -666,15 +670,22 @@ class PBookCore:
                     job.jobsetID            = newJobsetID
                 skipInputList = []
                 numUsedFiles = 0
+                # loop over all files    
                 for file in job.Files:
                     file.rowID = None
                     if file.type == 'input':
                         # protection against wrong sync which doesn't update buildStatus correctly
-                        if file.lfn.endswith('.lib.tgz') and file.GUID == 'NULL':
+                        if not retryBuild and file.lfn.endswith('.lib.tgz') and file.GUID == 'NULL':
                             tmpLog.warning('GUID for %s is unknown. Cannot retry when corresponding buildJob failed' \
                                            % file.lfn)
-                            return 
-                        file.status = 'ready'
+                            return
+                        if not retryBuild or not file.lfn.endswith('.lib.tgz'):
+                            file.status = 'ready'
+                        # set new lib dataset    
+                        if retryBuild and file.lfn.endswith('.lib.tgz'):
+			    file.lfn            = newLibTgz
+                            file.dataset        = newLibDS
+			    file.dispatchDBlock = newLibDS
                         # check with shadow for non lib.tgz/DBR 
                         tmpDbrMatch = re.search('^DBRelease-.*\.tar\.gz$',file.lfn)
                         if tmpDbrMatch == None and not file.lfn.endswith('.lib.tgz'):
@@ -686,7 +697,7 @@ class PBookCore:
                         file.destinationSE = retryDestSE
                         file.destinationDBlock = re.sub('_sub\d+$','',file.destinationDBlock)
 			# add retry num
-                        if file.dataset.endswith('/'):
+                        if file.dataset.endswith('/') or job.prodSourceLabel == 'panda':
                             oldOutDsName = file.destinationDBlock
                             retryMatch = re.search('_r(\d+)$',file.destinationDBlock)
                             if retryMatch == None:
@@ -697,10 +708,25 @@ class PBookCore:
                             if job.processingType == 'usermerge':
                                 job.jobParameters = job.jobParameters.replace(' %s ' % oldOutDsName,
                                                                               ' %s ' % file.destinationDBlock)
+			    # use new dataset name for buildXYZ
+                            if job.prodSourceLabel == 'panda':
+                                if file.lfn.endswith('.lib.tgz'):
+                                    # get new libDS and lib.tgz names
+                                    oldLibDS  = file.dataset
+                                    file.dataset = file.destinationDBlock
+                                    newLibDS = file.dataset
+                                    file.lfn = re.sub(oldLibDS,newLibDS,file.lfn)
+                                    newLibTgz = file.lfn
+                                else:
+                                    file.dataset = file.destinationDBlock                                    
                         # add attempt nr
                         oldName  = file.lfn
-                        file.lfn = re.sub("\.\d+$","",file.lfn)
-                        file.lfn = "%s.%d" % (file.lfn,job.attemptNr)
+                        if job.prodSourceLabel == 'panda' and file.lfn.endswith('.lib.tgz'):
+			    continue
+                        else:
+                            # append attempt number at the tail 
+                            file.lfn = re.sub("\.\d+$","",file.lfn)
+                            file.lfn = "%s.%d" % (file.lfn,job.attemptNr)
                         newName  = file.lfn
                         # modify jobParameters
                         job.jobParameters = re.sub("'%s'" % oldName ,"'%s'" % newName,
@@ -710,6 +736,12 @@ class PBookCore:
                         match = re.search(oldGenelicName+'(\.\d+)*(%20|")',job.jobParameters)
                         if match != None:
                             job.jobParameters = job.jobParameters.replace(match.group(0),newName+match.group(2))
+                # change lib.tgz name
+                if retryBuild and newLibDS != None:
+                    job.jobParameters = re.sub(oldLibDS,newLibDS,job.jobParameters)
+                    # change destinationDBlock
+                    if job.prodSourceLabel == 'panda':
+                        job.destinationDBlock = newLibDS
                 # all files are used by others
                 if numUsedFiles == 0 and skipInputList != []:
                     continue
@@ -819,6 +851,9 @@ class PBookCore:
                         Client.addDatasetsToContainer(tmpFile.dataset,[tmpFile.destinationDBlock],self.verbose)
                         # append
                         addedDataset.append(tmpFile.destinationDBlock)
+            # register libDS
+            if retryBuild and newLibDS != None:
+                Client.addDataset(newLibDS,self.verbose,location=tmpOutDsLocation)
             # submit
             tmpLog.info("Submitting job ...")            
             status,out = Client.submitJobs(retryJobs,verbose=self.verbose)
@@ -994,8 +1029,8 @@ For more info, do help(show) for example."""
 
 
     # retry
-    def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=True):
-        """Retry failed/cancelled subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be retried if upperJobID is given. Set useJobsetID=False if you want to retry JobIDs between JobID and UpperJobID. Set newSite=True when you want to retry at new site, which essentially runs pathena/prun again because new sub jobs need to be created for the new site. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. When newSite=True, one can use newOpts which is a map of options  and new arguments like {'nGBperJob':10,'excludedSite':'ABC,XYZ'} and is passed to pathena/prun as new parameters. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True
+    def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=True,retryBuild=False):
+        """Retry failed/cancelled subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be retried if upperJobID is given. Set useJobsetID=False if you want to retry JobIDs between JobID and UpperJobID. Set newSite=True when you want to retry at new site, which essentially runs pathena/prun again because new sub jobs need to be created for the new site. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. When newSite=True, one can use newOpts which is a map of options  and new arguments like {'nGBperJob':10,'excludedSite':'ABC,XYZ'} and is passed to pathena/prun as new parameters. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True. Set retryBuild=True if you want to retry jobs which have a failed buildJob
 
          example:
            >>> retry(15)
@@ -1013,9 +1048,9 @@ For more info, do help(show) for example."""
                 # retry jobs between the range
                 for tmpJobID in range(JobID,upperJobID+1):
                     pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,ignoreDuplication=ignoreDuplication,
-                                    useJobsetID=useJobsetID)
+                                    useJobsetID=useJobsetID,retryBuild=retryBuild)
         else:            
-            pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,ignoreDuplication=ignoreDuplication)
+            pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,ignoreDuplication=ignoreDuplication,retryBuild=retryBuild)
 
 
     # rebrokerage
@@ -1040,13 +1075,14 @@ For more info, do help(show) for example."""
 
 
     # kill and retry
-    def killAndRetry(JobID,newSite=False,newOpts={},ignoreDuplication=False):
+    def killAndRetry(JobID,newSite=False,newOpts={},ignoreDuplication=False,retryBuild=False):
         """Kill JobID and then retry failed/cancelled sub-jobs. Concerning newSite and newOpts, see help(retry)
 
          example:
            >>> killAndRetry(15)
         """
-	ret = pbookCore.killAndRetry(JobID,newSite=newSite,newOpts=newOpts,ignoreDuplication=ignoreDuplication)
+	ret = pbookCore.killAndRetry(JobID,newSite=newSite,newOpts=newOpts,ignoreDuplication=ignoreDuplication,
+                                     retryBuild=retryBuild)
 
 
     # synchronize local repository
