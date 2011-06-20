@@ -2008,7 +2008,7 @@ def getJobStatusFromMon(id,verbose=False):
 
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType='',
-                 loggingFlag=False):
+                 loggingFlag=False,memorySize=0):
     if sites == []:
         if not loggingFlag:
             return 0,'ERROR : no candidate'
@@ -2046,6 +2046,9 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
     # enable logging
     if loggingFlag:
         data['loggingFlag'] = True
+    # memory size
+    if not memorySize in [-1,0,None,'NULL']:
+        data['memorySize'] = memorySize
     status,output = curl.get(url,data)
     try:
         if not loggingFlag:

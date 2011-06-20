@@ -1080,12 +1080,12 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
 
 
 # run brokerage for composite site
-def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose,cmtConfig=None):
+def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose,cmtConfig=None,memorySize=0):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # run brokerage
     status,outMap = Client.runBrokerage(siteIDs,releaseVer,verbose=verbose,trustIS=True,cacheVer=cacheVer,loggingFlag=True,
-                                        cmtConfig=cmtConfig)
+                                        cmtConfig=cmtConfig,memorySize=memorySize)
     if status != 0:
         tmpLog.error('failed to run brokerage for composite site: %s' % outMap)
         sys.exit(EC_Config)
@@ -1946,3 +1946,20 @@ def extractNthFieldFromDS(datasetName,nth):
         sys.exit(EC_Config)
     # return
     return items[nth-1]
+
+
+# info about user brokerage
+def getUserBrokerageInfo(val,optType,infoList):
+    if optType == 'site':
+        msgBody = 'use %s - site set by user' % val
+        infoList.append(msgBody)
+    elif optType == 'cloud':
+        msgBody = 'use %s - cloud set by user' % val
+        infoList.append(msgBody)        
+    elif optType == 'libDS':
+        msgBody = 'use %s - libDS exists' % val
+        infoList.append(msgBody)        
+    elif optType == 'outDS':
+        msgBody = 'use %s - outDS exists' % val
+        infoList.append(msgBody)        
+    return infoList

@@ -303,7 +303,13 @@ siteSpecified = True
 if options.site == 'AUTO':
     siteSpecified = False
 
-brokerageLogs = []
+brokerageLogs  = []
+userBrokerLogs = []
+
+# cloud specified
+if options.cloud != defaultCloud:
+    # add logging info
+    userBrokerLogs = PsubUtils.getUserBrokerageInfo(options.cloud,'cloud',userBrokerLogs)
 
 # use outputPath as outDS
 if Client.isDQ2free(options.site):
@@ -702,6 +708,8 @@ if options.site != 'AUTO':
     if not Client.PandaSites.has_key(options.site):
         tmpLog.error("unknown siteID:%s" % origSite)
         sys.exit(EC_Config)
+    # add logging info
+    userBrokerLogs = PsubUtils.getUserBrokerageInfo(options.site,'site',userBrokerLogs)
     # set cloud
     options.cloud = Client.PandaSites[options.site]['cloud']
 
@@ -789,12 +797,15 @@ if outputDSexist and options.destSE == '':
         else:
             # run brokerage to be sent to free site
             convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,
-                                                                     options.verbose,options.cmtConfig)
+                                                                     options.verbose,options.cmtConfig,
+                                                                     memorySize=options.memory)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
         tmpLog.info("set site:%s cloud:%s because outDS:%s already exists at %s" % \
-                    (options.site,options.cloud,options.outDS,outDSlocations))                
+                    (options.site,options.cloud,options.outDS,outDSlocations))
+        # add logging info
+        userBrokerLogs = PsubUtils.getUserBrokerageInfo(options.site,'outDS',userBrokerLogs)
 
 if options.libDS != '' and not Client.isDQ2free(options.site):
     # get real datasetname for case sensitivity    
@@ -830,12 +841,15 @@ if options.libDS != '' and not Client.isDQ2free(options.site):
         else:
             # run brokerage to be sent to free site
             convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,
-                                                                     options.verbose,options.cmtConfig)
+                                                                     options.verbose,options.cmtConfig,
+                                                                     memorySize=options.memory)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
         tmpLog.info("set site:%s cloud:%s because libDS:%s exists at %s" % \
-                    (options.site,options.cloud,options.libDS,libDSlocations))                
+                    (options.site,options.cloud,options.libDS,libDSlocations))
+        # add logging info
+        userBrokerLogs = PsubUtils.getUserBrokerageInfo(options.site,'libDS',userBrokerLogs)
         
 # set cloud for brokerage
 expCloudFlag = False
@@ -1019,7 +1033,7 @@ if options.inDS != '':
 		if tmpSites == []:
                     continue
                 status,outMap = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
-                                                    loggingFlag=True,cmtConfig=options.cmtConfig)
+                                                    loggingFlag=True,cmtConfig=options.cmtConfig,memorySize=options.memory)
                 if status != 0:
                     tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)
                     sys.exit(EC_Config)
@@ -1214,7 +1228,7 @@ else:
         tmpBrokerErr = ''
         for idxTmpSites,tmpSites in enumerate(tmpSitesList):
             status,outMap = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
-                                                loggingFlag=True,cmtConfig=options.cmtConfig)    
+                                                loggingFlag=True,cmtConfig=options.cmtConfig,memorySize=options.memory)
             if status != 0:
                 tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)  
                 sys.exit(EC_Config)
@@ -2267,8 +2281,8 @@ if not options.nosubmit:
             elif index+1==len(out):
                 outstr += "-%s" % o[0]
                 runStr += '-%s' % o[0]
-    if status == 0 and brokerageLogs != []:
-        Client.sendBrokerageLog(jobID,jobsetID,brokerageLogs,options.verbose)
+    if status == 0 and (brokerageLogs != [] or userBrokerLogs != []):
+        Client.sendBrokerageLog(jobID,jobsetID,brokerageLogs+userBrokerLogs,options.verbose)
     print '==================='    
     if not jobsetID in [None,'NULL']:                            
         print ' JobsetID  : %s' % jobsetID
