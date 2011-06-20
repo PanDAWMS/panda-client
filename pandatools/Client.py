@@ -17,6 +17,7 @@ import xml.dom.minidom
 import socket
 import tempfile
 
+import MiscUtils
 import PLogger
 
 # configuration
@@ -655,7 +656,7 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False,dsStri
                 if iLookUp % 20 == 0:
                     time.sleep(1)
                 data = {'operation':'queryDatasetByName','dsn':tmpName,
-                        'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+                        'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
                 status,out = curl.get(url,data)
                 if status != 0 or out == '\x00' or (re.search('\*',tmpName) == None and not checkDatasetInMap(tmpName,out)):
                     errStr = "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
@@ -700,7 +701,7 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False,dsStri
             if iLookUp % 20 == 0:
                 time.sleep(1)
             data = {'operation': 'queryFilesInDataset','vuids':vuids,
-                    'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+                    'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
             status,out =  curl.post(url,data)
             if status != 0:
                 errStr = "ERROR : could not get files in %s" % name
@@ -749,7 +750,7 @@ def getDatasets(name,verbose=False,withWC=False,onlyNames=False):
         # get VUID
         url = baseURLDQ2 + '/ws_repository/rpc'
         data = {'operation':'queryDatasetByName','dsn':name,'version':0,
-                'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+                'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
         if onlyNames:
             data['API'] = '30'
             data['onlyNames'] = int(onlyNames)
@@ -898,7 +899,7 @@ def getReplicaMetadata(name,dq2Locations,verbose):
         # get VUID
         url = baseURLDQ2 + '/ws_repository/rpc'
         data = {'operation':'queryDatasetByName','dsn':name,'version':0,
-                'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+                'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
         status,out = curl.get(url,data)
         if status != 0:
             errStr = "ERROR : could not access DQ2 server"
@@ -916,7 +917,7 @@ def getReplicaMetadata(name,dq2Locations,verbose):
             url = baseURLDQ2 + '/ws_location/rpc'
             data = {'operation':'queryDatasetReplicaMetadata','vuid':vuid,
                     'location':location,'API':'0_3_0',
-                    'tuid':commands.getoutput('uuidgen')}
+                    'tuid':MiscUtils.wrappedUuidGen()}
             status,out = curl.post(url,data)
             if status != 0:
                 errStr = "ERROR : could not access DQ2 server to get replica metadata"
@@ -1004,7 +1005,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False,forColl=False):
         # get vuids
         url = baseURLDQ2 + '/ws_content/rpc'
         data = {'operation': 'queryDatasetsWithFileByGUID','guid':guid,
-                'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+                'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
         status,out =  curl.get(url,data)
         # failed
         if status != 0:
@@ -1024,7 +1025,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False,forColl=False):
         # get dataset name
         url = baseURLDQ2 + '/ws_repository/rpc'
         data = {'operation':'queryDatasetByVUIDs','vuids':tmpVUIDs,
-                'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+                'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
         status,out = curl.post(url,data)
         # failed
         if status != 0:
@@ -1105,8 +1106,8 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False,forColl=False):
 # register dataset
 def addDataset(name,verbose=False,location='',dsExist=False):
     # generate DUID/VUID
-    duid = commands.getoutput("uuidgen")
-    vuid = commands.getoutput("uuidgen")
+    duid = MiscUtils.wrappedUuidGen()
+    vuid = MiscUtils.wrappedUuidGen()
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1118,7 +1119,7 @@ def addDataset(name,verbose=False,location='',dsExist=False):
         if not dsExist:
             url = baseURLDQ2SSL + '/ws_repository/rpc'
             data = {'operation':'addDataset','dsn': name,'duid': duid,'vuid':vuid,
-                    'API':'0_3_0','tuid':commands.getoutput('uuidgen'),'update':'yes'}
+                    'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen(),'update':'yes'}
             status,out = curl.post(url,data)
             if status != 0 or (out != None and re.search('Exception',out) != None):
                 errStr = "ERROR : could not add dataset to DQ2 repository"
@@ -1131,7 +1132,7 @@ def addDataset(name,verbose=False,location='',dsExist=False):
             # get VUID
             url = baseURLDQ2 + '/ws_repository/rpc'
             data = {'operation':'queryDatasetByName','dsn':name,'version':0,
-                    'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+                    'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
             status,out = curl.get(url,data)
             if status != 0:
                 errStr = "ERROR : could not get VUID from DQ2"
@@ -1144,7 +1145,7 @@ def addDataset(name,verbose=False,location='',dsExist=False):
             url = baseURLDQ2SSL + '/ws_location/rpc'
             data = {'operation':'addDatasetReplica','vuid':vuid,'site':location,
                     'complete':0,'transferState':1,
-                    'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+                    'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
             status,out = curl.post(url,data)
             if status != 0 or out != 1:
                 errStr = "ERROR : could not register location : %s" % location
@@ -1170,7 +1171,7 @@ def createContainer(name,verbose=False):
         # add
         url = baseURLDQ2SSL + '/ws_dq2/rpc'        
         data = {'operation':'container_create','name': name,
-                'API':'030','tuid':commands.getoutput('uuidgen')}
+                'API':'030','tuid':MiscUtils.wrappedUuidGen()}
         status,out = curl.post(url,data)
         if status != 0 or (out != None and re.search('Exception',out) != None):
             errStr = "ERROR : could not create container in DQ2"
@@ -1197,7 +1198,7 @@ def addDatasetsToContainer(name,datasets,verbose=False):
         url = baseURLDQ2SSL + '/ws_dq2/rpc'        
         data = {'operation':'container_register','name': name,
                 'datasets':datasets,'API':'030',
-                'tuid':commands.getoutput('uuidgen')}
+                'tuid':MiscUtils.wrappedUuidGen()}
         status,out = curl.post(url,data)
         if status != 0 or (out != None and re.search('Exception',out) != None):
             errStr = "ERROR : could not add DQ2 datasets to container"
@@ -1221,7 +1222,7 @@ def getElementsFromContainer(name,verbose=False):
         # get elements
         url = baseURLDQ2 + '/ws_dq2/rpc'
         data = {'operation':'container_retrieve','name': name,
-                'API':'030','tuid':commands.getoutput('uuidgen')}
+                'API':'030','tuid':MiscUtils.wrappedUuidGen()}
         status,out = curl.get(url,data)
         if status != 0 or (isinstance(out,types.StringType) and re.search('Exception',out) != None):
             errStr = "ERROR : could not get container %s from DQ2" % name
@@ -1362,7 +1363,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             # get VUID
             url = baseURLDQ2 + '/ws_repository/rpc'
             data = {'operation':'queryDatasetByName','dsn':tmpName,'version':0,
-                    'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+                    'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
             status,out = curl.get(url,data)
             if status != 0 or out == '\x00' or (not checkDatasetInMap(tmpName,out)):
                 errStr = "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
@@ -1380,10 +1381,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             url = baseURLDQ2 + '/ws_location/rpc'
             if containerFlag:
                 data = {'operation':'listContainerReplicas','cn':tmpName,
-                        'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+                        'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
             else:
                 data = {'operation':'listDatasetReplicas','duid':duid,
-                        'API':'0_3_0','tuid':commands.getoutput('uuidgen')}
+                        'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
             status,out = curl.post(url,data)
             if status != 0:
                 errStr = "ERROR : could not query location for %s" % tmpName
@@ -1766,8 +1767,8 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
             else:
                 stList = []
             lfcHost   = getLFC(site)
-            inFile    = '%s_in'  % commands.getoutput('uuidgen')
-            outFile   = '%s_out' % commands.getoutput('uuidgen')
+            inFile    = '%s_in'  % MiscUtils.wrappedUuidGen()
+            outFile   = '%s_out' % MiscUtils.wrappedUuidGen()
             # write GUID/LFN
             ifile = open(inFile,'w')
             fileKeys = fileMap.keys()
@@ -2007,7 +2008,7 @@ def getJobStatusFromMon(id,verbose=False):
 
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType='',
-                 loggingFlag=False):
+                 loggingFlag=False,memorySize=0):
     if sites == []:
         if not loggingFlag:
             return 0,'ERROR : no candidate'
@@ -2045,6 +2046,9 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
     # enable logging
     if loggingFlag:
         data['loggingFlag'] = True
+    # memory size
+    if not memorySize in [-1,0,None,'NULL']:
+        data['memorySize'] = memorySize
     status,output = curl.get(url,data)
     try:
         if not loggingFlag:
@@ -2862,3 +2866,4 @@ def getInconsistentDS(missList,newUsedDsList):
         missList = newMissList
     # return
     return inconDSs
+

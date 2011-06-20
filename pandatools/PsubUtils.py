@@ -9,6 +9,7 @@ import pickle
 
 import Client
 import MyproxyUtils
+import MiscUtils
 import PLogger
 import AthenaUtils
 
@@ -910,7 +911,7 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # remove --fileList
     fullExecString = re.sub('"*--fileList\s*=*[^ "]+"*','',fullExecString)
     # set list of input files
-    inputTmpfile = '%s/intmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
+    inputTmpfile = '%s/intmp.%s' % (tmpDir,MiscUtils.wrappedUuidGen())
     iFile = open(inputTmpfile,'w')
     for tmpMiss in missList:
         iFile.write(tmpMiss+'\n')
@@ -945,7 +946,7 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # run config
     conTmpfile = ''
     if not '--panda_runConfig' in fullExecString:
-        conTmpfile = '%s/conftmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
+        conTmpfile = '%s/conftmp.%s' % (tmpDir,MiscUtils.wrappedUuidGen())
         cFile = open(conTmpfile,'w')
         pickle.dump(runConfig,cFile)
         cFile.close()
@@ -1026,7 +1027,7 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
         tmpDsStr = tmpDsStr[:-1]    
         fullExecString += ' --removedDS=%s' % tmpDsStr
     # set list of input files
-    inputTmpfile = '%s/intmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
+    inputTmpfile = '%s/intmp.%s' % (tmpDir,MiscUtils.wrappedUuidGen())
     iFile = open(inputTmpfile,'w')
     for tmpMiss in missList:
         iFile.write(tmpMiss+'\n')
@@ -1079,12 +1080,12 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
 
 
 # run brokerage for composite site
-def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose,cmtConfig=None):
+def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose,cmtConfig=None,memorySize=0):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # run brokerage
     status,outMap = Client.runBrokerage(siteIDs,releaseVer,verbose=verbose,trustIS=True,cacheVer=cacheVer,loggingFlag=True,
-                                        cmtConfig=cmtConfig)
+                                        cmtConfig=cmtConfig,memorySize=memorySize)
     if status != 0:
         tmpLog.error('failed to run brokerage for composite site: %s' % outMap)
         sys.exit(EC_Config)
@@ -1376,7 +1377,7 @@ def getTagParentInfoUsingTagQuery(tagDsStr,tagQuery,streamRef,verbose):
 
 # dump TAG parent Info
 def dumpTagParentInfo(tmpDir):
-    tmpFileName = '%s/tagparenttmp.%s' % (tmpDir,commands.getoutput('uuidgen'))
+    tmpFileName = '%s/tagparenttmp.%s' % (tmpDir,MiscUtils.wrappedUuidGen())
     cFile = open(tmpFileName,'w')
     pickle.dump((tagParentInfo,parentLfnToTagMap),cFile)
     cFile.close()
@@ -1618,7 +1619,7 @@ def execWithModifiedParams(jobs,newOpts,verbose):
         commandOps += ' --inDS %s' % strInDS
         # set inputFileList
         if not newOpts.has_key('inputFileList'):
-            inputTmpfileName = 'intmp.%s' % (commands.getoutput('uuidgen'))
+            inputTmpfileName = 'intmp.%s' % MiscUtils.wrappedUuidGen()
             inputTmpfile = open(inputTmpfileName,'w')
             for inFile in inFiles:
                 inputTmpfile.write(inFile+'\n')
@@ -1945,3 +1946,20 @@ def extractNthFieldFromDS(datasetName,nth):
         sys.exit(EC_Config)
     # return
     return items[nth-1]
+
+
+# info about user brokerage
+def getUserBrokerageInfo(val,optType,infoList):
+    if optType == 'site':
+        msgBody = 'use %s - site set by user' % val
+        infoList.append(msgBody)
+    elif optType == 'cloud':
+        msgBody = 'use %s - cloud set by user' % val
+        infoList.append(msgBody)        
+    elif optType == 'libDS':
+        msgBody = 'use %s - libDS exists' % val
+        infoList.append(msgBody)        
+    elif optType == 'outDS':
+        msgBody = 'use %s - outDS exists' % val
+        infoList.append(msgBody)        
+    return infoList
