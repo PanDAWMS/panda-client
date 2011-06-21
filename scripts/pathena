@@ -112,6 +112,8 @@ optP.add_option('--useAMIEventLevelSplit',action='store_const',const=True,dest='
                 help="retrive the number of events per file from AMI to split the job using --nEventsPerJob")
 optP.add_option('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
                 help="merge output files")
+optP.add_option('--mergeScript',action='store',dest='mergeScript',default='',type='string',
+                help='Specify user-defied script for output merging')
 optP.add_option('--useCommonHalo', action='store_const', const=False, dest='useCommonHalo',  default=True,
                 help="use an integrated DS for BeamHalo")
 optP.add_option('--beamHaloDS',  action='store', dest='beamHaloDS',  default='',
@@ -568,12 +570,24 @@ if options.eventPickEvtList != '':
     
 # additinal files
 options.extFile = options.extFile.split(',')
+try:
+    options.extFile.remove('')
+except:
+    pass
 options.extOutFile = re.sub(' ','',options.extOutFile)
 options.extOutFile = options.extOutFile.split(',')
 try:
     options.extOutFile.remove('')
 except:
     pass
+
+# user-specified merging script
+if options.mergeScript != '':
+    # enable merging
+    options.mergeOutput = True
+    # add it to extFile
+    if not options.mergeScript in options.extFile:
+        options.extFile.append(options.mergeScript)
 
 # removed datasets
 if options.removedDS == '':
@@ -3432,7 +3446,9 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                 param += "--jem-config %s " % options.configJEM
         # merge
         if options.mergeOutput:
-            param += "--mergeOutput "            
+            param += "--mergeOutput "
+            if options.mergeScript != '':
+                param += "--mergeScript %s " % options.mergeScript
         # assign    
         jobR.jobParameters = param
 
