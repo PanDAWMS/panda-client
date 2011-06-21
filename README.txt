@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * updated pathena/prun to ignore dataset replicas with short lifetime
+
 0.3.45 (6/20/2011)
   * fixed --extFile of pathena to work with sub directories
   * added --cmtConfig to pathena/prun

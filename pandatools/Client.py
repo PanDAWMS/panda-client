@@ -857,16 +857,25 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
         # check metadata
         metaOK = False
         for metaItem in metaList:
-            # check the archived attribute
+            # replica deleted
             if isinstance(metaItem,types.StringType) and "No replica found at the location" in metaItem:
-                # replica deleted
-                pass
-            elif isinstance(metaItem['archived'],types.StringType) and metaItem['archived'].lower() in ['tobedeleted',]:
-                # to be deleted
-                pass
-            else:
-                metaOK = True
-                break
+                continue
+            # check the archived attribute
+            if isinstance(metaItem['archived'],types.StringType) and metaItem['archived'].lower() in ['tobedeleted',]:
+                continue
+            # check replica lifetime
+            if metaItem.has_key('expirationdate') and isinstance(metaItem['expirationdate'],types.StringType):
+                try:
+                    import datetime
+                    expireDate = datetime.datetime.strptime(metaItem['expirationdate'],'%Y-%m-%d %H:%M:%S')
+                    # expire in 7 days
+                    if expireDate-datetime.datetime.utcnow() < datetime.timedelta(days=7):
+                        continue
+                except:
+                    pass
+            # all OK
+            metaOK = True
+            break
         # expiring
         if not metaOK:
             expFilesMap['datasets'].append(dsName)
@@ -879,7 +888,7 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
         for tmpDsStr in expFilesMap['datasets']:
             msgStr += '%s,' % tmpDsStr
         msgStr = msgStr[:-1]
-        msgStr += ' at %s due to archived=ToBeDeleted' % siteID
+        msgStr += ' at %s due to archived=ToBeDeleted or short lifetime < 7days' % siteID
         tmpLog.info(msgStr)
     # return
     return expFilesMap
