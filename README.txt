@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed ConfigExtractor to see AANTupleStream.StreamName
+
 0.3.46 (6/30/2011)
   * updated pathena/prun to ignore dataset replicas with short lifetime
   * added --mergeScript to pathena/prun

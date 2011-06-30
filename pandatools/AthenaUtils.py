@@ -1183,7 +1183,7 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
             for sName in runConfig.output.outTHIST:
                 getFilesWithSuffix(tmpList,sName)
         if runConfig.output.outAANT:
-            for aName,sName in runConfig.output.outAANT:
+            for aName,sName,fName in runConfig.output.outAANT:
                 getFilesWithSuffix(tmpList,sName)
         if runConfig.output.outIROOT:
             for sIndex,sName in enumerate(runConfig.output.outIROOT):
@@ -1232,7 +1232,7 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
             if tmpIndex > indexTHIST:
                 indexTHIST  = tmpIndex
     if runConfig.output.outAANT:            
-        for aName,sName in runConfig.output.outAANT:
+        for aName,sName,fName in runConfig.output.outAANT:
             tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (shortPrefix,sName))
             if tmpIndex > indexAANT:
                 indexAANT  = tmpIndex
@@ -1443,7 +1443,14 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
     if runConfig.output.outAANT:
         indexAANT += 1
         sNameList = []
-        for aName,sName in runConfig.output.outAANT:
+        fsNameMap = {}
+        for aName,sName,fName in runConfig.output.outAANT:
+            # use first sName when multiple streams write to the same file
+            realStreamName = sName
+            if fsNameMap.has_key(fName):
+                sName = fsNameMap[fName]
+            else:
+                fsNameMap[fName] = sName
             file = FileSpec()
             file.type = 'output'
             if original_outDS.endswith('/'):
@@ -1466,7 +1473,7 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
                 jobR.addFile(file)
             if not outMap.has_key('AANT'):
                 outMap['AANT'] = []
-            outMap['AANT'].append((aName,sName,file.lfn))
+            outMap['AANT'].append((aName,realStreamName,file.lfn))
     if runConfig.output.outTHIST:
         indexTHIST += 1
         for sName in runConfig.output.outTHIST:

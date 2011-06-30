@@ -316,11 +316,16 @@ for alg in theApp.TopAlg+_configs:
                 for item in THistSvc.Output:
                     if re.search(fName,item):
                         sName = item.split()[0]
+                        # check stream name
+                        if hasattr(AANTupleStream,'StreamName'):
+                            if AANTupleStream.StreamName != sName:
+                                continue
                         aantStream.append(sName)
-                        if not (aName,sName) in appStList:
-                            _printConfig('Output=AANT %s %s' % (aName,sName))
+                        tmpAantKey = (aName,sName,fName)
+                        if not tmpAantKey in appStList:
+                            _printConfig('Output=AANT %s %s %s' % (aName,sName,fName))
                             _printConfig(' Name: %s'% fName)
-                            appStList.append((aName,sName))
+                            appStList.append(tmpAantKey)
                         break
 
 # Stream1
