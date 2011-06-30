@@ -442,6 +442,7 @@ def convertToLong(site):
     return site
 
 
+
 # submit jobs
 def submitJobs(jobs,verbose=False):
     # set hostname
@@ -2723,7 +2724,6 @@ def checkQueuedAnalJobs(site,verbose=False):
 # check if enough sites have DBR
 def checkEnoughSitesHaveDBR(dq2IDs):
     # collect sites correspond to DQ2 IDs
-    nOnlineWithDBR = 0
     sitesWithDBR = []
     for tmpDQ2ID in dq2IDs:
         tmpPandaSiteList = convertDQ2toPandaIDList(tmpDQ2ID)
@@ -2734,6 +2734,9 @@ def checkEnoughSitesHaveDBR(dq2IDs):
                 sitesWithDBR.append(tmpPandaSite)
     # count the number of online sites with DBR
     nOnline = 0
+    nOnlineWithDBR = 0
+    nOnlineT1 = 0
+    nOnlineT1WithDBR = 0    
     for tmpPandaSite,tmpSiteStat in PandaSites.iteritems():
         if tmpSiteStat['status'] == 'online':
             # exclude test,long,local
@@ -2743,13 +2746,20 @@ def checkEnoughSitesHaveDBR(dq2IDs):
             if tmpSiteStat['ddm'] == 'local':
                 continue
             nOnline += 1
+            if tmpPandaSite in PandaTier1Sites:
+                nOnlineT1 += 1
             if tmpPandaSite in sitesWithDBR:
                 nOnlineWithDBR += 1
+                if tmpPandaSite in PandaTier1Sites:
+                    nOnlineT1WithDBR += 1
     # threshold 90%
-    if float(nOnlineWithDBR)/float(nOnline) >= 0.9:
-        return True
-    else:
+    if float(nOnlineWithDBR) < 0.9 * float(nOnline):
         return False
+    # not all T1s have the DBR
+    if nOnlineT1 != nOnlineT1WithDBR:
+        return False
+    # all OK
+    return True
     
 
 # get latest DBRelease
@@ -2875,4 +2885,23 @@ def getInconsistentDS(missList,newUsedDsList):
         missList = newMissList
     # return
     return inconDSs
+
+
+# get T1 sites
+def getTier1sites():
+    global PandaTier1Sites
+    PandaTier1Sites = []
+    # FIXME : will be simplified once schedconfig has a tier field
+    for tmpCloud,tmpCloudVal in PandaClouds.iteritems():
+        for tmpDQ2ID in tmpCloudVal['tier1SE']:
+            # ignore NIKHEF
+            if tmpDQ2ID.startswith('NIKHEF'):
+                continue
+            # convert DQ2 ID to Panda Sites
+            tmpPandaSites = convertDQ2toPandaIDList(tmpDQ2ID)
+            for tmpPandaSite in tmpPandaSites:
+                if not tmpPandaSite in PandaTier1Sites:
+                    PandaTier1Sites.append(tmpPandaSite)
+getTier1sites()
+
 
