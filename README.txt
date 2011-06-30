@@ -21,9 +21,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.46 (6/30/2011)
   * updated pathena/prun to ignore dataset replicas with short lifetime
   * added --mergeScript to pathena/prun
+  * added a protection to DBR lookup to see T1 replicas
 
 0.3.45 (6/20/2011)
   * fixed --extFile of pathena to work with sub directories
