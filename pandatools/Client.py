@@ -2721,6 +2721,56 @@ def checkQueuedAnalJobs(site,verbose=False):
         tmpLog.error("checkQueuedAnalJobs %s %s" % (type,value))
 
 
+# request EventPicking
+def requestEventPicking(eventPickEvtList,eventPickDataType,eventPickStreamName,
+                        eventPickDS,eventPickAmiTag,fileList,fileListName,outDS,
+                        lockedBy,params,verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # list of input files
+    strInput = ''
+    for tmpInput in fileList:
+        if tmpInput != '':
+            strInput += '%s,' % tmpInput
+    if fileListName != '':
+        for tmpLine in open(fileListName):
+            tmpInput = re.sub('\n','',tmpLine)
+            if tmpInput != '':
+                strInput += '%s,' % tmpInput
+    strInput = strInput[:-1]
+    # make dataset name
+    userDatasetName = '%s.%s.%s/' % tuple(outDS.split('.')[:2]+[MiscUtils.wrappedUuidGen()])
+    # open run/event number list
+    evpFile = open(eventPickEvtList)
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/putEventPickingRequest'
+    data = {'runEventList'        : evpFile.read(),
+            'eventPickDataType'   : eventPickDataType,
+            'eventPickStreamName' : eventPickStreamName,
+            'eventPickDS'         : eventPickDS,
+            'eventPickAmiTag'     : eventPickAmiTag,
+            'userDatasetName'     : userDatasetName,
+            'lockedBy'            : lockedBy,
+            'params'              : params,
+            'inputFileList'       : strInput,
+            }
+    evpFile.close()
+    status,output = curl.post(url,data)
+    # failed
+    if status != 0 or output != True: 
+        print output
+        errStr = "failed to request EventPicking"
+        tmpLog.error(errStr)
+        sys.exit(EC_Failed)
+    # return user dataset name    
+    return True,userDatasetName
+
+
 # check if enough sites have DBR
 def checkEnoughSitesHaveDBR(dq2IDs):
     # collect sites correspond to DQ2 IDs

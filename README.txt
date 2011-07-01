@@ -21,8 +21,10 @@ pathena -h
 
 ** Release Note
 
-current
-  * fixed ConfigExtractor to see AANTupleStream.StreamName
+0.3.47 (7/1/2011)
+  * fixed ConfigExtractor for multiple AANT streams to write to the same file
+  * changed pathena/prun to make a stage-in request for TAPE files when event-picking
+  * added --eventPickStagedDS to pathena/prun
 
 0.3.46 (6/30/2011)
   * updated pathena/prun to ignore dataset replicas with short lifetime
