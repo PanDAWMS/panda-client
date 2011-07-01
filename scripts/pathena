@@ -98,6 +98,8 @@ optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName
                 type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
 optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
+optP.add_option('--eventPickStagedDS',action='store',dest='eventPickStagedDS',default='',
+                type='string', help='--eventPick options create a temporary dataset to stage-in interesting files when those files are available only on TAPE, and then a stage-in request is automatically sent to DaTRI. Once DaTRI transfers the dataset to DISK you can use the dataset as an input using this option')
 optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
                 type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
@@ -389,8 +391,14 @@ if options.panda_cacheSrvURL != '':
 # version check
 PsubUtils.checkPandaClientVer(options.verbose)
 
+# files to be deleted
+delFilesOnExit = []
+                            
 # suffix for shadow dataset
 suffixShadow = Client.suffixShadow
+
+# save current dir
+currentDir = os.path.realpath(os.getcwd())
 
 # exclude sites
 if options.excludedSite != '':
@@ -441,6 +449,21 @@ orig_inDS = options.inDS
 if options.panda_inDS != '':
     options.inDS = options.panda_inDS
     options.goodRunListXML = ''
+
+# use staged dataset for event picking
+if options.eventPickStagedDS != '':
+    if options.panda_inDSForEP == '':
+        options.panda_inDSForEP = options.eventPickStagedDS
+        options.panda_eventPickRunEvtDat = '%s/ep_%s.dat' % (currentDir,MiscUtils.wrappedUuidGen())
+        evI = open(options.eventPickEvtList)
+        evO = open(options.panda_eventPickRunEvtDat,'w')
+        evO.write(evI.read())
+        # close
+        evI.close()
+        evO.close()
+        # add to be deleted on exit
+        delFilesOnExit.append(options.panda_eventPickRunEvtDat)
+
 
 # set inDS for recursive event picking
 orig_eventPickEvtList = options.eventPickEvtList
@@ -757,9 +780,6 @@ if options.inRunConfig != '':
 if options.outRunConfig != '':
     options.outRunConfig = os.path.abspath(os.path.expanduser(options.outRunConfig))
     
-# save current dir
-currentDir = os.path.realpath(os.getcwd())
-
 # create tmp dir
 if options.tmpDir == '':
     tmpDir = '%s/%s' % (currentDir,MiscUtils.wrappedUuidGen())
@@ -771,7 +791,6 @@ os.makedirs(tmpDir)
 Client.setGlobalTmpDir(tmpDir)
 
 # exit action
-delFilesOnExit = []
 def _onExit(dir,files):
     for tmpFile in files:
         commands.getoutput('rm -rf %s' % tmpFile)        
@@ -844,7 +863,7 @@ if options.eventPickEvtList != '':
     tmpLFNList = []    
     for tmpGUID,tmpDsLFNs in epDsLFNs.iteritems():
         tmpDsName,tmpLFN = tmpDsLFNs
-        # set fileFist
+        # set filelist
         if not tmpLFN in tmpLFNList:
             tmpLFNList.append(tmpLFN)
             options.filelist.append(tmpLFN)
@@ -1791,14 +1810,50 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 	    # no location
             if dsLocationMap == {} and dsLocationMapBack == {}:
 		if dsTapeSites != {}:
-		    errStr = "Tape sites hold datasets as follows:\n\n"
-		    for tmpKey,tmpVal in dsTapeSites.iteritems():
-                        errStr += "  %s:%s\n" % (tmpKey,str(tmpVal))
-                    errStr += "\nPlease request subscription to disk area first if needed. "
-                    errStr += "This error could happen if your excluded sites have DISK replicas, "
-                    errStr += "or the sites where DISK replicas are available have been blacklisted by DDM (usually downtime) or HammerCloud, "
-                    errStr += "or there is no DISK replica."                        
-                    tmpLog.error(errStr)
+		    if orig_eventPickEvtList == '':
+			errStr = "Tape sites hold datasets as follows:\n\n"
+			for tmpKey,tmpVal in dsTapeSites.iteritems():
+			    errStr += "  %s:%s\n" % (tmpKey,str(tmpVal))
+			errStr += "\nPlease request subscription to disk area first if needed. "
+			errStr += "This error could happen if your excluded sites have DISK replicas, "
+			errStr += "or the sites where DISK replicas are available have been blacklisted by DDM (usually downtime) or HammerCloud, "
+			errStr += "or there is no DISK replica."                        
+			tmpLog.error(errStr)
+                    elif options.eventPickStagedDS != '':
+                        errStr = 'Some files in %s are still on TAPE. Please wait until you get a notification from DaTRI' % options.eventPickStagedDS
+                        tmpLog.error(errStr)
+                        sys.exit(EC_Dataset)
+		    else:
+                        # get command line parameters
+                        if options.panda_origFullExecString == '':
+                            epParams = fullExecString
+                        else:
+                            epParams = urllib.unquote(options.panda_origFullExecString)
+                        # request event picking on the server side
+                        tmpMsg  = 'Some input files are available only at TAPE sites. '
+                        tmpMsg += 'Sending a request to stage-in those files to DISK'
+                        print
+                        tmpLog.warning(tmpMsg)
+                        print
+                        if not options.nosubmit:
+			    epLockedBy = 'pathena'
+                            epStat,epOutput = Client.requestEventPicking(eventPickRunEvtDat,
+                                                                         options.eventPickDataType,
+                                                                         options.eventPickStreamName,
+                                                                         options.eventPickDS,
+                                                                         options.eventPickAmiTag,
+                                                                         options.filelist,
+                                                                         '',
+                                                                         options.outDS,
+                                                                         epLockedBy,epParams,
+                                                                         options.verbose)
+                            tmpMsg  = 'The request has been registered. '
+                            tmpMsg += "Those files will be contained in '%s' to be transfered to DISK via DaTRI. " % epOutput
+                            tmpMsg += 'Once the transfer completed DaTRI will send a notification '
+                            tmpMsg += 'and then you can use the dataset as an input by using --eventPickStagedDS=%s, i.e.,' % epOutput
+                            tmpMsg += '\n\n%s %s --eventPickStagedDS=%s' % (epLockedBy,epParams,epOutput)
+                            tmpLog.info(tmpMsg)
+                        sys.exit(EC_Dataset)                            
                 if dbrMissingSites != []:
                     tmpLog.error("%s is missing at %s although input dataset is available" % (dbrDsString,str(dbrMissingSites)))
                 for secDsString,secMissingSites in secMissingSites.iteritems():
