@@ -99,7 +99,7 @@ optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName
 optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
                 type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
 optP.add_option('--eventPickStagedDS',action='store',dest='eventPickStagedDS',default='',
-                type='string', help='A temporary dataset is created to stage-in interesting files when they are available only on TAPE. Once DaTRI transfers the dataset to DISK you can use the dataset as an input together with other --eventPick options')
+                type='string', help='--eventPick options create a temporary dataset to stage-in interesting files when those files are available only on TAPE, and then a stage-in request is automatically sent to DaTRI. Once DaTRI transfers the dataset to DISK you can use the dataset as an input using this option')
 optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
                 type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
