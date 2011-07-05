@@ -1456,9 +1456,9 @@ else:
 	    # collect files
 	    for tmpFile in workDirFiles:
 		if os.path.islink(tmpFile):
-		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -rh %s -f %s" % (tmpFile,archiveFullName))
+		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -rh '%s' -f '%s'" % (tmpFile,archiveFullName))
 		else:
-		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -rf %s %s" % (archiveFullName,tmpFile))
+		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -rf '%s' '%s'" % (archiveFullName,tmpFile))
 		if options.verbose:
 		    print tmpFile
 		if status != 0 or out != '':
