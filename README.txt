@@ -23,6 +23,7 @@ pathena -h
 
 current
   * fixed tar-archiving for files with special characters
+  * fixed sendLogInfo for --useOldStyleOutput
 
 0.3.47 (7/1/2011)
   * fixed ConfigExtractor for multiple AANT streams to write to the same file
