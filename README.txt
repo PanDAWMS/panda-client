@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.48 (7/12/2011)
   * fixed tar-archiving for files with special characters
   * fixed sendLogInfo for --useOldStyleOutput
   * fixed --supStream of pathena to accept wild cards
