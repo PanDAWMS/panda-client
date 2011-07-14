@@ -1243,7 +1243,7 @@ if options.inDS != '':
 	    options.crossSite -= 1
             if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                 if missList != []:
-                    PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
+                    PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileList,
                                          options.site,options.crossSite,"",options.removedDS,
 					 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                          options.panda_dbRelease,options.panda_jobsetID,
@@ -2375,7 +2375,7 @@ if siteSpecified or expCloudFlag:
 options.crossSite -= 1
 if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
     if missList != []:
-	PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
+	PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileList,
                              options.site,options.crossSite,archiveName,options.removedDS,
 			     options.inDS,options.goodRunListXML,options.eventPickEvtList,
 			     options.panda_dbRelease,jobsetID,

@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.49 (7/14/2011)
+  * fixed termination of prun when --nFiles is used
+
 0.3.48 (7/12/2011)
   * fixed tar-archiving for files with special characters
   * fixed sendLogInfo for --useOldStyleOutput
