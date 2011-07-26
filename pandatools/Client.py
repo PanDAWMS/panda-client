@@ -2113,7 +2113,7 @@ def sendBrokerageLog(jobID,jobsetID,brokerageLogs,verbose):
         if not jobsetID in [None,'NULL']:
             tmpMsg = ' : jobset=%s jobdef=%s : %s' % (jobsetID,jobID,tmpMsgBody)
         else:
-            tmpMsg = ' : jobdef=%s : %s' % (jobsetID,jobID,tmpMsgBody)            
+            tmpMsg = ' : jobdef=%s : %s' % (jobID,tmpMsgBody)            
         msgList.append(tmpMsg)
     # execute
     url = baseURLSSL + '/sendLogInfo'

@@ -72,12 +72,16 @@ optP.add_option('--minDS',  action='store', dest='minDS',  default='',
                 type='string', help='Dataset name for minimum bias stream')
 optP.add_option('--nMin',  action='store', dest='nMin',  default=-1,
                 type='int', help='Number of minimum bias files per one signal file')
+optP.add_option('--nMinPerJob',  action='store', dest='nMinPerJob',  default=-1,
+                type='int', help='Number of minimum bias files per sub job')
 optP.add_option('--randomMin',action='store_const',const=True,dest='randomMin',default=False,
                 help='randomize files in minimum bias dataset')
 optP.add_option('--cavDS',  action='store', dest='cavDS',  default='',
                 type='string', help='Dataset name for cavern stream')
 optP.add_option('--nCav',  action='store', dest='nCav',  default=-1,
                 type='int', help='Number of cavern files per one signal file')
+optP.add_option('--nCavPerJob',  action='store', dest='nCavPerJob',  default=-1,
+                type='int', help='Number of cavern files per sub job')
 optP.add_option('--randomCav',action='store_const',const=True,dest='randomCav',default=False,
                 help='randomize files in cavern dataset')
 optP.add_option('--libDS', action='store', dest='libDS', default='',
@@ -193,7 +197,7 @@ optP.add_option('--excludeFile',action='store',dest='excludeFile',default='',
 optP.add_option('--extOutFile', action='store', dest='extOutFile',  default='',
                 help='A comma-separated list of extra output files which cannot be extracted automatically. Either \ or "" is required when a wildcard is used. e.g., output1.txt,output2.dat,JiveXML_\*.xml')
 optP.add_option('--supStream', action='store', dest='supStream',  default='',
-                help='suppress some output streams. e.g., ESD,TAG ')
+                help='suppress some output streams. Either \ or "" is required when a wildcard is used. e.g., ESD,TAG,GLOBAL,StreamDESD\* ')
 optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
                 help='list of glue packages which pathena cannot find due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf')
 optP.add_option('--excludedSite', action='store', dest='excludedSite',  default='',
@@ -2190,7 +2194,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         if options.randomMin:
             random.shuffle(minbiasList)
         # number of files per one signal
-        if options.nMin < 0:
+        if options.nMin < 0 and options.nMinPerJob < 0:
             while True:
                 tmpStr = raw_input("Enter the number of Minimum-Bias files per one signal file : ")
                 try:
@@ -2199,9 +2203,13 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 except:
                     pass
         # check # of files
-        if len(minbiasList) < options.nMin:
-            tmpLog.error("only %s files in %s are available at %s which is less than nMin=%s" % \
-                         (len(minbiasList),minbiasDataset,options.site,options.nMin))
+        if len(minbiasList) < max(options.nMin,options.nMinPerJob):
+            if options.nMin > 0:
+                tmpLog.error("only %s files in %s are available at %s which is less than nMin=%s" % \
+                             (len(minbiasList),minbiasDataset,options.site,options.nMin))
+            else:
+                tmpLog.error("only %s files in %s are available at %s which is less than nMinPerJob=%s" % \
+                             (len(minbiasList),minbiasDataset,options.site,options.nMinPerJob))
             sys.exit(EC_Dataset)
     # input stream for cavern
     if runConfig.input.inCavern:
@@ -2225,7 +2233,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         if options.randomCav:
             random.shuffle(cavernList)
         # number of files per one signal
-        if options.nCav < 0:
+        if options.nCav < 0 and options.nCavPerJob < 0:
             while True:
                 tmpStr = raw_input("Enter the number of Cavern files per one signal file : ")
                 try:
@@ -2234,9 +2242,13 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 except:
                     pass
         # check # of files
-        if len(cavernList) < options.nCav:
-            tmpLog.error("only %s files in %s are available at %s which is less than nCav=%s" % \
-                         (len(cavernList),cavernDataset,options.site,options.nCav))
+        if len(cavernList) < max(options.nCav,options.nCavPerJob):
+            if options.nCav > 0:
+                tmpLog.error("only %s files in %s are available at %s which is less than nCav=%s" % \
+                             (len(cavernList),cavernDataset,options.site,options.nCav))
+            else:
+                tmpLog.error("only %s files in %s are available at %s which is less than nCavPerJob=%s" % \
+                             (len(cavernList),cavernDataset,options.site,options.nCavPerJob))
             sys.exit(EC_Dataset)
     # input stream for beam halo
     if runConfig.input.inBeamHalo:
@@ -3059,11 +3071,16 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             totalMinSize = 0
             numMinFiles  = 0
             if runConfig.input.inMinBias:
-                if indexMin+options.nMin*divF >= len(minbiasList):
+                if (options.nMin > 0 and indexMin+options.nMin*divF >= len(minbiasList)) or \
+                       (options.nMinPerJob > 0 and indexMin+options.nMinPerJob >= len(minbiasList)):
                     # re-use files when Minimum-Bias files are not enough   
-                    indexMin = 0   
-                tmpList = minbiasList[indexMin:indexMin+options.nMin*divF]
-                indexMin += options.nMin*divF
+                    indexMin = 0
+                if options.nMin > 0:    
+                    tmpList = minbiasList[indexMin:indexMin+options.nMin*divF]
+                    indexMin += options.nMin*divF
+                else:
+                    tmpList = minbiasList[indexMin:indexMin+options.nMinPerJob]
+                    indexMin += options.nMinPerJob
                 numMinFiles = len(tmpList)
                 for fileName,vals in tmpList:
                     # instantiate  FileSpec
@@ -3087,11 +3104,16 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             totalCavSize = 0
             numCavFiles  = 0
             if runConfig.input.inCavern:
-                if indexCavern+options.nCav*divF >= len(cavernList):
+                if (options.nCav > 0 and indexCavern+options.nCav*divF >= len(cavernList)) or \
+                       (options.nCavPerJob > 0 and indexCavern+options.nCavPerJob >= len(cavernList)):
                     # re-use files when Cavern files are not enough   
-                    indexCavern = 0   
-                tmpList = cavernList[indexCavern:indexCavern+options.nCav*divF]
-                indexCavern += options.nCav*divF
+                    indexCavern = 0
+                if options.nCav > 0:    
+                    tmpList = cavernList[indexCavern:indexCavern+options.nCav*divF]
+                    indexCavern += options.nCav*divF
+                else:
+                    tmpList = cavernList[indexCavern:indexCavern+options.nCavPerJob]
+                    indexCavern += options.nCavPerJob
                 numCavFiles = len(tmpList)
                 for fileName,vals in tmpList:
                     # instantiate  FileSpec
