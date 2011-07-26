@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.50 (7/26/2011)
+  * added --nMinPerJob and --nCavPerJob to pathena
+
 0.3.49 (7/14/2011)
   * fixed termination of prun when --nFiles is used
 
