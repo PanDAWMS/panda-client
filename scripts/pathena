@@ -106,6 +106,8 @@ optP.add_option('--eventPickStagedDS',action='store',dest='eventPickStagedDS',de
                 type='string', help='--eventPick options create a temporary dataset to stage-in interesting files when those files are available only on TAPE, and then a stage-in request is automatically sent to DaTRI. Once DaTRI transfers the dataset to DISK you can use the dataset as an input using this option')
 optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
                 type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
+optP.add_option('--tagStreamRef',action='store',dest='tagStreamRef',default='',
+                type='string', help='specify StreamRef of parent files when you use TAG in --trf. If you run normal jobO set EventSelector.RefName in your jobO')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
 optP.add_option('--notUseTagLookup',action='store_const',const=True,dest='notUseTagLookup',default=False,
@@ -1130,8 +1132,15 @@ if runConfig.other.G4RandomSeeds == True:
 else:
     # set -1 to disable G4 Random Seeds
     runConfig.other.G4RandomSeeds = -1
-    
 
+# refname for TAG
+if options.trf and 'inputTAGFile=' in jobO:
+    if runConfig.input.collRefName == '':
+        tmpLog.error("--tagStreamRef is required when you use TAG in --trf")
+        sys.exit(EC_Extractor)
+    runConfig.input.collRefName = options.tagStreamRef
+    if not options.tagStreamRef.endswith('_ref'):
+        runConfig.input.collRefName += '_ref'
 
 #####################################################################
 # archive sources and send it to HTTP-reachable location
@@ -1379,7 +1388,8 @@ if options.panda_tagParentFile != '':
     useTagParentLookup = True
     # load parent info
     tagParentInfo,parentLfnToTagMap = PsubUtils.loadTagParentInfo(options.panda_tagParentFile)
-elif runConfig.input.inColl and options.parentDS == '' and options.inDS != '' and not options.shipinput \
+elif (runConfig.input.inColl or (options.trf and 'inputTAGFile=' in jobO)) \
+         and options.parentDS == '' and options.inDS != '' and not options.shipinput \
        and not options.notUseTagLookup:
     useTagParentLookup = True
     # get parent info from TAG DB

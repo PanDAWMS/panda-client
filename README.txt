@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.3.51 (7/28/2011)
+  * fixed --trf of pathena to use TagGUIDCount svc when TAG is used
+  * added --useRootCore to prun
+
 0.3.50 (7/26/2011)
   * added --nMinPerJob and --nCavPerJob to pathena
 
