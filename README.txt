@@ -21,8 +21,21 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.51 (7/28/2011)
+  * fixed --trf of pathena to use TagGUIDCount svc when TAG is used
+  * added --useRootCore to prun
+
+0.3.50 (7/26/2011)
+  * added --nMinPerJob and --nCavPerJob to pathena
+
+0.3.49 (7/14/2011)
+  * fixed termination of prun when --nFiles is used
+
+0.3.48 (7/12/2011)
   * fixed tar-archiving for files with special characters
+  * fixed sendLogInfo for --useOldStyleOutput
+  * fixed --supStream of pathena to accept wild cards
+  * fixed ConfigExtractor for DESD
 
 0.3.47 (7/1/2011)
   * fixed ConfigExtractor for multiple AANT streams to write to the same file

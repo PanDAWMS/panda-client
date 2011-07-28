@@ -104,6 +104,8 @@ optP.add_option('--official',action='store_const',const=True,dest='official',def
                 help='Produce official dataset')
 optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
                 help='LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something')
+optP.add_option('--useRootCore',action='store_const',const=True,dest='useRootCore',default=False,
+                help='Use RootCore. See PandaRun wiki page for detail')
 optP.add_option('--useAthenaPackages',action='store_const',const=True,dest='useAthenaPackages',default=False,
                 help='Use Athena packages. See PandaRun wiki page for detail')
 optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
@@ -406,6 +408,10 @@ if options.rootVer != '':
     # change / to .
     options.rootVer = re.sub('/','.',options.rootVer)
     
+# check RootCore
+if options.useRootCore and options.nobuild:
+    tmpLog.error("--useRootCore cannot be used together with --noBuild")
+    sys.exit(EC_Config)
 
 # check writeInputToTxt
 if options.writeInputToTxt != '':
@@ -1243,7 +1249,7 @@ if options.inDS != '':
 	    options.crossSite -= 1
             if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
                 if missList != []:
-                    PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
+                    PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileList,
                                          options.site,options.crossSite,"",options.removedDS,
 					 options.inDS,options.goodRunListXML,options.eventPickEvtList,
                                          options.panda_dbRelease,options.panda_jobsetID,
@@ -1333,9 +1339,39 @@ if options.panda_srcName != '':
     os.chdir(tmpDir)
 else:
     if options.inTarBall == '':
+        # copy RootCore packages 
+        if options.useRootCore:
+            # check $ROOTCOREDIR
+            if not os.environ.has_key('ROOTCOREDIR'):
+                tmpErrMsg  = '$ROOTCOREDIR is not definied in your enviornment. '
+                tmpErrMsg += 'Please setup RootCore runtime beforehand'
+                tmpLog.error(tmpErrMsg)
+                sys.exit(EC_Config)
+            # check grid_submit.sh
+            rootCoreSubmitSh  = os.environ['ROOTCOREDIR'] + '/scripts/grid_submit.sh'
+            rootCoreCompileSh = os.environ['ROOTCOREDIR'] + '/scripts/grid_compile.sh'
+            rootCoreRunSh     = os.environ['ROOTCOREDIR'] + '/scripts/grid_run.sh'
+            for tmpShFile in [rootCoreSubmitSh,rootCoreCompileSh,rootCoreRunSh]:
+                if not os.path.exists(tmpShFile):
+                    tmpErrMsg  = "%s doesn't exist. Please use a newer version of RootCore" % tmpShFile
+                    tmpLog.error(tmpErrMsg)
+                    sys.exit(EC_Config)
+	    tmpLog.info("copy RootCore packages to current dir")
+            # destination
+            rootCoreDestWorkDir = curDir + '/__panda_rootCoreWorkDir'
+            # add to be deleted on exit
+            delFilesOnExit.append(rootCoreDestWorkDir)
+            tmpStat = os.system('%s %s' % (rootCoreSubmitSh,rootCoreDestWorkDir))
+            tmpStat %= 255
+            if tmpStat != 0:
+                tmpErrMsg  = "%s failed with %s" % (rootCoreSubmitSh,tmpStat)
+                tmpLog.error(mpErrMsg)
+                sys.exit(EC_Config)
+            # copy build and run scripts
+            shutil.copy(rootCoreRunSh,rootCoreDestWorkDir)            
+            shutil.copy(rootCoreCompileSh,rootCoreDestWorkDir)
+        # gather Athena packages
 	if options.useAthenaPackages:
-	    # gather Athena packages
-
 	    # set extFile
 	    AthenaUtils.setExtFile(options.extFile)
 	    if options.libDS == '' and not options.nobuild:
@@ -1350,20 +1386,26 @@ else:
 	    if options.libDS == '':
 		AthenaUtils.archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
 					       tmpDir,options.nobuild,options.verbose)
-	else:        
-	    # gather normal files
-
-	    # go to workdir
-	    os.chdir(options.workDir)
-
-	    # gather files under work dir
-	    tmpLog.info("gathering files under %s" % options.workDir)
-
+        # gather normal files
+        if True:
+            if options.useAthenaPackages:
+                # go to workArea
+                os.chdir(workArea)
+                # gather files under work dir
+                tmpLog.info("gathering files under %s/%s" % (workArea,runDir))
+                archStartDir = runDir
+                archStartDir = re.sub('/+$','',archStartDir)
+            else:
+                # go to workdir
+                os.chdir(options.workDir)
+                # gather files under work dir
+                tmpLog.info("gathering files under %s" % options.workDir)
+                archStartDir = '.'
 	    # get files in the working dir
 	    skippedExt   = ['.o','.a','.so']
 	    skippedFlag  = False
 	    workDirFiles = []
-	    for tmpRoot,tmpDirs,tmpFiles in os.walk('.'):
+	    for tmpRoot,tmpDirs,tmpFiles in os.walk(archStartDir):
 		emptyFlag    = True
 		for tmpFile in tmpFiles:
 		    tmpPath = '%s/%s' % (tmpRoot,tmpFile)
@@ -1443,16 +1485,16 @@ else:
 		    workDirFiles.append(tmpPath)
 	    if skippedFlag:
 		tmpLog.info("please use --maxFileSize or --extFile if you need to send the skipped files to WNs")
-
-	    # create archive
-	    if options.libDS != '' or options.nobuild:
-		# use 'jobO' for libDS/noBuild
-		archiveName     = 'jobO.%s.tar' % MiscUtils.wrappedUuidGen()
-	    else:
-		# use 'sources' for normal build
-		archiveName     = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
-	    archiveFullName = "%s/%s" % (tmpDir,archiveName)
-
+            # set archive name    
+            if not options.useAthenaPackages:    
+                # create archive
+                if options.libDS != '' or options.nobuild:
+                    # use 'jobO' for libDS/noBuild
+                    archiveName     = 'jobO.%s.tar' % MiscUtils.wrappedUuidGen()
+                else:
+                    # use 'sources' for normal build
+                    archiveName     = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
+                archiveFullName = "%s/%s" % (tmpDir,archiveName)
 	    # collect files
 	    for tmpFile in workDirFiles:
 		if os.path.islink(tmpFile):
@@ -1659,6 +1701,7 @@ elif options.libDS == '':
     jobB.jobParameters     = '-i %s -o %s ' % (fileBI.lfn,fileBO.lfn)
     if options.bexec != '':
         jobB.jobParameters += '--bexec "%s" ' % urllib.quote(options.bexec)
+    if options.bexec != '' or options.useRootCore:    
         jobB.jobParameters += '-r %s ' % runDir
     # source URL
     matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
@@ -1667,6 +1710,9 @@ elif options.libDS == '':
     # use Athena packages
     if options.useAthenaPackages:
         jobB.jobParameters += "--useAthenaPackages "
+    # use RootCore
+    if options.useRootCore:
+        jobB.jobParameters += "--useRootCore "        
     # root
     if options.rootVer != '':
         jobB.jobParameters += "--rootVer %s " % options.rootVer
@@ -1894,6 +1940,9 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         # use Athena packages
         if options.useAthenaPackages:
             jobR.jobParameters += "--useAthenaPackages "
+        # use RootCore
+        if options.useRootCore:
+            jobR.jobParameters += "--useRootCore "        
         # root
         if options.rootVer != '':
             jobR.jobParameters += "--rootVer %s " % options.rootVer
@@ -2375,7 +2424,7 @@ if siteSpecified or expCloudFlag:
 options.crossSite -= 1
 if options.crossSite > 0 and options.inDS != '' and not siteSpecified:
     if missList != []:
-	PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileMap,
+	PsubUtils.runPrunRec(missList,tmpDir,fullExecString,options.nFiles,inputFileList,
                              options.site,options.crossSite,archiveName,options.removedDS,
 			     options.inDS,options.goodRunListXML,options.eventPickEvtList,
 			     options.panda_dbRelease,jobsetID,
