@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.3.53 (8/5/2011)
+  * fixed for US T2 TRIG-DAQ
+  * added retry for registering datasets to DQ2
+
 0.3.52 (8/5/2011)
   * fixed for CERN TMP
 
