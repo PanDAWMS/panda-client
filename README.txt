@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.52 (8/5/2011)
+  * fixed for CERN TMP
+
 0.3.51 (7/28/2011)
   * fixed --trf of pathena to use TagGUIDCount svc when TAG is used
   * added --useRootCore to prun

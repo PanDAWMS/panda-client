@@ -1266,6 +1266,9 @@ def convSrmV2ID(tmpSite):
     # parch for CERN EOS
     if tmpSite.startswith('CERN-PROD_EOS'):
         return 'CERN-PROD_EOSDISK'
+    # parch for CERN TMP
+    if tmpSite.startswith('CERN-PROD_TMP'):
+        return 'CERN-PROD_TMPDISK'
     # patch for SRM v2
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
