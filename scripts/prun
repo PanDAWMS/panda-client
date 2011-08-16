@@ -1358,7 +1358,10 @@ else:
                     sys.exit(EC_Config)
 	    tmpLog.info("copy RootCore packages to current dir")
             # destination
-            rootCoreDestWorkDir = curDir + '/__panda_rootCoreWorkDir'
+	    pandaRootCoreWorkDirName = '__panda_rootCoreWorkDir'
+            rootCoreDestWorkDir = curDir + '/' + pandaRootCoreWorkDirName
+            # add all files to extFile
+            options.extFile.append(pandaRootCoreWorkDirName + '/.*')
             # add to be deleted on exit
             delFilesOnExit.append(rootCoreDestWorkDir)
             tmpStat = os.system('%s %s' % (rootCoreSubmitSh,rootCoreDestWorkDir))

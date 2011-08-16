@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * relaxed file check in prun for --useRootCore 
+
 0.3.53 (8/5/2011)
   * fixed for US T2 TRIG-DAQ
   * added retry for registering datasets to DQ2
