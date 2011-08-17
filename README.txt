@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.54 (8/5/2011)
   * relaxed file check in prun for --useRootCore 
 
 0.3.53 (8/5/2011)
