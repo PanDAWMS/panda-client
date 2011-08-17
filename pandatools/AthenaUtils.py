@@ -327,18 +327,40 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
             if len(match):
                 # suppress some streams
                 if match[0].startswith("Output="):
-                    tmpSt0 = "None"
-                    tmpSt1 = "None"
+                    tmpSt0 = "NoneNoneNone"
+                    tmpSt1 = "NoneNoneNone"
+                    tmpSt2 = "NoneNoneNone"
                     try:
-                        tmpSt0 = match[0].replace('=',' ').split()[1]
+                        tmpSt0 = match[0].replace('=',' ').split()[1].upper()
                     except:
                         pass
                     try:
-                        tmpSt1 = match[0].replace('=',' ').split()[-1]
+                        tmpSt1 = match[0].replace('=',' ').split()[-1].upper()
                     except:
                         pass
-                    if tmpSt0.upper() in supStream or tmpSt1.upper() in supStream:
+                    try:
+                        tmpSt2 = match[0].replace('=',' ').split()[2].upper()
+                    except:
+                        pass
+                    toBeSuppressed = False
+                    # normal check
+                    if tmpSt0 in supStream or tmpSt1 in supStream or tmpSt2 in supStream:
+                        toBeSuppressed = True
+                    # wild card check
+                    if not toBeSuppressed:
+                        for tmpPatt in supStream:
+                            if '*' in tmpPatt:
+                                tmpPatt = '^' + tmpPatt.replace('*','.*')
+                                tmpPatt = tmpPatt.upper()
+                                if re.search(tmpPatt,tmpSt0) != None or \
+                                       re.search(tmpPatt,tmpSt1) != None or \
+                                       re.search(tmpPatt,tmpSt2) != None:
+                                    toBeSuppressed = True
+                                    break
+                    # suppressed            
+                    if toBeSuppressed:            
                         tmpLog.info('%s is suppressed' % line)
+                        # set skipOutName to ignore output filename in the next loop
                         skipOutName = True
                         continue
                 failExtractor = False
