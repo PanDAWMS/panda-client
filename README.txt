@@ -21,8 +21,11 @@ pathena -h
 
 ** Release Note
 
-0.3.54 (8/5/2011)
-  * relaxed file check in prun for --useRootCore 
+0.3.55 (8/31/2011)
+  * fixed pbook -c for multiple/keyworded arguments
+
+0.3.54 (8/17/2011)
+  * fixed file gathering in prun for --useRootCore 
 
 0.3.53 (8/5/2011)
   * fixed for US T2 TRIG-DAQ
