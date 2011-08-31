@@ -1128,12 +1128,18 @@ def addDataset(name,verbose=False,location='',dsExist=False):
         # add
         if not dsExist:
             url = baseURLDQ2SSL + '/ws_repository/rpc'
-            data = {'operation':'addDataset','dsn': name,'duid': duid,'vuid':vuid,
-                    'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen(),'update':'yes'}
-            status,out = curl.post(url,data)
-            if status != 0 or (out != None and re.search('Exception',out) != None):
-                errStr = "ERROR : could not add dataset to DQ2 repository"
-                sys.exit(EC_Failed)
+            nTry = 3
+            for iTry in range(nTry):
+                data = {'operation':'addDataset','dsn': name,'duid': duid,'vuid':vuid,
+                        'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen(),'update':'yes'}
+                status,out = curl.post(url,data)
+                if status != 0 or (out != None and re.search('Exception',out) != None):
+                    if iTry+1 == nTry:
+                        errStr = "ERROR : could not add dataset to DQ2 repository"
+                        sys.exit(EC_Failed)
+                    time.sleep(20)    
+                else:
+                    break
         else:
             # check location
             tmpLocations = getLocations(name,[],'',False,verbose,getDQ2IDs=True)
@@ -1153,13 +1159,19 @@ def addDataset(name,verbose=False,location='',dsExist=False):
         if re.search('SCRATCHDISK$',location) != None or re.search('USERDISK$',location) != None \
            or re.search('LOCALGROUPDISK$',location) != None:
             url = baseURLDQ2SSL + '/ws_location/rpc'
-            data = {'operation':'addDatasetReplica','vuid':vuid,'site':location,
-                    'complete':0,'transferState':1,
-                    'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
-            status,out = curl.post(url,data)
-            if status != 0 or out != 1:
-                errStr = "ERROR : could not register location : %s" % location
-                sys.exit(EC_Failed)
+            nTry = 3
+            for iTry in range(nTry):
+                data = {'operation':'addDatasetReplica','vuid':vuid,'site':location,
+                        'complete':0,'transferState':1,
+                        'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
+                status,out = curl.post(url,data)
+                if status != 0 or out != 1:
+                    if iTry+1 == nTry:
+                        errStr = "ERROR : could not register location : %s" % location
+                        sys.exit(EC_Failed)
+                    time.sleep(20)
+                else:
+                    break
     except:
         print status,out
         if errStr != '':
@@ -1179,13 +1191,19 @@ def createContainer(name,verbose=False):
     try:
         errStr = ''
         # add
-        url = baseURLDQ2SSL + '/ws_dq2/rpc'        
-        data = {'operation':'container_create','name': name,
-                'API':'030','tuid':MiscUtils.wrappedUuidGen()}
-        status,out = curl.post(url,data)
-        if status != 0 or (out != None and re.search('Exception',out) != None):
-            errStr = "ERROR : could not create container in DQ2"
-            sys.exit(EC_Failed)
+        url = baseURLDQ2SSL + '/ws_dq2/rpc'
+        nTry = 3
+        for iTry in range(nTry):
+            data = {'operation':'container_create','name': name,
+                    'API':'030','tuid':MiscUtils.wrappedUuidGen()}
+            status,out = curl.post(url,data)
+            if status != 0 or (out != None and re.search('Exception',out) != None):
+                if iTry+1 == nTry:
+                    errStr = "ERROR : could not create container in DQ2"
+                    sys.exit(EC_Failed)
+                time.sleep(20)
+            else:
+                break
     except:
         print status,out
         if errStr != '':
@@ -1205,14 +1223,20 @@ def addDatasetsToContainer(name,datasets,verbose=False):
     try:
         errStr = ''
         # add
-        url = baseURLDQ2SSL + '/ws_dq2/rpc'        
-        data = {'operation':'container_register','name': name,
-                'datasets':datasets,'API':'030',
-                'tuid':MiscUtils.wrappedUuidGen()}
-        status,out = curl.post(url,data)
-        if status != 0 or (out != None and re.search('Exception',out) != None):
-            errStr = "ERROR : could not add DQ2 datasets to container"
-            sys.exit(EC_Failed)
+        url = baseURLDQ2SSL + '/ws_dq2/rpc'
+        nTry = 3
+        for iTry in range(nTry):
+            data = {'operation':'container_register','name': name,
+                    'datasets':datasets,'API':'030',
+                    'tuid':MiscUtils.wrappedUuidGen()}
+            status,out = curl.post(url,data)
+            if status != 0 or (out != None and re.search('Exception',out) != None):
+                if iTry+1 == nTry:
+                    errStr = "ERROR : could not add DQ2 datasets to container"
+                    sys.exit(EC_Failed)
+                time.sleep(20)
+            else:
+                break
     except:
         print status,out
         if errStr != '':
@@ -1266,6 +1290,9 @@ def convSrmV2ID(tmpSite):
     # parch for CERN EOS
     if tmpSite.startswith('CERN-PROD_EOS'):
         return 'CERN-PROD_EOSDISK'
+    # parch for CERN TMP
+    if tmpSite.startswith('CERN-PROD_TMP'):
+        return 'CERN-PROD_TMPDISK'
     # patch for SRM v2
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
@@ -1293,7 +1320,8 @@ def convSrmV2ID(tmpSite):
         tmpSite = re.sub('_[A-Z,0-9]+DISK$', '',tmpSite)
         tmpSite = re.sub('_[A-Z,0-9]+TAPE$', '',tmpSite)
         tmpSite = re.sub('_PHYS-[A-Z,0-9]+$','',tmpSite)
-        tmpSite = re.sub('_PERF-[A-Z,0-9]+$','',tmpSite)                
+        tmpSite = re.sub('_PERF-[A-Z,0-9]+$','',tmpSite)
+        tmpSite = re.sub('_TRIG-DAQ$','',tmpSite)
     if tmpSite == 'NET2':
         tmpSite = 'BU'
     if tmpSite == 'MWT2_UC':
@@ -2113,7 +2141,7 @@ def sendBrokerageLog(jobID,jobsetID,brokerageLogs,verbose):
         if not jobsetID in [None,'NULL']:
             tmpMsg = ' : jobset=%s jobdef=%s : %s' % (jobsetID,jobID,tmpMsgBody)
         else:
-            tmpMsg = ' : jobdef=%s : %s' % (jobsetID,jobID,tmpMsgBody)            
+            tmpMsg = ' : jobdef=%s : %s' % (jobID,tmpMsgBody)            
         msgList.append(tmpMsg)
     # execute
     url = baseURLSSL + '/sendLogInfo'
