@@ -2207,3 +2207,12 @@ def listFilesUsingAMI(inDsStr,verbose):
         tmpLog.debug('metadata from AMI : %s' % str(retMetadataMap))
     # return        
     return retMetadataMap
+
+
+# use TAG in TRF 
+def checkUseTagInTrf(jobO,useTagInTRF):
+    if 'inputTAGFile=' in jobO:
+        return True
+    if useTagInTRF:
+        return True
+    return False

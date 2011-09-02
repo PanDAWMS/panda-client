@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed --trf of pathena for TAG reading 
+
 0.3.55 (8/31/2011)
   * fixed pbook -c for multiple/keyworded arguments
 

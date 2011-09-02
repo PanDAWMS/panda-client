@@ -106,8 +106,12 @@ optP.add_option('--eventPickStagedDS',action='store',dest='eventPickStagedDS',de
                 type='string', help='--eventPick options create a temporary dataset to stage-in interesting files when those files are available only on TAPE, and then a stage-in request is automatically sent to DaTRI. Once DaTRI transfers the dataset to DISK you can use the dataset as an input using this option')
 optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
                 type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
+optP.add_option('--useTagInTRF', action='store_const',const=True,dest='useTagInTRF',default=False,
+                help="Set this option if you use TAG in --trf. If you run normal jobO this option is not required")
 optP.add_option('--tagStreamRef',action='store',dest='tagStreamRef',default='',
-                type='string', help='specify StreamRef of parent files when you use TAG in --trf. If you run normal jobO set EventSelector.RefName in your jobO')
+                type='string', help='specify StreamRef of parent files when you use TAG in --trf. It must be one of StreamRAW,StreamESD,StreamAOD. E.g., if you want to read RAW files via TAGs, use --tagStreamRef=StreamRAW. If you run normal jobO, this option is ignored and EventSelector.RefName in your jobO is used')
+optP.add_option('--tagQuery',action='store',dest='tagQuery',default='',
+                type='string', help='specify Query for TAG preselection when you use TAG in --trf. If you run normal jobO, this option is ignored and EventSelector.Query in your jobO is used')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
 optP.add_option('--notUseTagLookup',action='store_const',const=True,dest='notUseTagLookup',default=False,
@@ -1133,14 +1137,17 @@ else:
     # set -1 to disable G4 Random Seeds
     runConfig.other.G4RandomSeeds = -1
 
-# refname for TAG
-if options.trf and 'inputTAGFile=' in jobO:
-    if runConfig.input.collRefName == '':
+# RefName and Query for TAG
+if options.trf and AthenaUtils.checkUseTagInTrf(jobO,options.useTagInTRF):
+    if options.tagStreamRef == '':
         tmpLog.error("--tagStreamRef is required when you use TAG in --trf")
         sys.exit(EC_Extractor)
     runConfig.input.collRefName = options.tagStreamRef
     if not options.tagStreamRef.endswith('_ref'):
         runConfig.input.collRefName += '_ref'
+    # query
+    if options.tagQuery != '':
+        runConfig.input.tagQuery = options.tagQuery
 
 #####################################################################
 # archive sources and send it to HTTP-reachable location
@@ -1388,7 +1395,7 @@ if options.panda_tagParentFile != '':
     useTagParentLookup = True
     # load parent info
     tagParentInfo,parentLfnToTagMap = PsubUtils.loadTagParentInfo(options.panda_tagParentFile)
-elif (runConfig.input.inColl or (options.trf and 'inputTAGFile=' in jobO)) \
+elif (runConfig.input.inColl or (options.trf and AthenaUtils.checkUseTagInTrf(jobO,options.useTagInTRF))) \
          and options.parentDS == '' and options.inDS != '' and not options.shipinput \
        and not options.notUseTagLookup:
     useTagParentLookup = True
@@ -3375,8 +3382,12 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             if not options.ara:
                 outMap['IROOT'] = tmpOutMap 
             # input
-            inPattList = [('%IN',inList),('%MININ',minList),('%CAVIN',cavList),
-                          ('%BHIN',bhaloList),('%BGIN',bgasList)]    
+            inPattList = []
+            if not AthenaUtils.checkUseTagInTrf(jobO,options.useTagInTRF):
+                # keep %IN to be replaced on WN if they are TAGs
+                inPattList += [('%IN',inList)]
+            inPattList += [('%MININ',minList),('%CAVIN',cavList),
+                           ('%BHIN',bhaloList),('%BGIN',bgasList)]    
             for tmpPatt,tmpInList in inPattList:
                 if tmpJobO.find(tmpPatt) != -1 and len(tmpInList) > 0:
                     tmpJobO = AthenaUtils.replaceParam(tmpPatt,tmpInList,tmpJobO)
@@ -3443,7 +3454,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         if bgasList != []:
             param += '--beamGas "%s" ' % bgasList
         param += '-o "%s" ' % outMap
-        if runConfig.input.inColl or (options.trf and 'inputTAGFile=' in jobO):
+        if runConfig.input.inColl or (options.trf and AthenaUtils.checkUseTagInTrf(jobO,options.useTagInTRF)):
             param += '-c '
         if runConfig.input.inBS:
             param += '-b '
