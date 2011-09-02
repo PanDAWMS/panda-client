@@ -1097,21 +1097,24 @@ For more info, do help(show) for example."""
 
     # execut command in the batch mode
     if comString != '':
-        try:
-            # decompose to function name and argument
-            match = re.search('^([^\(]+)\((\d*)\)$',comString)
-            comName = match.group(1)
-            comArg  = match.group(2)
-            if comArg != '':
-                # convert to int
-                comArg = (long(comArg),)
-            else:
-                # for functions without arguments
-                comArg = ()
-            # exec : exec cannot be used due to unqualified exec with nested functions
-            apply(locals()[comName],comArg)
-        except:
-            pass
+        # decompose to function name and argument
+        match = re.search('^([^\(]+)\(([^\)]*)\)$',comString)
+        comName = match.group(1)
+        comArgS = match.group(2)
+        comArg = []
+        comMap = {}
+        if comArgS != '':
+            for item in comArgS.split(','):
+                item = item.strip()
+                if '=' in item:
+                    tmpKey = item.split('=')[0]
+                    tmpVal = item.split('=')[-1]
+                    comMap[tmpKey.strip()] = eval(tmpVal)
+                else:    
+                    comArg.append(eval(item))
+        comArg = tuple(comArg)            
+        # exec : exec cannot be used due to unqualified exec with nested functions
+        apply(locals()[comName],comArg,comMap)
         # exit
         sys.exit(0)
     # run sync
