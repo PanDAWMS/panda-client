@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.56 (9/2/2011)
   * fixed --trf of pathena for TAG reading 
 
 0.3.55 (8/31/2011)
