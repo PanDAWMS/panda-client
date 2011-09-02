@@ -360,13 +360,17 @@ def insertJobDB(job,verbose=False):
 
 
 # update job info in DB
-def updateJobDB(job,verbose=False):
-    # set update time
-    job.lastUpdate = datetime.datetime.utcnow()
+def updateJobDB(job,verbose=False,updateTime=None):
     # make sql
     sql1  = "UPDATE %s SET " % pdbProxy.tablename
     sql1 += job.values(forUpdate=True)
     sql1 += " WHERE JobID=%s " % job.JobID
+    # set update time
+    if updateTime != None:
+        job.lastUpdate = updateTime
+        sql1 += " AND lastUpdate<'%s' " % updateTime.strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        job.lastUpdate = datetime.datetime.utcnow()
     status,out = pdbProxy.execute(sql1)
     if not status:
         raise RuntimeError,"failed to insert job"

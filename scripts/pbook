@@ -117,7 +117,8 @@ class PBookCore:
         # get JobIDs in local repository
         localJobIDs = PdbUtils.getListOfJobIDs()
         # get recent JobIDs from panda server
-        syncTime = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        syncTimeRaw = datetime.datetime.utcnow()
+        syncTime = syncTimeRaw.strftime('%Y-%m-%d %H:%M:%S')
         # set sync time for the first attempt
         bookConf = BookConfig.getConfig()
         if self.restoreDB:
@@ -198,7 +199,7 @@ class PBookCore:
             else:
                 # update
                 try:
-                    PdbUtils.updateJobDB(localJob,self.verbose)
+                    PdbUtils.updateJobDB(localJob,self.verbose,syncTimeRaw)
                 except:
                     tmpLog.error("Failed to update local repository for JobID=%s" % remoteJobID)
                     return

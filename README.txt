@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * made pbook transaction-safe
+
 0.3.56 (9/2/2011)
   * fixed --trf of pathena for TAG reading 
 
