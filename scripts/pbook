@@ -537,7 +537,14 @@ class PBookCore:
                 return None
             # skip running job
             if localJob.dbStatus != 'frozen':
-                tmpLog.warning('Cannot retry running jobs')
+                tmpLog.info('Retry failed subjobs in running jobId=%s' % JobID)
+		status,out = Client.retryFailedJobsInActive(JobID,verbose=self.verbose)
+                if status != 0:
+                    tmpLog.error(status)
+                    tmpLog.error(out)
+                    tmpLog.error("Failed to retry JobID=%s" % JobID)
+		else:
+		    job = self.status(JobID)
                 if isJobset:
                     continue
                 else:

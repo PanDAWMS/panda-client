@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.57 (9/5/2011)
   * made pbook transaction-safe
+  * fixed pbook.retry() to allow reattempt for failed subjobs in running job
 
 0.3.56 (9/2/2011)
   * fixed --trf of pathena for TAG reading 

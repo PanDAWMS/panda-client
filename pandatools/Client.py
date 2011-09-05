@@ -266,6 +266,10 @@ class _Curl:
             ret = (ret[0],'SSL connect error. The SSL handshaking failed. Check grid certificate/proxy.')
         elif ret[0] == 7:
             ret = (ret[0],'Failed to connect to host.')            
+        elif ret[0] == 55:
+            ret = (ret[0],'Failed sending network data.')            
+        elif ret[0] == 56:
+            ret = (ret[0],'Failure in receiving network data.')            
         return ret
     
 
@@ -2114,6 +2118,31 @@ def runReBrokerage(jobID,libDS='',cloud=None,verbose=False):
         data['cloud'] = cloud
     if not libDS in ['',None,'NULL']:
         data['libDS'] = libDS
+    retVal = curl.get(url,data)
+    # communication error
+    if retVal[0] != 0:
+        return retVal
+    # succeeded
+    if retVal[1] == True:
+        return 0,''
+    # server error
+    errMsg = retVal[1]
+    if errMsg.startswith('ERROR: '):
+        # remove ERROR:
+        errMsg = re.sub('ERROR: ','',errMsg)
+    return EC_Failed,errMsg
+
+
+# retry failed jobs in Active
+def retryFailedJobsInActive(jobID,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/retryFailedJobsInActive'
+    data = {'jobID':jobID}
     retVal = curl.get(url,data)
     # communication error
     if retVal[0] != 0:
