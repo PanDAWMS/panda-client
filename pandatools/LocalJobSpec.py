@@ -22,6 +22,7 @@ class LocalJobSpec(object):
         'parentJobsetID': 'INTEGER',
         'mergeJobStatus': 'VARCHAR(20)',
         'mergeJobID'    : 'TEXT',
+        'nRebro'        : 'INTEGER',
         }
     
     _attributes += tuple(appended.keys())

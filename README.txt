@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed pbook for jobs reassigned by rebrokerage
+
 0.3.57 (9/5/2011)
   * made pbook transaction-safe
   * fixed pbook.retry() to allow reattempt for failed subjobs in running job
