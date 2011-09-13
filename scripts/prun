@@ -97,7 +97,7 @@ optP.add_option('--notSkipLog',action='store_const',const=True,dest='notSkipLog'
 optP.add_option('--skipScan',action='store_const',const=True,dest='skipScan',default=False,
                 help='Skip LFC lookup at job submission')
 optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
-                help='Required memory size')
+                help='Required memory size in MB. e.g., for 1GB --memory 1024')
 optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type='int',
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--official',action='store_const',const=True,dest='official',default=False,
@@ -928,6 +928,17 @@ if options.inDS != '':
     inputFileMap,inputDsString = Client.getFilesInDatasetWithFilter(options.inDS,options.match,shadowList,options.inputFileListName,
                                                                     options.verbose,dsStringFlag=True,isRecursive=recursiveFlag,
                                                                     antiFilter=options.antiMatch,notSkipLog=options.notSkipLog)
+    # skip files
+    tmpFileKeys = inputFileMap.keys()
+    tmpFileKeys.sort()
+    if options.nSkipFiles > len(tmpFileKeys):
+        tmpStr  = "the number of files in %s is less than nSkipFiles. " % options.inDS
+        tmpStr += " N of files=%s : nSkipFiles=%s" % (len(tmpFileKeys),options.nSkipFiles)
+        tmpLog.error(tmpStr)
+        sys.exit(EC_Dataset)
+    for tmpKey in tmpFileKeys[:options.nSkipFiles]:
+        if inputFileMap.has_key(tmpKey):
+            del inputFileMap[tmpKey]
     # empty
     if inputFileMap == {} and shadowList == []:
         errStr = "No files were found in %s (log.tgz was ignored). " % options.inDS
@@ -1146,12 +1157,12 @@ if options.inDS != '':
         elif Client.getLFC(dsLocation) != None:
 	    tmpLog.info("scanning LFC %s for %s" % (Client.getLFC(dsLocation),options.site))
             # LFC
-            if options.nFiles == 0 and options.nSkipFiles != 0:
+            if options.nFiles == 0:
                 missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
                                                      dsStr=options.inDS,removedDS=options.removedDS)
             else:
                 missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
-                                                     options.nFiles+options.nSkipFiles,
+                                                     options.nFiles,
                                                      dsStr=options.inDS,removedDS=options.removedDS)                
         elif Client.getLRC(dsLocation) != None:
 	    tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
@@ -1228,8 +1239,6 @@ if options.inDS != '':
                 if not tmpFileName in shadowList:
                     tmpInputList.append(tmpFileName)
             inputFileList = tmpInputList        
-    # truncate files
-    inputFileList = inputFileList[options.nSkipFiles:]
     # no available input files
     if inputFileList == []:
         if options.site == 'AUTO':

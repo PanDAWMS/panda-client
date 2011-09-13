@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.3.59 (9/13/2011)
+  * fixed --nSkipFiles of pathena/prun for containers
+  * improved doc on --memory of pathena/prun 
+
 0.3.58 (9/13/2011)
   * fixed pbook for jobs reassigned by rebrokerage
   * added a temporary patch for CERN EOS migration

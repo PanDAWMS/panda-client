@@ -885,6 +885,10 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
                                     fullExecString)
         else:
             anotherTry = False
+    # nSkipFiles : set 0 since files are skipped in the first try
+    fullExecString = re.sub('--nSkipFiles\s*=*\d+',
+                            '--nSkipFiles=0',
+                            fullExecString)
     # decrement crossSite counter
     fullExecString = re.sub(' --crossSite\s*=*\d+','',fullExecString)
     fullExecString += ' --crossSite=%s' % crossSite
@@ -1003,6 +1007,10 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
                                     fullExecString)
         else:
             anotherTry = False
+    # nSkipFiles : set 0 since files are skipped in the first try
+    fullExecString = re.sub('--nSkipFiles\s*=*\d+',
+                            '--nSkipFiles=0',
+                            fullExecString)
     # decrement crossSite counter
     fullExecString = re.sub(' --crossSite\s*=*\d+','',fullExecString)
     fullExecString += ' --crossSite=%s' % crossSite

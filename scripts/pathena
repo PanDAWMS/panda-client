@@ -189,7 +189,7 @@ optP.add_option('--noRandom', action='store_const', const=True, dest='norandom',
 optP.add_option('--useAMIAutoConf',action='store_const',const=True,dest='useAMIAutoConf',default=False,
                 help='Use AMI for AutoConfiguration')
 optP.add_option('--memory', action='store', dest='memory',  default=-1,
-                type='int',    help='Required memory size')
+                type='int',    help='Required memory size in MB. e.g., for 1GB --memory 1024')
 optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=-1, type='int',
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--official', action='store_const', const=True, dest='official',  default=False,
@@ -1688,6 +1688,17 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             errStr += "Make sure that you specify correct LFNs"
             tmpLog.error(errStr)
             sys.exit(EC_Config)
+        # skip files
+        tmpFileKeys = inputFileMap.keys()
+        tmpFileKeys.sort()
+        if options.nSkipFiles > len(tmpFileKeys):
+            tmpStr  = "the number of files in %s is less than nSkipFiles. " % options.inDS
+            tmpStr += " N of files=%s : nSkipFiles=%s" % (len(tmpFileKeys),options.nSkipFiles)
+            tmpLog.error(tmpStr)
+            sys.exit(EC_Dataset)
+        for tmpKey in tmpFileKeys[:options.nSkipFiles]:
+            if inputFileMap.has_key(tmpKey):
+                del inputFileMap[tmpKey]
         # empty
         if inputFileMap == {}:
             errStr = "No files were found in %s (log.tgz was ignored). " % options.inDS
@@ -1970,18 +1981,18 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             if Client.getLFC(dsLocation) != None:
 		tmpLog.info("scanning LFC %s for %s" % (Client.getLFC(dsLocation),options.site))
                 # LFC
-                if options.nfiles == 0 and options.nSkipFiles != 0:
+                if options.nfiles == 0:
                     missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
                                                          dsStr=options.inDS,removedDS=options.removedDS)
                 else:
                     missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
-                                                         options.nfiles+options.nSkipFiles,shadowList,
+                                                         options.nfiles,shadowList,
                                                          dsStr=options.inDS,removedDS=options.removedDS)
             elif Client.getLRC(dsLocation) != None:
 		tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
                 # LRC
                 missList = Client.getMissLFNsFromLRC(inputFileMap,Client.getLRC(dsLocation),options.verbose,
-                                                     options.nfiles+options.nSkipFiles)
+                                                     options.nfiles)
             else:
                 missList = []
             # remove datasets from removedDS if they are incomplete in LFC
@@ -2168,13 +2179,6 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
     # set devidedByGUID which was originaly set by runPathenaRec
     if options.panda_devidedByGUID:
         devidedByGUID = True
-    # skip files
-    if options.nSkipFiles > len(inputFileList):
-        tmpStr  = "the number of files in %s is less than nSkipFiles\n" % options.inDS
-        tmpStr += " N of files=%s : nSkipFiles=%s" % (len(inputFileList),options.nSkipFiles)
-        tmpLog.error(tmpStr)
-        sys.exit(EC_Dataset)
-    inputFileList = inputFileList[options.nSkipFiles:]
     # use limited number of files
     if options.nfiles > 0:
         inputFileList = inputFileList[:options.nfiles]
