@@ -72,12 +72,16 @@ optP.add_option('--minDS',  action='store', dest='minDS',  default='',
                 type='string', help='Dataset name for minimum bias stream')
 optP.add_option('--nMin',  action='store', dest='nMin',  default=-1,
                 type='int', help='Number of minimum bias files per one signal file')
+optP.add_option('--nMinPerJob',  action='store', dest='nMinPerJob',  default=-1,
+                type='int', help='Number of minimum bias files per sub job')
 optP.add_option('--randomMin',action='store_const',const=True,dest='randomMin',default=False,
                 help='randomize files in minimum bias dataset')
 optP.add_option('--cavDS',  action='store', dest='cavDS',  default='',
                 type='string', help='Dataset name for cavern stream')
 optP.add_option('--nCav',  action='store', dest='nCav',  default=-1,
                 type='int', help='Number of cavern files per one signal file')
+optP.add_option('--nCavPerJob',  action='store', dest='nCavPerJob',  default=-1,
+                type='int', help='Number of cavern files per sub job')
 optP.add_option('--randomCav',action='store_const',const=True,dest='randomCav',default=False,
                 help='randomize files in cavern dataset')
 optP.add_option('--libDS', action='store', dest='libDS', default='',
@@ -102,6 +106,12 @@ optP.add_option('--eventPickStagedDS',action='store',dest='eventPickStagedDS',de
                 type='string', help='--eventPick options create a temporary dataset to stage-in interesting files when those files are available only on TAPE, and then a stage-in request is automatically sent to DaTRI. Once DaTRI transfers the dataset to DISK you can use the dataset as an input using this option')
 optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
                 type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
+optP.add_option('--useTagInTRF', action='store_const',const=True,dest='useTagInTRF',default=False,
+                help="Set this option if you use TAG in --trf. If you run normal jobO this option is not required")
+optP.add_option('--tagStreamRef',action='store',dest='tagStreamRef',default='',
+                type='string', help='specify StreamRef of parent files when you use TAG in --trf. It must be one of StreamRAW,StreamESD,StreamAOD. E.g., if you want to read RAW files via TAGs, use --tagStreamRef=StreamRAW. If you run normal jobO, this option is ignored and EventSelector.RefName in your jobO is used')
+optP.add_option('--tagQuery',action='store',dest='tagQuery',default='',
+                type='string', help='specify Query for TAG preselection when you use TAG in --trf. If you run normal jobO, this option is ignored and EventSelector.Query in your jobO is used')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
 optP.add_option('--notUseTagLookup',action='store_const',const=True,dest='notUseTagLookup',default=False,
@@ -193,7 +203,7 @@ optP.add_option('--excludeFile',action='store',dest='excludeFile',default='',
 optP.add_option('--extOutFile', action='store', dest='extOutFile',  default='',
                 help='A comma-separated list of extra output files which cannot be extracted automatically. Either \ or "" is required when a wildcard is used. e.g., output1.txt,output2.dat,JiveXML_\*.xml')
 optP.add_option('--supStream', action='store', dest='supStream',  default='',
-                help='suppress some output streams. e.g., ESD,TAG ')
+                help='suppress some output streams. Either \ or "" is required when a wildcard is used. e.g., ESD,TAG,GLOBAL,StreamDESD\* ')
 optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
                 help='list of glue packages which pathena cannot find due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf')
 optP.add_option('--excludedSite', action='store', dest='excludedSite',  default='',
@@ -1126,8 +1136,18 @@ if runConfig.other.G4RandomSeeds == True:
 else:
     # set -1 to disable G4 Random Seeds
     runConfig.other.G4RandomSeeds = -1
-    
 
+# RefName and Query for TAG
+if options.trf and AthenaUtils.checkUseTagInTrf(jobO,options.useTagInTRF):
+    if options.tagStreamRef == '':
+        tmpLog.error("--tagStreamRef is required when you use TAG in --trf")
+        sys.exit(EC_Extractor)
+    runConfig.input.collRefName = options.tagStreamRef
+    if not options.tagStreamRef.endswith('_ref'):
+        runConfig.input.collRefName += '_ref'
+    # query
+    if options.tagQuery != '':
+        runConfig.input.tagQuery = options.tagQuery
 
 #####################################################################
 # archive sources and send it to HTTP-reachable location
@@ -1375,7 +1395,8 @@ if options.panda_tagParentFile != '':
     useTagParentLookup = True
     # load parent info
     tagParentInfo,parentLfnToTagMap = PsubUtils.loadTagParentInfo(options.panda_tagParentFile)
-elif runConfig.input.inColl and options.parentDS == '' and options.inDS != '' and not options.shipinput \
+elif (runConfig.input.inColl or (options.trf and AthenaUtils.checkUseTagInTrf(jobO,options.useTagInTRF))) \
+         and options.parentDS == '' and options.inDS != '' and not options.shipinput \
        and not options.notUseTagLookup:
     useTagParentLookup = True
     # get parent info from TAG DB
@@ -2190,7 +2211,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         if options.randomMin:
             random.shuffle(minbiasList)
         # number of files per one signal
-        if options.nMin < 0:
+        if options.nMin < 0 and options.nMinPerJob < 0:
             while True:
                 tmpStr = raw_input("Enter the number of Minimum-Bias files per one signal file : ")
                 try:
@@ -2199,9 +2220,13 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 except:
                     pass
         # check # of files
-        if len(minbiasList) < options.nMin:
-            tmpLog.error("only %s files in %s are available at %s which is less than nMin=%s" % \
-                         (len(minbiasList),minbiasDataset,options.site,options.nMin))
+        if len(minbiasList) < max(options.nMin,options.nMinPerJob):
+            if options.nMin > 0:
+                tmpLog.error("only %s files in %s are available at %s which is less than nMin=%s" % \
+                             (len(minbiasList),minbiasDataset,options.site,options.nMin))
+            else:
+                tmpLog.error("only %s files in %s are available at %s which is less than nMinPerJob=%s" % \
+                             (len(minbiasList),minbiasDataset,options.site,options.nMinPerJob))
             sys.exit(EC_Dataset)
     # input stream for cavern
     if runConfig.input.inCavern:
@@ -2225,7 +2250,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         if options.randomCav:
             random.shuffle(cavernList)
         # number of files per one signal
-        if options.nCav < 0:
+        if options.nCav < 0 and options.nCavPerJob < 0:
             while True:
                 tmpStr = raw_input("Enter the number of Cavern files per one signal file : ")
                 try:
@@ -2234,9 +2259,13 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 except:
                     pass
         # check # of files
-        if len(cavernList) < options.nCav:
-            tmpLog.error("only %s files in %s are available at %s which is less than nCav=%s" % \
-                         (len(cavernList),cavernDataset,options.site,options.nCav))
+        if len(cavernList) < max(options.nCav,options.nCavPerJob):
+            if options.nCav > 0:
+                tmpLog.error("only %s files in %s are available at %s which is less than nCav=%s" % \
+                             (len(cavernList),cavernDataset,options.site,options.nCav))
+            else:
+                tmpLog.error("only %s files in %s are available at %s which is less than nCavPerJob=%s" % \
+                             (len(cavernList),cavernDataset,options.site,options.nCavPerJob))
             sys.exit(EC_Dataset)
     # input stream for beam halo
     if runConfig.input.inBeamHalo:
@@ -3059,11 +3088,16 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             totalMinSize = 0
             numMinFiles  = 0
             if runConfig.input.inMinBias:
-                if indexMin+options.nMin*divF >= len(minbiasList):
+                if (options.nMin > 0 and indexMin+options.nMin*divF >= len(minbiasList)) or \
+                       (options.nMinPerJob > 0 and indexMin+options.nMinPerJob >= len(minbiasList)):
                     # re-use files when Minimum-Bias files are not enough   
-                    indexMin = 0   
-                tmpList = minbiasList[indexMin:indexMin+options.nMin*divF]
-                indexMin += options.nMin*divF
+                    indexMin = 0
+                if options.nMin > 0:    
+                    tmpList = minbiasList[indexMin:indexMin+options.nMin*divF]
+                    indexMin += options.nMin*divF
+                else:
+                    tmpList = minbiasList[indexMin:indexMin+options.nMinPerJob]
+                    indexMin += options.nMinPerJob
                 numMinFiles = len(tmpList)
                 for fileName,vals in tmpList:
                     # instantiate  FileSpec
@@ -3087,11 +3121,16 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             totalCavSize = 0
             numCavFiles  = 0
             if runConfig.input.inCavern:
-                if indexCavern+options.nCav*divF >= len(cavernList):
+                if (options.nCav > 0 and indexCavern+options.nCav*divF >= len(cavernList)) or \
+                       (options.nCavPerJob > 0 and indexCavern+options.nCavPerJob >= len(cavernList)):
                     # re-use files when Cavern files are not enough   
-                    indexCavern = 0   
-                tmpList = cavernList[indexCavern:indexCavern+options.nCav*divF]
-                indexCavern += options.nCav*divF
+                    indexCavern = 0
+                if options.nCav > 0:    
+                    tmpList = cavernList[indexCavern:indexCavern+options.nCav*divF]
+                    indexCavern += options.nCav*divF
+                else:
+                    tmpList = cavernList[indexCavern:indexCavern+options.nCavPerJob]
+                    indexCavern += options.nCavPerJob
                 numCavFiles = len(tmpList)
                 for fileName,vals in tmpList:
                     # instantiate  FileSpec
@@ -3343,8 +3382,12 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             if not options.ara:
                 outMap['IROOT'] = tmpOutMap 
             # input
-            inPattList = [('%IN',inList),('%MININ',minList),('%CAVIN',cavList),
-                          ('%BHIN',bhaloList),('%BGIN',bgasList)]    
+            inPattList = []
+            if not AthenaUtils.checkUseTagInTrf(jobO,options.useTagInTRF):
+                # keep %IN to be replaced on WN if they are TAGs
+                inPattList += [('%IN',inList)]
+            inPattList += [('%MININ',minList),('%CAVIN',cavList),
+                           ('%BHIN',bhaloList),('%BGIN',bgasList)]    
             for tmpPatt,tmpInList in inPattList:
                 if tmpJobO.find(tmpPatt) != -1 and len(tmpInList) > 0:
                     tmpJobO = AthenaUtils.replaceParam(tmpPatt,tmpInList,tmpJobO)
@@ -3411,7 +3454,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         if bgasList != []:
             param += '--beamGas "%s" ' % bgasList
         param += '-o "%s" ' % outMap
-        if runConfig.input.inColl or (options.trf and 'inputTAGFile=' in jobO):
+        if runConfig.input.inColl or (options.trf and AthenaUtils.checkUseTagInTrf(jobO,options.useTagInTRF)):
             param += '-c '
         if runConfig.input.inBS:
             param += '-b '
