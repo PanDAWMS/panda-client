@@ -356,6 +356,7 @@ if hasattr(Stream2,'OutputFile') and hasattr(Stream2.OutputFile,'__len__') and l
         _printConfig('Output=STREAM2')
         _printConfig(' Name: %s'% Stream2.OutputFile)        
 
+
 # General Stream
 strGenFName = ''
 strGenStream  = ''
@@ -371,7 +372,8 @@ if foundStreamAOD:
     # for streamAOD defined as an algorithm     
     ignoredStreamList += ['StreamAOD']
     
-    
+
+desdStreams = {}
 try:
     metaStreams = []
     for genStream in theApp._streams.getAllChildren()+AlgSequence().getAllChildren():
@@ -385,6 +387,9 @@ try:
                     if genStream.OutputFile.startswith("ROOTTREE:") or \
                            (hasattr(genStream,'WriteOnFinalize') and genStream.WriteOnFinalize):
                         metaStreams.append(genStream)
+                    elif fullName.split('/')[-1].startswith('StreamDESD'):
+                        # ignore StreamDESD to treat it as multiple-streams later
+                            continue
                     else:
                         strGenStream += '%s,' % fullName.split('/')[-1]
                         streamOutputFiles[fullName.split('/')[-1]] = genStream.OutputFile
@@ -406,6 +411,10 @@ if strGenStream != '':
     strGenStream = strGenStream[:-1]
     _printConfig('Output=STREAMG %s' % strGenStream)
     _printConfig(' Name: %s'% strGenFName)
+if desdStreams != {}:
+    for tmpStreamName,tmpOutFileName in desdStreams.iteritems():
+        _printConfig('Output=DESD %s' % tmpStreamName)
+        _printConfig(' Name: %s'% tmpOutFileName)
 
 # THIST
 userDataSvcStream = {}

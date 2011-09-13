@@ -117,7 +117,8 @@ class PBookCore:
         # get JobIDs in local repository
         localJobIDs = PdbUtils.getListOfJobIDs()
         # get recent JobIDs from panda server
-        syncTime = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        syncTimeRaw = datetime.datetime.utcnow()
+        syncTime = syncTimeRaw.strftime('%Y-%m-%d %H:%M:%S')
         # set sync time for the first attempt
         bookConf = BookConfig.getConfig()
         if self.restoreDB:
@@ -198,7 +199,7 @@ class PBookCore:
             else:
                 # update
                 try:
-                    PdbUtils.updateJobDB(localJob,self.verbose)
+                    PdbUtils.updateJobDB(localJob,self.verbose,syncTimeRaw)
                 except:
                     tmpLog.error("Failed to update local repository for JobID=%s" % remoteJobID)
                     return
@@ -536,7 +537,14 @@ class PBookCore:
                 return None
             # skip running job
             if localJob.dbStatus != 'frozen':
-                tmpLog.warning('Cannot retry running jobs')
+                tmpLog.info('Retry failed subjobs in running jobId=%s' % JobID)
+		status,out = Client.retryFailedJobsInActive(JobID,verbose=self.verbose)
+                if status != 0:
+                    tmpLog.error(status)
+                    tmpLog.error(out)
+                    tmpLog.error("Failed to retry JobID=%s" % JobID)
+		else:
+		    job = self.status(JobID)
                 if isJobset:
                     continue
                 else:
@@ -617,6 +625,7 @@ class PBookCore:
             oldLibDS     = None
             newLibDS     = None
 	    newLibTgz    = None
+            rebroMap     = {}
             for idx in range(len(jobList)):
                 job = pandaJobs[idx]
                 # skip exired
@@ -624,6 +633,17 @@ class PBookCore:
                     tmpLog.warning("Could not retry jobs older than 30 days : JobID=%s (PandaID=%s) expired" \
                                    % (JobID,jobList[idxJob]))
                     return
+                # skip jobs reassigned by rebrokerage
+                if job.jobStatus == 'cancelled' and job.taskBufferErrorCode in [105,'105']:
+                    # extract JobIDs of reassigned jobs
+                    tmpM = re.search('JobsetID=(\d+) JobID=(\d+)',job.taskBufferErrorDiag)
+                    if tmpM != None:
+                        tmpRebKey = (tmpM.group(1),tmpM.group(2))
+                        if not rebroMap.has_key(tmpRebKey):
+                            rebroMap[tmpRebKey] = 0
+                        # count # of reassigned jobs
+                        rebroMap[tmpRebKey] += 1
+                    continue
                 # get shadow list
                 if (not ignoreDuplication) and outDsName == None and job.prodSourceLabel == 'user':
                     # look for dataset for log since it doesn't have suffix even when --individualOutDS is used
@@ -771,10 +791,25 @@ class PBookCore:
                     tmpLog.debug(job.jobParameters)
                 # append
                 retryJobs.append(job)
+            # info on rebrokeage    
+            if rebroMap != {}:
+                for tmpRebKey,tmpRebNumJobs in rebroMap.iteritems():
+                    tmpRebSetID,tmpRebJobID = tmpRebKey
+                    tmpLog.info('Skip %s jobs since JobID=%s JobsetID=%s already reassigned them to another site' % \
+                                (tmpRebNumJobs,tmpRebJobID,tmpRebSetID))
+                if retryJobs == []:
+                    tmpLog.info("No more jobs to be retried for JobID=%s" % JobID)
+                    if isJobset:
+                        continue
+                    else:
+                        return
             # all input files were or are being used by other jobs
             if retryJobs == []:
                 tmpLog.info('All input files were or are being used by other jobs for the same output. No jobs to be retried. If you need to ignore duplication check (e.g., using the same EVNT file for multiple simulation subjobs), set ignoreDuplication=True. i.e. retry(123,ignoreDuplication=True)')
-                return
+                if isJobset:
+                    continue
+                else:
+                    return
 	    # check voms role
 	    if not retryJobs[0].workingGroup in ['NULL',None,'']:
 		# VOMS role was used 
@@ -1097,21 +1132,24 @@ For more info, do help(show) for example."""
 
     # execut command in the batch mode
     if comString != '':
-        try:
-            # decompose to function name and argument
-            match = re.search('^([^\(]+)\((\d*)\)$',comString)
-            comName = match.group(1)
-            comArg  = match.group(2)
-            if comArg != '':
-                # convert to int
-                comArg = (long(comArg),)
-            else:
-                # for functions without arguments
-                comArg = ()
-            # exec : exec cannot be used due to unqualified exec with nested functions
-            apply(locals()[comName],comArg)
-        except:
-            pass
+        # decompose to function name and argument
+        match = re.search('^([^\(]+)\(([^\)]*)\)$',comString)
+        comName = match.group(1)
+        comArgS = match.group(2)
+        comArg = []
+        comMap = {}
+        if comArgS != '':
+            for item in comArgS.split(','):
+                item = item.strip()
+                if '=' in item:
+                    tmpKey = item.split('=')[0]
+                    tmpVal = item.split('=')[-1]
+                    comMap[tmpKey.strip()] = eval(tmpVal)
+                else:    
+                    comArg.append(eval(item))
+        comArg = tuple(comArg)            
+        # exec : exec cannot be used due to unqualified exec with nested functions
+        apply(locals()[comName],comArg,comMap)
         # exit
         sys.exit(0)
     # run sync
