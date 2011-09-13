@@ -1297,6 +1297,13 @@ def convSrmV2ID(tmpSite):
     # parch for CERN TMP
     if tmpSite.startswith('CERN-PROD_TMP'):
         return 'CERN-PROD_TMPDISK'
+    # parch for CERN OLD
+    if tmpSite.startswith('CERN-PROD_OLD'):
+        return 'CERN-PROD_OLDDISK'
+    # map CERN group disks to CERN OLD
+    if tmpSite.startswith('CERN'):
+        if re.search('CERN-PROD_(DATA|SCRATCH)DISK',tmpSite) == None:
+            return 'CERN-PROD_OLDDISK'
     # patch for SRM v2
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)

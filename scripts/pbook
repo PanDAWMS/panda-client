@@ -795,7 +795,7 @@ class PBookCore:
             if rebroMap != {}:
                 for tmpRebKey,tmpRebNumJobs in rebroMap.iteritems():
                     tmpRebSetID,tmpRebJobID = tmpRebKey
-                    tmpLog.info('%s jobs were already reassigned to another site by JobID=%s JobsetID=%s' % \
+                    tmpLog.info('Skip %s jobs since JobID=%s JobsetID=%s already reassigned them to another site' % \
                                 (tmpRebNumJobs,tmpRebJobID,tmpRebSetID))
                 if retryJobs == []:
                     tmpLog.info("No more jobs to be retried for JobID=%s" % JobID)

@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.58 (9/13/2011)
   * fixed pbook for jobs reassigned by rebrokerage
+  * added a temporary patch for CERN EOS migration
 
 0.3.57 (9/5/2011)
   * made pbook transaction-safe
