@@ -204,6 +204,14 @@ optP.add_option('--configJEM', action='store', dest='configJEM', default='',
                 type='string', help='configration parameters for JEM')
 optP.add_option('--cmtConfig', action='store', dest='cmtConfig', default=None,
                 type='string', help='CMTCONFIG=i686-slc5-gcc43-opt is used on remote worker-node by default even if you use another CMTCONFIG locally. This option allows you to use another CMTCONFIG remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt. If you use --libDS together with this option, make sure that the libDS was compiled with the same CMTCONFIG, in order to avoid failures due to inconsistency in binary files')
+optP.add_option('--requireLFC',action='store_const',const=True,dest='requireLFC',default=False,
+                help='Require that LFC lookup is 100% successful (a single miss will fail the submission)')
+optP.add_option('--loadXML',action='store',dest='loadXML',default=None,
+                help='Expert mode: load complete submission configuration from an XML file ')
+optP.add_option('--forceStaged',action='store_const',const=True,dest='forceStaged',default=False,
+                help='Force files from primary DS to be staged to local disk, even if direct-access is possible')
+optP.add_option('--forceStagedSecondary',action='store_const',const=True,dest='forceStagedSecondary',default=False,
+                help='Force files from secondary DSs to be staged to local disk, even if direct-access is possible')
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -229,7 +237,6 @@ optP.add_option('--panda_bexec', action='store', dest='panda_bexec', default='',
                 type='string', help='internal parameter')
 optP.add_option('--panda_suppressMsg',action='store_const',const=True,dest='panda_suppressMsg',default=False,
                 help='internal parameter')
-
 
 # parse options
 options,args = optP.parse_args()
@@ -290,6 +297,21 @@ delFilesOnExit = []
                             
 # suffix for shadow dataset
 suffixShadow = Client.suffixShadow
+
+# load submission configuration from xml file (if provided)
+xconfig = None
+if options.loadXML:
+    from pandatools import ParseJobXML
+    xconfig = ParseJobXML.dom_parser(options.loadXML)
+    xconfig.dump(options.verbose)
+    if options.outDS=='':
+        options.outDS=xconfig.outDS()
+    options.outputs='WILL_BE_REDEFINED_FOR_EACH_SUBJOB'
+    options.jobParams='WILL_BE_REDEFINED_FOR_EACH_SUBJOB'
+    options.inDS=xconfig.inDS()
+    # inDS match and secondaryDS filter will be determined later from xconfig
+    options.match=''
+    options.secondaryDSs = xconfig.secondaryDSs_config(filter=False)
 
 # save current dir
 curDir = os.path.realpath(os.getcwd())
@@ -952,6 +974,14 @@ if options.inDS != '':
                 errStr += " or --antiMatch is wrong"
         tmpLog.error(errStr)
         sys.exit(EC_Config)
+    # if list of files was given in the xml file, check that they are all present:
+    if options.loadXML:
+        required_files = xconfig.files_in_DS(options.inDS)
+        assert set(required_files)<=set(inputFileMap.keys()),\
+               'ERROR: xml config requires files that are missing in inDS=%s'%options.inDS
+        for key in inputFileMap.keys():
+            if key not in required_files:
+                del inputFileMap[key]
     # check if all files were used
     unUsedFlag = False
     for tmpLFN in inputFileMap.keys():
@@ -973,6 +1003,14 @@ if options.inDS != '':
     for tmpDsName,tmpValMap in options.secondaryDSs.iteritems():
         tmpSecFileMap = Client.getFilesInDatasetWithFilter(tmpDsName,tmpValMap['pattern'],shadowList,'',options.verbose,
                                                            notSkipLog=options.notSkipLog)
+        # if list of files was given in the xml file, check that they are all present:
+        if options.loadXML:
+            required_files = xconfig.files_in_DS(tmpDsName)
+            assert set(required_files)<=set(tmpSecFileMap.keys()),\
+                   'ERROR: xml config requires files that are missing in secondaryDS=%s'%tmpDsName
+            for key in tmpSecFileMap.keys():
+                if key not in required_files:
+                    del tmpSecFileMap[key]
         # append
         options.secondaryDSs[tmpDsName]['fileMap'] = tmpSecFileMap
     # get locations
@@ -1178,6 +1216,9 @@ if options.inDS != '':
         if options.verbose:
             tmpLog.debug("%s holds %s files" % (options.site,len(inputFileList)-len(missList)))
         # no files available
+	if options.requireLFC:
+            assert missList==[],'ERROR: LFC scan revealed missing file(s) in inDS=%s on site %s: %s' % \
+                   (options.inDS,options.site,' '.join(missList))
         if len(inputFileList) == len(missList):
             tmpStr = "No files available on disk at %s" % options.site
 	    if options.crossSite == 0:
@@ -1206,6 +1247,9 @@ if options.inDS != '':
                                                             dsStr=tmpDsName)
             else:
                 secMissList = []
+            if options.requireLFC:
+                assert secMissList==[],'ERROR: LFC scan revealed missing file(s) in %s on site %s: %s' % \
+                       (tmpDsName,options.site,' '.join(secMissList))
             # remove missing
             tmpSecFileList = tmpDsValMap['fileMap'].keys()
             tmpSecFileList.sort()
@@ -1862,27 +1906,34 @@ if inputGroupFilesMap=={} or not options.useContElementBoundary:
 # loop over all blocks
 totalIndexJob     = 0
 for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
-    b_nJobs        = options.nJobs
-    b_nFilesPerJob = options.nFilesPerJob
-    # set number of files per job
-    if options.inDS != '':
-        b_nFilesPerJob,nFilesEachSubJob = PsubUtils.calculateNumSplitPrun(b_nFilesPerJob,options.nGBPerJob,
+    if options.loadXML:
+        # xml file explicitly creates each job, so we don't need to do anything here
+        assert len(inputGroupFilesMap)==1, 'ERROR: cannot use --useContElementBoundary flag with --loadXML'
+        b_nJobs = options.nJobs = xconfig.nJobs()
+        b_nFilesPerJob = options.nFilesPerJob = -1
+    else:
+        # bootstrap nJobs/nFilesPerJob from user settings
+        b_nJobs        = options.nJobs
+        b_nFilesPerJob = options.nFilesPerJob
+        # set number of files per job
+        if options.inDS != '':
+            b_nFilesPerJob,nFilesEachSubJob = PsubUtils.calculateNumSplitPrun(b_nFilesPerJob,options.nGBPerJob,
                                                                           b_inputFileList,inputFileMap,maxTotalSize,
                                                                           dbrDsSize,safetySize)
-    # calculate number of jobs
-    if b_nJobs == -1:
-        if options.inDS == '':
-            b_nJobs = 1
-        elif options.nGBPerJob < 0:
-            rest = len(b_inputFileList) % b_nFilesPerJob
-            if rest == 0:
-                b_nJobs = len(b_inputFileList) / b_nFilesPerJob
+        # calculate number of jobs
+        if b_nJobs == -1:
+            if options.inDS == '':
+                b_nJobs = 1
+            elif options.nGBPerJob < 0:
+                rest = len(b_inputFileList) % b_nFilesPerJob
+                if rest == 0:
+                    b_nJobs = len(b_inputFileList) / b_nFilesPerJob
+                else:
+                    b_nJobs = (len(b_inputFileList)-rest) / b_nFilesPerJob
+                    b_nJobs += 1
             else:
-                b_nJobs = (len(b_inputFileList)-rest) / b_nFilesPerJob
-                b_nJobs += 1
-        else:
-            # nGBPerJob
-            b_nJobs = len(nFilesEachSubJob)
+                # nGBPerJob
+                b_nJobs = len(nFilesEachSubJob)
     # LFN description
     b_descriptionInLFN = options.descriptionInLFN
     if options.useContElementBoundary:
@@ -1896,6 +1947,10 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
     jobsetIDMapForLFN = {}
     numFilesMap       = {}
     for iJob in range(b_nJobs):
+        if options.loadXML:
+            jobXML = xconfig.jobs[totalIndexJob]
+            options.jobParams = jobXML.exec_string()
+            options.outputs = jobXML.outputs()
         jobR = JobSpec()
         jobR.jobDefinitionID   = jobDefinitionID
         if not options.panda_jobsetID in [None,'NULL']:
@@ -2001,7 +2056,10 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         # input files
         if options.inDS != '':
             totalSize = 0
-            if options.nGBPerJob < 0:
+            if options.loadXML:
+                # input files are listed explicitly for each subjob in the xml file
+                inList = [v for v in b_inputFileList if v in jobXML.files_in_DS(options.inDS)]
+            elif options.nGBPerJob < 0:
                 indexIn = iJob*b_nFilesPerJob
                 inList = b_inputFileList[indexIn:indexIn+b_nFilesPerJob]
             else:
@@ -2024,6 +2082,8 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                 else:
                     fileI.dataset    = options.inDS
                 fileI.prodDBlock = fileI.dataset
+                if options.forceStaged:
+                    fileI.prodDBlockToken = 'local'
                 fileI.type       = 'input'
                 fileI.status     = 'ready'
                 fileI.dispatchDBlock = commonDispName
@@ -2036,16 +2096,21 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             # secondary datasets
             secMap = {}
             for tmpSecDS,tmpSecVal in options.secondaryDSs.iteritems():
-                tmpIndexSec = iJob*tmpSecVal['nFiles']
-                tmpSecList  = tmpSecVal['files'][tmpIndexSec:tmpIndexSec+tmpSecVal['nFiles']]
-                # check length
-                if len(tmpSecList) < tmpSecVal['nFiles']:
-                    errStr  = "only %s files in %s are available at %s which is insufficient for splitting. " % \
+                if options.loadXML:
+                    # if xml file manages which secondaryDSs files are used in each job:
+                    tmpSecList = [v for v in tmpSecVal['files'] if v['LFN'] in jobXML.files_in_DS(tmpSecDS)]
+                else:
+                    # if prun manages secondaryDSs:
+                    tmpIndexSec = iJob*tmpSecVal['nFiles']
+                    tmpSecList  = tmpSecVal['files'][tmpIndexSec:tmpIndexSec+tmpSecVal['nFiles']]
+                    # check length
+                    if len(tmpSecList) < tmpSecVal['nFiles']:
+                        errStr  = "only %s files in %s are available at %s which is insufficient for splitting. " % \
                               (len(tmpSecVal['files']),tmpSecDS,options.site)
-                    errStr += "nJobs*nFilesPerJob=%s*%s=%s files are required" % (b_nJobs,tmpSecVal['nFiles'],
-                                                                                  b_nJobs*tmpSecVal['nFiles'])
-                    tmpLog.error(errStr)            
-                    sys.exit(EC_Split)
+                        errStr += "nJobs*nFilesPerJob=%s*%s=%s files are required" % \
+                                  (b_nJobs,tmpSecVal['nFiles'], b_nJobs*tmpSecVal['nFiles'])
+                        tmpLog.error(errStr)            
+                        sys.exit(EC_Split)
                 # add FileSpec
                 tmpSecLfnList = []
                 for vals in tmpSecList:
@@ -2059,6 +2124,8 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                     fileI.type       = 'input'
                     fileI.status     = 'ready'
                     fileI.dispatchDBlock = commonDispName
+                    if options.forceStagedSecondary:
+                        fileI.prodDBlockToken = 'local'
                     jobR.addFile(fileI)
                     inList.append(fileI.lfn)
                     tmpSecLfnList.append(fileI.lfn)
@@ -2066,7 +2133,9 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                         totalSize += long(fileI.fsize)
                     except:
                         pass
-                # append to map    
+                # append to map
+                if len(tmpSecLfnList)>0:
+                    tmpInputMap[tmpSecVal['streamName']] = tmpSecLfnList
                 tmpInputMap[tmpSecVal['streamName']] = tmpSecLfnList
             # size check    
             if (not isDirectAccess) and totalSize > maxTotalSize-dbrDsSize:
@@ -2150,6 +2219,8 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                     flagUseNewLFN = False
                     lfnPrefix = dsNameWoSlash
                 tmpNewLFN = '%s._%05d.%s' % (lfnPrefix,idxOffset+totalIndexJob+1,tmpLFN)
+                if options.loadXML and jobXML.prepend_string():
+                    tmpNewLFN = '%s._%05d.%s.%s' % (lfnPrefix,idxOffset+totalIndexJob+1,jobXML.prepend_string(),tmpLFN)
                 lfnPrefixForLog = lfnPrefix
                 # change * to XYZ and add .tgz
                 if tmpNewLFN.find('*') != -1:
@@ -2202,6 +2273,9 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         # log
         file = FileSpec()
         file.lfn               = '%s._$PANDAID.log.tgz' % lfnPrefixForLog
+        if options.loadXML and jobXML.prepend_string():
+            # optionally append additional metadata to log file name according to xml file settings
+            file.lfn           = '%s._$PANDAID.%s.log.tgz' % (lfnPrefixForLog,jobXML.prepend_string())
         file.type              = 'log'
         file.dataset           = original_outDS_Name
         file.destinationSE     = jobR.destinationSE

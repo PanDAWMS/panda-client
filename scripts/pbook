@@ -634,7 +634,8 @@ class PBookCore:
                                    % (JobID,jobList[idxJob]))
                     return
                 # skip jobs reassigned by rebrokerage
-                if job.jobStatus == 'cancelled' and job.taskBufferErrorCode in [105,'105']:
+                if (job.jobStatus == 'cancelled' and job.taskBufferErrorCode in [105,'105']) or \
+                       (job.jobStatus == 'failed' and job.taskBufferErrorCode in [106,'106']):
                     # extract JobIDs of reassigned jobs
                     tmpM = re.search('JobsetID=(\d+) JobID=(\d+)',job.taskBufferErrorDiag)
                     if tmpM != None:

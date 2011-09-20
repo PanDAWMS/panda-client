@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+current
+  * Lauren Tompkins added --loadXML,--forceStaged,--forceStagedSecondary,--requireLFC to prun
+  * fixed pbook for jobs retried on the server side
+
 0.3.59 (9/13/2011)
   * fixed --nSkipFiles of pathena/prun for containers
   * improved doc on --memory of pathena/prun 
