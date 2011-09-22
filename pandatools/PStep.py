@@ -18,6 +18,7 @@ class PStep:
     def __init__(self,name,command,fetFactory,sn,verbose):
         self.name       = name
         self.command    = command
+        self.ocommand   = command
         self.isPanda    = False
         self.JobID      = None
         self.fetFactory = fetFactory
@@ -37,7 +38,7 @@ class PStep:
         # increment SN
         self.cloneSN += 1
         # make clone
-        return PStep(self.name,self.command,self.fetFactory,sn,self.verbose)
+        return PStep(self.name,self.ocommand,self.fetFactory,sn,self.verbose)
         
         
     # execute command
@@ -53,7 +54,7 @@ class PStep:
             envStr = ''            
             for envKey,envVal in self.env.iteritems():
                 envStr += 'export %s="%s"\n' % (envKey,envVal)
-            self.command = envStr + self.command
+            self.command = envStr + self.ocommand
         # crete tmp output
         tmpOFD,tmpOF = tempfile.mkstemp(suffix='.%s' % self.sn)
         # create tmp script

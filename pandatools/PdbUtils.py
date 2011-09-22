@@ -275,7 +275,8 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
         # set computingSite mainly for rebrokerage
         if pandaJobForSiteID != None:
             ddata.site = pandaJobForSiteID.computingSite
-            ddata.nRebro = pandaJobForSiteID.specialHandling.split(',').count('rebro')
+            ddata.nRebro = pandaJobForSiteID.specialHandling.split(',').count('rebro') + \
+                           pandaJobForSiteID.specialHandling.split(',').count('sretry')
         # return    
         return ddata
     # job parameters
