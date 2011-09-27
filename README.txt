@@ -21,10 +21,11 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.60 (9/27/2011)
   * Lauren Tompkins added --loadXML,--forceStaged,--forceStagedSecondary,--requireLFC to prun
   * fixed pbook for jobs retried on the server side
   * fixed PStep for env
+  * fixed email scan in psequencer for Atlas Pangaea
 
 0.3.59 (9/13/2011)
   * fixed --nSkipFiles of pathena/prun for containers
