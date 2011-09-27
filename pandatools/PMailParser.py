@@ -1,7 +1,6 @@
 import re
 
-fromStrs = ['From: panda@bnl.gov','From: <atlpan@cern.ch>',
-            'From: Atlas.Pangaea@cern.ch','From: Atlas Pangaea']
+fromStrs = ['From: <atlpan@cern.ch>','From: Atlas.Pangaea@cern.ch','From: Atlas Pangaea']
 
 # get argiments of panda header
 def getHeaderArgs():
