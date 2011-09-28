@@ -12,9 +12,13 @@ seqConf = SeqConfig.getConfig()
 class ImapFetcher:
 
     # constructor
-    def __init__(self):
+    def __init__(self,firstTimeScanDepth=3):
         # start time
         self.starttime = datetime.datetime.today()
+        # first flag
+        self.firstFlag = True
+        # time depth for first scan 
+        self.firstTimeScanDepth = firstTimeScanDepth
         # uid map 
         self.uidMap = None
         # parse uid
@@ -130,6 +134,9 @@ class ImapFetcher:
             # search
             args = PMailParser.getHeaderArgs()
             args.insert(0,'search')
+            if self.firstFlag:
+                args.append('SENTSINCE')
+                args.append((self.starttime-datetime.timedelta(days=self.firstTimeScanDepth)).strftime("%d-%b-%Y"))                
             if verbose:
                 print '%s' % str(args)
             status,out = self.imap.uid(*args)
@@ -153,11 +160,8 @@ class ImapFetcher:
             uids.sort()
             # keep highest UID
             highUIDs[dir] = uids[-1]
-            # doesn't fetch file in the first cycle of the first session
-            if self.uidMap == None:
-                continue
             # check new mail
-            if (not self.uidMap.has_key(dir)) or uids[0] > self.uidMap[dir]:
+            if self.uidMap == None or (not self.uidMap.has_key(dir)) or uids[0] > self.uidMap[dir] or self.firstFlag:
                 pass
             elif uids[-1] > self.uidMap[dir]:
                 for idx,uid in enumerate(uids):
@@ -207,5 +211,8 @@ class ImapFetcher:
                 print 'set UID=%s' % strUIDs
         # end session
         self.endSession(verbose)
+        # end of first loop
+        if self.firstFlag:
+            self.firstFlag = False
         # return
         return notList

@@ -1,19 +1,21 @@
 import re
 
-fromStrs = ['From: panda@bnl.gov','From: <atlpan@cern.ch>']
+fromStrs = ['From: <atlpan@cern.ch>','From: Atlas.Pangaea@cern.ch','From: Atlas Pangaea']
 
 # get argiments of panda header
 def getHeaderArgs():
     args = []
-    if len(fromStrs) > 1:
-        # use OR
-        args.append('OR')
     for strVal in fromStrs:
         # extract name and value
         strVal = re.sub('\s*:\s*',' ',strVal)
         strVal = re.sub('<|>','',strVal)
         items = strVal.split()
+        # ignore non email address
+        if items[0] == 'From' and not '@' in items[-1]:
+            continue
         # append
+        if args != []:
+            args.insert(0,'OR')
         args.append(items[0])
         args.append(items[-1])        
     return args

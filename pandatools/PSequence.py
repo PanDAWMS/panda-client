@@ -27,6 +27,8 @@ class PSequence:
         self.functions['getPandaJob'] = PSeqUtils.PandaJobFactory(self.fetFactory,self.sn,verbose)        
         self.functions['getRunningPandaJobs'] = PSeqUtils.RunningPandaFactory(self.fetFactory,
                                                                               self.sn,verbose)
+        self.functions['getFrozenPandaJobs'] = PSeqUtils.FrozenPandaFactory(self.fetFactory,
+                                                                            self.sn,verbose)
         # get step sections
         scFH = open(self.scriptName)
         stepName     = None
