@@ -45,6 +45,8 @@ def catch_sig(sig, frame):
 if __name__ == "__main__":
     # parse option
     parser = optparse.OptionParser()
+    parser.add_option('--initScanDepth',action='store',dest='initScanDepth',default=-1,
+                      type='int',help='psequencer retrives email notifications sent in the last N days in the first retrival cycle, so that corresponding jobs are available using the getFrozenPandaJobs() method in the Sequence section. N=3 by default. If you are interested in older jobs change the value using this option')
     parser.add_option("-v",action="store_true",dest="verbose",default=False,
                       help="verbose")
     parser.add_option('--version',action='store_const',const=True,dest='version',default=False,
@@ -57,7 +59,11 @@ if __name__ == "__main__":
         from pandatools import PandaToolsPkgInfo
         print "Version: %s" % PandaToolsPkgInfo.release_version
         sys.exit(0)
-
+        
+    # set initial scan depth
+    if options.initScanDepth > 0:
+        fetcherFactory.setParams(initScanDepth=options.initScanDepth)
+        
     # fork for Ctl-c
     fork_child_pid = os.fork()
     if fork_child_pid == -1:

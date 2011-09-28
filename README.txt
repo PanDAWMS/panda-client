@@ -21,6 +21,11 @@ pathena -h
 
 ** Release Note
 
+0.3.61 (9/28/2011)
+  * fixed sorting in listView of pbook --gui
+  * added --initScanDepth and getFrozenPandaJobs() to psequencer
+  * fixed getPandaJob() of psequencer to work with frozen jobs
+ 
 0.3.60 (9/27/2011)
   * Lauren Tompkins added --loadXML,--forceStaged,--forceStagedSecondary,--requireLFC to prun
   * fixed pbook for jobs retried on the server side

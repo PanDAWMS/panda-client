@@ -31,6 +31,7 @@ class PStep:
         self.output     = ''
         self.tmpLog     = PLogger.getPandaLogger()
 
+
     # copy constructor
     def __call__(self):
         # clone serial number
