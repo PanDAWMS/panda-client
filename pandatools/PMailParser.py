@@ -6,18 +6,25 @@ fromStrs = ['From: <atlpan@cern.ch>','From: Atlas.Pangaea@cern.ch','From: Atlas 
 def getHeaderArgs():
     args = []
     for strVal in fromStrs:
-        # extract name and value
-        strVal = re.sub('\s*:\s*',' ',strVal)
-        strVal = re.sub('<|>','',strVal)
-        items = strVal.split()
-        # ignore non email address
-        if items[0] == 'From' and not '@' in items[-1]:
+        # extract value
+        tmpM = re.search('From:\s+(.+)$',strVal)
+        if tmpM == None:
             continue
+        tmpVal = tmpM.group(1)
+        tmpVal = tmpVal.strip()
+        item0 = 'From'
+        item1 = None
+        # extract mail address in <>
+        tmpM = re.search('<(.+)>',tmpVal)
+        if tmpM != None:
+            item1 = tmpM.group(1)
+        else:
+            item1 = tmpVal
         # append
         if args != []:
             args.insert(0,'OR')
-        args.append(items[0])
-        args.append(items[-1])        
+        args.append(item0)
+        args.append(item1)        
     return args
 
 

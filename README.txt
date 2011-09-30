@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.62 (9/30/2011)
+  * fixed email scan in psequencer for atlpan@cern.ch+imap.cern.ch
+
 0.3.61 (9/28/2011)
   * fixed sorting in listView of pbook --gui
   * added --initScanDepth and getFrozenPandaJobs() to psequencer
