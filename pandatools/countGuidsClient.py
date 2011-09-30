@@ -8,8 +8,8 @@ from eventLookupClient import eventLookupClient
 class countGuidsClient(eventLookupClient):
 
    #serverURL = "http://j2eeps.cern.ch/test-Athenaeum/"
-   #serverURL = "http://j2eeps.cern.ch/atlas-project-Athenaeum/"
-   serverURL = "http://j2eeps.cern.ch/test-eventPicking/"
+   serverURL = "http://j2eeps.cern.ch/atlas-project-Athenaeum/"
+   #serverURL = "http://j2eeps.cern.ch/test-eventPicking/"
    servicePage = "CountGuids.jsp"
    getPage = "EventLookupGet.jsp"
 

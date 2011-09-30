@@ -50,7 +50,13 @@ class FetcherFactory:
     def __init__(self):
         self.lock = threading.Lock()
         self.fetcher = None
+        self.initScanDepth = None
 
+    # set parameters
+    def setParams(self,initScanDepth=None):
+        if initScanDepth != None:
+            self.initScanDepth = initScanDepth
+                         
     # getter for fetcher    
     def getFetcher(self):
         # lock
@@ -65,7 +71,10 @@ class FetcherFactory:
         if seqConf.mail_protocol == 'pop3':
             fetcher = PopFetcher.PopFetcher()
         elif seqConf.mail_protocol == 'imap':
-            fetcher = ImapFetcher.ImapFetcher()
+            if self.initScanDepth == None:
+                fetcher = ImapFetcher.ImapFetcher()
+            else:
+                fetcher = ImapFetcher.ImapFetcher(firstTimeScanDepth=self.initScanDepth)                
         else:
             raise RuntimeError,'unsupported mail protocol %s' % seqConf.mail_protocol
         self.fetcher = WrappedFetcher(fetcher,self.lock)
