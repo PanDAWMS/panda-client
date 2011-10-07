@@ -60,3 +60,34 @@ class RunningPandaFactory:
                 rJobs.append(pStep)
         # return
         return rJobs
+
+
+# factory for all frozen Panda job
+class FrozenPandaFactory:
+    # constructor
+    def __init__(self,fetFactory,sn,verbose):
+        # fetcher factory
+        self.fetFactory = fetFactory
+        # instantiate job factory
+        self.pandaFactory = PandaJobFactory(fetFactory,sn,verbose)
+        # verbose
+        self.verbose    = verbose
+
+    # method emulation    
+    def __call__(self,*args):
+        # get fetcher
+        fetcher = self.fetFactory.getFetcher()
+        # get mails
+        pmails = fetcher.getPMails(self.verbose)
+        # loop over all mails
+        rJobs = []
+        for pmail in pmails:
+            # instantiate PStep
+            if pmail.has_key('JobsetID'):
+                pStep = self.pandaFactory(pmail['JobsetID'])
+            else:
+                pStep = self.pandaFactory(pmail['JobID'])                
+            # append
+            rJobs.append(pStep)
+        # return
+        return rJobs

@@ -21,8 +21,67 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.63 (10/7/2011)
+  * added a patch for CERN-PROD_DET-IBL
+  * added --transferredDS to pathena/prun 
+
+0.3.62 (9/30/2011)
+  * fixed email scan in psequencer for atlpan@cern.ch+imap.cern.ch
+
+0.3.61 (9/28/2011)
+  * fixed sorting in listView of pbook --gui
+  * added --initScanDepth and getFrozenPandaJobs() to psequencer
+  * fixed getPandaJob() of psequencer to work with frozen jobs
+ 
+0.3.60 (9/27/2011)
+  * Lauren Tompkins added --loadXML,--forceStaged,--forceStagedSecondary,--requireLFC to prun
+  * fixed pbook for jobs retried on the server side
+  * fixed PStep for env
+  * fixed email scan in psequencer for Atlas Pangaea
+
+0.3.59 (9/13/2011)
+  * fixed --nSkipFiles of pathena/prun for containers
+  * improved doc on --memory of pathena/prun 
+
+0.3.58 (9/13/2011)
+  * fixed pbook for jobs reassigned by rebrokerage
+  * added a temporary patch for CERN EOS migration
+
+0.3.57 (9/5/2011)
+  * made pbook transaction-safe
+  * fixed pbook.retry() to allow reattempt for failed subjobs in running job
+
+0.3.56 (9/2/2011)
+  * fixed --trf of pathena for TAG reading 
+
+0.3.55 (8/31/2011)
+  * fixed pbook -c for multiple/keyworded arguments
+
+0.3.54 (8/17/2011)
+  * fixed file gathering in prun for --useRootCore 
+
+0.3.53 (8/5/2011)
+  * fixed for US T2 TRIG-DAQ
+  * added retry for registering datasets to DQ2
+
+0.3.52 (8/5/2011)
+  * fixed for CERN TMP
+
+0.3.51 (7/28/2011)
+  * fixed --trf of pathena to use TagGUIDCount svc when TAG is used
+  * added --useRootCore to prun
+
+0.3.50 (7/26/2011)
+  * added --nMinPerJob and --nCavPerJob to pathena
+
+0.3.49 (7/14/2011)
+  * fixed termination of prun when --nFiles is used
+
+0.3.48 (7/12/2011)
   * fixed tar-archiving for files with special characters
+  * fixed sendLogInfo for --useOldStyleOutput
+  * fixed --supStream of pathena to accept wild cards
+  * fixed ConfigExtractor for DESD
 
 0.3.47 (7/1/2011)
   * fixed ConfigExtractor for multiple AANT streams to write to the same file
