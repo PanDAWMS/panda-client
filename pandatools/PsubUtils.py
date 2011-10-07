@@ -867,6 +867,38 @@ def checkDestSE(destSEs,dsName,verbose):
     return True
 
 
+# disable redundant transfer
+def disableRedundantTransfer(job,transferredDS):
+    # no pattern
+    if transferredDS == '':
+        return
+    # DQ2 free
+    if job.destinationSE == 'local':
+        return
+    # get patterns
+    patterns = []
+    for tmpItem in transferredDS.split(','):
+        if tmpItem != '':
+            # wild card
+            tmpItem = tmpItem.replace('*','.*')
+            # append
+            patterns.append(tmpItem)
+    # change destinationSE
+    for tmpFile in job.Files:
+        if tmpFile.type in ['log','output']:
+            # check patterns
+            matchFlag = False
+            for tmpPatt in patterns:
+                if re.search(tmpPatt,tmpFile.dataset) != None:
+                    matchFlag = True
+                    break
+            # disable
+            if not matchFlag:
+                tmpFile.destinationSE = job.computingSite
+    # return            
+    return
+
+    
 # run pathena recursively
 def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,
                   removedDS,inDS,goodRunListXML,eventPickEvtList,devidedByGUID,dbRelease,jobsetID,trfStr,
@@ -885,6 +917,10 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
                                     fullExecString)
         else:
             anotherTry = False
+    # nSkipFiles : set 0 since files are skipped in the first try
+    fullExecString = re.sub('--nSkipFiles\s*=*\d+',
+                            '--nSkipFiles=0',
+                            fullExecString)
     # decrement crossSite counter
     fullExecString = re.sub(' --crossSite\s*=*\d+','',fullExecString)
     fullExecString += ' --crossSite=%s' % crossSite
@@ -1003,6 +1039,10 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
                                     fullExecString)
         else:
             anotherTry = False
+    # nSkipFiles : set 0 since files are skipped in the first try
+    fullExecString = re.sub('--nSkipFiles\s*=*\d+',
+                            '--nSkipFiles=0',
+                            fullExecString)
     # decrement crossSite counter
     fullExecString = re.sub(' --crossSite\s*=*\d+','',fullExecString)
     fullExecString += ' --crossSite=%s' % crossSite
@@ -1277,7 +1317,8 @@ def getMapTAGandParentGUIDs(dsName,tagQuery,streamRef,verbose=False):
         errStr2  = "invalid return from Event Lookup service. "
         if "No collection in the catalog matches the dataset name" in errStr:
             errStr2 += "Note that only merged TAG is uploaded to the TAG DB, "
-            errStr2 += "so you need to use merged TAG datasets (or container) for inDS"
+            errStr2 += "so you need to use merged TAG datasets (or container) for inDS. "
+            errStr2 += "If this is already the case please contact atlas-event-metadata@cern.ch"            
         tmpLog.error(errStr2)
         sys.exit(EC_Config)
     # empty
@@ -1288,6 +1329,8 @@ def getMapTAGandParentGUIDs(dsName,tagQuery,streamRef,verbose=False):
     # collect
     retMap = {}
     for guidCount,guids in tagResults[1]:
+        if verbose:
+            print guidCount,guids
         parentGUID,tagGUID = guids
         # append TAG GUID
         if not retMap.has_key(tagGUID):

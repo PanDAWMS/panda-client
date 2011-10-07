@@ -603,13 +603,18 @@ class PTreeView:
         # make list sore
         listModel = gtk.ListStore(object)
         # sort jobs
-        jobIDs = jobList.keys()
-        jobIDs.sort()
-        jobIDs.reverse()
+        tmpJobIntoStrMap = {}
+        for tmpJobIDStr in jobList.keys():
+            tmpJobIntoStrMap[long(tmpJobIDStr)] = tmpJobIDStr
+        tmpJobIDs = tmpJobIntoStrMap.keys()
+        tmpJobIDs.sort()
+        tmpJobIDs.reverse()
         # get offset
         offset = self.guiGlobal.getJobOffset()
         # truncate
-        jobIDs = jobIDs[offset:offset+self.maxJobs]
+        jobIDs = []
+        for tmpJobID in tmpJobIDs[offset:offset+self.maxJobs]:
+            jobIDs.append(tmpJobIntoStrMap[tmpJobID])
         # append
         for jobID in jobIDs:
             listModel.append([jobID])

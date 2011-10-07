@@ -275,6 +275,8 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
         # set computingSite mainly for rebrokerage
         if pandaJobForSiteID != None:
             ddata.site = pandaJobForSiteID.computingSite
+            ddata.nRebro = pandaJobForSiteID.specialHandling.split(',').count('rebro') + \
+                           pandaJobForSiteID.specialHandling.split(',').count('sretry')
         # return    
         return ddata
     # job parameters
@@ -330,6 +332,8 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
         ddata.parentJobsetID = -1
     # job type
     ddata.jobType = pandaJob.processingType
+    # the number of rebrokerage actions
+    ddata.nRebro = pandaJob.specialHandling.split(',').count('rebro')
     # return
     return ddata
 
@@ -360,13 +364,17 @@ def insertJobDB(job,verbose=False):
 
 
 # update job info in DB
-def updateJobDB(job,verbose=False):
-    # set update time
-    job.lastUpdate = datetime.datetime.utcnow()
+def updateJobDB(job,verbose=False,updateTime=None):
     # make sql
     sql1  = "UPDATE %s SET " % pdbProxy.tablename
     sql1 += job.values(forUpdate=True)
     sql1 += " WHERE JobID=%s " % job.JobID
+    # set update time
+    if updateTime != None:
+        job.lastUpdate = updateTime
+        sql1 += " AND lastUpdate<'%s' " % updateTime.strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        job.lastUpdate = datetime.datetime.utcnow()
     status,out = pdbProxy.execute(sql1)
     if not status:
         raise RuntimeError,"failed to insert job"
@@ -377,7 +385,7 @@ def setRetryID(job,verbose=False):
     # make sql
     sql1  = "UPDATE %s SET " % pdbProxy.tablename
     sql1 += "retryID=%s,retryJobsetID=%s " % (job.JobID,job.groupID)
-    sql1 += " WHERE JobID=%s " % job.provenanceID
+    sql1 += " WHERE JobID=%s AND (nRebro IS NULL OR nRebro=%s)" % (job.provenanceID,job.nRebro)
     status,out = pdbProxy.execute(sql1)
     if not status:
         raise RuntimeError,"failed to set retryID"
