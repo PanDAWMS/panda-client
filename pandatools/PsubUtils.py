@@ -867,6 +867,38 @@ def checkDestSE(destSEs,dsName,verbose):
     return True
 
 
+# disable redundant transfer
+def disableRedundantTransfer(job,transferredDS):
+    # no pattern
+    if transferredDS == '':
+        return
+    # DQ2 free
+    if job.destinationSE == 'local':
+        return
+    # get patterns
+    patterns = []
+    for tmpItem in transferredDS.split(','):
+        if tmpItem != '':
+            # wild card
+            tmpItem = tmpItem.replace('*','.*')
+            # append
+            patterns.append(tmpItem)
+    # change destinationSE
+    for tmpFile in job.Files:
+        if tmpFile.type in ['log','output']:
+            # check patterns
+            matchFlag = False
+            for tmpPatt in patterns:
+                if re.search(tmpPatt,tmpFile.dataset) != None:
+                    matchFlag = True
+                    break
+            # disable
+            if not matchFlag:
+                tmpFile.destinationSE = job.computingSite
+    # return            
+    return
+
+    
 # run pathena recursively
 def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,site,crossSite,archiveName,
                   removedDS,inDS,goodRunListXML,eventPickEvtList,devidedByGUID,dbRelease,jobsetID,trfStr,

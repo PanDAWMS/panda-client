@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.3.63 (10/7/2011)
+  * added a patch for CERN-PROD_DET-IBL
+  * added --transferredDS to pathena/prun 
+
 0.3.62 (9/30/2011)
   * fixed email scan in psequencer for atlpan@cern.ch+imap.cern.ch
 

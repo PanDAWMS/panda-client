@@ -82,6 +82,8 @@ optP.add_option('--noBuild', action='store_const',const=True,dest='nobuild',defa
                 help='Skip buildGen')
 optP.add_option('--individualOutDS',action='store_const',const=True,dest='individualOutDS',default=False,
                 help='Create individual output dataset for each data-type. By default, all output files are added to one output dataset')
+optP.add_option('--transferredDS',action='store', dest='transferredDS',default='',type='string',
+                help='Specify a comma-separated list of patterns so that only datasets which match the given patterns are transferred when --destSE is set. Either \ or "" is required when a wildcard is used. If omitted, all datasets are transferred')
 optP.add_option('--secondaryDSs',action='store',dest='secondaryDSs',default='',type='string',
                 help='List of secondary datasets when the job requires multiple inputs. See PandaRun wiki page for detail')
 optP.add_option('--site',action='store',dest='site',default=defaultSite,type='string',
@@ -2296,6 +2298,8 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         # write outputs to Chirp Server
         if options.useChirpServer != '':
             PsubUtils.setCHIRPtokenToOutput(jobR,options.useChirpServer)
+        # disable redundant transfer if needed
+        PsubUtils.disableRedundantTransfer(jobR,options.transferredDS)
         # check job spec
         PsubUtils.checkJobSpec(jobR)
         # append
