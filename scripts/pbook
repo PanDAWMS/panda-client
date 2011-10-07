@@ -704,9 +704,10 @@ class PBookCore:
                             file.status = 'ready'
                         # set new lib dataset    
                         if retryBuild and file.lfn.endswith('.lib.tgz'):
-			    file.lfn            = newLibTgz
-                            file.dataset        = newLibDS
-			    file.dispatchDBlock = newLibDS
+                            if newLibTgz != None:
+                                file.lfn            = newLibTgz
+                                file.dataset        = newLibDS
+                                file.dispatchDBlock = newLibDS
                         # check with shadow for non lib.tgz/DBR 
                         tmpDbrMatch = re.search('^DBRelease-.*\.tar\.gz$',file.lfn)
                         if tmpDbrMatch == None and not file.lfn.endswith('.lib.tgz'):

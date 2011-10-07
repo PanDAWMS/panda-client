@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.64 (10/7/2011)
+  * fixed retryBuild in pbook
+
 0.3.63 (10/7/2011)
   * added a patch for CERN-PROD_DET-IBL
   * added --transferredDS to pathena/prun 
