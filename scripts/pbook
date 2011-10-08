@@ -1046,13 +1046,25 @@ For more info, do help(show) for example."""
 
     # kill
     def kill(JobID,upperJobID=None,useJobsetID=True):
-        """Kill all subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be killed if upperJobID is given. Set useJobsetID=False if you want to kill JobIDs between JobID and UpperJobID
+        """Kill all subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be killed if upperJobID is given. Set useJobsetID=False if you want to kill JobIDs between JobID and UpperJobID. If 'running' is used as JobID, all running jobs will be killed
 
          example:
            >>> kill(15)
            >>> kill(15,20)
+           >>> kill('running')
         """
-        if upperJobID != None:
+	if JobID == 'running':
+            # show runnig jobs
+            jobList = pbookCore.getLocalJobList()
+	    for job in jobList:
+                if job.dbStatus != 'frozen':
+                    if hasattr(job,'JobID'):
+                        # job
+                        retK = pbookCore.kill(job.JobID,False)
+                    else:
+                        # jobset
+                        retK = pbookCore.kill(long(job.JobsetID),True)
+        elif upperJobID != None:
             # check range
             if JobID > upperJobID:
                 tmpLog = PLogger.getPandaLogger()

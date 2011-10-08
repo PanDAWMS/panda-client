@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added pbook.kill(running)
+
 0.3.64 (10/7/2011)
   * fixed retryBuild in pbook
 
