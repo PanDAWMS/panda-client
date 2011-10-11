@@ -19,25 +19,28 @@ class AppConfig:
             pass
         appConf = {}
         # config file
-        confFile = os.path.expanduser('%s/panda.cfg' % os.environ['PANDA_CONFIG_ROOT'])
-        if os.path.exists(confFile):
-            try:
-                # instantiate parser
-                parser = ConfigParser.ConfigParser()
-                parser.optionxform = str
-                parser.read(confFile)
-                # expand sequencer section
-                for key,val in parser.items(self.sectionName):
-                    # convert int/bool
-                    if re.search('^\d+$',val) != None:
-                        val = int(val)
-                    elif re.search('true',val,re.I) != None:
-                        val = True
-                    elif re.search('false',val,re.I) != None:
-                        val = False
-                    # set attributes    
-                    appConf[key] = val
-            except ConfigParser.NoSectionError:
-                pass
+        confFileLocal  = '%s/panda.cfg' % os.getcwd()
+        confFileGlobal = os.path.expanduser('%s/panda.cfg' % os.environ['PANDA_CONFIG_ROOT'])
+        for confFile in [confFileLocal,confFileGlobal]:
+            if os.path.exists(confFile):
+                try:
+                    # instantiate parser
+                    parser = ConfigParser.ConfigParser()
+                    parser.optionxform = str
+                    parser.read(confFile)
+                    # expand sequencer section
+                    for key,val in parser.items(self.sectionName):
+                        # convert int/bool
+                        if re.search('^\d+$',val) != None:
+                            val = int(val)
+                        elif re.search('true',val,re.I) != None:
+                            val = True
+                        elif re.search('false',val,re.I) != None:
+                            val = False
+                        # set attributes
+                        if not appConf.has_key(key):
+                            appConf[key] = val
+                except ConfigParser.NoSectionError:
+                    pass
         # return
         return appConf

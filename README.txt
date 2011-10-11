@@ -24,6 +24,7 @@ pathena -h
 current
   * added pbook.kill(running)
   * updated pathena/prun so that any option can have a default value in panda.cfg
+  * updated pathena/prun to allow users to overwrite the default option values with ./panda.cfg 
 
 0.3.64 (10/7/2011)
   * fixed retryBuild in pbook
