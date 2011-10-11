@@ -353,6 +353,7 @@ optP.add_option('--panda_tagParentFile',action='store', dest='panda_tagParentFil
 options,args = optP.parse_args()
 if options.verbose:
     print options
+    print
 
 # display version
 from pandatools import PandaToolsPkgInfo
@@ -364,6 +365,7 @@ from pandatools import Client
 from pandatools import PsubUtils
 from pandatools import AthenaUtils
 from pandatools import GlobalConfig
+from pandatools import AppConfig
 from pandatools import MiscUtils 
 from pandatools import PLogger
 
@@ -389,6 +391,18 @@ if globalConf.grid_src != '' and not os.environ.has_key('PATHENA_GRID_SETUP_SH')
 
 # get logger
 tmpLog = PLogger.getPandaLogger()
+
+# set default
+appConf = AppConfig.AppConfig('pathena')
+for tmpAppConfKey,tmpAppConfVal in appConf.getConfig().iteritems():
+    # check lower characters just in case
+    tmpAppConfKeys = [tmpAppConfKey,tmpAppConfKey.lower()]
+    for tmpKey in tmpAppConfKeys:
+        if hasattr(options,tmpKey) and getattr(options,tmpKey) in [-1,0,None,'','AUTO']:
+            setattr(options,tmpKey,tmpAppConfVal)
+            if options.verbose:
+                tmpLog.debug("Use default option in panda.cfg %s=%s" % (tmpKey,getattr(options,tmpKey)))
+            break
 
 # use dev server
 if options.devSrv:
