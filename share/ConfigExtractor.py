@@ -418,6 +418,7 @@ if desdStreams != {}:
 
 # THIST
 userDataSvcStream = {}
+usedTHistStreams = []
 THistSvc = _Service( "THistSvc" )
 if hasattr(THistSvc.Output,'__len__') and len(THistSvc.Output):
     for item in THistSvc.Output:

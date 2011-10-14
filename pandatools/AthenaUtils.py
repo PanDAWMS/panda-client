@@ -410,7 +410,8 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
                     if not outputConfig.has_key('outTHIST'):
                         outputConfig['outTHIST'] = []
                     tmpItems = match[0].split()
-                    outputConfig['outTHIST'].append(tmpItems[1])
+                    if not tmpItems[1] in outputConfig['outTHIST']:
+                        outputConfig['outTHIST'].append(tmpItems[1])
                 # IROOT
                 if match[0].startswith('Output=IROOT'):            
                     if not outputConfig.has_key('outIROOT'):
