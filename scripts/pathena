@@ -426,9 +426,12 @@ suffixShadow = Client.suffixShadow
 # save current dir
 currentDir = os.path.realpath(os.getcwd())
 
+brokerageLogs  = []
+userBrokerLogs = []
+
 # exclude sites
 if options.excludedSite != '':
-    Client.excludeSite(options.excludedSite)
+    Client.excludeSite(options.excludedSite,options.panda_origFullExecString,userBrokerLogs)
 
 # use certain sites
 useRandomCloud = []
@@ -439,9 +442,6 @@ if re.search(',',options.site) != None:
 siteSpecified = True
 if options.site == 'AUTO':
     siteSpecified = False
-
-brokerageLogs  = []
-userBrokerLogs = []
 
 # cloud specified
 if options.cloud != defaultCloud:
@@ -3610,6 +3610,10 @@ jobsetID = options.panda_jobsetID
 # no submit
 if options.nosubmit:
     tmpLog.info("%s subjobs to be submitted to %s" % (len(jobList),options.site))
+    if options.verbose:
+	tmpLog.debug("brokerage info")
+	for tmpBrokerageMsg in brokerageLogs+userBrokerLogs:
+            print tmpBrokerageMsg
 
 # submit 
 if not options.nosubmit:

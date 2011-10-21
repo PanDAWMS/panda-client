@@ -336,9 +336,12 @@ curDir = os.path.realpath(os.getcwd())
 if options.outputs != '':
     options.outputs = re.sub(' ','',options.outputs)
 
+brokerageLogs  = []
+userBrokerLogs = []
+
 # exclude sites
 if options.excludedSite != '':
-    Client.excludeSite(options.excludedSite)
+    Client.excludeSite(options.excludedSite,options.panda_origFullExecString,userBrokerLogs)
 
 # use certain sites
 useRandomCloud = []
@@ -352,9 +355,6 @@ PsubUtils.limit_maxNumInputs = options.maxNFilesPerJob
 siteSpecified = True
 if options.site == 'AUTO':
     siteSpecified = False
-
-brokerageLogs  = []
-userBrokerLogs = []
 
 # cloud specified
 if options.cloud != defaultCloud:
@@ -2354,6 +2354,10 @@ jobsetID = options.panda_jobsetID
 # no submit 
 if options.nosubmit:
     tmpLog.info("%s subjobs to be submitted to %s" % (len(jobList),options.site))
+    if options.verbose:
+	tmpLog.debug("brokerage info")
+	for tmpBrokerageMsg in brokerageLogs+userBrokerLogs:
+            print tmpBrokerageMsg
 
 # submit 
 if not options.nosubmit:

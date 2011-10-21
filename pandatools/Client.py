@@ -2561,9 +2561,20 @@ def setGlobalTmpDir(tmpDir):
 
 
 # exclude site
-def excludeSite(excludedSite):
+def excludeSite(excludedSite,origFullExecString='',infoList=[]):
     if excludedSite == '':
         return
+    # get list of original excludedSites
+    origExcludedSite = []
+    if origFullExecString != '':
+        # extract original excludedSite
+        origFullExecString = urllib.unquote(origFullExecString)
+        match = re.search('--excludedSite\s*=*([^ "]+)',origFullExecString)
+        if match != None:
+            origExcludedSite = match.group(1).split(',')
+    else:
+        # use excludedSite since this is the first loop
+        origExcludedSite = excludedSite.split(',')
     # sites composed of long/short queues
     compSites = ['CERN','LYON','BNL']
     # remove sites
@@ -2572,6 +2583,10 @@ def excludeSite(excludedSite):
         # skip empty
         if tmpPatt == '':
             continue
+        # check if the user sepcified
+        userSpecified = False
+        if tmpPatt in origExcludedSite:
+            userSpecified = True
         # check if it is a composite
         for tmpComp in compSites:
             if tmpComp in tmpPatt:
@@ -2583,6 +2598,11 @@ def excludeSite(excludedSite):
             # look for pattern
             if tmpPatt in site:
                 try:
+                    # add brokerage info
+                    if userSpecified and PandaSites[site]['status'] == 'online' and not isExcudedSite(site):
+                        msgBody = 'action=exclude site=%s reason=useroption - excluded by user' % site
+                        if not msgBody in infoList:
+                            infoList.append(msgBody)
                     del PandaSites[site]
                 except:
                     pass

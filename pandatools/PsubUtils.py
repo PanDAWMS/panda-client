@@ -1994,15 +1994,15 @@ def extractNthFieldFromDS(datasetName,nth):
 # info about user brokerage
 def getUserBrokerageInfo(val,optType,infoList):
     if optType == 'site':
-        msgBody = 'use %s - site set by user' % val
+        msgBody = 'action=use site=%s reason=useroption - site set by user' % val
         infoList.append(msgBody)
     elif optType == 'cloud':
-        msgBody = 'use %s - cloud set by user' % val
+        msgBody = 'action=use cloud=%s reason=useroption - cloud set by user' % val
         infoList.append(msgBody)        
     elif optType == 'libDS':
-        msgBody = 'use %s - libDS exists' % val
+        msgBody = 'action=use site=%s reason=libds - libDS exists' % val
         infoList.append(msgBody)        
     elif optType == 'outDS':
-        msgBody = 'use %s - outDS exists' % val
+        msgBody = 'action=use site=%s reason=outds - outDS exists' % val
         infoList.append(msgBody)        
     return infoList
