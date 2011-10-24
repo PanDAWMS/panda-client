@@ -27,7 +27,7 @@ current
   * updated pathena/prun to allow users to overwrite the default option values with ./panda.cfg 
   * added a protection to pathena against duplicated streams in THistSvc
   * added excludedSite info to brokerage log
-  * fixed duplicated archiving in prun
+  * fixed duplicated archiving in pathena/prun
 
 0.3.64 (10/7/2011)
   * fixed retryBuild in pbook
