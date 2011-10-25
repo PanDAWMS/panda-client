@@ -21,12 +21,13 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.65 (10/25/2011)
   * added pbook.kill(running)
   * updated pathena/prun so that any option can have a default value in panda.cfg
   * updated pathena/prun to allow users to overwrite the default option values with ./panda.cfg 
   * added a protection to pathena against duplicated streams in THistSvc
-  * added excudedSite info to brokerage logging
+  * added excludedSite info to brokerage log
+  * fixed duplicated archiving in pathena/prun
 
 0.3.64 (10/7/2011)
   * fixed retryBuild in pbook

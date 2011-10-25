@@ -1557,7 +1557,7 @@ else:
 		    workDirFiles.append(tmpPath)
 	    if skippedFlag:
 		tmpLog.info("please use --maxFileSize or --extFile if you need to send the skipped files to WNs")
-            # set archive name    
+            # set archive name
             if not options.useAthenaPackages:    
                 # create archive
                 if options.libDS != '' or options.nobuild:
@@ -1569,15 +1569,19 @@ else:
                 archiveFullName = "%s/%s" % (tmpDir,archiveName)
 	    # collect files
 	    for tmpFile in workDirFiles:
+                # avoid self-archiving 
+                if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
+                    if options.verbose:
+                        print 'skip self-archiving for %s' % tmpFile
+                    continue
 		if os.path.islink(tmpFile):
-		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -rh '%s' -f '%s'" % (tmpFile,archiveFullName))
+		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -uh '%s' -f '%s'" % (tmpFile,archiveFullName))
 		else:
-		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -rf '%s' '%s'" % (archiveFullName,tmpFile))
+		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -uf '%s' '%s'" % (archiveFullName,tmpFile))
 		if options.verbose:
 		    print tmpFile
 		if status != 0 or out != '':
 		    print out
-
 	# go to tmpdir
 	os.chdir(tmpDir)
 
