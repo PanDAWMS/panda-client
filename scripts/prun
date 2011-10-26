@@ -185,7 +185,7 @@ optP.add_option('--notExpandDBR',action='store_const',const=True,dest='notExpand
 optP.add_option('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
                 help="merge output files")
 optP.add_option('--mergeScript',action='store',dest='mergeScript',default='',type='string',
-                help='Specify user-defied script for output merging')
+                help='Specify user-defied script execution string for output merging')
 optP.add_option('--provenanceID',action='store',dest='provenanceID',default=-1,type='int',
                 help='provenanceID')
 optP.add_option('-v',action='store_const',const=True,dest='verbose',default=False,
@@ -2045,7 +2045,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         if options.mergeOutput:
             jobR.jobParameters += "--mergeOutput "
             if options.mergeScript != '':
-                jobR.jobParameters += "--mergeScript %s " % options.mergeScript
+                jobR.jobParameters += '--mergeScript "%s" ' % options.mergeScript
         if options.jobParams != '':
             # random seed
             tmpJobO = options.jobParams

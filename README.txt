@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.66 (10/26/2011)
+  * fixed --mergeScript of pathena/prun for execution string   
+
 0.3.65 (10/25/2011)
   * added pbook.kill(running)
   * updated pathena/prun so that any option can have a default value in panda.cfg
