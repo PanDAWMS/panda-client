@@ -125,7 +125,7 @@ optP.add_option('--useAMIEventLevelSplit',action='store_const',const=True,dest='
 optP.add_option('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
                 help="merge output files")
 optP.add_option('--mergeScript',action='store',dest='mergeScript',default='',type='string',
-                help='Specify user-defied script for output merging')
+                help='Specify user-defied script or execution string for output merging')
 optP.add_option('--useCommonHalo', action='store_const', const=False, dest='useCommonHalo',  default=True,
                 help="use an integrated DS for BeamHalo")
 optP.add_option('--beamHaloDS',  action='store', dest='beamHaloDS',  default='',
@@ -3566,7 +3566,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         if options.mergeOutput:
             param += "--mergeOutput "
             if options.mergeScript != '':
-                param += "--mergeScript %s " % options.mergeScript
+                param += '--mergeScript "%s" ' % options.mergeScript
         # assign    
         jobR.jobParameters = param
 
