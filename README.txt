@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.67 (11/1/2011)
   * updated prun for --useRootCore + --noBuild
+  * added --pfnList to prun
 
 0.3.66 (10/26/2011)
   * fixed --mergeScript of pathena/prun for execution string   

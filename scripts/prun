@@ -192,6 +192,8 @@ optP.add_option('-v',action='store_const',const=True,dest='verbose',default=Fals
                 help='Verbose')
 optP.add_option('--long', action='store_const',const=True,dest='long',default=False,
                 help='Send job to a long queue')
+optP.add_option('--pfnList',action='store',dest='pfnList',default='',type='string',
+                help='Name of file which contains a list of input PFNs. Those files can be un-registered in DDM')
 optP.add_option('--outputPath',action='store',dest='outputPath', default='',
                 type='string', help='Physical path of output directory relative to a root path')
 optP.add_option('--useOldStyleOutput',action='store_const',const=True,dest='useOldStyleOutput',default=False,
@@ -413,6 +415,10 @@ if options.libDS == 'LAST':
     tmpLibDS = tmpLibDS.replace('\n','')
     # set
     options.libDS = tmpLibDS
+
+# absolute path for PFN list
+if options.pfnList != '':
+    options.pfnList = os.path.realpath(options.pfnList)
 
 # check DBRelease
 if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
@@ -713,6 +719,17 @@ if options.outDS == '':
     tmpLog.error("no outDS is given\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
     sys.exit(EC_Config)
 
+# avoid inDS+pfnList
+if options.pfnList != '':
+    # don't use inDS
+    if options.inDS != '':
+	tmpLog.error("--pfnList and --inDS cannot be used at the same time")
+	sys.exit(EC_Config)
+    # use site    
+    if options.site == 'AUTO':
+	tmpLog.error("--site must be specified when --pfnList is used")
+	sys.exit(EC_Config)
+        
 # secondary datasets
 if options.secondaryDSs != '':
     if options.inDS == '':
@@ -1328,6 +1345,19 @@ if options.inDS != '':
         tmpLog.info("checking boundaries of container elements")
         inputGroupFilesMap = PsubUtils.groupFilesByDataset(options.inDS,inputDsString,
                                                            inputFileList,options.verbose)
+elif options.pfnList != '':
+    # read PFNs from file
+    inputFileList = []
+    inputFileMap = {}
+    rFile = open(options.pfnList)
+    for tmpLine in rFile:
+        tmpLine = tmpLine.rstrip("\n")
+        tmpLine = tmpLine.strip()
+        if tmpLine != '':
+            inputFileList.append(tmpLine)
+            # make dummy map for splitting
+            inputFileMap[tmpLine] = {'fsize':1}
+    rFile.close()
 else:
     # set cloud for no input dataset
     if options.site == "AUTO":
@@ -1924,7 +1954,7 @@ isDirectAccess = PsubUtils.isDirectAccess(options.site)
 
 # create single submission block when ContElementBoundary is not used
 if inputGroupFilesMap=={} or not options.useContElementBoundary:
-    if options.inDS != '':
+    if options.inDS != '' or options.pfnList != '':
         inputGroupFilesMap[options.inDS] = inputFileList
     else:
         inputGroupFilesMap['singleblock'] = []
@@ -1942,7 +1972,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         b_nJobs        = options.nJobs
         b_nFilesPerJob = options.nFilesPerJob
         # set number of files per job
-        if options.inDS != '':
+        if options.inDS != '' or options.pfnList != '':
             b_nFilesPerJob,nFilesEachSubJob = PsubUtils.calculateNumSplitPrun(b_nFilesPerJob,options.nGBPerJob,
                                                                           b_inputFileList,inputFileMap,maxTotalSize,
                                                                           dbrDsSize,safetySize)
@@ -2030,6 +2060,9 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
         if matchURL != None:
             jobR.jobParameters += "--sourceURL %s " % matchURL.group(1)
+        # given PFN
+        if options.pfnList != '':
+            jobR.jobParameters += '--givenPFN '
         # use Athena packages
         if options.useAthenaPackages:
             jobR.jobParameters += "--useAthenaPackages "
@@ -2080,7 +2113,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         if options.libDS != "" or options.nobuild:
             jobR.jobParameters += '-a %s ' % archiveName
         # input files
-        if options.inDS != '':
+        if options.inDS != '' or options.pfnList != '':
             totalSize = 0
             if options.loadXML:
                 # input files are listed explicitly for each subjob in the xml file
@@ -2097,6 +2130,8 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             if inList == []:
                 break
             for tmpLFN in inList:
+                if options.pfnList != '':
+                    continue
                 vals = inputFileMap[tmpLFN]
                 fileI = FileSpec()
                 fileI.lfn        = tmpLFN
