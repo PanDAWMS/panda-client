@@ -824,10 +824,10 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                                 sString=re.sub('[\+]','.',workArea)
                                 relPath = re.sub(sString+'/','',iFile)
                             if os.path.islink(iFile):
-                                cmd = "tar -rh '%s' -f '%s' --exclude '%s'" % (relPath,_archiveFullName,excludePattern)
+                                cmd = "tar -uh '%s' -f '%s' --exclude '%s'" % (relPath,_archiveFullName,excludePattern)
                                 out = commands.getoutput(cmd)
                             else:
-                                cmd = "tar rf '%s' '%s' --exclude '%s'" % (_archiveFullName,relPath,excludePattern)
+                                cmd = "tar uf '%s' '%s' --exclude '%s'" % (_archiveFullName,relPath,excludePattern)
                                 out = commands.getoutput(cmd)
                             if verbose:
                                 print relPath
@@ -836,9 +836,9 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                     continue
                 # else
                 if dereferenceSymLinks:
-                    cmd = "tar rfh '%s' '%s/%s' --exclude '%s'" % (_archiveFullName,pack,item,excludePattern)
+                    cmd = "tar ufh '%s' '%s/%s' --exclude '%s'" % (_archiveFullName,pack,item,excludePattern)
                 else:
-                    cmd = "tar rf '%s' '%s/%s' --exclude '%s'" % (_archiveFullName,pack,item,excludePattern)
+                    cmd = "tar uf '%s' '%s/%s' --exclude '%s'" % (_archiveFullName,pack,item,excludePattern)
                 out = commands.getoutput(cmd)
                 if verbose:
                     print "%s/%s" % (pack,item)
@@ -903,9 +903,9 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
         # archive
         if not alreadyFlag:
             if os.path.islink(file):
-                out = commands.getoutput("tar -rh '%s' -f '%s'" % (relPath,archiveFullName))                
+                out = commands.getoutput("tar -uh '%s' -f '%s'" % (relPath,archiveFullName))                
             else:
-                out = commands.getoutput("tar rf '%s' '%s'" % (archiveFullName,relPath))                
+                out = commands.getoutput("tar uf '%s' '%s'" % (archiveFullName,relPath))                
             if verbose:
                 print relPath
                 if out != '':    
@@ -953,7 +953,7 @@ def archiveJobOFiles(workArea,runDir,currentDir,tmpDir,verbose):
         sString=re.sub('[\+]','.',workArea)
         relPath = re.sub(sString+'/','',file)
         # append
-        out = commands.getoutput("tar -rh '%s' -f '%s'" % (relPath,archiveFullName))
+        out = commands.getoutput("tar -uh '%s' -f '%s'" % (relPath,archiveFullName))
         if verbose:
             print relPath
             if out != '':    
