@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.68 (11/8/2011)
+  * fixed for pyAMI
+
 0.3.67 (11/1/2011)
   * updated prun for --useRootCore + --noBuild
   * added --pfnList to prun

@@ -1984,7 +1984,7 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
         goodRunListDS = goodRunListDS.split(',')
     # execute
     try:
-        amiclient=pyAMI.AMI(False)
+        amiclient=pyAMI.AMI()
         amiOut = amiclient.execute(amiArgv)
     except:
         errType,errValue = sys.exc_info()[:2]
@@ -2178,7 +2178,7 @@ def listFilesUsingAMI(inDsStr,verbose):
             if verbose:
                 tmpLog.debug(amiArgv)
             try:
-                amiclient=pyAMI.AMI(False)
+                amiclient=pyAMI.AMI()
                 amiOut = amiclient.execute(amiArgv)
             except:
                 errType,errValue = sys.exc_info()[:2]
