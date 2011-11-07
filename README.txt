@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-0.3.68 (11/8/2011)
+0.3.68 (11/7/2011)
   * fixed for pyAMI
 
 0.3.67 (11/1/2011)
