@@ -68,6 +68,8 @@ optP.add_option('--site', action='store', dest='site',  default="AUTO",
                 type='string',    help='Site name where jobs are sent (default:AUTO)')
 optP.add_option('--inDS',  action='store', dest='inDS',  default='',
                 type='string', help='Input dataset names. wildcard and/or comma can be used to concatenate multiple datasets')
+optP.add_option('--inDsTxt',action='store',dest='inDsTxt',default='',
+                type='string', help='a text file which contains the list of datasets to run over. newlines are replaced by commas and the result is set to --inDS. lines starting with # are ignored')
 optP.add_option('--minDS',  action='store', dest='minDS',  default='',
                 type='string', help='Dataset name for minimum bias stream')
 optP.add_option('--nMin',  action='store', dest='nMin',  default=-1,
@@ -481,6 +483,10 @@ if not original_outDS_Name.endswith('/'):
     options.panda_jobsetID = None
 
 usingContainerForOut = original_outDS_Name.endswith('/')
+
+# read datasets from file
+if options.inDsTxt != '':
+    options.inDS = PsubUtils.readDsFromFile(options.inDsTxt)
 
 # set inDS for recursive goodRunListXML
 orig_inDS = options.inDS

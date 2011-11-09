@@ -42,6 +42,8 @@ optP.add_option('--version',action='store_const',const=True,dest='version',defau
                 help='Displays version')
 optP.add_option('--inDS',action='store',dest='inDS',default='',type='string',
                 help='Name of an input dataset or dataset container')
+optP.add_option('--inDsTxt',action='store',dest='inDsTxt',default='',type='string',
+                help='a text file which contains the list of datasets to run over. newlines are replaced by commas and the result is set to --inDS. lines starting with # are ignored')
 optP.add_option('--goodRunListXML', action='store', dest='goodRunListXML', default='',
                 type='string', help='Good Run List XML which will be converted to datasets by AMI')
 optP.add_option('--goodRunListDataType', action='store', dest='goodRunDataType', default='',
@@ -384,6 +386,10 @@ if not original_outDS_Name.endswith('/'):
     options.panda_jobsetID = None
 
 usingContainerForOut = original_outDS_Name.endswith('/')
+
+# read datasets from file
+if options.inDsTxt != '':
+    options.inDS = PsubUtils.readDsFromFile(options.inDsTxt)
 
 # set inDS for recursive goodRunListXML
 if options.panda_inDS != '':

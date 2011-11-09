@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added --inDsTxt to pathena and prun
+
 0.3.69 (11/9/2011)
   * added --lowMinDS and --highMinDS to pathena for %LOMBIN and %HIMBIN in --trf
 
