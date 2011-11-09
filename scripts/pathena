@@ -74,6 +74,18 @@ optP.add_option('--nMin',  action='store', dest='nMin',  default=-1,
                 type='int', help='Number of minimum bias files per one signal file')
 optP.add_option('--nMinPerJob',  action='store', dest='nMinPerJob',  default=-1,
                 type='int', help='Number of minimum bias files per sub job')
+optP.add_option('--lowMinDS',  action='store', dest='lowMinDS',  default='',
+                type='string', help='Dataset name for low pT minimum bias stream')
+optP.add_option('--nLowMin',  action='store', dest='nLowMin',  default=-1,
+                type='int', help='Number of low pT minimum bias files per one signal file')
+optP.add_option('--nLowMinPerJob',  action='store', dest='nLowMinPerJob',  default=-1,
+                type='int', help='Number of low pT minimum bias files per sub job')
+optP.add_option('--highMinDS',  action='store', dest='highMinDS',  default='',
+                type='string', help='Dataset name for high pT minimum bias stream')
+optP.add_option('--nHighMin',  action='store', dest='nHighMin',  default=-1,
+                type='int', help='Number of high pT minimum bias files per one signal file')
+optP.add_option('--nHighMinPerJob',  action='store', dest='nHighMinPerJob',  default=-1,
+                type='int', help='Number of high pT minimum bias files per sub job')
 optP.add_option('--randomMin',action='store_const',const=True,dest='randomMin',default=False,
                 help='randomize files in minimum bias dataset')
 optP.add_option('--cavDS',  action='store', dest='cavDS',  default='',
@@ -1527,6 +1539,34 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     break
         else:
             minbiasDataset = options.minDS
+    # low pT minimum bias dataset
+    if options.trf and jobO.find('%LOMBIN') != -1:
+        runConfig.input.inLoMinBias = True
+    # set dataset name    
+    if runConfig.input.inLoMinBias:
+        if options.lowMinDS == "":
+            # read from stdin   
+            print
+            print "This job uses Low pt Minimum-Bias stream"
+            while True:
+                options.lowMinDS = raw_input("Enter dataset name for Low pT Minimum Bias : ")
+                options.lowMinDS = options.lowMinDS.strip()
+                if options.lowMinDS != "":
+                    break
+    # high pT minimum bias dataset
+    if options.trf and jobO.find('%HIMBIN') != -1:
+        runConfig.input.inHiMinBias = True
+    # set dataset name    
+    if runConfig.input.inHiMinBias:
+        if options.highMinDS == "":
+            # read from stdin   
+            print
+            print "This job uses High pt Minimum-Bias stream"
+            while True:
+                options.highMinDS = raw_input("Enter dataset name for High pT Minimum Bias : ")
+                options.highMinDS = options.highMinDS.strip()
+                if options.highMinDS != "":
+                    break
     # cavern dataset
     if options.trf and jobO.find('%CAVIN') != -1:
         runConfig.input.inCavern = True
@@ -1759,6 +1799,10 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             secondaryDsStrList = []
             if runConfig.input.inMinBias:
                 secondaryDsStrList.append(minbiasDataset)
+            if runConfig.input.inLoMinBias:
+                secondaryDsStrList.append(options.lowMinDS)
+            if runConfig.input.inHiMinBias:
+                secondaryDsStrList.append(options.highMinDS)
             if runConfig.input.inCavern:
                 secondaryDsStrList.append(cavernDataset)
             # take beamgas/halo datasets into account
@@ -2221,7 +2265,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             if re.search('log(\.tgz)*(\.\d+)*$',item) != None or \
                    re.search('\.log(\.\d+)*(\.tgz)*$',item) != None:
                 continue
-            # remove missing files                                                                                                                                           
+            # remove missing files
             if item in tmpMissList:
                 continue
             minbiasList.append((item,tmpList[item]))
@@ -2247,6 +2291,84 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             else:
                 tmpLog.error("only %s files in %s are available at %s which is less than nMinPerJob=%s" % \
                              (len(minbiasList),minbiasDataset,options.site,options.nMinPerJob))
+            sys.exit(EC_Dataset)
+    # input stream for low pT minimum bias
+    if runConfig.input.inLoMinBias:
+        # query files in dataset
+        tmpLog.info("query files in %s" % options.lowMinDS)
+        tmpList = Client.queryFilesInDataset(options.lowMinDS,options.verbose)
+	tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=options.lowMinDS)
+	lowminbiasList = []
+        for item in tmpList.keys():
+            # remove log
+            if re.search('log(\.tgz)*(\.\d+)*$',item) != None or \
+                   re.search('\.log(\.\d+)*(\.tgz)*$',item) != None:
+                continue
+            # remove missing files
+            if item in tmpMissList:
+                continue
+            lowminbiasList.append((item,tmpList[item]))
+        # sort
+        lowminbiasList.sort()
+        # randomize
+        if options.randomMin:
+            random.shuffle(lowminbiasList)
+        # number of files per one signal
+        if options.nLowMin < 0 and options.nLowMinPerJob < 0:
+            while True:
+                tmpStr = raw_input("Enter the number of Low pT Minimum-Bias files per one signal file : ")
+                try:
+                    options.nLowMin = int(tmpStr)
+                    break
+                except:
+                    pass
+        # check # of files
+        if len(lowminbiasList) < max(options.nLowMin,options.nLowMinPerJob):
+            if options.nLowMin > 0:
+                tmpLog.error("only %s files in %s are available at %s which is less than nLowMin=%s" % \
+                             (len(lowminbiasList),options.lowMinDS,options.site,options.nLowMin))
+            else:
+                tmpLog.error("only %s files in %s are available at %s which is less than nLowMinPerJob=%s" % \
+                             (len(lowminbiasList),options.lowMinDS,options.site,options.nLowMinPerJob))
+            sys.exit(EC_Dataset)
+    # input stream for high pT minimum bias
+    if runConfig.input.inHiMinBias:
+        # query files in dataset
+        tmpLog.info("query files in %s" % options.highMinDS)
+        tmpList = Client.queryFilesInDataset(options.highMinDS,options.verbose)
+	tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=options.highMinDS)
+	highminbiasList = []
+        for item in tmpList.keys():
+            # remove log
+            if re.search('log(\.tgz)*(\.\d+)*$',item) != None or \
+                   re.search('\.log(\.\d+)*(\.tgz)*$',item) != None:
+                continue
+            # remove missing files
+            if item in tmpMissList:
+                continue
+            highminbiasList.append((item,tmpList[item]))
+        # sort
+        highminbiasList.sort()
+        # randomize
+        if options.randomMin:
+            random.shuffle(highminbiasList)
+        # number of files per one signal
+        if options.nHighMin < 0 and options.nHighMinPerJob < 0:
+            while True:
+                tmpStr = raw_input("Enter the number of High pT Minimum-Bias files per one signal file : ")
+                try:
+                    options.nHighMin = int(tmpStr)
+                    break
+                except:
+                    pass
+        # check # of files
+        if len(highminbiasList) < max(options.nHighMin,options.nHighMinPerJob):
+            if options.nHighMin > 0:
+                tmpLog.error("only %s files in %s are available at %s which is less than nHighMin=%s" % \
+                             (len(highminbiasList),options.highMinDS,options.site,options.nHighMin))
+            else:
+                tmpLog.error("only %s files in %s are available at %s which is less than nHighMinPerJob=%s" % \
+                             (len(highminbiasList),options.highMinDS,options.site,options.nHighMinPerJob))
             sys.exit(EC_Dataset)
     # input stream for cavern
     if runConfig.input.inCavern:
@@ -2857,6 +2979,8 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
     indexFiles   = 0
     indexCavern  = 0
     indexMin     = 0
+    indexLowMin  = 0
+    indexHighMin = 0
     indexBHalo   = 0
     indexBHaloA  = 0
     indexBHaloC  = 0
@@ -2942,6 +3066,8 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         bhaloList    = []
         bgasList     = []
         guidBoundary = []
+        lowminList   = []
+        highminList  = []                
         if options.inDS != '' or options.shipinput or options.pfnList != '':
             # calculate N files
             if options.nGBPerJob == -1:
@@ -3136,6 +3262,68 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
                         file.prodDBlockToken = 'local'
                     jobR.addFile(file)
                     minList.append(fileName)
+                    totalMinSize += long(file.fsize)
+            # low pT Minimum Bias        
+            if runConfig.input.inLoMinBias:
+                if (options.nLowMin > 0 and indexLowMin+options.nLowMin*divF >= len(lowminbiasList)) or \
+                       (options.nLowMinPerJob > 0 and indexLowMin+options.nLowMinPerJob >= len(lowminbiasList)):
+                    # re-use files when Low pT Minimum-Bias files are not enough   
+                    indexLowMin = 0
+                if options.nLowMin > 0:    
+                    tmpList = lowminbiasList[indexLowMin:indexLowMin+options.nLowMin*divF]
+                    indexLowMin += options.nLowMin*divF
+                else:
+                    tmpList = lowminbiasList[indexLowMin:indexLowMin+options.nLowMinPerJob]
+                    indexLowMin += options.nLowMinPerJob
+                numMinFiles += len(tmpList)
+                for fileName,vals in tmpList:
+                    # instantiate  FileSpec
+                    file = FileSpec()
+                    file.lfn            = fileName
+                    file.GUID           = vals['guid']
+                    file.fsize          = vals['fsize']
+                    file.md5sum         = vals['md5sum']
+                    file.dataset        = options.lowMinDS
+                    file.prodDBlock     = options.lowMinDS
+                    file.dispatchDBlock = commonDispName
+                    file.type       = 'input'
+                    file.status     = 'ready'
+                    file.destinationDBlockToken = 'noshadow'                
+                    if options.trf and not isDirectAccess:
+                        file.prodDBlockToken = 'local'
+                    jobR.addFile(file)
+                    lowminList.append(fileName)
+                    totalMinSize += long(file.fsize)
+            # high pT Minimum Bias        
+            if runConfig.input.inHiMinBias:
+                if (options.nHighMin > 0 and indexHighMin+options.nHighMin*divF >= len(highminbiasList)) or \
+                       (options.nHighMinPerJob > 0 and indexHighMin+options.nHighMinPerJob >= len(highminbiasList)):
+                    # re-use files when High pT Minimum-Bias files are not enough   
+                    indexHighMin = 0
+                if options.nHighMin > 0:    
+                    tmpList = highminbiasList[indexHighMin:indexHighMin+options.nHighMin*divF]
+                    indexHighMin += options.nHighMin*divF
+                else:
+                    tmpList = highminbiasList[indexHighMin:indexHighMin+options.nHighMinPerJob]
+                    indexHighMin += options.nHighMinPerJob
+                numMinFiles += len(tmpList)
+                for fileName,vals in tmpList:
+                    # instantiate  FileSpec
+                    file = FileSpec()
+                    file.lfn            = fileName
+                    file.GUID           = vals['guid']
+                    file.fsize          = vals['fsize']
+                    file.md5sum         = vals['md5sum']
+                    file.dataset        = options.highMinDS
+                    file.prodDBlock     = options.highMinDS
+                    file.dispatchDBlock = commonDispName
+                    file.type       = 'input'
+                    file.status     = 'ready'
+                    file.destinationDBlockToken = 'noshadow'                
+                    if options.trf and not isDirectAccess:
+                        file.prodDBlockToken = 'local'
+                    jobR.addFile(file)
+                    highminList.append(fileName)
                     totalMinSize += long(file.fsize)
             # Cavern
             totalCavSize = 0
@@ -3406,8 +3594,12 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             if not AthenaUtils.checkUseTagInTrf(jobO,options.useTagInTRF):
                 # keep %IN to be replaced on WN if they are TAGs
                 inPattList += [('%IN',inList)]
-            inPattList += [('%MININ',minList),('%CAVIN',cavList),
-                           ('%BHIN',bhaloList),('%BGIN',bgasList)]    
+            inPattList += [('%MININ',minList),
+                           ('%CAVIN',cavList),
+                           ('%BHIN',bhaloList),
+                           ('%BGIN',bgasList),
+                           ('%LOMBIN',lowminList),
+                           ('%HIMBIN',highminList)]
             for tmpPatt,tmpInList in inPattList:
                 if tmpJobO.find(tmpPatt) != -1 and len(tmpInList) > 0:
                     tmpJobO = AthenaUtils.replaceParam(tmpPatt,tmpInList,tmpJobO)
@@ -3467,7 +3659,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             # set jobO parameter
             param += '-j "%s" ' % urllib.quote(tmpJobO)		
         param += '-i "%s" ' % inList
-        param += '-m "%s" ' % minList
+        param += '-m "%s" ' % (minList+lowminList+highminList)
         param += '-n "%s" ' % cavList
         if bhaloList != []:
             param += '--beamHalo "%s" ' % bhaloList

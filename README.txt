@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.69 (11/9/2011)
+  * added --lowMinDS and --highMinDS to pathena for %LOMBIN and %HIMBIN in --trf
+
 0.3.68 (11/7/2011)
   * fixed for pyAMI
 
