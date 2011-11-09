@@ -2186,7 +2186,7 @@ def listFilesUsingAMI(inDsStr,verbose):
                 errStr  = 'pyAMI failed. '
                 errStr += 'If %s is not an official dataset, ' % inDS
                 errStr += 'please manually set --nEventsPerFile '
-                errStr += 'since metata is unavailable in AMI'
+                errStr += 'since metadata is unavailable in AMI'
                 tmpLog.error(errStr)
                 sys.exit(EC_Config)
             # get file metadata
