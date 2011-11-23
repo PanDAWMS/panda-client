@@ -142,7 +142,7 @@ optP.add_option('--crossSite',action='store',dest='crossSite',default=maxCrossSi
                 type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=%s by default)' % maxCrossSite)
 optP.add_option('--outputs',action='store',dest='outputs',default='',type='string',
                 help='Names of output files. Comma separated. e.g., --outputs out1.dat,out2.txt')
-optP.add_option('--excludedSite', action='store', dest='excludedSite',  default='',
+optP.add_option('--excludedSite', action='append', dest='excludedSite',  default=[],
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
 optP.add_option('--noSubmit',action='store_const',const=True,dest='nosubmit',default=False,
                 help="Don't submit jobs")
@@ -344,7 +344,7 @@ brokerageLogs  = []
 userBrokerLogs = []
 
 # exclude sites
-if options.excludedSite != '':
+if options.excludedSite != []:
     Client.excludeSite(options.excludedSite,options.panda_origFullExecString,userBrokerLogs)
 
 # use certain sites

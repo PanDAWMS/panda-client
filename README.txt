@@ -23,6 +23,7 @@ pathena -h
 
 current
   * added --inDsTxt to pathena and prun
+  * changed --excludedSite of pathena/prun to use action=append 
 
 0.3.69 (11/9/2011)
   * added --lowMinDS and --highMinDS to pathena for %LOMBIN and %HIMBIN in --trf
