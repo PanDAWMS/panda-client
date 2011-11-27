@@ -21,9 +21,11 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.70 (11/27/2011)
   * added --inDsTxt to pathena and prun
   * changed --excludedSite of pathena/prun to use action=append 
+  * fixed parameter setting via panda.cfg for multi-site jobs
+  * modified panda.cfg to be written in metadata
 
 0.3.69 (11/9/2011)
   * added --lowMinDS and --highMinDS to pathena for %LOMBIN and %HIMBIN in --trf

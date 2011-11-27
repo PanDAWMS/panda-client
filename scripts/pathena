@@ -412,10 +412,25 @@ for tmpAppConfKey,tmpAppConfVal in appConf.getConfig().iteritems():
     # check lower characters just in case
     tmpAppConfKeys = [tmpAppConfKey,tmpAppConfKey.lower()]
     for tmpKey in tmpAppConfKeys:
-        if hasattr(options,tmpKey) and getattr(options,tmpKey) in [-1,0,None,'','AUTO']:
-            setattr(options,tmpKey,tmpAppConfVal)
-            if options.verbose:
-                tmpLog.debug("Use default option in panda.cfg %s=%s" % (tmpKey,getattr(options,tmpKey)))
+        if hasattr(options,tmpKey):
+            tmpSetAttFlag = False
+	    if getattr(options,tmpKey) in [-1,0,None,'','AUTO',False]:
+		setattr(options,tmpKey,tmpAppConfVal)
+		tmpSetAttFlag = True
+            elif getattr(options,tmpKey) == []:
+                tmpSetValue = tmpAppConfVal.split(',')
+                if '' in tmpSetValue:
+                    tmpSetValue.remove('')
+                setattr(options,tmpKey,tmpSetValue)
+                tmpSetAttFlag = True
+            if tmpSetAttFlag:
+                # append parameter to metadata
+                if isinstance(tmpAppConfVal,types.BooleanType):
+                    fullExecString += ' --%s' % tmpKey
+                else:
+                    fullExecString += ' --%s=%s' % (tmpKey,tmpAppConfVal)
+                if options.verbose:
+                    tmpLog.debug("Use default option in panda.cfg %s=%s" % (tmpKey,getattr(options,tmpKey)))
             break
 
 # use dev server
