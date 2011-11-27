@@ -21,12 +21,32 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.70 (11/27/2011)
+  * added --inDsTxt to pathena and prun
+  * changed --excludedSite of pathena/prun to use action=append 
+  * fixed parameter setting via panda.cfg for multi-site jobs
+  * modified panda.cfg to be written in metadata
+
+0.3.69 (11/9/2011)
+  * added --lowMinDS and --highMinDS to pathena for %LOMBIN and %HIMBIN in --trf
+
+0.3.68 (11/7/2011)
+  * fixed for pyAMI
+
+0.3.67 (11/1/2011)
+  * updated prun for --useRootCore + --noBuild
+  * added --pfnList to prun
+
+0.3.66 (10/26/2011)
+  * fixed --mergeScript of pathena/prun for execution string   
+
+0.3.65 (10/25/2011)
   * added pbook.kill(running)
   * updated pathena/prun so that any option can have a default value in panda.cfg
   * updated pathena/prun to allow users to overwrite the default option values with ./panda.cfg 
   * added a protection to pathena against duplicated streams in THistSvc
-  * added excudedSite info to brokerage logging
+  * added excludedSite info to brokerage log
+  * fixed duplicated archiving in pathena/prun
 
 0.3.64 (10/7/2011)
   * fixed retryBuild in pbook

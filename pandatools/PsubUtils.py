@@ -2006,3 +2006,32 @@ def getUserBrokerageInfo(val,optType,infoList):
         msgBody = 'action=use site=%s reason=outds - outDS exists' % val
         infoList.append(msgBody)        
     return infoList
+
+
+# read dataset names from text 
+def readDsFromFile(txtName):
+    dsList = ''
+    try:
+        # read lines
+        txt = open(txtName)
+        for tmpLine in txt:
+            # remove \n
+            tmpLine = re.sub('\n','',tmpLine)
+            # remove white spaces
+            tmpLine = tmpLine.strip()
+            # skip comment or empty
+            if tmpLine.startswith('#') or tmpLine == '':
+                continue
+            # append
+            dsList += '%s,' % tmpLine
+        # close file    
+        txt.close()
+        # remove the last comma
+        dsList = dsList[:-1] 
+    except:
+        errType,errValue = sys.exc_info()[:2]
+        tmpLog = PLogger.getPandaLogger()
+        tmpLog.error('cannot read datasets from %s due to %s:%s' \
+                     % (txtName,errType,errValue))
+        sys.exit(EC_Config)    
+    return dsList

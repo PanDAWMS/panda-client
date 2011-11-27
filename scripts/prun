@@ -42,6 +42,8 @@ optP.add_option('--version',action='store_const',const=True,dest='version',defau
                 help='Displays version')
 optP.add_option('--inDS',action='store',dest='inDS',default='',type='string',
                 help='Name of an input dataset or dataset container')
+optP.add_option('--inDsTxt',action='store',dest='inDsTxt',default='',type='string',
+                help='a text file which contains the list of datasets to run over. newlines are replaced by commas and the result is set to --inDS. lines starting with # are ignored')
 optP.add_option('--goodRunListXML', action='store', dest='goodRunListXML', default='',
                 type='string', help='Good Run List XML which will be converted to datasets by AMI')
 optP.add_option('--goodRunListDataType', action='store', dest='goodRunDataType', default='',
@@ -140,7 +142,7 @@ optP.add_option('--crossSite',action='store',dest='crossSite',default=maxCrossSi
                 type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=%s by default)' % maxCrossSite)
 optP.add_option('--outputs',action='store',dest='outputs',default='',type='string',
                 help='Names of output files. Comma separated. e.g., --outputs out1.dat,out2.txt')
-optP.add_option('--excludedSite', action='store', dest='excludedSite',  default='',
+optP.add_option('--excludedSite', action='append', dest='excludedSite',  default=[],
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
 optP.add_option('--noSubmit',action='store_const',const=True,dest='nosubmit',default=False,
                 help="Don't submit jobs")
@@ -185,13 +187,15 @@ optP.add_option('--notExpandDBR',action='store_const',const=True,dest='notExpand
 optP.add_option('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
                 help="merge output files")
 optP.add_option('--mergeScript',action='store',dest='mergeScript',default='',type='string',
-                help='Specify user-defied script for output merging')
+                help='Specify user-defied script execution string for output merging')
 optP.add_option('--provenanceID',action='store',dest='provenanceID',default=-1,type='int',
                 help='provenanceID')
 optP.add_option('-v',action='store_const',const=True,dest='verbose',default=False,
                 help='Verbose')
 optP.add_option('--long', action='store_const',const=True,dest='long',default=False,
                 help='Send job to a long queue')
+optP.add_option('--pfnList',action='store',dest='pfnList',default='',type='string',
+                help='Name of file which contains a list of input PFNs. Those files can be un-registered in DDM')
 optP.add_option('--outputPath',action='store',dest='outputPath', default='',
                 type='string', help='Physical path of output directory relative to a root path')
 optP.add_option('--useOldStyleOutput',action='store_const',const=True,dest='useOldStyleOutput',default=False,
@@ -289,10 +293,25 @@ for tmpAppConfKey,tmpAppConfVal in appConf.getConfig().iteritems():
     # check lower characters just in case
     tmpAppConfKeys = [tmpAppConfKey,tmpAppConfKey.lower()]
     for tmpKey in tmpAppConfKeys:
-        if hasattr(options,tmpKey) and getattr(options,tmpKey) in [-1,0,None,'','AUTO']:
-            setattr(options,tmpKey,tmpAppConfVal)
-            if options.verbose:
-                tmpLog.debug("Use default option in panda.cfg %s=%s" % (tmpKey,getattr(options,tmpKey)))
+        if hasattr(options,tmpKey):
+            tmpSetAttFlag = False
+	    if getattr(options,tmpKey) in [-1,0,None,'','AUTO',False]:
+		setattr(options,tmpKey,tmpAppConfVal)
+		tmpSetAttFlag = True
+            elif getattr(options,tmpKey) == []:
+                tmpSetValue = tmpAppConfVal.split(',')
+                if '' in tmpSetValue:
+                    tmpSetValue.remove('')
+                setattr(options,tmpKey,tmpSetValue)
+                tmpSetAttFlag = True
+            if tmpSetAttFlag:
+                # append parameter to metadata
+                if isinstance(tmpAppConfVal,types.BooleanType):
+                    fullExecString += ' --%s' % tmpKey
+                else:
+                    fullExecString += ' --%s=%s' % (tmpKey,tmpAppConfVal)
+                if options.verbose:
+                    tmpLog.debug("Use default option in panda.cfg %s=%s" % (tmpKey,getattr(options,tmpKey)))
             break
 
 # use dev server
@@ -340,7 +359,7 @@ brokerageLogs  = []
 userBrokerLogs = []
 
 # exclude sites
-if options.excludedSite != '':
+if options.excludedSite != []:
     Client.excludeSite(options.excludedSite,options.panda_origFullExecString,userBrokerLogs)
 
 # use certain sites
@@ -383,6 +402,10 @@ if not original_outDS_Name.endswith('/'):
 
 usingContainerForOut = original_outDS_Name.endswith('/')
 
+# read datasets from file
+if options.inDsTxt != '':
+    options.inDS = PsubUtils.readDsFromFile(options.inDsTxt)
+
 # set inDS for recursive goodRunListXML
 if options.panda_inDS != '':
     options.inDS = options.panda_inDS
@@ -413,6 +436,10 @@ if options.libDS == 'LAST':
     tmpLibDS = tmpLibDS.replace('\n','')
     # set
     options.libDS = tmpLibDS
+
+# absolute path for PFN list
+if options.pfnList != '':
+    options.pfnList = os.path.realpath(options.pfnList)
 
 # check DBRelease
 if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
@@ -446,11 +473,6 @@ if options.rootVer != '':
     # change / to .
     options.rootVer = re.sub('/','.',options.rootVer)
     
-# check RootCore
-if options.useRootCore and options.nobuild:
-    tmpLog.error("--useRootCore cannot be used together with --noBuild")
-    sys.exit(EC_Config)
-
 # check writeInputToTxt
 if options.writeInputToTxt != '':
     # remove %
@@ -718,6 +740,17 @@ if options.outDS == '':
     tmpLog.error("no outDS is given\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
     sys.exit(EC_Config)
 
+# avoid inDS+pfnList
+if options.pfnList != '':
+    # don't use inDS
+    if options.inDS != '':
+	tmpLog.error("--pfnList and --inDS cannot be used at the same time")
+	sys.exit(EC_Config)
+    # use site    
+    if options.site == 'AUTO':
+	tmpLog.error("--site must be specified when --pfnList is used")
+	sys.exit(EC_Config)
+        
 # secondary datasets
 if options.secondaryDSs != '':
     if options.inDS == '':
@@ -1333,6 +1366,19 @@ if options.inDS != '':
         tmpLog.info("checking boundaries of container elements")
         inputGroupFilesMap = PsubUtils.groupFilesByDataset(options.inDS,inputDsString,
                                                            inputFileList,options.verbose)
+elif options.pfnList != '':
+    # read PFNs from file
+    inputFileList = []
+    inputFileMap = {}
+    rFile = open(options.pfnList)
+    for tmpLine in rFile:
+        tmpLine = tmpLine.rstrip("\n")
+        tmpLine = tmpLine.strip()
+        if tmpLine != '':
+            inputFileList.append(tmpLine)
+            # make dummy map for splitting
+            inputFileMap[tmpLine] = {'fsize':1}
+    rFile.close()
 else:
     # set cloud for no input dataset
     if options.site == "AUTO":
@@ -1417,10 +1463,14 @@ else:
                 tmpLog.error(tmpErrMsg)
                 sys.exit(EC_Config)
             # check grid_submit.sh
-            rootCoreSubmitSh  = os.environ['ROOTCOREDIR'] + '/scripts/grid_submit.sh'
-            rootCoreCompileSh = os.environ['ROOTCOREDIR'] + '/scripts/grid_compile.sh'
-            rootCoreRunSh     = os.environ['ROOTCOREDIR'] + '/scripts/grid_run.sh'
-            for tmpShFile in [rootCoreSubmitSh,rootCoreCompileSh,rootCoreRunSh]:
+            rootCoreSubmitSh   = os.environ['ROOTCOREDIR'] + '/scripts/grid_submit.sh'
+            rootCoreCompileSh  = os.environ['ROOTCOREDIR'] + '/scripts/grid_compile.sh'
+            rootCoreRunSh      = os.environ['ROOTCOREDIR'] + '/scripts/grid_run.sh'
+            rootCoreSubmitNbSh = os.environ['ROOTCOREDIR'] + '/scripts/grid_submit_nobuild.sh'
+            rootCoreShList = [rootCoreSubmitSh,rootCoreCompileSh,rootCoreRunSh]
+            if options.nobuild:
+                rootCoreShList.append(rootCoreSubmitNbSh)
+            for tmpShFile in rootCoreShList:
                 if not os.path.exists(tmpShFile):
                     tmpErrMsg  = "%s doesn't exist. Please use a newer version of RootCore" % tmpShFile
                     tmpLog.error(tmpErrMsg)
@@ -1433,11 +1483,14 @@ else:
             options.extFile.append(pandaRootCoreWorkDirName + '/.*')
             # add to be deleted on exit
             delFilesOnExit.append(rootCoreDestWorkDir)
-            tmpStat = os.system('%s %s' % (rootCoreSubmitSh,rootCoreDestWorkDir))
+            if not options.nobuild:
+                tmpStat = os.system('%s %s' % (rootCoreSubmitSh,rootCoreDestWorkDir))
+            else:
+                tmpStat = os.system('%s %s' % (rootCoreSubmitNbSh,rootCoreDestWorkDir))                
             tmpStat %= 255
             if tmpStat != 0:
                 tmpErrMsg  = "%s failed with %s" % (rootCoreSubmitSh,tmpStat)
-                tmpLog.error(mpErrMsg)
+                tmpLog.error(tmpErrMsg)
                 sys.exit(EC_Config)
             # copy build and run scripts
             shutil.copy(rootCoreRunSh,rootCoreDestWorkDir)            
@@ -1480,6 +1533,11 @@ else:
 	    for tmpRoot,tmpDirs,tmpFiles in os.walk(archStartDir):
 		emptyFlag    = True
 		for tmpFile in tmpFiles:
+                    if options.useAthenaPackages:
+                        if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
+                            if options.verbose:
+                                print 'skip Athena archive %s' % tmpFile
+                            continue
 		    tmpPath = '%s/%s' % (tmpRoot,tmpFile)
 		    # get size
 		    try:
@@ -1533,7 +1591,6 @@ else:
 			    print "  skip large file %s:%sB>%sB" % (tmpPath,size,options.maxFileSize)
 			    skippedFlag = True
 			    continue
-
 		    # remove ./
 		    tmpPath = re.sub('^\./','',tmpPath)
 		    # append
@@ -1557,7 +1614,7 @@ else:
 		    workDirFiles.append(tmpPath)
 	    if skippedFlag:
 		tmpLog.info("please use --maxFileSize or --extFile if you need to send the skipped files to WNs")
-            # set archive name    
+            # set archive name
             if not options.useAthenaPackages:    
                 # create archive
                 if options.libDS != '' or options.nobuild:
@@ -1569,15 +1626,19 @@ else:
                 archiveFullName = "%s/%s" % (tmpDir,archiveName)
 	    # collect files
 	    for tmpFile in workDirFiles:
+                # avoid self-archiving 
+                if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
+                    if options.verbose:
+                        print 'skip self-archiving for %s' % tmpFile
+                    continue
 		if os.path.islink(tmpFile):
-		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -rh '%s' -f '%s'" % (tmpFile,archiveFullName))
+		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -uh '%s' -f '%s'" % (tmpFile,archiveFullName))
 		else:
-		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -rf '%s' '%s'" % (archiveFullName,tmpFile))
+		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -uf '%s' '%s'" % (archiveFullName,tmpFile))
 		if options.verbose:
 		    print tmpFile
 		if status != 0 or out != '':
 		    print out
-
 	# go to tmpdir
 	os.chdir(tmpDir)
 
@@ -1914,7 +1975,7 @@ isDirectAccess = PsubUtils.isDirectAccess(options.site)
 
 # create single submission block when ContElementBoundary is not used
 if inputGroupFilesMap=={} or not options.useContElementBoundary:
-    if options.inDS != '':
+    if options.inDS != '' or options.pfnList != '':
         inputGroupFilesMap[options.inDS] = inputFileList
     else:
         inputGroupFilesMap['singleblock'] = []
@@ -1932,7 +1993,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         b_nJobs        = options.nJobs
         b_nFilesPerJob = options.nFilesPerJob
         # set number of files per job
-        if options.inDS != '':
+        if options.inDS != '' or options.pfnList != '':
             b_nFilesPerJob,nFilesEachSubJob = PsubUtils.calculateNumSplitPrun(b_nFilesPerJob,options.nGBPerJob,
                                                                           b_inputFileList,inputFileMap,maxTotalSize,
                                                                           dbrDsSize,safetySize)
@@ -2020,6 +2081,9 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
         if matchURL != None:
             jobR.jobParameters += "--sourceURL %s " % matchURL.group(1)
+        # given PFN
+        if options.pfnList != '':
+            jobR.jobParameters += '--givenPFN '
         # use Athena packages
         if options.useAthenaPackages:
             jobR.jobParameters += "--useAthenaPackages "
@@ -2041,7 +2105,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         if options.mergeOutput:
             jobR.jobParameters += "--mergeOutput "
             if options.mergeScript != '':
-                jobR.jobParameters += "--mergeScript %s " % options.mergeScript
+                jobR.jobParameters += '--mergeScript "%s" ' % options.mergeScript
         if options.jobParams != '':
             # random seed
             tmpJobO = options.jobParams
@@ -2070,7 +2134,7 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
         if options.libDS != "" or options.nobuild:
             jobR.jobParameters += '-a %s ' % archiveName
         # input files
-        if options.inDS != '':
+        if options.inDS != '' or options.pfnList != '':
             totalSize = 0
             if options.loadXML:
                 # input files are listed explicitly for each subjob in the xml file
@@ -2087,6 +2151,8 @@ for b_inputDatasetName,b_inputFileList in inputGroupFilesMap.iteritems():
             if inList == []:
                 break
             for tmpLFN in inList:
+                if options.pfnList != '':
+                    continue
                 vals = inputFileMap[tmpLFN]
                 fileI = FileSpec()
                 fileI.lfn        = tmpLFN

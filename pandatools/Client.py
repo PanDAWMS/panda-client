@@ -2221,9 +2221,9 @@ def getDefaultSpaceToken(fqans,defaulttoken):
 # use dev server
 def useDevServer():
     global baseURL
-    baseURL = 'http://voatlas04.cern.ch:25080/server/panda'
+    baseURL = 'http://voatlas220.cern.ch:25080/server/panda'
     global baseURLSSL
-    baseURLSSL = 'https://voatlas04.cern.ch:25443/server/panda'    
+    baseURLSSL = 'https://voatlas220.cern.ch:25443/server/panda'    
 
 
 # set server
@@ -2561,25 +2561,34 @@ def setGlobalTmpDir(tmpDir):
 
 
 # exclude site
-def excludeSite(excludedSite,origFullExecString='',infoList=[]):
-    if excludedSite == '':
+def excludeSite(excludedSiteList,origFullExecString='',infoList=[]):
+    if excludedSiteList == []:
         return
+    # decompose
+    excludedSite = []
+    for tmpItemList in excludedSiteList:
+        for tmpItem in tmpItemList.split(','):
+            if tmpItem != '' and not tmpItem in excludedSite:
+                excludedSite.append(tmpItem)
     # get list of original excludedSites
     origExcludedSite = []
     if origFullExecString != '':
         # extract original excludedSite
         origFullExecString = urllib.unquote(origFullExecString)
-        match = re.search('--excludedSite\s*=*([^ "]+)',origFullExecString)
-        if match != None:
-            origExcludedSite = match.group(1).split(',')
+        matchItr = re.finditer('--excludedSite\s*=*([^ "]+)',origFullExecString)
+        for match in matchItr:
+            origExcludedSite += match.group(1).split(',')
     else:
         # use excludedSite since this is the first loop
-        origExcludedSite = excludedSite.split(',')
+        origExcludedSite = excludedSite
+    # remove empty
+    if '' in origExcludedSite:
+        origExcludedSite.remove('')
     # sites composed of long/short queues
     compSites = ['CERN','LYON','BNL']
     # remove sites
     global PandaSites
-    for tmpPatt in excludedSite.split(','):
+    for tmpPatt in excludedSite:
         # skip empty
         if tmpPatt == '':
             continue
