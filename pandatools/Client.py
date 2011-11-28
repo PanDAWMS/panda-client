@@ -1300,11 +1300,6 @@ def convSrmV2ID(tmpSite):
     # parch for CERN OLD
     if tmpSite.startswith('CERN-PROD_OLD'):
         return 'CERN-PROD_OLDDISK'
-    # map CERN group disks to CERN OLD
-    if tmpSite.startswith('CERN'):
-        if re.search('CERN-PROD_(DATA|SCRATCH)DISK',tmpSite) == None and \
-               not tmpSite in ['CERN-PROD_DET-IBL']:
-            return 'CERN-PROD_OLDDISK'
     # patch for SRM v2
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
@@ -1577,7 +1572,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             if verbose:
                 tmpLog.debug('%s : %s->%s' % (tmpName,origTmpSite,tmpSite))
             # check cloud, DQ2 ID and status
+            tmpSiteBeforeLoop = tmpSite 
             for tmpID,tmpSpec in PandaSites.iteritems():
+                # reset
+                tmpSite = tmpSiteBeforeLoop
                 # get list of DQ2 IDs
                 srmv2ddmList = []
                 for tmpDdmID in tmpSpec['setokens'].values():
