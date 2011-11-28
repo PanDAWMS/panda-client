@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.71 (11/28/2011)
+  * fixed site lookup for CERN GROUPDISK 
+
 0.3.70 (11/27/2011)
   * added --inDsTxt to pathena and prun
   * changed --excludedSite of pathena/prun to use action=append 
