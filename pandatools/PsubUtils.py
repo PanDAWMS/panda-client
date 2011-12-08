@@ -6,6 +6,7 @@ import random
 import commands
 import urllib
 import pickle
+import tempfile
 
 import Client
 import MyproxyUtils
@@ -842,7 +843,13 @@ def checkDestSE(destSEs,dsName,verbose):
         tmpLog.error("destSE is too long (%s) and must be less than %s" % (len(destSEs),maxLength))
         return False
     # get DN
-    tmpDN = commands.getoutput('%s grid-proxy-info -identity' % Client._getGridSrc())
+    tmpBufferFile,tmpBufferName = tempfile.mkstemp()
+    commands.getoutput('%s grid-proxy-info -identity > %s 2>/dev/null' % \
+                               (Client._getGridSrc(),tmpBufferName))
+    tmpBufferFH = os.fdopen(tmpBufferFile,'r')
+    tmpDN = tmpBufferFH.read()
+    tmpBufferFH.close()
+    os.remove(tmpBufferName)
     # set X509_CERT_DIR
     if not os.environ.has_key('X509_CERT_DIR') or os.environ['X509_CERT_DIR'] == '':
         os.environ['X509_CERT_DIR'] = Client._x509_CApath() 
