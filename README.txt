@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.72 (12/8/2011)
+  * fixed checkData with DaTRI to ignore diagnostics messages in T3 grid setup script 
+
 0.3.71 (11/28/2011)
   * fixed site lookup for CERN GROUPDISK 
 
