@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.73 (12/13/2011)
+  * fixed pbook.retry(newSite) for multiple input jobs
+
 0.3.72 (12/8/2011)
   * fixed checkData with DaTRI to ignore diagnostics messages in T3 grid setup script 
 
