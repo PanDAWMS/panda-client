@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added --splitWithNthFiledOfLFN to pathena/prun
+
 0.3.73 (12/13/2011)
   * fixed pbook.retry(newSite) for multiple input jobs
 
