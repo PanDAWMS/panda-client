@@ -242,7 +242,10 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
     # get panda Job
     pandaJob = None
     if pandaJobList != []:
-        pandaJob = pandaJobList[0]
+        # look for buildJob since it doesn't have the first PandaID when retried
+        for pandaJob in pandaJobList:
+            if pandaJob.prodSourceLabel == 'panda':
+                break
     elif pandaJobForSiteID != None:
         pandaJob = pandaJobForSiteID
     # extract libDS
