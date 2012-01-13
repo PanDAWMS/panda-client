@@ -21,8 +21,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.74 (1/13/2012)
   * added --splitWithNthFiledOfLFN to pathena/prun
+  * added a warning to pbook.retry when newOpts is used without newSite
+  * added --disableAutoRetry to pathena/prun
 
 0.3.73 (12/13/2011)
   * fixed pbook.retry(newSite) for multiple input jobs

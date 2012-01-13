@@ -246,6 +246,8 @@ optP.add_option('--shipInput', action='store_const', const=True, dest='shipinput
                 help='Ship input files to remote WNs')
 optP.add_option('--noLock', action='store_const', const=True, dest='nolock',  default=False,
                 help="Don't create a lock for local database access")
+optP.add_option('--disableAutoRetry',action='store_const',const=True,dest='disableAutoRetry',default=False,
+                help='disable automatic job retry on the server side')
 optP.add_option('--fileList', action='store', dest='filelist', default='',
                 type='string', help='List of files in the input dataset to be run')
 optP.add_option('--myproxy', action='store', dest='myproxy', default='myproxy.cern.ch',
@@ -3071,6 +3073,9 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
         if options.express:
             jobR.specialHandling = 'express'
         jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
+        # disable automatic job retry on the server side
+        if options.disableAutoRetry:
+            jobR.maxAttempt = -1
         jobR.destinationDBlock = options.outDS
         if Client.isDQ2free(options.site):
             # flag to use DQ2-free output 

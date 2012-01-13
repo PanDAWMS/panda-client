@@ -571,6 +571,10 @@ class PBookCore:
                     continue
                 else:
                     return
+            # new opts reqire newSite
+            if newOpts != {} and not newSite:
+                tmpLog.warning('You need to specify newSite=True if newOpts is used')
+                return
             # check opts for newSite
             if newSite:
                 if not localJob.outDS.endswith('/') and not newOpts.has_key('outDS') and not newOpts.has_key('--outDS'):
