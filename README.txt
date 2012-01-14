@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed pathena to use renaming for pool file production to be properly compressed
+
 0.3.74 (1/13/2012)
   * added --splitWithNthFiledOfLFN to pathena/prun
   * added a warning to pbook.retry when newOpts is used without newSite
