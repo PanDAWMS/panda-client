@@ -1118,7 +1118,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False,forColl=False):
 
                                 
 # register dataset
-def addDataset(name,verbose=False,location='',dsExist=False):
+def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False):
     # generate DUID/VUID
     duid = MiscUtils.wrappedUuidGen()
     vuid = MiscUtils.wrappedUuidGen()
@@ -1161,7 +1161,8 @@ def addDataset(name,verbose=False,location='',dsExist=False):
             vuid = out[name]['vuids'][0]
         # add replica
         if re.search('SCRATCHDISK$',location) != None or re.search('USERDISK$',location) != None \
-           or re.search('LOCALGROUPDISK$',location) != None:
+           or re.search('LOCALGROUPDISK$',location) != None \
+           or (allowProdDisk and re.search('PRODDISK$',location) != None):
             url = baseURLDQ2SSL + '/ws_location/rpc'
             nTry = 3
             for iTry in range(nTry):

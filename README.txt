@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.75 (1/18/2012)
   * fixed pathena to use renaming for pool file production to be properly compressed
+  * added allowProdDisk to Client.addDataset for HC
 
 0.3.74 (1/13/2012)
   * added --splitWithNthFiledOfLFN to pathena/prun
