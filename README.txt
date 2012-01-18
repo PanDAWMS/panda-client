@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.76 (1/18/2012)
+  * fixed pathena/prun to solve conflict between --site and --excludedSite
+
 0.3.75 (1/18/2012)
   * fixed pathena to use renaming for pool file production to be properly compressed
   * added allowProdDisk to Client.addDataset for HC

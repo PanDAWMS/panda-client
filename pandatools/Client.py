@@ -2611,7 +2611,7 @@ def excludeSite(excludedSiteList,origFullExecString='',infoList=[]):
                         msgBody = 'action=exclude site=%s reason=useroption - excluded by user' % site
                         if not msgBody in infoList:
                             infoList.append(msgBody)
-                    del PandaSites[site]
+                    PandaSites[site]['status'] = 'excluded'
                 except:
                     pass
 

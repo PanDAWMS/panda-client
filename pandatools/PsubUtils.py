@@ -2006,6 +2006,10 @@ def getUserBrokerageInfo(val,optType,infoList):
     if optType == 'site':
         msgBody = 'action=use site=%s reason=useroption - site set by user' % val
         infoList.append(msgBody)
+        # remove excluded info since --site overrides --excludedSite
+        for tmpInfo in tuple(infoList):
+            if 'action=exclude' in tmpInfo and ('site=%s' % val) in tmpInfo:
+                infoList.remove(tmpInfo)
     elif optType == 'cloud':
         msgBody = 'action=use cloud=%s reason=useroption - cloud set by user' % val
         infoList.append(msgBody)        
