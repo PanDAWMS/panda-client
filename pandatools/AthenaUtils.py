@@ -431,7 +431,7 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
                 if match[0].startswith('Output=STREAMG'):            
                     tmpItems = match[0].split()
                     outputConfig['outStreamG'] = []
-                    for tmpNames in Items[1].split(','):
+                    for tmpNames in tmpItems[1].split(','):
                         outputConfig['outStreamG'].append(tmpNames.split(':'))
                 # Metadata
                 if match[0].startswith('Output=META'):            

@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.77 (1/19/2012)
+  * fixed AthenaUtils for general streams
+
 0.3.76 (1/18/2012)
   * fixed pathena/prun to solve conflict between --site and --excludedSite
 
