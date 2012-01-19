@@ -1299,7 +1299,7 @@ def convSrmV2ID(tmpSite):
     if tmpSite.startswith('CERN-PROD_TMP'):
         return 'CERN-PROD_TMPDISK'
     # parch for CERN OLD
-    if tmpSite.startswith('CERN-PROD_OLD'):
+    if tmpSite.startswith('CERN-PROD_OLD') or tmpSite.startswith('CERN-PROD_LOCAL'):
         return 'CERN-PROD_OLDDISK'
     # patch for SRM v2
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
