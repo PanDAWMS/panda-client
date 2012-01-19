@@ -6,6 +6,7 @@ import random
 import commands
 import urllib
 import pickle
+import tempfile
 
 import Client
 import MyproxyUtils
@@ -842,7 +843,13 @@ def checkDestSE(destSEs,dsName,verbose):
         tmpLog.error("destSE is too long (%s) and must be less than %s" % (len(destSEs),maxLength))
         return False
     # get DN
-    tmpDN = commands.getoutput('%s grid-proxy-info -identity' % Client._getGridSrc())
+    tmpBufferFile,tmpBufferName = tempfile.mkstemp()
+    commands.getoutput('%s grid-proxy-info -identity > %s 2>/dev/null' % \
+                               (Client._getGridSrc(),tmpBufferName))
+    tmpBufferFH = os.fdopen(tmpBufferFile,'r')
+    tmpDN = tmpBufferFH.read()
+    tmpBufferFH.close()
+    os.remove(tmpBufferName)
     # set X509_CERT_DIR
     if not os.environ.has_key('X509_CERT_DIR') or os.environ['X509_CERT_DIR'] == '':
         os.environ['X509_CERT_DIR'] = Client._x509_CApath() 
@@ -1642,6 +1649,9 @@ def execWithModifiedParams(jobs,newOpts,verbose):
         for tmpFile in job.Files:
             if tmpFile.type == 'input' and (not tmpFile.lfn.endswith('.lib.tgz')) \
                and re.search('^DBRelease-.*\.tar\.gz$',tmpFile.lfn) == None:
+                # ignore seconday files
+                if tmpFile.destinationDBlockToken == 'noshadow':
+                    continue
                 if not tmpFile.dataset in inDSs:
                     inDSs.append(tmpFile.dataset)
                 if not tmpFile.lfn in inFiles:
@@ -1996,6 +2006,10 @@ def getUserBrokerageInfo(val,optType,infoList):
     if optType == 'site':
         msgBody = 'action=use site=%s reason=useroption - site set by user' % val
         infoList.append(msgBody)
+        # remove excluded info since --site overrides --excludedSite
+        for tmpInfo in tuple(infoList):
+            if 'action=exclude' in tmpInfo and ('site=%s' % val) in tmpInfo:
+                infoList.remove(tmpInfo)
     elif optType == 'cloud':
         msgBody = 'action=use cloud=%s reason=useroption - cloud set by user' % val
         infoList.append(msgBody)        

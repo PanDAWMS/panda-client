@@ -382,14 +382,14 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
                         tmpItems = match[0].split()
                         outputConfig['outNtuple'].append(tmpItems[1])
                 # RDO
-                if match[0]=='Output=RDO':
-                    outputConfig['outRDO'] = True
+                if match[0].startswith('Output=RDO'):
+                    outputConfig['outRDO'] = match[0].split()[1]
                 # ESD
-                if match[0]=='Output=ESD':
-                    outputConfig['outESD'] = True
+                if match[0].startswith('Output=ESD'):
+                    outputConfig['outESD'] = match[0].split()[1]
                 # AOD
-                if match[0]=='Output=AOD':
-                    outputConfig['outAOD'] = True
+                if match[0].startswith('Output=AOD'):
+                    outputConfig['outAOD'] = match[0].split()[1]
                 # TAG output
                 if match[0]=='Output=TAG':            
                     outputConfig['outTAG'] = True
@@ -420,17 +420,19 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
                     outputConfig['outIROOT'].append(tmpItems[1])
                 # Stream1
                 if match[0].startswith('Output=STREAM1'):
-                    outputConfig['outStream1'] = True
+                    outputConfig['outStream1'] = match[0].split()[1]
                 # Stream2
-                if match[0]=='Output=STREAM2':                        
-                    outputConfig['outStream2'] = True
+                if match[0].startswith('Output=STREAM2'):                        
+                    outputConfig['outStream2'] = match[0].split()[1]
                 # ByteStream output
                 if match[0]=='Output=BS':            
                     outputConfig['outBS'] = True
                 # General Stream
                 if match[0].startswith('Output=STREAMG'):            
                     tmpItems = match[0].split()
-                    outputConfig['outStreamG'] = tmpItems[1].split(',')
+                    outputConfig['outStreamG'] = []
+                    for tmpNames in tmpItems[1].split(','):
+                        outputConfig['outStreamG'].append(tmpNames.split(':'))
                 # Metadata
                 if match[0].startswith('Output=META'):            
                     if not outputConfig.has_key('outMeta'):
@@ -1215,7 +1217,7 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
             for sIndex,sName in enumerate(extOutFile):
                 getFilesWithSuffix(tmpList,'EXT%s' % sIndex)
         if runConfig.output.outStreamG:
-            for sName in runConfig.output.outStreamG:
+            for sName,fName in runConfig.output.outStreamG:
                 getFilesWithSuffix(tmpList,sName)                
         if runConfig.output.outMeta:
             iMeta = 0
@@ -1320,6 +1322,9 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
     global indexStreamG
     global indexMeta
     global indexMS
+    # add IROOT
+    if not outMap.has_key('IROOT'):
+        outMap['IROOT'] = []
     # remove /
     outDSwoSlash = re.sub('/$','',original_outDS)
     tmpMatch = re.search('^([^\.]+)\.([^\.]+)\.',original_outDS)
@@ -1399,7 +1404,7 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
-        outMap['RDO'] = file.lfn
+        outMap['IROOT'].append((runConfig.output.outRDO,file.lfn))        
     if runConfig.output.outESD:
         indexESD += 1        
         file = FileSpec()
@@ -1420,7 +1425,7 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
-        outMap['ESD'] = file.lfn
+        outMap['IROOT'].append((runConfig.output.outESD,file.lfn))
     if runConfig.output.outAOD:
         indexAOD += 1                
         file = FileSpec()
@@ -1441,7 +1446,7 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
-        outMap['AOD'] = file.lfn
+        outMap['IROOT'].append((runConfig.output.outAOD,file.lfn))
     if runConfig.output.outTAG:
         indexTAG += 1                        
         file = FileSpec()
@@ -1618,7 +1623,7 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
-        outMap['Stream1'] = file.lfn
+        outMap['IROOT'].append((runConfig.output.outStream1,file.lfn))                
     if runConfig.output.outStream2:
         indexStream2 += 1                                        
         file = FileSpec()
@@ -1639,7 +1644,7 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
             file.destinationDBlock += tmpSuffix
         file.destinationSE = jobR.destinationSE
         jobR.addFile(file)
-        outMap['Stream2'] = file.lfn
+        outMap['IROOT'].append((runConfig.output.outStream2,file.lfn))
     if runConfig.output.outBS:
         indexBS += 1                                        
         file = FileSpec()
@@ -1686,7 +1691,7 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
         outMap['IROOT'].append(('%s.*.data' % runConfig.output.outSelBS,file.lfn))
     if runConfig.output.outStreamG:
         indexStreamG += 1
-        for sName in runConfig.output.outStreamG:
+        for sName,sOrigFileName in runConfig.output.outStreamG:
             file = FileSpec()
             file.type = 'output'
             if original_outDS.endswith('/'):
@@ -1705,9 +1710,7 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
                 file.destinationDBlock += tmpSuffix
             file.destinationSE = jobR.destinationSE
             jobR.addFile(file)
-            if not outMap.has_key('StreamG'):
-                outMap['StreamG'] = []
-            outMap['StreamG'].append((sName,file.lfn))
+            outMap['IROOT'].append((sOrigFileName,file.lfn))                
     if runConfig.output.outMeta:
         iMeta = 0
 	indexMeta += 1
@@ -1827,6 +1830,10 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
         pass
     file.destinationSE = jobR.destinationSE
     jobR.addFile(file)
+    # remove IROOT if unnecessary
+    if outMap.has_key('IROOT') and outMap['IROOT'] == []:
+        del outMap['IROOT'] 
+
 
 
 # get CMTCONFIG

@@ -228,6 +228,7 @@ if hasattr(NTupleSvc,'Output') and hasattr(NTupleSvc.Output,'__len__') and len(N
                 _printConfig(' Name: %s'% fName)
 
 streamOutputFiles = {}
+ignoreMetaFiles = []
 
 # RDO
 foundStreamRD0 = False
@@ -238,9 +239,10 @@ else:
     StreamRDO = _Algorithm( key.split('/')[-1] )
 if hasattr(StreamRDO,'OutputFile') and hasattr(StreamRDO.OutputFile,'__len__') and len(StreamRDO.OutputFile):
     streamOutputFiles[key.split('/')[-1]] = StreamRDO.OutputFile
-    _printConfig('Output=RDO')
+    _printConfig('Output=RDO %s' % StreamRDO.OutputFile)
     _printConfig(' Name: %s'% StreamRDO.OutputFile)
     foundStreamRD0 = True
+    ignoreMetaFiles.append(StreamRDO.OutputFile)
                 
 # ESD
 foundStreamESD = False
@@ -251,9 +253,10 @@ else:
     StreamESD = _Algorithm( key.split('/')[-1] )
 if hasattr(StreamESD,'OutputFile') and hasattr(StreamESD.OutputFile,'__len__') and len(StreamESD.OutputFile):
     streamOutputFiles[key.split('/')[-1]] = StreamESD.OutputFile
-    _printConfig('Output=ESD')
+    _printConfig('Output=ESD %s' % StreamESD.OutputFile)
     _printConfig(' Name: %s'% StreamESD.OutputFile)
     foundStreamESD = True
+    ignoreMetaFiles.append(StreamESD.OutputFile)
 
 # AOD
 foundStreamAOD = False
@@ -264,9 +267,10 @@ else:
     StreamAOD = _Algorithm( key.split('/')[-1] )
 if hasattr(StreamAOD,'OutputFile') and hasattr(StreamAOD.OutputFile,'__len__') and len(StreamAOD.OutputFile):
     streamOutputFiles[key.split('/')[-1]] = StreamAOD.OutputFile
-    _printConfig('Output=AOD')
+    _printConfig('Output=AOD %s' % StreamAOD.OutputFile)
     _printConfig(' Name: %s'% StreamAOD.OutputFile)
     foundStreamAOD = True
+    ignoreMetaFiles.append(StreamAOD.OutputFile)
 
 # TAG    
 keys = ["AthenaOutputStream/StreamTAG","RegistrationStream/StreamTAG"]
@@ -341,6 +345,7 @@ if hasattr(Stream1,'OutputFile') and hasattr(Stream1.OutputFile,'__len__') and l
         streamOutputFiles[key.split('/')[-1]] = Stream1.OutputFile        
         _printConfig('Output=STREAM1 %s' % Stream1.OutputFile)
         _printConfig(' Name: %s'% Stream1.OutputFile)
+        ignoreMetaFiles.append(Stream1.OutputFile)
 
 # Stream2
 key = "AthenaOutputStream/Stream2"
@@ -353,9 +358,10 @@ else:
 if hasattr(Stream2,'OutputFile') and hasattr(Stream2.OutputFile,'__len__') and len(Stream2.OutputFile):
     if (hasattr(Stream2,'Enable') and Stream2.Enable) or (not hasattr(Stream2,'Enable')):    
         streamOutputFiles[key.split('/')[-1]] = Stream2.OutputFile
-        _printConfig('Output=STREAM2')
+        _printConfig('Output=STREAM2 %s' % Stream2.OutputFile)
         _printConfig(' Name: %s'% Stream2.OutputFile)        
-
+        ignoreMetaFiles.append(Stream2.OutputFile)
+        
 
 # General Stream
 strGenFName = ''
@@ -391,9 +397,10 @@ try:
                         # ignore StreamDESD to treat it as multiple-streams later
                             continue
                     else:
-                        strGenStream += '%s,' % fullName.split('/')[-1]
+                        strGenStream += '%s:%s,' % (fullName.split('/')[-1],genStream.OutputFile)
                         streamOutputFiles[fullName.split('/')[-1]] = genStream.OutputFile
                         strGenFName = genStream.OutputFile
+                        ignoreMetaFiles.append(genStream.OutputFile)
     # associate meta stream
     for mStream in metaStreams:
         metaOutName = mStream.OutputFile.split(':')[-1]
@@ -403,8 +410,13 @@ try:
             if metaOutName == stOut:
                 assStream = stName
                 break
-        _printConfig('Output=META %s %s' % (mStream.getFullName().split('/')[1],assStream))
-        _printConfig(' Name: %s'% metaOutName)
+        # ignore meta stream since renaming is used instead of changing jobO
+        if metaOutName in ignoreMetaFiles:
+            continue
+        # print meta stream
+        if assStream != None:
+            _printConfig('Output=META %s %s' % (mStream.getFullName().split('/')[1],assStream))
+            _printConfig(' Name: %s'% metaOutName)
 except:
     pass
 if strGenStream != '':

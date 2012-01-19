@@ -21,6 +21,27 @@ pathena -h
 
 ** Release Note
 
+0.3.77 (1/19/2012)
+  * fixed AthenaUtils for general streams
+
+0.3.76 (1/18/2012)
+  * fixed pathena/prun to solve conflict between --site and --excludedSite
+
+0.3.75 (1/18/2012)
+  * fixed pathena to use renaming for pool file production to be properly compressed
+  * added allowProdDisk to Client.addDataset for HC
+
+0.3.74 (1/13/2012)
+  * added --splitWithNthFiledOfLFN to pathena/prun
+  * added a warning to pbook.retry when newOpts is used without newSite
+  * added --disableAutoRetry to pathena/prun
+
+0.3.73 (12/13/2011)
+  * fixed pbook.retry(newSite) for multiple input jobs
+
+0.3.72 (12/8/2011)
+  * fixed checkData with DaTRI to ignore diagnostics messages in T3 grid setup script 
+
 0.3.71 (11/28/2011)
   * fixed site lookup for CERN GROUPDISK 
 
