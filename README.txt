@@ -21,6 +21,12 @@ pathena -h
 
 ** Release Note
 
+0.3.79 (1/23/2012)
+  * fixed pathena to use all files in secondary streams
+
+0.3.78 (1/19/2012)
+  * fixed site lookup for CERN + libDS
+
 0.3.77 (1/19/2012)
   * fixed AthenaUtils for general streams
 
