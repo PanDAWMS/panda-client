@@ -60,7 +60,7 @@ optP.add_option('--split', action='store', dest='split',  default=-1,
                 type='int',    help='Number of sub-jobs to which a job is split')
 optP.add_option('--nFilesPerJob', action='store', dest='nFilesPerJob',  default=-1, type='int', help='Number of files on which each sub-job runs')
 optP.add_option('--nEventsPerJob', action='store', dest='nEventsPerJob',  default=-1,
-                type='int',    help='Number of events on which each sub-job runs')
+                type='int',    help='Number of events per subjob. This info is used mainly for job splitting. If you run on MC datasets, the total number of subjobs is nEventsPerFile*nFiles/nEventsPerJob. For data, the number of events for each file is retrieved from AMI and subjobs are created accordingly. Note that if you run transformations you need to explicitly specify maxEvents or something in --trf to set the number of events processed in each subjob. If you run normal jobOption files, evtMax and skipEvents in appMgr are automatically set on WN.')
 optP.add_option('--nEventsPerFile', action='store', dest='nEventsPerFile',  default=0,
                 type='int',    help='Number of events per file')
 optP.add_option('--nGBPerJob',action='store',dest='nGBPerJob',default=-1, help='Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value')
@@ -3295,8 +3295,8 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             totalMinSize = 0
             numMinFiles  = 0
             if runConfig.input.inMinBias:
-                if (options.nMin > 0 and indexMin+options.nMin*divF >= len(minbiasList)) or \
-                       (options.nMinPerJob > 0 and indexMin+options.nMinPerJob >= len(minbiasList)):
+                if (options.nMin > 0 and indexMin+options.nMin*divF > len(minbiasList)) or \
+                       (options.nMinPerJob > 0 and indexMin+options.nMinPerJob > len(minbiasList)):
                     # re-use files when Minimum-Bias files are not enough   
                     indexMin = 0
                 if options.nMin > 0:    
@@ -3326,8 +3326,8 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     totalMinSize += long(file.fsize)
             # low pT Minimum Bias        
             if runConfig.input.inLoMinBias:
-                if (options.nLowMin > 0 and indexLowMin+options.nLowMin*divF >= len(lowminbiasList)) or \
-                       (options.nLowMinPerJob > 0 and indexLowMin+options.nLowMinPerJob >= len(lowminbiasList)):
+                if (options.nLowMin > 0 and indexLowMin+options.nLowMin*divF > len(lowminbiasList)) or \
+                       (options.nLowMinPerJob > 0 and indexLowMin+options.nLowMinPerJob > len(lowminbiasList)):
                     # re-use files when Low pT Minimum-Bias files are not enough   
                     indexLowMin = 0
                 if options.nLowMin > 0:    
@@ -3357,8 +3357,8 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     totalMinSize += long(file.fsize)
             # high pT Minimum Bias        
             if runConfig.input.inHiMinBias:
-                if (options.nHighMin > 0 and indexHighMin+options.nHighMin*divF >= len(highminbiasList)) or \
-                       (options.nHighMinPerJob > 0 and indexHighMin+options.nHighMinPerJob >= len(highminbiasList)):
+                if (options.nHighMin > 0 and indexHighMin+options.nHighMin*divF > len(highminbiasList)) or \
+                       (options.nHighMinPerJob > 0 and indexHighMin+options.nHighMinPerJob > len(highminbiasList)):
                     # re-use files when High pT Minimum-Bias files are not enough   
                     indexHighMin = 0
                 if options.nHighMin > 0:    
@@ -3390,8 +3390,8 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             totalCavSize = 0
             numCavFiles  = 0
             if runConfig.input.inCavern:
-                if (options.nCav > 0 and indexCavern+options.nCav*divF >= len(cavernList)) or \
-                       (options.nCavPerJob > 0 and indexCavern+options.nCavPerJob >= len(cavernList)):
+                if (options.nCav > 0 and indexCavern+options.nCav*divF > len(cavernList)) or \
+                       (options.nCavPerJob > 0 and indexCavern+options.nCavPerJob > len(cavernList)):
                     # re-use files when Cavern files are not enough   
                     indexCavern = 0
                 if options.nCav > 0:    
@@ -3425,17 +3425,17 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             if runConfig.input.inBeamHalo:
                 if options.useCommonHalo:
                     # integrated dataset
-                    if indexBHalo+options.nBeamHalo >= len(beamHaloList):
+                    if indexBHalo+options.nBeamHalo > len(beamHaloList):
                         # re-use files when BeamHalo files are not enough   
                         indexBHalo = 0   
                     tmpList = beamHaloList[indexBHalo:indexBHalo+options.nBeamHalo]
                     indexBHalo += options.nBeamHalo
                 else:
                     # separate datasets
-                    if indexBHaloA+options.nBeamHaloA >= len(beamHaloAList):
+                    if indexBHaloA+options.nBeamHaloA > len(beamHaloAList):
                         # re-use files when BeamHalo files are not enough   
                         indexBHaloA = 0   
-                    if indexBHaloC+options.nBeamHaloC >= len(beamHaloCList):
+                    if indexBHaloC+options.nBeamHaloC > len(beamHaloCList):
                         # re-use files when BeamHalo files are not enough   
                         indexBHaloC = 0   
                     tmpList = beamHaloAList[indexBHaloA:indexBHaloA+options.nBeamHaloA] + \
@@ -3481,20 +3481,20 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             if runConfig.input.inBeamGas:        
                 if options.useCommonGas:
                     # integrated dataset
-                    if indexBGas+options.nBeamGas >= len(beamGasList):
+                    if indexBGas+options.nBeamGas > len(beamGasList):
                         # re-use files when BeamGas files are not enough   
                         indexBGas = 0   
                     tmpList = beamGasList[indexBGas:indexBGas+options.nBeamGas]
                     indexBGas += options.nBeamGas
                 else:
                     # separate dataset
-                    if indexBGasH+options.nBeamGasH >= len(beamGasHList):
+                    if indexBGasH+options.nBeamGasH > len(beamGasHList):
                         # re-use files when BeamGas files are not enough   
                         indexBGasH = 0   
-                    if indexBGasC+options.nBeamGasC >= len(beamGasCList):
+                    if indexBGasC+options.nBeamGasC > len(beamGasCList):
                         # re-use files when BeamGas files are not enough   
                         indexBGasC = 0   
-                    if indexBGasO+options.nBeamGasO >= len(beamGasOList):
+                    if indexBGasO+options.nBeamGasO > len(beamGasOList):
                         # re-use files when BeamGas files are not enough   
                         indexBGasO = 0   
                     tmpList = beamGasHList[indexBGasH:indexBGasH+options.nBeamGasH] + \
