@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.80 (1/26/2012)
+  * fixed site exclusion for access controlled sites
+
 0.3.79 (1/23/2012)
   * fixed pathena to use all files in secondary streams
 
