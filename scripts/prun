@@ -2187,7 +2187,11 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                 indexIn = 0
                 for tmpNFiles in nFilesEachSubJob[:iJob]:
                     indexIn += tmpNFiles
-                inList = b_inputFileList[indexIn:indexIn+nFilesEachSubJob[iJob]]    
+                # protection against --nJobs > real # of jobs
+                if iJob < len(nFilesEachSubJob):
+                    inList = b_inputFileList[indexIn:indexIn+nFilesEachSubJob[iJob]]
+                else:
+                    inList = []
             if inList == []:
                 break
             for tmpLFN in inList:
