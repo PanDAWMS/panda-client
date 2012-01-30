@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.81 (1/30/2012)
   * added a protection to prun against --nGBPerJob plus too large --nJobs 
+  * updated prun for 64bit --rootVer
 
 0.3.80 (1/26/2012)
   * fixed site exclusion for access controlled sites

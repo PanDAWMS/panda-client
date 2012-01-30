@@ -1853,6 +1853,9 @@ elif options.libDS == '':
     # root
     if options.rootVer != '':
         jobB.jobParameters += "--rootVer %s " % options.rootVer
+    # cmt config
+    if not jobB.cmtConfig in ['','NULL',None]:
+        jobB.jobParameters += "--cmtConfig %s " % jobB.cmtConfig
     # log    
     file = FileSpec()
     file.lfn               = '%s.log.tgz' % libDsName
