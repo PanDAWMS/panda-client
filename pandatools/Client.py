@@ -2374,9 +2374,10 @@ def addAllowedSites(verbose=False):
         # set online if the site is allowed
         if tmpVal['status']=='approved':
            if PandaSites.has_key(tmpID):
-               PandaSites[tmpID]['status'] = 'online'
-               if verbose:
-                   tmpLog.debug('set %s online' % tmpID)
+               if PandaSites[tmpID]['status'] in ['brokeroff']:
+                   PandaSites[tmpID]['status'] = 'online'
+                   if verbose:
+                       tmpLog.debug('set %s online' % tmpID)
     return True
 
 
