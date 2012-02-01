@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.82 (2/1/2012)
+  * fixed to use glite 3.2 on CERN AFS 
+
 0.3.81 (1/30/2012)
   * added a protection to prun against --nGBPerJob plus too large --nJobs 
   * updated prun for 64bit --rootVer
