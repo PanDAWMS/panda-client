@@ -1901,7 +1901,7 @@ def _getGridSrc():
             gridSrc = '/afs/in2p3.fr/grid/profiles/lcg_env.sh'
         elif athenaStatus == 0 and re.search('^/afs/\.*cern.ch',athenaPath) != None:
             # for CERN, VDT is already installed
-            gridSrc = '/afs/cern.ch/project/gd/LCG-share/current/etc/profile.d/grid_env.sh'
+            gridSrc = '/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh'
     else:
         # set Grid setup.sh
         if os.environ.has_key('PATHENA_GRID_SETUP_SH'):
@@ -1912,7 +1912,7 @@ def _getGridSrc():
                 return False
             if os.environ['CMTSITE'] == 'CERN' or (athenaStatus == 0 and \
                                                    re.search('^/afs/\.*cern.ch',athenaPath) != None):
-		gridSrc = '/afs/cern.ch/project/gd/LCG-share/current/etc/profile.d/grid_env.sh'
+		gridSrc = '/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh'
             elif os.environ['CMTSITE'] == 'BNL':
                 gridSrc = '/afs/usatlas.bnl.gov/osg/client/@sys/current/setup.sh'
             else:
@@ -1922,7 +1922,7 @@ def _getGridSrc():
                     gridSrc = '/afs/in2p3.fr/grid/profiles/lcg_env.sh'
                 else:
                     print "ERROR : PATHENA_GRID_SETUP_SH is not defined in envvars"
-                    print "  for CERN : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current/etc/profile.d/grid_env.sh"                
+                    print "  for CERN : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh"
                     print "  for LYON : export PATHENA_GRID_SETUP_SH=/afs/in2p3.fr/grid/profiles/lcg_env.sh"
                     print "  for BNL  : export PATHENA_GRID_SETUP_SH=/afs/usatlas.bnl.gov/osg/client/@sys/current/setup.sh"
                     return False
@@ -2374,9 +2374,10 @@ def addAllowedSites(verbose=False):
         # set online if the site is allowed
         if tmpVal['status']=='approved':
            if PandaSites.has_key(tmpID):
-               PandaSites[tmpID]['status'] = 'online'
-               if verbose:
-                   tmpLog.debug('set %s online' % tmpID)
+               if PandaSites[tmpID]['status'] in ['brokeroff']:
+                   PandaSites[tmpID]['status'] = 'online'
+                   if verbose:
+                       tmpLog.debug('set %s online' % tmpID)
     return True
 
 
