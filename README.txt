@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.83 (2/3/2012)
+  * imposed tighter limit on the length of outDS for mergeOutput
+
 0.3.82 (2/1/2012)
   * fixed to use glite 3.2 on CERN AFS 
 
