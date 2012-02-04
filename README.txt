@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * Mikhail Titov updated datriHandler
+
 0.3.83 (2/3/2012)
   * imposed tighter limit on the length of outDS for mergeOutput
 
