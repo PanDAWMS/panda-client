@@ -185,7 +185,10 @@ class datriCurl(object):
             for i in range(RETRY_NUM):
                 o, e = execute(cmd_params)
                 if o and not e:
-                    return (0, o) if o.startswith('OK.') else (1, o)
+                    if o.startswith('OK.'):
+                        return (0, o)
+                    else:
+                        return (1, o)
             # - several attempts for cmd execution - end -
             return 3, 'datriCurl: execution error (output=%s, error=%s)' % (o, e)
         return 5, 'datriCurl: %s' % self.err_message
