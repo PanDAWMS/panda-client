@@ -1290,6 +1290,7 @@ def convSrmV2ID(tmpSite):
             tmpSite = re.sub('_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
             tmpSite = re.sub('_PHYS-[A-Z,0-9]+$','DISK',tmpSite)
             tmpSite = re.sub('_PERF-[A-Z,0-9]+$','DISK',tmpSite)
+            tmpSite = re.sub('_DET-[A-Z,0-9]+$','DISK',tmpSite)            
             tmpSite = re.sub('_TRIG-DAQ$','DISK',tmpSite)            
             return tmpSite
     # parch for CERN EOS
@@ -1306,6 +1307,7 @@ def convSrmV2ID(tmpSite):
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_PHYS-[A-Z,0-9]+$','DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_PERF-[A-Z,0-9]+$','DISK',tmpSite)
+    tmpSite = re.sub('-[^-_]+_DET-[A-Z,0-9]+$','DISK',tmpSite)    
     tmpSite = re.sub('-[^-_]+_TRIG-DAQ$','DISK',tmpSite)    
     # SHOULD BE REMOVED Once all sites and DQ2 migrate to srmv2
     # patch for BNL
@@ -1329,6 +1331,7 @@ def convSrmV2ID(tmpSite):
         tmpSite = re.sub('_[A-Z,0-9]+TAPE$', '',tmpSite)
         tmpSite = re.sub('_PHYS-[A-Z,0-9]+$','',tmpSite)
         tmpSite = re.sub('_PERF-[A-Z,0-9]+$','',tmpSite)
+        tmpSite = re.sub('_DET-[A-Z,0-9]+$', '',tmpSite)        
         tmpSite = re.sub('_TRIG-DAQ$','',tmpSite)
     if tmpSite == 'NET2':
         tmpSite = 'BU'

@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.84 (2/9/2012)
   * Mikhail Titov updated datriHandler
+  * fixed site lookup for _DET
 
 0.3.83 (2/3/2012)
   * imposed tighter limit on the length of outDS for mergeOutput
