@@ -283,7 +283,7 @@ def checkValidCloud(cloud):
 
 
 # check name of output dataset
-def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN=''):
+def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN='',mergeOutput=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # check NG chars for SE
@@ -361,12 +361,19 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
         return False
     # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
     maxLength = 200
-    maxLengthCont = 132
+    if mergeOutput:
+        maxLengthCont = 120
+    else:
+        maxLengthCont = 132
     if outDS.endswith('/'):
         # container
         if len(outDS) > maxLengthCont:
             tmpErrStr  = "The name of the output dataset container is too long (%s). " % len(outDS)
-            tmpErrStr += "The length must be less than %s. " % maxLengthCont
+            tmpErrStr += "The length must be less than %s " % maxLengthCont
+            if mergeOutput:
+                tmpErrStr += "when --mergeOutput is used. "
+            else:
+                tmpErrStr += ". "
             tmpErrStr += "Please note that the limit on the name length is tighter for containers than datasets"
             tmpLog.error(tmpErrStr)
             return False

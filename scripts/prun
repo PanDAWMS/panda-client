@@ -832,7 +832,8 @@ if distinguishedName == '' and nickName == '':
     sys.exit(EC_Config)
 
 # check outDS format
-if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site,vomsFQAN):
+if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,
+                                options.site,vomsFQAN,options.mergeOutput):
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
 
@@ -1853,6 +1854,9 @@ elif options.libDS == '':
     # root
     if options.rootVer != '':
         jobB.jobParameters += "--rootVer %s " % options.rootVer
+    # cmt config
+    if not jobB.cmtConfig in ['','NULL',None]:
+        jobB.jobParameters += "--cmtConfig %s " % jobB.cmtConfig
     # log    
     file = FileSpec()
     file.lfn               = '%s.log.tgz' % libDsName
@@ -2187,7 +2191,11 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                 indexIn = 0
                 for tmpNFiles in nFilesEachSubJob[:iJob]:
                     indexIn += tmpNFiles
-                inList = b_inputFileList[indexIn:indexIn+nFilesEachSubJob[iJob]]    
+                # protection against --nJobs > real # of jobs
+                if iJob < len(nFilesEachSubJob):
+                    inList = b_inputFileList[indexIn:indexIn+nFilesEachSubJob[iJob]]
+                else:
+                    inList = []
             if inList == []:
                 break
             for tmpLFN in inList:
@@ -2448,7 +2456,8 @@ if options.individualOutDS:
     for tmpFile in jobList[-1].Files:
         if tmpFile.type in ['output','log']:
             if not tmpFile.dataset in tmpIdvOutDsList:
-                if not PsubUtils.checkOutDsName(tmpFile.dataset,distinguishedName,options.official,nickName,options.site,vomsFQAN):
+                if not PsubUtils.checkOutDsName(tmpFile.dataset,distinguishedName,options.official,nickName,
+                                                options.site,vomsFQAN,options.mergeOutput):
                     tmpLog.info("a suffix is added to datasetname for each output stream when --individualOutDS is used. e.g. outDS_suffix:%s. Please use shorter name for --outDS" % tmpFile.dataset)
                     sys.exit(EC_Config)
                 tmpIdvOutDsList.append(tmpFile.dataset)

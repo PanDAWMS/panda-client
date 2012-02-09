@@ -21,6 +21,23 @@ pathena -h
 
 ** Release Note
 
+0.3.84 (2/9/2012)
+  * Mikhail Titov updated datriHandler
+  * fixed site lookup for _DET
+
+0.3.83 (2/3/2012)
+  * imposed tighter limit on the length of outDS for mergeOutput
+
+0.3.82 (2/1/2012)
+  * fixed to use glite 3.2 on CERN AFS 
+
+0.3.81 (1/30/2012)
+  * added a protection to prun against --nGBPerJob plus too large --nJobs 
+  * updated prun for 64bit --rootVer
+
+0.3.80 (1/26/2012)
+  * fixed site exclusion for access controlled sites
+
 0.3.79 (1/23/2012)
   * fixed pathena to use all files in secondary streams
 
