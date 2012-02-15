@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.85 (2/15/2012)
+  * fixed output file indexing of pathena for general streams
+
 0.3.84 (2/9/2012)
   * Mikhail Titov updated datriHandler
   * fixed site lookup for _DET
