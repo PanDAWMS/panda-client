@@ -1280,8 +1280,8 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
             tmpIndex = getIndex(tmpList,"%s\.EXT%s\._(\d+)\.%s" % (shortPrefix,sIndex,sName))
             if tmpIndex > indexEXT:
                 indexEXT  = tmpIndex
-    if runConfig.output.outStreamG:            
-        for sName in runConfig.output.outStreamG:
+    if runConfig.output.outStreamG:
+        for sName,sOrigFileName in runConfig.output.outStreamG:
             tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (shortPrefix,sName))
             if tmpIndex > indexStreamG:
                 indexStreamG = tmpIndex
