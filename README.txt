@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.86 (2/24/2012)
+  * fixed site lookup for _SOFT
+
 0.3.85 (2/15/2012)
   * fixed output file indexing of pathena for general streams
 
