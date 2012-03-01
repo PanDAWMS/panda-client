@@ -2888,13 +2888,17 @@ else:
         tmpList = {}
     tmpFileList = []
     tmpGUIDmap = {}
+    tmpMD5Sum  = None
+    tmpFSize   = None
     for fileName in tmpList.keys():
         # ignore log file
         if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
                re.search('\.log(\.tgz)*(\.\d+)*$',fileName) != None:
             continue
         tmpFileList.append(fileName)
-        tmpGUIDmap[fileName] = tmpList[fileName]['guid'] 
+        tmpGUIDmap[fileName] = tmpList[fileName]['guid']
+        tmpMD5Sum  = tmpList[fileName]['md5sum']
+        tmpFSize   = tmpList[fileName]['fsize']
     # incomplete libDS
     if tmpFileList == []:
         # query files in dataset from Panda
@@ -2929,7 +2933,11 @@ else:
     fileBO.destinationDBlock = options.libDS
     if fileBO.GUID != 'NULL':
         fileBO.status = 'ready'
-    
+    if tmpMD5Sum != None:
+        fileBO.md5sum = tmpMD5Sum
+    if tmpFSize != None:
+        fileBO.fsize = tmpFSize    
+
 # run athena            
 
 if options.inDS != '' and options.burstSubmit == '':
@@ -3116,6 +3124,8 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             fileS = FileSpec()
             fileS.lfn     = fileBO.lfn
             fileS.GUID    = fileBO.GUID
+	    fileS.md5sum  = fileBO.md5sum
+	    fileS.fsize   = fileBO.fsize 
             fileS.type    = 'input'
             fileS.status  = fileBO.status
             fileS.dataset = fileBO.destinationDBlock

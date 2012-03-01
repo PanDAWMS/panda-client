@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.87 (3/1/2012)
+  * fixed pathena/prun for libDS
+
 0.3.86 (2/24/2012)
   * fixed site lookup for _SOFT
 
