@@ -832,7 +832,8 @@ if distinguishedName == '' and nickName == '':
     sys.exit(EC_Config)
 
 # check outDS format
-if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site,vomsFQAN):
+if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,
+                                options.site,vomsFQAN,options.mergeOutput):
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
 
@@ -1853,6 +1854,9 @@ elif options.libDS == '':
     # root
     if options.rootVer != '':
         jobB.jobParameters += "--rootVer %s " % options.rootVer
+    # cmt config
+    if not jobB.cmtConfig in ['','NULL',None]:
+        jobB.jobParameters += "--cmtConfig %s " % jobB.cmtConfig
     # log    
     file = FileSpec()
     file.lfn               = '%s.log.tgz' % libDsName
@@ -1884,6 +1888,8 @@ else:
         tmpList = {}
     tmpFileList = []
     tmpGUIDmap = {}
+    tmpMD5Sum  = None
+    tmpFSize   = None
     for fileName in tmpList.keys():
         # ignore log file
         if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
@@ -1891,6 +1897,8 @@ else:
             continue
         tmpFileList.append(fileName)
         tmpGUIDmap[fileName] = tmpList[fileName]['guid'] 
+	tmpMD5Sum  = tmpList[fileName]['md5sum']
+        tmpFSize   = tmpList[fileName]['fsize']
     # incomplete libDS
     if tmpFileList == []:
         # query files in dataset from Panda
@@ -1925,6 +1933,10 @@ else:
     fileBO.destinationDBlock = options.libDS
     if fileBO.GUID != 'NULL':
         fileBO.status = 'ready'
+    if tmpMD5Sum != None:
+        fileBO.md5sum = tmpMD5Sum
+    if tmpFSize != None:
+        fileBO.fsize = tmpFSize    
 
 # modify outDS name when container is used for output
 if original_outDS_Name.endswith('/'):
@@ -2164,6 +2176,8 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             fileS = FileSpec()
             fileS.lfn            = fileBO.lfn
             fileS.GUID           = fileBO.GUID
+            fileS.md5sum         = fileBO.md5sum
+            fileS.fsize          = fileBO.fsize
             fileS.type           = 'input'
             fileS.status         = fileBO.status
             fileS.dataset        = fileBO.destinationDBlock
@@ -2187,7 +2201,11 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                 indexIn = 0
                 for tmpNFiles in nFilesEachSubJob[:iJob]:
                     indexIn += tmpNFiles
-                inList = b_inputFileList[indexIn:indexIn+nFilesEachSubJob[iJob]]    
+                # protection against --nJobs > real # of jobs
+                if iJob < len(nFilesEachSubJob):
+                    inList = b_inputFileList[indexIn:indexIn+nFilesEachSubJob[iJob]]
+                else:
+                    inList = []
             if inList == []:
                 break
             for tmpLFN in inList:
@@ -2448,7 +2466,8 @@ if options.individualOutDS:
     for tmpFile in jobList[-1].Files:
         if tmpFile.type in ['output','log']:
             if not tmpFile.dataset in tmpIdvOutDsList:
-                if not PsubUtils.checkOutDsName(tmpFile.dataset,distinguishedName,options.official,nickName,options.site,vomsFQAN):
+                if not PsubUtils.checkOutDsName(tmpFile.dataset,distinguishedName,options.official,nickName,
+                                                options.site,vomsFQAN,options.mergeOutput):
                     tmpLog.info("a suffix is added to datasetname for each output stream when --individualOutDS is used. e.g. outDS_suffix:%s. Please use shorter name for --outDS" % tmpFile.dataset)
                     sys.exit(EC_Config)
                 tmpIdvOutDsList.append(tmpFile.dataset)
