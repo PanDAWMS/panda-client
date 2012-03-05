@@ -1243,19 +1243,17 @@ if options.inDS != '':
                     break
         # scan local replica catalog
         dsLocation = Client.PandaSites[options.site]['ddm']
-	if options.skipScan:
-            # skip LFC scan
-            missList = []
-        elif Client.getLFC(dsLocation) != None:
-	    tmpLog.info("scanning LFC %s for %s" % (Client.getLFC(dsLocation),options.site))
+        if Client.getLFC(dsLocation) != None:
             # LFC
             if options.nFiles == 0:
                 missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
-                                                     dsStr=options.inDS,removedDS=options.removedDS)
+                                                     dsStr=options.inDS,removedDS=options.removedDS,
+                                                     skipScan=options.skipScan)
             else:
                 missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
                                                      options.nFiles,
-                                                     dsStr=options.inDS,removedDS=options.removedDS)                
+                                                     dsStr=options.inDS,removedDS=options.removedDS,
+                                                     skipScan=options.skipScan)                
         elif Client.getLRC(dsLocation) != None:
 	    tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
             # LRC
@@ -1294,11 +1292,11 @@ if options.inDS != '':
 		tmpLog.info("scanning LFC for %s" % tmpDsName)
                 if tmpDsValMap['nFiles'] == 0 and tmpDsValMap['nSkip'] != 0:
                     secMissList = Client.getMissLFNsFromLFC(tmpDsValMap['fileMap'],options.site,True,options.verbose,
-                                                            dsStr=tmpDsName)
+                                                            dsStr=tmpDsName,skipScan=options.skipScan)
                 else:
                     secMissList = Client.getMissLFNsFromLFC(tmpDsValMap['fileMap'],options.site,True,options.verbose,
                                                             tmpDsValMap['nFiles']+tmpDsValMap['nSkip'],shadowList,
-                                                            dsStr=tmpDsName)
+                                                            dsStr=tmpDsName,skipScan=options.skipScan)
             else:
                 secMissList = []
             if options.requireLFC:
