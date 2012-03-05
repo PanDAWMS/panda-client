@@ -838,7 +838,7 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose,getOKfiles=False):
     # not found    
     if datasets == []:
         tmpLog.error("cannot find datasets at %s for replica metadata check" % siteID)
-        sys.exit(EC_Failed)        
+        sys.exit(EC_Failed)
     # loop over all datasets
     convertedOrigSite = convSrmV2ID(PandaSites[siteID]['ddm'])
     expFilesMap = {'datasets':[],'files':[]}
@@ -1651,8 +1651,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             appendMap[tmpSite] = []
                         if not tmpID in appendMap[tmpSite]:
                             appendMap[tmpSite].append(tmpID)
-                        if not tmpID in resUsedDsMap and origTmpInfo[0].has_key('useddatasets'):
-                            resUsedDsMap[tmpID] = origTmpInfo[0]['useddatasets']
+                        if origTmpInfo[0].has_key('useddatasets'):
+                            if not tmpID in resUsedDsMap:
+                                resUsedDsMap[tmpID] = []
+                            resUsedDsMap[tmpID] += origTmpInfo[0]['useddatasets']
                     else:
                         # not interested in another cloud
                         if tmpSpec['cloud'] != cloud and expCloud:
@@ -1926,7 +1928,7 @@ def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList
         for lfn,vals in tmpFileMap.iteritems():
             if lfn in expOkFilesList and not lfn in expCompInDQ2FilesList:
                 tmpTmpFileMap[lfn] = vals
-        tmpFileMap = tmpTmpFileMap        
+        tmpFileMap = tmpTmpFileMap
     # get PFNS
     if tmpFileMap != {}:
         # get logger
