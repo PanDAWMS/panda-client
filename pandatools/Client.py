@@ -1422,6 +1422,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
         allOut        = {}
         iLookUp       = 0
         resUsedDsMap  = {}
+        global globalCompleteDsMap
         # convert candidates for SRM v2
         if locCandidates != None:
             locCandidatesSrmV2 = []
@@ -1499,7 +1500,6 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             if isOnlineSite(tmpEleLoc):
                                 tmpFoundFlag = True
                             # add to global map
-                            global globalCompleteDsMap
                             if not globalCompleteDsMap.has_key(tmpEleName):
                                 globalCompleteDsMap[tmpEleName] = []
                             globalCompleteDsMap[tmpEleName].append(tmpEleLoc)    
@@ -1542,7 +1542,6 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                         if isOnlineSite(tmpOutKey):
                             tmpFoundFlag = True
                         # add to global map
-                        global globalCompleteDsMap
                         if not globalCompleteDsMap.has_key(tmpName):
                             globalCompleteDsMap[tmpName] = []
                         globalCompleteDsMap[tmpName].append(tmpOutKey)
