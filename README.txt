@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.89 (3/5/2012)
+  * fixed SyntaxWarning
+
 0.3.88 (3/5/2012)
   * fixed pathena/prun to trigger LFC lookup only for incomplete replicas
   * fixed --skipScan in pathena/prun
