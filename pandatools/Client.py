@@ -795,6 +795,7 @@ def getDatasets(name,verbose=False,withWC=False,onlyNames=False):
 
 
 # get expiring files
+globalCompleteDsMap = {}
 globalExpFilesMap = {}
 globalExpOkFilesMap = {}
 globalExpCompDq2FilesMap = {}
@@ -1396,7 +1397,6 @@ def isOnlineSite(origTmpSite):
                 
 
 # get locations
-globalCompleteDsMap = {}
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
                  getTapeSites=False,getDQ2IDs=False,locCandidates=None,removeDS=False,
                  removedDatasets=[],useOutContainer=False,includeIncomplete=False,
