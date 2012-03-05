@@ -28,7 +28,7 @@ def _getPFNsLFC(guids,lfcHost,storages,nFiles,verbose=False):
         print "Get file info from %s" % lfcHost
     # get PFN
     iGUID = 0
-    nGUID = 1000
+    nGUID = 10000
     pfnMap   = {}
     listGUID = []
     for guid in guids:

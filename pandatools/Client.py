@@ -796,14 +796,20 @@ def getDatasets(name,verbose=False,withWC=False,onlyNames=False):
 
 # get expiring files
 globalExpFilesMap = {}
-def getExpiringFiles(dsStr,removedDS,siteID,verbose):
+globalExpOkFilesMap = {}
+globalExpCompDq2FilesMap = {}
+def getExpiringFiles(dsStr,removedDS,siteID,verbose,getOKfiles=False):
     # convert * in dsStr
     if re.search('\*',dsStr) != None:
         dsStr = queryFilesInDataset(dsStr,verbose,dsStringOnly=True)
     # reuse map
     global globalExpFilesMap
+    global globalExpOkFilesMap
+    global expCompDq2FilesList
     mapKey = (dsStr,siteID)
     if globalExpFilesMap.has_key(mapKey):
+        if getOKfiles:
+            return globalExpFilesMap[mapKey],globalExpOkFilesMap[mapKey],globalExpCompDq2FilesMap[mapKey]
         return globalExpFilesMap[mapKey]
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -832,10 +838,12 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
     # not found    
     if datasets == []:
         tmpLog.error("cannot find datasets at %s for replica metadata check" % siteID)
-        sys.exit(EC_Failed)        
+        sys.exit(EC_Failed)
     # loop over all datasets
     convertedOrigSite = convSrmV2ID(PandaSites[siteID]['ddm'])
     expFilesMap = {'datasets':[],'files':[]}
+    expOkFilesList = []
+    expCompDq2FilesList = []
     for dsName in datasets:
         # get DQ2 IDs for the siteID
         dq2Locations = []
@@ -856,7 +864,15 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
         # empty
         if dq2Locations == []:
             tmpLog.error("cannot find replica locations for %s:%s to check metadata" % (siteID,dsName))
-            sys.exit(EC_Failed)        
+            sys.exit(EC_Failed)
+        # check completeness
+        compInDQ2 = False
+        global globalCompleteDsMap
+        if globalCompleteDsMap.has_key(dsName):
+            for tmpDQ2Loc in dq2Locations:
+                if tmpDQ2Loc in globalCompleteDsMap[dsName]:
+                    compInDQ2 = True
+                    break
         # get metadata
         metaList = getReplicaMetadata(dsName,dq2Locations,verbose)
         # check metadata
@@ -883,11 +899,19 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
             break
         # expiring
         if not metaOK:
-            expFilesMap['datasets'].append(dsName)
             # get files
+            expFilesMap['datasets'].append(dsName)
             expFilesMap['files'] += queryFilesInDataset(dsName,verbose)
+        else:
+            tmpFilesList = queryFilesInDataset(dsName,verbose)
+            expOkFilesList += tmpFilesList
+            # complete
+            if compInDQ2:
+                expCompDq2FilesList += tmpFilesList
     # keep to avoid redundant lookup
     globalExpFilesMap[mapKey] = expFilesMap
+    globalExpOkFilesMap[mapKey] = expOkFilesList
+    globalExpCompDq2FilesMap[mapKey] = expCompDq2FilesList
     if expFilesMap['datasets'] != []:
         msgStr = 'ignore replicas of '
         for tmpDsStr in expFilesMap['datasets']:
@@ -896,6 +920,8 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose):
         msgStr += ' at %s due to archived=ToBeDeleted or short lifetime < 7days' % siteID
         tmpLog.info(msgStr)
     # return
+    if getOKfiles:
+        return expFilesMap,expOkFilesList,expCompDq2FilesList
     return expFilesMap
     
 
@@ -1290,6 +1316,8 @@ def convSrmV2ID(tmpSite):
             tmpSite = re.sub('_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
             tmpSite = re.sub('_PHYS-[A-Z,0-9]+$','DISK',tmpSite)
             tmpSite = re.sub('_PERF-[A-Z,0-9]+$','DISK',tmpSite)
+            tmpSite = re.sub('_DET-[A-Z,0-9]+$', 'DISK',tmpSite)
+            tmpSite = re.sub('_SOFT-[A-Z,0-9]+$','DISK',tmpSite)
             tmpSite = re.sub('_TRIG-DAQ$','DISK',tmpSite)            
             return tmpSite
     # parch for CERN EOS
@@ -1306,6 +1334,8 @@ def convSrmV2ID(tmpSite):
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+TAPE$', 'DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_PHYS-[A-Z,0-9]+$','DISK',tmpSite)
     tmpSite = re.sub('-[^-_]+_PERF-[A-Z,0-9]+$','DISK',tmpSite)
+    tmpSite = re.sub('-[^-_]+_DET-[A-Z,0-9]+$', 'DISK',tmpSite)
+    tmpSite = re.sub('-[^-_]+_SOFT-[A-Z,0-9]+$','DISK',tmpSite)        
     tmpSite = re.sub('-[^-_]+_TRIG-DAQ$','DISK',tmpSite)    
     # SHOULD BE REMOVED Once all sites and DQ2 migrate to srmv2
     # patch for BNL
@@ -1329,6 +1359,8 @@ def convSrmV2ID(tmpSite):
         tmpSite = re.sub('_[A-Z,0-9]+TAPE$', '',tmpSite)
         tmpSite = re.sub('_PHYS-[A-Z,0-9]+$','',tmpSite)
         tmpSite = re.sub('_PERF-[A-Z,0-9]+$','',tmpSite)
+        tmpSite = re.sub('_DET-[A-Z,0-9]+$', '',tmpSite)
+        tmpSite = re.sub('_SOFT-[A-Z,0-9]+$','',tmpSite)                
         tmpSite = re.sub('_TRIG-DAQ$','',tmpSite)
     if tmpSite == 'NET2':
         tmpSite = 'BU'
@@ -1364,6 +1396,7 @@ def isOnlineSite(origTmpSite):
                 
 
 # get locations
+globalCompleteDsMap = {}
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
                  getTapeSites=False,getDQ2IDs=False,locCandidates=None,removeDS=False,
                  removedDatasets=[],useOutContainer=False,includeIncomplete=False,
@@ -1465,6 +1498,11 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             # found online site    
                             if isOnlineSite(tmpEleLoc):
                                 tmpFoundFlag = True
+                            # add to global map
+                            global globalCompleteDsMap
+                            if not globalCompleteDsMap.has_key(tmpEleName):
+                                globalCompleteDsMap[tmpEleName] = []
+                            globalCompleteDsMap[tmpEleName].append(tmpEleLoc)    
                         # use incomplete locations if no complete replica at online sites
                         if includeIncomplete or not tmpFoundFlag:
                             for tmpEleLoc in tmpEleLocs[0]:
@@ -1503,6 +1541,11 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                         # found online site
                         if isOnlineSite(tmpOutKey):
                             tmpFoundFlag = True
+                        # add to global map
+                        global globalCompleteDsMap
+                        if not globalCompleteDsMap.has_key(tmpName):
+                            globalCompleteDsMap[tmpName] = []
+                        globalCompleteDsMap[tmpName].append(tmpOutKey)
                     else:
                         # keep just in case
                         if not tmpOutKey in tmpIncompList:
@@ -1608,8 +1651,10 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                             appendMap[tmpSite] = []
                         if not tmpID in appendMap[tmpSite]:
                             appendMap[tmpSite].append(tmpID)
-                        if not tmpID in resUsedDsMap and origTmpInfo[0].has_key('useddatasets'):
-                            resUsedDsMap[tmpID] = origTmpInfo[0]['useddatasets']
+                        if origTmpInfo[0].has_key('useddatasets'):
+                            if not tmpID in resUsedDsMap:
+                                resUsedDsMap[tmpID] = []
+                            resUsedDsMap[tmpID] += origTmpInfo[0]['useddatasets']
                     else:
                         # not interested in another cloud
                         if tmpSpec['cloud'] != cloud and expCloud:
@@ -1861,7 +1906,8 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
 
 
 # get list of missing LFNs from LFC
-def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList=[],dsStr='',removedDS=[]):
+def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList=[],dsStr='',removedDS=[],
+                       skipScan=False):
     missList = []
     # ignore files in shadow
     if shadowList != []:
@@ -1874,15 +1920,26 @@ def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList
     # ignore expiring files
     if dsStr != '':
         tmpTmpFileMap = {}
-        expFilesMap = getExpiringFiles(dsStr,removedDS,site,verbose)
+        expFilesMap,expOkFilesList,expCompInDQ2FilesList = getExpiringFiles(dsStr,removedDS,site,verbose,getOKfiles=True)
+        if skipScan:
+            # set all files to complete to skip LFC scan
+            expCompInDQ2FilesList = expOkFilesList
+        # collect files in incomplete replicas
         for lfn,vals in tmpFileMap.iteritems():
-            if not lfn in expFilesMap['files']:
+            if lfn in expOkFilesList and not lfn in expCompInDQ2FilesList:
                 tmpTmpFileMap[lfn] = vals
-        tmpFileMap = tmpTmpFileMap        
+        tmpFileMap = tmpTmpFileMap
     # get PFNS
-    pfnMap = _getPFNsLFC(tmpFileMap,site,explicitSE,verbose,nFiles)
+    if tmpFileMap != {}:
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        tmpLog.info("scanning LFC %s for files in incompete dataset at %s" % (getLFC(site),site))
+        pfnMap = _getPFNsLFC(tmpFileMap,site,explicitSE,verbose,nFiles)
+    else:
+        pfnMap = {}
     for lfn,vals in fileMap.iteritems():
-        if (not vals['guid'] in pfnMap.keys()) and (not lfn in shadowList):
+        if (not vals['guid'] in pfnMap.keys()) and (not lfn in shadowList) \
+               and not lfn in expCompInDQ2FilesList:
             missList.append(lfn)
     # return
     return missList
@@ -1901,7 +1958,7 @@ def _getGridSrc():
             gridSrc = '/afs/in2p3.fr/grid/profiles/lcg_env.sh'
         elif athenaStatus == 0 and re.search('^/afs/\.*cern.ch',athenaPath) != None:
             # for CERN, VDT is already installed
-            gridSrc = '/afs/cern.ch/project/gd/LCG-share/current/etc/profile.d/grid_env.sh'
+            gridSrc = '/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh'
     else:
         # set Grid setup.sh
         if os.environ.has_key('PATHENA_GRID_SETUP_SH'):
@@ -1912,7 +1969,7 @@ def _getGridSrc():
                 return False
             if os.environ['CMTSITE'] == 'CERN' or (athenaStatus == 0 and \
                                                    re.search('^/afs/\.*cern.ch',athenaPath) != None):
-		gridSrc = '/afs/cern.ch/project/gd/LCG-share/current/etc/profile.d/grid_env.sh'
+		gridSrc = '/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh'
             elif os.environ['CMTSITE'] == 'BNL':
                 gridSrc = '/afs/usatlas.bnl.gov/osg/client/@sys/current/setup.sh'
             else:
@@ -1922,7 +1979,7 @@ def _getGridSrc():
                     gridSrc = '/afs/in2p3.fr/grid/profiles/lcg_env.sh'
                 else:
                     print "ERROR : PATHENA_GRID_SETUP_SH is not defined in envvars"
-                    print "  for CERN : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current/etc/profile.d/grid_env.sh"                
+                    print "  for CERN : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh"
                     print "  for LYON : export PATHENA_GRID_SETUP_SH=/afs/in2p3.fr/grid/profiles/lcg_env.sh"
                     print "  for BNL  : export PATHENA_GRID_SETUP_SH=/afs/usatlas.bnl.gov/osg/client/@sys/current/setup.sh"
                     return False
@@ -2374,9 +2431,10 @@ def addAllowedSites(verbose=False):
         # set online if the site is allowed
         if tmpVal['status']=='approved':
            if PandaSites.has_key(tmpID):
-               PandaSites[tmpID]['status'] = 'online'
-               if verbose:
-                   tmpLog.debug('set %s online' % tmpID)
+               if PandaSites[tmpID]['status'] in ['brokeroff']:
+                   PandaSites[tmpID]['status'] = 'online'
+                   if verbose:
+                       tmpLog.debug('set %s online' % tmpID)
     return True
 
 

@@ -822,7 +822,8 @@ if distinguishedName == '' and nickName == '':
     sys.exit(EC_Config)
 
 # check outDS format
-if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,options.site,vomsFQAN):
+if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,
+                                options.site,vomsFQAN,options.mergeOutput):
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
 
@@ -2058,36 +2059,31 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         if not Client.PandaSites[options.site]['maxinputsize'] in [0,'']:
             maxTotalSize = Client.PandaSites[options.site]['maxinputsize'] * 1024*1024
         # scan local replica catalog
-        if options.skipScan:
-            # skip remote scan
-            missList = []
-        else:
-            dsLocation = Client.PandaSites[options.site]['ddm']
-            if Client.getLFC(dsLocation) != None:
-		tmpLog.info("scanning LFC %s for %s" % (Client.getLFC(dsLocation),options.site))
-                # LFC
-                if options.nfiles == 0:
-                    missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
-                                                         dsStr=options.inDS,removedDS=options.removedDS)
-                else:
-                    missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
-                                                         options.nfiles,shadowList,
-                                                         dsStr=options.inDS,removedDS=options.removedDS)
-            elif Client.getLRC(dsLocation) != None:
-		tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
-                # LRC
-                missList = Client.getMissLFNsFromLRC(inputFileMap,Client.getLRC(dsLocation),options.verbose,
-                                                     options.nfiles)
+        dsLocation = Client.PandaSites[options.site]['ddm']
+        if Client.getLFC(dsLocation) != None:
+            # LFC
+            if options.nfiles == 0:
+                missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
+                                                     dsStr=options.inDS,removedDS=options.removedDS)
             else:
-                missList = []
-            # remove datasets from removedDS if they are incomplete in LFC
-            tmpInconDsList = Client.getInconsistentDS(missList,newUsedDsList)
-            for tmpInconDS in tmpInconDsList:
-                if tmpInconDS in options.removedDS:
-                    options.removedDS.remove(tmpInconDS)
-            # choose min missList
-            if options.verbose:
-                tmpLog.debug("%s holds %s files" % (dsLocation,len(inputFileMap)-len(missList)))
+                missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
+                                                     options.nfiles,shadowList,
+                                                     dsStr=options.inDS,removedDS=options.removedDS)
+        elif Client.getLRC(dsLocation) != None:
+            tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
+            # LRC
+            missList = Client.getMissLFNsFromLRC(inputFileMap,Client.getLRC(dsLocation),options.verbose,
+                                                 options.nfiles)
+        else:
+            missList = []
+        # remove datasets from removedDS if they are incomplete in LFC
+        tmpInconDsList = Client.getInconsistentDS(missList,newUsedDsList)
+        for tmpInconDS in tmpInconDsList:
+            if tmpInconDS in options.removedDS:
+                options.removedDS.remove(tmpInconDS)
+        # choose min missList
+        if options.verbose:
+            tmpLog.debug("%s holds %s files" % (dsLocation,len(inputFileMap)-len(missList)))
         # check availability of TAG files
         if useTagParentLookup:
             tmpLog.info("checking files in %s" % orig_inDS)
@@ -2105,7 +2101,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     tagToParentMap[tmpTagFileName].append(tmpInputFileName)
             # check with LFC
             tagMissFiles = Client.getMissLFNsFromLFC(tagFileList,options.site,True,options.verbose,
-                                                     dsStr=options.parentDS)
+                                                     dsStr=options.parentDS,skipScan=options.skipScan)
             for tmpTagMissFile in tagMissFiles:
                 # remove missing TAG files
                 del tagFileList[tmpTagMissFile]
@@ -2283,7 +2279,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         # query files in dataset
         tmpLog.info("query files in %s" % minbiasDataset)
         tmpList = Client.queryFilesInDataset(minbiasDataset,options.verbose)
-	tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=minbiasDataset)
+	tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=minbiasDataset,
+                                                skipScan=options.skipScan)
 	minbiasList = []
         for item in tmpList.keys():
             # remove log
@@ -2322,7 +2319,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         # query files in dataset
         tmpLog.info("query files in %s" % options.lowMinDS)
         tmpList = Client.queryFilesInDataset(options.lowMinDS,options.verbose)
-	tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=options.lowMinDS)
+	tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=options.lowMinDS,
+                                                skipScan=options.skipScan)
 	lowminbiasList = []
         for item in tmpList.keys():
             # remove log
@@ -2361,7 +2359,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         # query files in dataset
         tmpLog.info("query files in %s" % options.highMinDS)
         tmpList = Client.queryFilesInDataset(options.highMinDS,options.verbose)
-	tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=options.highMinDS)
+	tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=options.highMinDS,
+                                                skipScan=options.skipScan)
 	highminbiasList = []
         for item in tmpList.keys():
             # remove log
@@ -2400,7 +2399,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
         # query files in dataset
         tmpLog.info("query files in %s" % cavernDataset)
         tmpList = Client.queryFilesInDataset(cavernDataset,options.verbose)
-        tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=cavernDataset)
+        tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=cavernDataset,
+                                                skipScan=options.skipScan)
 	cavernList = []
         for item in tmpList.keys():
             # remove log
@@ -2441,7 +2441,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # query files in dataset
             tmpLog.info("query files in %s" % beamHaloDataset)
             tmpList = Client.queryFilesInDataset(beamHaloDataset,options.verbose)
-            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamHaloDataset)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamHaloDataset,
+                                                    skipScan=options.skipScan)
 	    beamHaloList = []
             for item in tmpList.keys():
                 # remove log
@@ -2472,7 +2473,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # query files in dataset
             tmpLog.info("query files in %s" % beamHaloAdataset)
             tmpList = Client.queryFilesInDataset(beamHaloAdataset,options.verbose)
-            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamHaloAdataset)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamHaloAdataset,
+                                                    skipScan=options.skipScan)
 	    beamHaloAList = []
             for item in tmpList.keys():
                 # remove log
@@ -2485,7 +2487,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 beamHaloAList.append((item,tmpList[item]))
             tmpLog.info("query files in %s" % beamHaloCdataset)
             tmpList = Client.queryFilesInDataset(beamHaloCdataset,options.verbose)
-            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamHaloCdataset)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamHaloCdataset,
+                                                    skipScan=options.skipScan)
 	    beamHaloCList = []
             for item in tmpList.keys():
                 # remove log
@@ -2527,7 +2530,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # query files in dataset
             tmpLog.info("query files in %s" % beamGasDataset)
             tmpList = Client.queryFilesInDataset(beamGasDataset,options.verbose)
-            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamGasDataset)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamGasDataset,
+                                                    skipScan=options.skipScan)
 	    beamGasList = []
             for item in tmpList.keys():
                 # remove log
@@ -2558,7 +2562,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # query files in dataset
             tmpLog.info("query files in %s" % beamGasHdataset)
             tmpList = Client.queryFilesInDataset(beamGasHdataset,options.verbose)
-            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamGasHdataset)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamGasHdataset,
+                                                    skipScan=options.skipScan)
 	    beamGasHList = []
             for item in tmpList.keys():
                 # remove log
@@ -2571,7 +2576,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 beamGasHList.append((item,tmpList[item]))
             tmpLog.info("query files in %s" % beamGasCdataset)
             tmpList = Client.queryFilesInDataset(beamGasCdataset,options.verbose)
-            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamGasCdataset)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamGasCdataset,
+                                                    skipScan=options.skipScan)
 	    beamGasCList = []
             for item in tmpList.keys():
                 # remove log
@@ -2584,7 +2590,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 beamGasCList.append((item,tmpList[item]))
             tmpLog.info("query files in %s" % beamGasOdataset)
             tmpList = Client.queryFilesInDataset(beamGasOdataset,options.verbose)
-            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamGasOdataset)
+            tmpMissList = Client.getMissLFNsFromLFC(tmpList,options.site,True,options.verbose,dsStr=beamGasOdataset,
+                                                    skipScan=options.skipScan)
 	    beamGasOList = []
             for item in tmpList.keys():
                 # remove log
@@ -2887,13 +2894,17 @@ else:
         tmpList = {}
     tmpFileList = []
     tmpGUIDmap = {}
+    tmpMD5Sum  = None
+    tmpFSize   = None
     for fileName in tmpList.keys():
         # ignore log file
         if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
                re.search('\.log(\.tgz)*(\.\d+)*$',fileName) != None:
             continue
         tmpFileList.append(fileName)
-        tmpGUIDmap[fileName] = tmpList[fileName]['guid'] 
+        tmpGUIDmap[fileName] = tmpList[fileName]['guid']
+        tmpMD5Sum  = tmpList[fileName]['md5sum']
+        tmpFSize   = tmpList[fileName]['fsize']
     # incomplete libDS
     if tmpFileList == []:
         # query files in dataset from Panda
@@ -2928,7 +2939,11 @@ else:
     fileBO.destinationDBlock = options.libDS
     if fileBO.GUID != 'NULL':
         fileBO.status = 'ready'
-    
+    if tmpMD5Sum != None:
+        fileBO.md5sum = tmpMD5Sum
+    if tmpFSize != None:
+        fileBO.fsize = tmpFSize    
+
 # run athena            
 
 if options.inDS != '' and options.burstSubmit == '':
@@ -3115,6 +3130,8 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             fileS = FileSpec()
             fileS.lfn     = fileBO.lfn
             fileS.GUID    = fileBO.GUID
+	    fileS.md5sum  = fileBO.md5sum
+	    fileS.fsize   = fileBO.fsize 
             fileS.type    = 'input'
             fileS.status  = fileBO.status
             fileS.dataset = fileBO.destinationDBlock
@@ -3851,7 +3868,8 @@ if options.individualOutDS:
     for tmpFile in jobList[-1].Files:
         if tmpFile.type in ['output','log']:
             if not tmpFile.dataset in tmpIdvOutDsList:
-                if not PsubUtils.checkOutDsName(tmpFile.dataset,distinguishedName,options.official,nickName,options.site,vomsFQAN):
+                if not PsubUtils.checkOutDsName(tmpFile.dataset,distinguishedName,options.official,nickName,
+                                                options.site,vomsFQAN,options.mergeOutput):
                     tmpLog.info("a suffix is added to datasetname for each output stream when --individualOutDS is used. e.g. outDS_suffix:%s. Please use shorter name for --outDS" % tmpFile.dataset)
                     sys.exit(EC_Config)
                 tmpIdvOutDsList.append(tmpFile.dataset)
