@@ -23,6 +23,7 @@ pathena -h
 
 0.3.88 (3/5/2012)
   * fixed pathena/prun to trigger LFC lookup only for incomplete replicas
+  * fixed --skipScan in pathena/prun
 
 0.3.87 (3/1/2012)
   * fixed pathena/prun for libDS
