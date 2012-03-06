@@ -881,6 +881,9 @@ if not AthenaUtils.checkCmtConfig(retA['cmtConfig'],options.cmtConfig,options.no
 
 # overwrite with athenaTag
 if options.athenaTag != '':
+    athenaVer = ''
+    cacheVer  = ''
+    nightVer  = ''
     # get list of Athena projects
     listProjects = Client.getCachePrefixes(options.verbose)
     items = options.athenaTag.split(',')
