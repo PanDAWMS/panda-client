@@ -891,7 +891,7 @@ if options.athenaTag != '':
         # releases
         match = re.search('^(\d+\.\d+\.\d+)',item)
         if match != None:
-            athenaVer = 'Atlas-%s' % match.group(1)
+            athenaVer = match.group(1)
             # cache
 	    cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
 	    if cmatch != None:
