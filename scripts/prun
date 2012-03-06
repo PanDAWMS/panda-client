@@ -167,9 +167,9 @@ optP.add_option('--spaceToken',action='store',dest='spaceToken',default='',type=
 optP.add_option('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
                 help="Please don't use this option. Only for developers to use the dev panda server")
 optP.add_option('--outTarBall', action='store', dest='outTarBall', default='',
-                type='string', help='Save a copy of local files which is the input to buildXYZ')
+                type='string', help='Save a gzipped tarball of local files which is the input to buildXYZ')
 optP.add_option('--inTarBall', action='store', dest='inTarBall', default='',
-                type='string', help='Use a saved copy of local files as input to buildXYZ')
+                type='string', help='Use a gzipped tarball of local files as input to buildXYZ. Generall the tarball is created by using --outTarBall')
 optP.add_option('--exec',action='store',dest='jobParams',default='',type='string',
                 help='execution string. e.g., --exec "./myscript arg1 arg2"')
 optP.add_option('--bexec',action='store',dest='bexec',default='',type='string',

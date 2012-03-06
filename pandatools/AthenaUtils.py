@@ -574,10 +574,10 @@ def convStrToFullPathJobOs(tmpStr):
 def copyAthenaStuff(currentDir):
     baseName = os.environ['PANDA_SYS'] + "/etc/panda/share"
     for tmpFile in athenaStuff:
-        com = 'cp %s/%s %s' % (baseName,tmpFile,currentDir)
+        com = 'cp -p %s/%s %s' % (baseName,tmpFile,currentDir)
         commands.getoutput(com)
     for fullJobO,localName in fullPathJobOs.iteritems():
-        com = 'cp %s %s/%s' % (fullJobO,currentDir,localName)
+        com = 'cp -p %s %s/%s' % (fullJobO,currentDir,localName)
         commands.getoutput(com)
 
 
