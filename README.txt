@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.3.91 (3/7/2012)
+  * disabled shadow registration
+  * added --followLinks to prun
+
 0.3.90 (3/6/2012)
   * added --athenaTag to pathena
   * fixed --skipScan in pathena
