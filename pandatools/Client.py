@@ -1907,6 +1907,8 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
 # get list of missing LFNs from LFC
 def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList=[],dsStr='',removedDS=[],
                        skipScan=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
     missList = []
     # ignore files in shadow
     if shadowList != []:
@@ -1920,19 +1922,18 @@ def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList
     if dsStr != '':
         tmpTmpFileMap = {}
         expFilesMap,expOkFilesList,expCompInDQ2FilesList = getExpiringFiles(dsStr,removedDS,site,verbose,getOKfiles=True)
-        if skipScan:
-            # set all files to complete to skip LFC scan
-            expCompInDQ2FilesList = expOkFilesList
         # collect files in incomplete replicas
         for lfn,vals in tmpFileMap.iteritems():
             if lfn in expOkFilesList and not lfn in expCompInDQ2FilesList:
                 tmpTmpFileMap[lfn] = vals
         tmpFileMap = tmpTmpFileMap
+        # skipScan use only complete replicas
+        if skipScan and expCompInDQ2FilesList == []:
+            tmpLog.info("%s may hold %s files at most in incomplete replicas but they are not used when --skipScan is set" % \
+                        (site,len(expOkFilesList)))
     # get PFNS
-    if tmpFileMap != {}:
-        # get logger
-        tmpLog = PLogger.getPandaLogger()
-        tmpLog.info("scanning LFC %s for files in incompete dataset at %s" % (getLFC(site),site))
+    if tmpFileMap != {} and not skipScan:
+        tmpLog.info("scanning LFC %s for files in incompete datasets at %s" % (getLFC(site),site))
         pfnMap = _getPFNsLFC(tmpFileMap,site,explicitSE,verbose,nFiles)
     else:
         pfnMap = {}
@@ -2279,6 +2280,10 @@ def useDevServer():
     baseURL = 'http://voatlas220.cern.ch:25080/server/panda'
     global baseURLSSL
     baseURLSSL = 'https://voatlas220.cern.ch:25443/server/panda'    
+    global baseURLCSRV
+    baseURLCSRV = 'https://voatlas220.cern.ch:25443/server/panda'
+    global baseURLCSRVSSL
+    baseURLCSRVSSL = 'https://voatlas220.cern.ch:25443/server/panda'
 
 
 # set server

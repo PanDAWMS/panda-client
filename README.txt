@@ -21,13 +21,22 @@ pathena -h
 
 ** Release Note
 
+0.3.91 (3/7/2012)
+  * disabled shadow registration
+  * added --followLinks to prun
+
+0.3.90 (3/6/2012)
+  * added --athenaTag to pathena
+  * fixed --skipScan in pathena
+  * changed --skipScan to use complete replicas only
+
 0.3.89 (3/5/2012)
   * fixed SyntaxWarning
 
 0.3.88 (3/5/2012)
   * fixed pathena/prun to trigger LFC lookup only for incomplete replicas
   * fixed --skipScan in pathena/prun
-  * fixed replica lookup when two DQ2 IDs i the same site hold inDS
+  * fixed replica lookup when two DQ2 IDs in the same site hold inDS
 
 0.3.87 (3/1/2012)
   * fixed pathena/prun for libDS
