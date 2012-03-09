@@ -1189,7 +1189,8 @@ def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False)
         # add replica
         if re.search('SCRATCHDISK$',location) != None or re.search('USERDISK$',location) != None \
            or re.search('LOCALGROUPDISK$',location) != None \
-           or (allowProdDisk and re.search('PRODDISK$',location) != None):
+           or (allowProdDisk and (re.search('PRODDISK$',location) != None or \
+                                  re.search('DATADISK$',location) != None)):
             url = baseURLDQ2SSL + '/ws_location/rpc'
             nTry = 3
             for iTry in range(nTry):
@@ -1204,6 +1205,9 @@ def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False)
                     time.sleep(20)
                 else:
                     break
+        else:
+            errStr = "ERROR : registration at %s is disallowed" % location
+            sys.exit(EC_Failed)
     except:
         print status,out
         if errStr != '':

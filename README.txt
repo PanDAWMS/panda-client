@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.92 (3/9/2012)
+  * changed allowProdDisk in addDataset for DATADISK too 
+
 0.3.91 (3/7/2012)
   * disabled shadow registration
   * added --followLinks to prun
