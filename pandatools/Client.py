@@ -1145,7 +1145,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False,forColl=False):
 
                                 
 # register dataset
-def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False):
+def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False,dsCheck=True):
     # generate DUID/VUID
     duid = MiscUtils.wrappedUuidGen()
     vuid = MiscUtils.wrappedUuidGen()
@@ -1164,14 +1164,18 @@ def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False)
                 data = {'operation':'addDataset','dsn': name,'duid': duid,'vuid':vuid,
                         'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen(),'update':'yes'}
                 status,out = curl.post(url,data)
-                if status != 0 or (out != None and re.search('Exception',out) != None):
+                if not dsCheck and out != None and re.search('DQDatasetExistsException',out) != None:
+                    dsExist = True
+                    break
+                elif status != 0 or (out != None and re.search('Exception',out) != None):
                     if iTry+1 == nTry:
                         errStr = "ERROR : could not add dataset to DQ2 repository"
                         sys.exit(EC_Failed)
                     time.sleep(20)    
                 else:
                     break
-        else:
+        # get VUID        
+        if dsExist:
             # check location
             tmpLocations = getLocations(name,[],'',False,verbose,getDQ2IDs=True)
             if location in tmpLocations:

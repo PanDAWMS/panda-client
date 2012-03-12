@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.94 (3/12/2012)
+  * fixed pbook to ignore DatasetExistsException when retrying
+
 0.3.93 (3/12/2012)
   * fixed timeout in getFilesInUseForAnal 
 
