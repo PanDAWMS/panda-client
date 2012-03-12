@@ -2608,11 +2608,34 @@ def getFilesInUseForAnal(outDataset,verbose):
     curl.sslKey  = _x509()
     curl.verbose = verbose
     # execute
-    url = baseURLSSL + '/getFilesInUseForAnal'
+    url = baseURLSSL + '/getDisInUseForAnal'
     data = {'outDataset':outDataset}
     status,output = curl.post(url,data)
     try:
-        return pickle.loads(output)
+        inputDisList = pickle.loads(output)
+        # failed
+        if inputDisList == None:
+            print "ERROR getFilesInUseForAnal : failed to get shadow dis list from the panda server"
+            sys.exit(EC_Failed)
+        # split to small chunks to avoid timeout
+        retLFNs = []
+        nDis = 3
+        iDis = 0
+        while iDis < len(inputDisList):
+            # serialize
+            strInputDisList = pickle.dumps(inputDisList[iDis:iDis+nDis])
+            # get LFNs
+            url = baseURLSSL + '/getLFNsInUseForAnal'
+            data = {'inputDisList':strInputDisList}
+            status,output = curl.post(url,data)
+            tmpLFNs = pickle.loads(output)
+            if tmpLFNs == None:
+                print "ERROR getFilesInUseForAnal : failed to get LFNs in shadow dis from the panda server"
+                sys.exit(EC_Failed)
+            retLFNs += tmpLFNs
+            iDis += nDis
+            time.sleep(1)
+        return retLFNs
     except:
         type, value, traceBack = sys.exc_info()
         print "ERROR getFilesInUseForAnal : %s %s" % (type,value)
