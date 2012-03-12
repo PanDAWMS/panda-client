@@ -1189,7 +1189,8 @@ def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False)
         # add replica
         if re.search('SCRATCHDISK$',location) != None or re.search('USERDISK$',location) != None \
            or re.search('LOCALGROUPDISK$',location) != None \
-           or (allowProdDisk and re.search('PRODDISK$',location) != None):
+           or (allowProdDisk and (re.search('PRODDISK$',location) != None or \
+                                  re.search('DATADISK$',location) != None)):
             url = baseURLDQ2SSL + '/ws_location/rpc'
             nTry = 3
             for iTry in range(nTry):
@@ -1204,6 +1205,9 @@ def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False)
                     time.sleep(20)
                 else:
                     break
+        else:
+            errStr = "ERROR : registration at %s is disallowed" % location
+            sys.exit(EC_Failed)
     except:
         print status,out
         if errStr != '':
@@ -1907,6 +1911,8 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
 # get list of missing LFNs from LFC
 def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList=[],dsStr='',removedDS=[],
                        skipScan=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
     missList = []
     # ignore files in shadow
     if shadowList != []:
@@ -1920,19 +1926,18 @@ def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList
     if dsStr != '':
         tmpTmpFileMap = {}
         expFilesMap,expOkFilesList,expCompInDQ2FilesList = getExpiringFiles(dsStr,removedDS,site,verbose,getOKfiles=True)
-        if skipScan:
-            # set all files to complete to skip LFC scan
-            expCompInDQ2FilesList = expOkFilesList
         # collect files in incomplete replicas
         for lfn,vals in tmpFileMap.iteritems():
             if lfn in expOkFilesList and not lfn in expCompInDQ2FilesList:
                 tmpTmpFileMap[lfn] = vals
         tmpFileMap = tmpTmpFileMap
+        # skipScan use only complete replicas
+        if skipScan and expCompInDQ2FilesList == []:
+            tmpLog.info("%s may hold %s files at most in incomplete replicas but they are not used when --skipScan is set" % \
+                        (site,len(expOkFilesList)))
     # get PFNS
-    if tmpFileMap != {}:
-        # get logger
-        tmpLog = PLogger.getPandaLogger()
-        tmpLog.info("scanning LFC %s for files in incompete dataset at %s" % (getLFC(site),site))
+    if tmpFileMap != {} and not skipScan:
+        tmpLog.info("scanning LFC %s for files in incompete datasets at %s" % (getLFC(site),site))
         pfnMap = _getPFNsLFC(tmpFileMap,site,explicitSE,verbose,nFiles)
     else:
         pfnMap = {}
@@ -2279,6 +2284,10 @@ def useDevServer():
     baseURL = 'http://voatlas220.cern.ch:25080/server/panda'
     global baseURLSSL
     baseURLSSL = 'https://voatlas220.cern.ch:25443/server/panda'    
+    global baseURLCSRV
+    baseURLCSRV = 'https://voatlas220.cern.ch:25443/server/panda'
+    global baseURLCSRVSSL
+    baseURLCSRVSSL = 'https://voatlas220.cern.ch:25443/server/panda'
 
 
 # set server
@@ -2599,11 +2608,34 @@ def getFilesInUseForAnal(outDataset,verbose):
     curl.sslKey  = _x509()
     curl.verbose = verbose
     # execute
-    url = baseURLSSL + '/getFilesInUseForAnal'
+    url = baseURLSSL + '/getDisInUseForAnal'
     data = {'outDataset':outDataset}
     status,output = curl.post(url,data)
     try:
-        return pickle.loads(output)
+        inputDisList = pickle.loads(output)
+        # failed
+        if inputDisList == None:
+            print "ERROR getFilesInUseForAnal : failed to get shadow dis list from the panda server"
+            sys.exit(EC_Failed)
+        # split to small chunks to avoid timeout
+        retLFNs = []
+        nDis = 3
+        iDis = 0
+        while iDis < len(inputDisList):
+            # serialize
+            strInputDisList = pickle.dumps(inputDisList[iDis:iDis+nDis])
+            # get LFNs
+            url = baseURLSSL + '/getLFNsInUseForAnal'
+            data = {'inputDisList':strInputDisList}
+            status,output = curl.post(url,data)
+            tmpLFNs = pickle.loads(output)
+            if tmpLFNs == None:
+                print "ERROR getFilesInUseForAnal : failed to get LFNs in shadow dis from the panda server"
+                sys.exit(EC_Failed)
+            retLFNs += tmpLFNs
+            iDis += nDis
+            time.sleep(1)
+        return retLFNs
     except:
         type, value, traceBack = sys.exc_info()
         print "ERROR getFilesInUseForAnal : %s %s" % (type,value)
