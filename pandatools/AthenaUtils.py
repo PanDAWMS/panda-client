@@ -1854,6 +1854,9 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
             maVer = int(match.group(1))
             miVer = int(match.group(2))
             reVer = int(match.group(3))
+            # use x86_64-slc5-gcc43-opt for 17.5.0 or higher
+            if maVer > 17 or (maVer == 17 and miVer > 5) or (maVer == 17 and miVer == 5 and reVer >= 0):
+                return 'x86_64-slc5-gcc43-opt'
             # use i686-slc5-gcc43-opt for 15.6.3 or higher
             if maVer > 15 or (maVer == 15 and miVer > 6) or (maVer == 15 and miVer == 6 and reVer >= 3):
                 return 'i686-slc5-gcc43-opt'

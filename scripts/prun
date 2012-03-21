@@ -210,6 +210,8 @@ optP.add_option('--disableRebrokerage',action='store_const',const=True,dest='dis
                 help="disable auto-rebrokerage")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
                 type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
+optP.add_option('--useGOForOutput',action='store',dest='useChirpServer',default='',metavar='GOENDPOINT',
+                type='string', help='The Globus Online server where output files are written to. e.g., --useGOForOutput voatlas92.cern.ch')
 optP.add_option('--enableJEM',action='store_const',const=True,dest='enableJEM',default=False,
                 help="enable JEM")
 optP.add_option('--configJEM', action='store', dest='configJEM', default='',
@@ -612,6 +614,11 @@ elif options.athenaTag != '':
             else:
                 tmpLog.error("unsupported nightly %s" % line)
                 sys.exit(EC_Config)
+	# CMTCONFIG
+        if item == '64':
+            options.cmtConfig = 'x86_64-slc5-gcc43-opt'
+        if item == '32':
+            options.cmtConfig = 'i686-slc5-gcc43-opt'
     # check cache
     if re.search('^-.+_.+$',cacheVer) == None:
         if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) != None:
@@ -620,6 +627,9 @@ elif options.athenaTag != '':
         else:
             # unknown
             cacheVer = ''
+
+# set CMTCONFIG
+options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
 
 # check CMTCONFIG
 if not AthenaUtils.checkCmtConfig(cmtConfig,options.cmtConfig,options.nobuild):

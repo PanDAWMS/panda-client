@@ -320,6 +320,8 @@ optP.add_option('--disableRebrokerage',action='store_const',const=True,dest='dis
                 help="disable auto-rebrokerage")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
                 type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
+optP.add_option('--useGOForOutput',action='store',dest='useChirpServer',default='',metavar='GOENDPOINT',
+                type='string', help='The Globus Online server where output files are written to. e.g., --useGOForOutput voatlas92.cern.ch')
 optP.add_option('--enableJEM',action='store_const',const=True,dest='enableJEM',default=False,
                 help="enable JEM")
 optP.add_option('--configJEM', action='store', dest='configJEM', default='',
@@ -875,10 +877,6 @@ groupArea = retA['groupArea']
 cacheVer  = retA['cacheVer'] 
 nightVer  = retA['nightVer']
 
-# check CMTCONFIG
-if not AthenaUtils.checkCmtConfig(retA['cmtConfig'],options.cmtConfig,options.nobuild):
-    sys.exit(EC_CMT)
-
 # overwrite with athenaTag
 if options.athenaTag != '':
     athenaVer = ''
@@ -911,6 +909,11 @@ if options.athenaTag != '':
             else:
                 tmpLog.error("unsupported nightly %s" % line)
                 sys.exit(EC_Config)
+	# CMTCONFIG
+        if item == '64':
+            options.cmtConfig = 'x86_64-slc5-gcc43-opt'
+        if item == '32':
+            options.cmtConfig = 'i686-slc5-gcc43-opt'
     # check cache
     if re.search('^-.+_.+$',cacheVer) == None:
         if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) != None:
@@ -919,6 +922,13 @@ if options.athenaTag != '':
         else:
             # unknown
             cacheVer = ''
+
+# set CMTCONFIG
+options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
+
+# check CMTCONFIG
+if not AthenaUtils.checkCmtConfig(retA['cmtConfig'],options.cmtConfig,options.nobuild):
+    sys.exit(EC_CMT)
 
 # get run directory
 # remove special characters                    
@@ -3329,6 +3339,8 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                             file.dispatchDBlock = commonDispName
                             file.type           = 'input'
                             file.status         = 'ready'
+                            if options.trf and not isDirectAccess:
+                                file.prodDBlockToken = 'local'
                             # set noshadow since single TAG may point to multiple parent files
                             file.destinationDBlockToken = 'noshadow'
                             jobR.addFile(file)

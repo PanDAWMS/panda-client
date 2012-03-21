@@ -21,6 +21,11 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed pathena for trf+TAG+remoteIO
+  * using x86_64-slc5-gcc43-opt by default for 17.5.0 or higher
+  * fixed --athenaTag to recognize 32 and 64
+
 0.3.94 (3/12/2012)
   * fixed pbook to ignore DatasetExistsException when retrying
 
