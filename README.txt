@@ -26,6 +26,7 @@ current
   * using x86_64-slc5-gcc43-opt by default for 17.5.0 or higher
   * fixed --athenaTag to recognize 32 and 64
   * added --useGOForOutput to pathena/prun
+  * removed redundant lookup for --dbRelease=LATEST
 
 0.3.94 (3/12/2012)
   * fixed pbook to ignore DatasetExistsException when retrying

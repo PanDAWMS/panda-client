@@ -3025,6 +3025,9 @@ def getLatestDBRelease(verbose=False):
         # ignore user
         if tmpName.startswith('ddo.user'):
             continue
+        # use Atlas.Ideal
+        if not ".Atlas.Ideal." in tmpName:
+            continue
         match = re.search('\.v(\d+)(_*[^\.]*)$',tmpName)
         if match == None:
             tmpLog.warning('cannot extract version number from %s' % tmpName)
