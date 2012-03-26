@@ -881,20 +881,23 @@ class PBookCore:
             for tmpFile in retryJobs[-1].Files:
                 if tmpFile.type in ['output','log'] and tmpFile.dataset.endswith('/'):
                     # add shadow
+		    """
+                    removed shadow
                     if shadowDSname == None and tmpFile.type == 'log':
                         shadowDSname = "%s%s" % (tmpFile.destinationDBlock,Client.suffixShadow)
                         Client.addDataset(shadowDSname,self.verbose)
+                    """    
                     # add datasets    
                     if not tmpFile.destinationDBlock in addedDataset:
                         # create dataset
-                        Client.addDataset(tmpFile.destinationDBlock,self.verbose,location=tmpOutDsLocation)
+                        Client.addDataset(tmpFile.destinationDBlock,self.verbose,location=tmpOutDsLocation,dsCheck=False)
                         # add to container
                         Client.addDatasetsToContainer(tmpFile.dataset,[tmpFile.destinationDBlock],self.verbose)
                         # append
                         addedDataset.append(tmpFile.destinationDBlock)
             # register libDS
             if retryBuild and newLibDS != None:
-                Client.addDataset(newLibDS,self.verbose,location=tmpOutDsLocation)
+                Client.addDataset(newLibDS,self.verbose,location=tmpOutDsLocation,dsCheck=False)
             # submit
             tmpLog.info("Submitting job ...")            
             status,out = Client.submitJobs(retryJobs,verbose=self.verbose)
