@@ -3062,6 +3062,9 @@ else:
 inputGroupFilesMap = new_inputGroupFilesMap
 
 
+# error messages
+givenErrorMessages = {}
+
 # loop over all blocks
 for b_dsFiledKey in inputGroupFilesMap.keys():
     b_inputDatasetName,b_fileFieldValue = b_dsFiledKey
@@ -3794,6 +3797,19 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                         # replace %SKIPEVENTS:NN
                         tmpSkipEvents = int(match.group(2)) + nEventsToSkip 
                         tmpJobO = re.sub(match.group(0),'%s%s' % (tmpSkipEvents,match.group(3)),tmpJobO)
+		else:
+                    # give a warning to avoid event duplication when %SKIPEVENTS is unused in --trf
+                    if nEventsToSkip > 0 and not givenErrorMessages.has_key('missingSKIPEVENTS'):
+                        tmpMsgStr  = "The number of events in an input file is larger than --nEventsPerJob "
+                        tmpMsgStr += "but you didn't specify %SKIPEVENTS in --trf, "
+                        tmpMsgStr += "so that some subjobs might run on the same events. "
+                        tmpMsgStr += "Please make sure that %XYZ in --trf is automatically replaced to a real value "
+                        tmpMsgStr += "but no parameter is automatically appended to --trf. "
+                        tmpMsgStr += "You need to specify all necessary parameters in --trf"
+                        print
+                        tmpLog.warning(tmpMsgStr)
+                        print
+                        givenErrorMessages['missingSKIPEVENTS'] = tmpMsgStr
             # set jobO parameter
             param += '-j "%s" ' % urllib.quote(tmpJobO)		
         param += '-i "%s" ' % inList

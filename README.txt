@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added a warning when nEventsPerFile>nEventsPerJob but no %SKIPEVENTS in --trf
+ 
 0.3.95 (3/26/2012)
   * fixed pathena for trf+TAG+remoteIO
   * using x86_64-slc5-gcc43-opt by default for 17.5.0 or higher
