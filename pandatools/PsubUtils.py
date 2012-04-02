@@ -1603,18 +1603,21 @@ def getProdDBlock(job,inDS):
 
 # get token for CHIRP
 tokenForCHIRP = None
-def getTokenForCHIRP(fileName,serverName,useCachedToken=True):
+def getTokenForCHIRP(fileName,serverName,useCachedToken=True,useGO=False):
     global tokenForCHIRP
     if useCachedToken and tokenForCHIRP != None:
         return tokenForCHIRP
-    tmpToken = 'chirp^%s^/%s^-d chirp' % (serverName,fileName.split('.')[1])
+    if not useGO:
+        tmpToken = 'chirp^%s^/%s^-d chirp' % (serverName,fileName.split('.')[1])
+    else:
+        tmpToken = 'globusonline^%s^/%s^-d globusonline' % (serverName,fileName.split('.')[1])
     if useCachedToken:
         tokenForCHIRP = tmpToken
     return tmpToken    
     
 
 # set CHIRP token
-def setCHIRPtokenToOutput(job,serverName):
+def setCHIRPtokenToOutput(job,serverName,useGO=False):
     if serverName == '':
         return
     token = None
@@ -1622,7 +1625,7 @@ def setCHIRPtokenToOutput(job,serverName):
         if tmpFile.type in ['output','log']:
             # get token
             if token == None:
-                token = getTokenForCHIRP(tmpFile.lfn,serverName)
+                token = getTokenForCHIRP(tmpFile.lfn,serverName,useGO=useGO)
             # set token
             tmpFile.dispatchDBlockToken = token
             

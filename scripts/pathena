@@ -320,7 +320,7 @@ optP.add_option('--disableRebrokerage',action='store_const',const=True,dest='dis
                 help="disable auto-rebrokerage")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
                 type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
-optP.add_option('--useGOForOutput',action='store',dest='useChirpServer',default='',metavar='GOENDPOINT',
+optP.add_option('--useGOForOutput',action='store',dest='useGOForOutput',default='',metavar='GOENDPOINT',
                 type='string', help='The Globus Online server where output files are written to. e.g., --useGOForOutput voatlas92.cern.ch')
 optP.add_option('--enableJEM',action='store_const',const=True,dest='enableJEM',default=False,
                 help="enable JEM")
@@ -3926,6 +3926,9 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
         # write outputs to Chirp Server
         if options.useChirpServer != '':
             PsubUtils.setCHIRPtokenToOutput(jobR,options.useChirpServer)
+	# write outputs to GlobusOnline    
+        if options.useGOForOutput != '':
+            PsubUtils.setCHIRPtokenToOutput(jobR,options.useGOForOutput,True)
         # disable redundant transfer if needed
         PsubUtils.disableRedundantTransfer(jobR,options.transferredDS)
         # check job spec
