@@ -24,6 +24,7 @@ pathena -h
 current
   * added a warning when nEventsPerFile>nEventsPerJob but no %SKIPEVENTS in --trf
   * fixed --useGOForOutput
+  * fixed pathena to use AMI for --goodRunListXML + --nEventsPerJob
  
 0.3.95 (3/26/2012)
   * fixed pathena for trf+TAG+remoteIO

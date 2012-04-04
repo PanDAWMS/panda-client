@@ -627,7 +627,7 @@ if options.panda_singleLine != '':
 
 # AMI event-level split
 if options.useAMIEventLevelSplit == None:
-    if options.inDS.startswith('data'):
+    if options.inDS.startswith('data') or options.goodRunListXML != '':
         # use AMI for real data since the number of events per file is not uniform
         options.useAMIEventLevelSplit = True
     else:
