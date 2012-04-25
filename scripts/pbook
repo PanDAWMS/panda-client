@@ -507,7 +507,8 @@ class PBookCore:
                         
 
     # retry
-    def retry(self,JobsetID,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=False,retryBuild=False):
+    def retry(self,JobsetID,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=False,
+              retryBuild=False,reproduceFiles=[],unsetRetryID=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
@@ -585,8 +586,8 @@ class PBookCore:
             statusList= localJob.jobStatus.split(',')
             jobList = []
             for idx in range(len(pandaIDs)):
-                # check status
-                if not statusList[idx] in ['failed','cancelled']:
+                # check status unless reproduce files
+                if reproduceFiles == [] and not statusList[idx] in ['failed','cancelled']:
                     continue
                 jobList.append(pandaIDs[idx])
             # no failed job
@@ -617,6 +618,44 @@ class PBookCore:
                 idxJL += nQuery
                 time.sleep(1)
             tmpLog.info(" %5s/%s" % (len(jobList),len(jobList)))
+            # get PandaIDs to reproduce files
+            if reproduceFiles != []:
+                # change wildcard to .* for regexp
+                reproduceFilePatt = []
+                for tmpReproduceFile in reproduceFiles:
+                    if '*' in tmpReproduceFile:
+                        tmpReproduceFile = tmpReproduceFile.replace('*','.*')
+                    reproduceFilePatt.append(tmpReproduceFile)
+                # get list of jobs which produced interesting files    
+                tmpJobList = []
+                tmpPandaJobs = []
+                for tmpPandaJob in pandaJobs:
+                    # check names
+                    tmpMatchFlag = False
+                    for tmpFile in tmpPandaJob.Files:
+                        if tmpFile.type == 'output':
+                            for tmpReproduceFile in reproduceFilePatt:
+                                # normal matching
+                                if tmpReproduceFile == tmpFile.lfn:
+                                    tmpMatchFlag = True
+                                    break
+                                # wild card
+                                if '*' in tmpReproduceFile and \
+                                   re.search('^'+tmpReproduceFile,tmpFile.lfn) != None:
+                                    tmpMatchFlag = True
+                                    break
+                            if tmpMatchFlag:
+                                break
+                    # append
+                    if tmpMatchFlag:
+                        tmpJobList.append(tmpPandaJob.PandaID)
+                        tmpPandaJobs.append(tmpPandaJob)
+                # use new list
+                jobList = tmpJobList
+                pandaJobs = tmpPandaJobs
+                if jobList == []:
+                    tmpLog.info('No jobs to reproduce files')
+                    continue
             # jobdefID
             newJobdefID = PsubUtils.readJobDefID()
             # reset some parameters
@@ -687,12 +726,14 @@ class PBookCore:
                 job.computingElement    = retryElement
                 job.destinationSE       = retryDestSE
                 job.dispatchDBlock      = None
-                job.jobExecutionID      = JobID
+                if not unsetRetryID:
+                    job.jobExecutionID  = JobID
                 job.jobDefinitionID     = newJobdefID
 		job.parentID            = job.PandaID
                 if job.jobsetID != ['NULL',None,-1]:
-                    job.sourceSite          = job.jobsetID
-                    job.jobsetID            = newJobsetID
+                    if not unsetRetryID:
+                        job.sourceSite  = job.jobsetID
+                    job.jobsetID        = newJobsetID
                 skipInputList = []
                 numUsedFiles = 0
                 # loop over all files    
@@ -725,12 +766,15 @@ class PBookCore:
 			# add retry num
                         if file.dataset.endswith('/') or job.prodSourceLabel == 'panda':
                             oldOutDsName = file.destinationDBlock
-                            retryMatch = re.search('_r(\d+)$',file.destinationDBlock)
+                            retryDsPatt = '_r'
+                            if reproduceFiles != []:
+                                retryDsPatt = '_rp'
+                            retryMatch = re.search(retryDsPatt+'(\d+)$',file.destinationDBlock)
                             if retryMatch == None:
-                                file.destinationDBlock += '_r1'
+                                file.destinationDBlock += (retryDsPatt+'1')
                             else:
-                                tmpDestinationDBlock = re.sub('_r(\d+)$','',file.destinationDBlock)
-                                file.destinationDBlock = tmpDestinationDBlock + '_r%d' % (1+int(retryMatch.group(1)))
+                                tmpDestinationDBlock = re.sub(retryDsPatt+'(\d+)$','',file.destinationDBlock)
+                                file.destinationDBlock = tmpDestinationDBlock + retryDsPatt + '%d' % (1+int(retryMatch.group(1)))
                             if job.processingType == 'usermerge':
                                 job.jobParameters = job.jobParameters.replace(' %s ' % oldOutDsName,
                                                                               ' %s ' % file.destinationDBlock)
@@ -924,14 +968,15 @@ class PBookCore:
                 # dummy statuso
                 pandaIDstatus[PandaID] = ('defined','NULL')
             # set retry ID
-            localJob.retryID = newJobID
-            if not newJobsetID in [None,-1,'NULL']:
-                localJob.retryJobsetID = newJobsetID
-            try:
-                PdbUtils.updateJobDB(localJob,self.verbose)
-            except:
-                tmpLog.error("Failed to set retryID for JobID=%s" % JobID)
-                return
+            if not unsetRetryID:
+                localJob.retryID = newJobID
+                if not newJobsetID in [None,-1,'NULL']:
+                    localJob.retryJobsetID = newJobsetID
+                try:
+                    PdbUtils.updateJobDB(localJob,self.verbose)
+                except:
+                    tmpLog.error("Failed to set retryID for JobID=%s" % JobID)
+                    return
             # set new paramers
             newLocalJob = PdbUtils.convertPtoD(retryJobs,pandaIDstatus)
             newLocalJob.JobID = newJobID
@@ -978,6 +1023,7 @@ def intmain(pbookCore,comString):
    retry
    clean
    reassign
+   reproduce
    killAndRetry
          
 For more info, do help(show) for example."""
@@ -1084,6 +1130,43 @@ For more info, do help(show) for example."""
             retK = pbookCore.kill(JobID)
 
 
+    # reproduce
+    def reproduce(JobsetID=None,outDS=None,reproduceFiles=[],noSubmit=False):
+        """Reproduce lost files which were sucessfully produced by finished jobs. Either JobsetID or output container name needs to be specified. Give a list of file names which you want to reproduce
+
+         example:
+           >>> reproduce(JobsetID=15,reproduceFiles=['user.XYZ._00001.root','user.XYZ._0005*.root'])
+           >>> reproduce(outDS='user.ABC.hoge/',reproduceFiles=['user.XYZ._00001.root','user.XYZ._0005*.root'])
+        """
+        # look for JobID
+        if JobsetID == None:
+            # outDS is not given either
+            if outDS == None:
+                tmpLog = PLogger.getPandaLogger()
+                tmpLog.error("Either JobsetID or outDS must be given")
+                return
+            # get all jobs
+            jobList = pbookCore.getLocalJobList()
+            # reverse sort to find largest JobID
+            jobList.reverse()
+            # look for outDS
+            for tmpJob in jobList:
+                if tmpJob.outDS == outDS: 
+                    if hasattr(tmpJob,'JobID'):
+                        JobsetID = tmpJob.JobID
+                    else:
+                        JobsetID = long(tmpJob.JobsetID)
+                    break
+            # not found
+            if JobsetID == None:
+                tmpLog = PLogger.getPandaLogger()
+                tmpLog.error("Could not find corresponding JobsetID for outDS=%s" % outDS)
+                return
+        # retry    
+        pbookCore.retry(JobsetID,noSubmit=noSubmit,ignoreDuplication=True,reproduceFiles=reproduceFiles,
+                        unsetRetryID=True)
+
+        
     # retry
     def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=True,retryBuild=False):
         """Retry failed/cancelled subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be retried if upperJobID is given. Set useJobsetID=False if you want to retry JobIDs between JobID and UpperJobID. Set newSite=True when you want to retry at new site, which essentially runs pathena/prun again because new sub jobs need to be created for the new site. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. When newSite=True, one can use newOpts which is a map of options  and new arguments like {'nGBperJob':10,'excludedSite':'ABC,XYZ'} and is passed to pathena/prun as new parameters. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True. Set retryBuild=True if you want to retry jobs which have a failed buildJob
@@ -1095,6 +1178,7 @@ For more info, do help(show) for example."""
            >>> retry(15,newSite=True,newOpts={'nGBperJob':10})
            >>> retry(15,ignoreDuplication=True)
         """
+        # use range or not    
         if upperJobID != None:
             # check range
             if JobID > upperJobID:
@@ -1103,10 +1187,12 @@ For more info, do help(show) for example."""
             else:
                 # retry jobs between the range
                 for tmpJobID in range(JobID,upperJobID+1):
-                    pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,ignoreDuplication=ignoreDuplication,
+                    pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,
+                                    ignoreDuplication=ignoreDuplication,
                                     useJobsetID=useJobsetID,retryBuild=retryBuild)
         else:            
-            pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,ignoreDuplication=ignoreDuplication,retryBuild=retryBuild)
+            pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,
+                            ignoreDuplication=ignoreDuplication,retryBuild=retryBuild)
 
 
     # rebrokerage
