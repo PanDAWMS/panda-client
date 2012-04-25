@@ -72,6 +72,8 @@ optP.add_option('--useNthFieldForLFN',action='store',dest='useNthFieldForLFN',de
                 help="all output files from a dataset in the input container have the same middle name in LFN, when --useContElementBoundary is used. The middle name is extracted from the dataset name. The second field is used by default. i.e., if the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is used and LFN is something like user.hoge.JOBSETID.00160387.blha. One can change the extracted field using this option")
 optP.add_option('--splitWithNthFiledOfLFN',action='store',dest='splitWithNthFiledOfLFN',default=-1,type='int',
                 help="Split job in such a way that each sub job uses input files which have the same value in the Nth field of file names. This option would be useful to process a dataset which was produced with --useContElementBoundary, and in this case most likely that --splitWithNthFiledOfLFN=4")
+optP.add_option('--followLinks',action='store_const',const=True,dest='followLinks',default=False,
+                help="Resolve symlinks to directories when building the input tarball. This option requires python2.6 or higher")
 optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
                 help='Name of an output dataset. OUTDS will contain all output files')
 optP.add_option('--destSE',action='store', dest='destSE',default='',type='string',
@@ -167,9 +169,9 @@ optP.add_option('--spaceToken',action='store',dest='spaceToken',default='',type=
 optP.add_option('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
                 help="Please don't use this option. Only for developers to use the dev panda server")
 optP.add_option('--outTarBall', action='store', dest='outTarBall', default='',
-                type='string', help='Save a copy of local files which is the input to buildXYZ')
+                type='string', help='Save a gzipped tarball of local files which is the input to buildXYZ')
 optP.add_option('--inTarBall', action='store', dest='inTarBall', default='',
-                type='string', help='Use a saved copy of local files as input to buildXYZ')
+                type='string', help='Use a gzipped tarball of local files as input to buildXYZ. Generall the tarball is created by using --outTarBall')
 optP.add_option('--exec',action='store',dest='jobParams',default='',type='string',
                 help='execution string. e.g., --exec "./myscript arg1 arg2"')
 optP.add_option('--bexec',action='store',dest='bexec',default='',type='string',
@@ -208,6 +210,8 @@ optP.add_option('--disableRebrokerage',action='store_const',const=True,dest='dis
                 help="disable auto-rebrokerage")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
                 type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
+optP.add_option('--useGOForOutput',action='store',dest='useGOForOutput',default='',metavar='GOENDPOINT',
+                type='string', help='The Globus Online server where output files are written to. e.g., --useGOForOutput voatlas92.cern.ch')
 optP.add_option('--enableJEM',action='store_const',const=True,dest='enableJEM',default=False,
                 help="enable JEM")
 optP.add_option('--configJEM', action='store', dest='configJEM', default='',
@@ -610,6 +614,11 @@ elif options.athenaTag != '':
             else:
                 tmpLog.error("unsupported nightly %s" % line)
                 sys.exit(EC_Config)
+	# CMTCONFIG
+        if item == '64':
+            options.cmtConfig = 'x86_64-slc5-gcc43-opt'
+        if item == '32':
+            options.cmtConfig = 'i686-slc5-gcc43-opt'
     # check cache
     if re.search('^-.+_.+$',cacheVer) == None:
         if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) != None:
@@ -618,6 +627,9 @@ elif options.athenaTag != '':
         else:
             # unknown
             cacheVer = ''
+
+# set CMTCONFIG
+options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
 
 # check CMTCONFIG
 if not AthenaUtils.checkCmtConfig(cmtConfig,options.cmtConfig,options.nobuild):
@@ -861,10 +873,13 @@ if (outputDSexist or outputContExist) and options.individualOutDS:
 
 # check if shadow dataset exists
 shadowDSexist = False
+"""
+# disable shadow stuff
 if not Client.isDQ2free(options.site):
     tmpDatasets = Client.getDatasets("%s%s" % (options.outDS,suffixShadow),options.verbose)
     if len(tmpDatasets) != 0:
         shadowDSexist = True
+"""
 
 # set site/cloud if output/lib dataset already exists
 checkLibDS = True
@@ -1505,7 +1520,8 @@ else:
 	    if options.libDS == '' and not options.nobuild:
 		# archive sources
 		archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,curDir,tmpDir,
-									 options.verbose,options.gluePackages)
+                                                                             options.verbose,options.gluePackages,
+                                                                             dereferenceSymLinks=options.followLinks)
 	    else:
 		# archive jobO
 		archiveName,archiveFullName = AthenaUtils.archiveJobOFiles(workArea,runDir,curDir,
@@ -1533,7 +1549,11 @@ else:
 	    skippedExt   = ['.o','.a','.so']
 	    skippedFlag  = False
 	    workDirFiles = []
-	    for tmpRoot,tmpDirs,tmpFiles in os.walk(archStartDir):
+            if options.followLinks:
+                osWalkList = os.walk(archStartDir,followlinks=True)
+            else:
+                osWalkList = os.walk(archStartDir)                
+	    for tmpRoot,tmpDirs,tmpFiles in osWalkList:
 		emptyFlag    = True
 		for tmpFile in tmpFiles:
                     if options.useAthenaPackages:
@@ -2434,6 +2454,9 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
         # write outputs to Chirp Server
         if options.useChirpServer != '':
             PsubUtils.setCHIRPtokenToOutput(jobR,options.useChirpServer)
+        # write outputs to GlobusOnline
+        if options.useGOForOutput != '':
+            PsubUtils.setCHIRPtokenToOutput(jobR,options.useGOForOutput,True)
         # disable redundant transfer if needed
         PsubUtils.disableRedundantTransfer(jobR,options.transferredDS)
         # check job spec
@@ -2555,12 +2578,14 @@ if not options.nosubmit:
                         Client.addDatasetsToContainer(tmpDsContMap[tmpIdvOutDS],[tmpIdvOutDS],options.verbose)
 
         # register shadow dataset
+        """
+        # disble shadow creation
         if not outputDSexist:
             # loop over all job lists
             for serIndex,tmpJobList in enumerate(splitJobList):
                 tmpDsName = options.outDS+PsubUtils.getSuffixToSplitJobList(serIndex)+suffixShadow
                 Client.addDataset(tmpDsName,options.verbose)
-
+        """        
         # register libDS
         if options.libDS == '' and not options.nobuild:
             Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpLibDsLocation)
