@@ -542,6 +542,11 @@ if curDir != options.workDir:
     wDirString=re.sub('[\+]','.',options.workDir)
     runDir = re.sub('^'+wDirString+'/','',curDir)
 
+# check maxCpuCount 
+if options.maxCpuCount > Client.maxCpuCountLimit:
+    tmpLog.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
+    sys.exit(EC_Config)
+
 # create tmp dir
 if options.tmpDir == '':
     tmpDir = '%s/%s' % (curDir,MiscUtils.wrappedUuidGen())

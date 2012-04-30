@@ -847,6 +847,11 @@ if options.inRunConfig != '':
     options.inRunConfig = os.path.abspath(os.path.expanduser(options.inRunConfig))
 if options.outRunConfig != '':
     options.outRunConfig = os.path.abspath(os.path.expanduser(options.outRunConfig))
+
+# check maxCpuCount 
+if options.maxCpuCount > Client.maxCpuCountLimit:
+    tmpLog.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
+    sys.exit(EC_Config)
     
 # create tmp dir
 if options.tmpDir == '':

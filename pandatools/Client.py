@@ -49,6 +49,8 @@ safetySize = long(500*1024*1024)
 # suffix for shadow dataset
 suffixShadow = "_shadow"
 
+# limit on maxCpuCount
+maxCpuCountLimit = 1000000000
 # retrieve pathena config
 try:
     # get default timeout

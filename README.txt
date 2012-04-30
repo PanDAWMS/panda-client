@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added a protection against too large --maxCpuCount
+
 0.3.96 (4/25/2012)
   * added reproduce() to pbook
   * added a warning when nEventsPerFile>nEventsPerJob but no %SKIPEVENTS in --trf
