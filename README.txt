@@ -21,7 +21,11 @@ pathena -h
 
 ** Release Note
 
-current
+0.3.97 (5/9/2012)
+  * fixed warning message related to SKIPEVENTS in --trf
+  * using glite on CVMFS when athena is setup with CVMFS	
+  * changed nickname to be mandatory
+  * setting account and appid for Rucio
   * added a protection against too large --maxCpuCount
 
 0.3.96 (4/25/2012)

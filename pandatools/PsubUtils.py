@@ -273,6 +273,14 @@ def getNickname():
     return nickName
         
 
+# set Rucio accounting
+def setRucioAccount(account,appid,forceSet):
+    if forceSet or not os.environ.has_key('RUCIO_ACCOUNT'):
+        os.environ['RUCIO_ACCOUNT'] = account
+    if forceSet or not os.environ.has_key('RUCIO_APPID'):
+        os.environ['RUCIO_APPID'] = appid
+
+        
 # check if valid cloud
 def checkValidCloud(cloud):
     # check cloud

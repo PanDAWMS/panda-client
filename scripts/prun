@@ -845,8 +845,11 @@ distinguishedName = PsubUtils.getDN()
 # get nickname
 nickName = PsubUtils.getNickname()
 
-if distinguishedName == '' and nickName == '':
+if nickName == '':
     sys.exit(EC_Config)
+
+# set Rucio accounting
+PsubUtils.setRucioAccount(nickName,'prun',True)
 
 # check outDS format
 if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,
