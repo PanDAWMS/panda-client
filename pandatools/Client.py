@@ -2001,7 +2001,9 @@ def _getGridSrc():
                     gridSrc = '/afs/in2p3.fr/grid/profiles/lcg_env.sh'
                 elif athenaStatus == 0 and athenaPath.startswith('/cvmfs/atlas.cern.ch'):
                     # CVMFS
-                    gridSrc = '/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase/x86_64/gLite/current/etc/profile.d/grid-env.sh'
+                    if not os.environ.has_key('ATLAS_LOCAL_ROOT_BASE'):
+                        os.environ['ATLAS_LOCAL_ROOT_BASE'] = '/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase'
+                    gridSrc = os.environ['ATLAS_LOCAL_ROOT_BASE'] + '/user/pandaGridSetup.sh > /dev/null'
                 else:
                     print "ERROR : PATHENA_GRID_SETUP_SH is not defined in envvars"
                     print "  for CERN : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh"

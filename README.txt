@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.98 (5/9/2012)
+  * using pandaGridSetup.sh for CVMFS, as recommended by Asoka De Silva
+
 0.3.97 (5/9/2012)
   * fixed warning message related to SKIPEVENTS in --trf
   * using glite on CVMFS when athena is setup with CVMFS	
