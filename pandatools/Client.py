@@ -49,6 +49,8 @@ safetySize = long(500*1024*1024)
 # suffix for shadow dataset
 suffixShadow = "_shadow"
 
+# limit on maxCpuCount
+maxCpuCountLimit = 1000000000
 # retrieve pathena config
 try:
     # get default timeout
@@ -126,7 +128,7 @@ class _Curl:
     # constructor
     def __init__(self):
         # path to curl
-        self.path = 'curl --user-agent "dqcurl"'
+        self.path = 'curl --user-agent "dqcurl" '
         # verification of the host certificate
         self.verifyHost = False
         # request a compressed response
@@ -138,7 +140,7 @@ class _Curl:
         self.verbose = False
 
     # GET method
-    def get(self,url,data):
+    def get(self,url,data,rucioAccount=False):
         # make command
         com = '%s --silent --get' % self.path
         if not self.verifyHost:
@@ -151,6 +153,12 @@ class _Curl:
             com += ' --cert %s' % self.sslCert
         if self.sslKey != '':
             com += ' --key %s' % self.sslKey
+        # add rucio account info
+        if rucioAccount:
+            if os.environ.has_key('RUCIO_ACCOUNT'):
+                data['account'] = os.environ['RUCIO_ACCOUNT']
+            if os.environ.has_key('RUCIO_APPID'):    
+                data['appid'] = os.environ['RUCIO_APPID']
         # data
         strData = ''
         for key in data.keys():
@@ -185,7 +193,7 @@ class _Curl:
 
 
     # POST method
-    def post(self,url,data):
+    def post(self,url,data,rucioAccount=False):
         # make command
         com = '%s --silent' % self.path
         if not self.verifyHost:
@@ -198,6 +206,12 @@ class _Curl:
             com += ' --cert %s' % self.sslCert
         if self.sslKey != '':
             com += ' --key %s' % self.sslKey
+        # add rucio account info
+        if rucioAccount:
+            if os.environ.has_key('RUCIO_ACCOUNT'):
+                data['account'] = os.environ['RUCIO_ACCOUNT']
+            if os.environ.has_key('RUCIO_APPID'):    
+                data['appid'] = os.environ['RUCIO_APPID']
         # data
         strData = ''
         for key in data.keys():
@@ -662,7 +676,7 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False,dsStri
                     time.sleep(1)
                 data = {'operation':'queryDatasetByName','dsn':tmpName,
                         'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
-                status,out = curl.get(url,data)
+                status,out = curl.get(url,data,rucioAccount=True)
                 if status != 0 or out == '\x00' or (re.search('\*',tmpName) == None and not checkDatasetInMap(tmpName,out)):
                     errStr = "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
                              % tmpName
@@ -707,7 +721,7 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False,dsStri
                 time.sleep(1)
             data = {'operation': 'queryFilesInDataset','vuids':vuids,
                     'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
-            status,out =  curl.post(url,data)
+            status,out =  curl.post(url,data,rucioAccount=True)
             if status != 0:
                 errStr = "ERROR : could not get files in %s" % name
                 sys.exit(EC_Failed)
@@ -759,7 +773,7 @@ def getDatasets(name,verbose=False,withWC=False,onlyNames=False):
         if onlyNames:
             data['API'] = '30'
             data['onlyNames'] = int(onlyNames)
-        status,out = curl.get(url,data)
+        status,out = curl.get(url,data,rucioAccount=True)
         if status != 0:
             errStr = "ERROR : could not access DQ2 server"
             sys.exit(EC_Failed)
@@ -941,7 +955,7 @@ def getReplicaMetadata(name,dq2Locations,verbose):
         url = baseURLDQ2 + '/ws_repository/rpc'
         data = {'operation':'queryDatasetByName','dsn':name,'version':0,
                 'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
-        status,out = curl.get(url,data)
+        status,out = curl.get(url,data,rucioAccount=True)
         if status != 0:
             errStr = "ERROR : could not access DQ2 server"
             sys.exit(EC_Failed)
@@ -959,7 +973,7 @@ def getReplicaMetadata(name,dq2Locations,verbose):
             data = {'operation':'queryDatasetReplicaMetadata','vuid':vuid,
                     'location':location,'API':'0_3_0',
                     'tuid':MiscUtils.wrappedUuidGen()}
-            status,out = curl.post(url,data)
+            status,out = curl.post(url,data,rucioAccount=True)
             if status != 0:
                 errStr = "ERROR : could not access DQ2 server to get replica metadata"
                 sys.exit(EC_Failed)
@@ -1047,7 +1061,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False,forColl=False):
         url = baseURLDQ2 + '/ws_content/rpc'
         data = {'operation': 'queryDatasetsWithFileByGUID','guid':guid,
                 'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
-        status,out =  curl.get(url,data)
+        status,out =  curl.get(url,data,rucioAccount=True)
         # failed
         if status != 0:
             if not verbose:
@@ -1067,7 +1081,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False,forColl=False):
         url = baseURLDQ2 + '/ws_repository/rpc'
         data = {'operation':'queryDatasetByVUIDs','vuids':tmpVUIDs,
                 'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
-        status,out = curl.post(url,data)
+        status,out = curl.post(url,data,rucioAccount=True)
         # failed
         if status != 0:
             if not verbose:
@@ -1145,7 +1159,7 @@ def listDatasetsByGUIDs(guids,dsFilter,verbose=False,forColl=False):
 
                                 
 # register dataset
-def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False):
+def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False,dsCheck=True):
     # generate DUID/VUID
     duid = MiscUtils.wrappedUuidGen()
     vuid = MiscUtils.wrappedUuidGen()
@@ -1163,15 +1177,19 @@ def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False)
             for iTry in range(nTry):
                 data = {'operation':'addDataset','dsn': name,'duid': duid,'vuid':vuid,
                         'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen(),'update':'yes'}
-                status,out = curl.post(url,data)
-                if status != 0 or (out != None and re.search('Exception',out) != None):
+                status,out = curl.post(url,data,rucioAccount=True)
+                if not dsCheck and out != None and re.search('DQDatasetExistsException',out) != None:
+                    dsExist = True
+                    break
+                elif status != 0 or (out != None and re.search('Exception',out) != None):
                     if iTry+1 == nTry:
                         errStr = "ERROR : could not add dataset to DQ2 repository"
                         sys.exit(EC_Failed)
                     time.sleep(20)    
                 else:
                     break
-        else:
+        # get VUID        
+        if dsExist:
             # check location
             tmpLocations = getLocations(name,[],'',False,verbose,getDQ2IDs=True)
             if location in tmpLocations:
@@ -1180,7 +1198,7 @@ def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False)
             url = baseURLDQ2 + '/ws_repository/rpc'
             data = {'operation':'queryDatasetByName','dsn':name,'version':0,
                     'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
-            status,out = curl.get(url,data)
+            status,out = curl.get(url,data,rucioAccount=True)
             if status != 0:
                 errStr = "ERROR : could not get VUID from DQ2"
                 sys.exit(EC_Failed)
@@ -1189,14 +1207,15 @@ def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False)
         # add replica
         if re.search('SCRATCHDISK$',location) != None or re.search('USERDISK$',location) != None \
            or re.search('LOCALGROUPDISK$',location) != None \
-           or (allowProdDisk and re.search('PRODDISK$',location) != None):
+           or (allowProdDisk and (re.search('PRODDISK$',location) != None or \
+                                  re.search('DATADISK$',location) != None)):
             url = baseURLDQ2SSL + '/ws_location/rpc'
             nTry = 3
             for iTry in range(nTry):
                 data = {'operation':'addDatasetReplica','vuid':vuid,'site':location,
                         'complete':0,'transferState':1,
                         'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
-                status,out = curl.post(url,data)
+                status,out = curl.post(url,data,rucioAccount=True)
                 if status != 0 or out != 1:
                     if iTry+1 == nTry:
                         errStr = "ERROR : could not register location : %s" % location
@@ -1204,6 +1223,9 @@ def addDataset(name,verbose=False,location='',dsExist=False,allowProdDisk=False)
                     time.sleep(20)
                 else:
                     break
+        else:
+            errStr = "ERROR : registration at %s is disallowed" % location
+            sys.exit(EC_Failed)
     except:
         print status,out
         if errStr != '':
@@ -1228,7 +1250,7 @@ def createContainer(name,verbose=False):
         for iTry in range(nTry):
             data = {'operation':'container_create','name': name,
                     'API':'030','tuid':MiscUtils.wrappedUuidGen()}
-            status,out = curl.post(url,data)
+            status,out = curl.post(url,data,rucioAccount=True)
             if status != 0 or (out != None and re.search('Exception',out) != None):
                 if iTry+1 == nTry:
                     errStr = "ERROR : could not create container in DQ2"
@@ -1261,7 +1283,7 @@ def addDatasetsToContainer(name,datasets,verbose=False):
             data = {'operation':'container_register','name': name,
                     'datasets':datasets,'API':'030',
                     'tuid':MiscUtils.wrappedUuidGen()}
-            status,out = curl.post(url,data)
+            status,out = curl.post(url,data,rucioAccount=True)
             if status != 0 or (out != None and re.search('Exception',out) != None):
                 if iTry+1 == nTry:
                     errStr = "ERROR : could not add DQ2 datasets to container"
@@ -1289,7 +1311,7 @@ def getElementsFromContainer(name,verbose=False):
         url = baseURLDQ2 + '/ws_dq2/rpc'
         data = {'operation':'container_retrieve','name': name,
                 'API':'030','tuid':MiscUtils.wrappedUuidGen()}
-        status,out = curl.get(url,data)
+        status,out = curl.get(url,data,rucioAccount=True)
         if status != 0 or (isinstance(out,types.StringType) and re.search('Exception',out) != None):
             errStr = "ERROR : could not get container %s from DQ2" % name
             sys.exit(EC_Failed)
@@ -1444,7 +1466,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             url = baseURLDQ2 + '/ws_repository/rpc'
             data = {'operation':'queryDatasetByName','dsn':tmpName,'version':0,
                     'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
-            status,out = curl.get(url,data)
+            status,out = curl.get(url,data,rucioAccount=True)
             if status != 0 or out == '\x00' or (not checkDatasetInMap(tmpName,out)):
                 errStr = "ERROR : could not find %s in DQ2 DB. Check if the dataset name is correct" \
                          % tmpName
@@ -1465,7 +1487,7 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
             else:
                 data = {'operation':'listDatasetReplicas','duid':duid,
                         'API':'0_3_0','tuid':MiscUtils.wrappedUuidGen()}
-            status,out = curl.post(url,data)
+            status,out = curl.post(url,data,rucioAccount=True)
             if status != 0:
                 errStr = "ERROR : could not query location for %s" % tmpName
                 sys.exit(EC_Failed)
@@ -1907,6 +1929,8 @@ def _getPFNsLFC(fileMap,site,explicitSE,verbose=False,nFiles=0):
 # get list of missing LFNs from LFC
 def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList=[],dsStr='',removedDS=[],
                        skipScan=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
     missList = []
     # ignore files in shadow
     if shadowList != []:
@@ -1920,19 +1944,18 @@ def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList
     if dsStr != '':
         tmpTmpFileMap = {}
         expFilesMap,expOkFilesList,expCompInDQ2FilesList = getExpiringFiles(dsStr,removedDS,site,verbose,getOKfiles=True)
-        if skipScan:
-            # set all files to complete to skip LFC scan
-            expCompInDQ2FilesList = expOkFilesList
         # collect files in incomplete replicas
         for lfn,vals in tmpFileMap.iteritems():
             if lfn in expOkFilesList and not lfn in expCompInDQ2FilesList:
                 tmpTmpFileMap[lfn] = vals
         tmpFileMap = tmpTmpFileMap
+        # skipScan use only complete replicas
+        if skipScan and expCompInDQ2FilesList == []:
+            tmpLog.info("%s may hold %s files at most in incomplete replicas but they are not used when --skipScan is set" % \
+                        (site,len(expOkFilesList)))
     # get PFNS
-    if tmpFileMap != {}:
-        # get logger
-        tmpLog = PLogger.getPandaLogger()
-        tmpLog.info("scanning LFC %s for files in incompete dataset at %s" % (getLFC(site),site))
+    if tmpFileMap != {} and not skipScan:
+        tmpLog.info("scanning LFC %s for files in incompete datasets at %s" % (getLFC(site),site))
         pfnMap = _getPFNsLFC(tmpFileMap,site,explicitSE,verbose,nFiles)
     else:
         pfnMap = {}
@@ -1976,6 +1999,11 @@ def _getGridSrc():
                 if athenaStatus == 0 and athenaPath.startswith('/afs/in2p3.fr'):
                     # LYON
                     gridSrc = '/afs/in2p3.fr/grid/profiles/lcg_env.sh'
+                elif athenaStatus == 0 and athenaPath.startswith('/cvmfs/atlas.cern.ch'):
+                    # CVMFS
+                    if not os.environ.has_key('ATLAS_LOCAL_ROOT_BASE'):
+                        os.environ['ATLAS_LOCAL_ROOT_BASE'] = '/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase'
+                    gridSrc = os.environ['ATLAS_LOCAL_ROOT_BASE'] + '/user/pandaGridSetup.sh > /dev/null'
                 else:
                     print "ERROR : PATHENA_GRID_SETUP_SH is not defined in envvars"
                     print "  for CERN : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh"
@@ -2279,6 +2307,10 @@ def useDevServer():
     baseURL = 'http://voatlas220.cern.ch:25080/server/panda'
     global baseURLSSL
     baseURLSSL = 'https://voatlas220.cern.ch:25443/server/panda'    
+    global baseURLCSRV
+    baseURLCSRV = 'https://voatlas220.cern.ch:25443/server/panda'
+    global baseURLCSRVSSL
+    baseURLCSRVSSL = 'https://voatlas220.cern.ch:25443/server/panda'
 
 
 # set server
@@ -2599,11 +2631,34 @@ def getFilesInUseForAnal(outDataset,verbose):
     curl.sslKey  = _x509()
     curl.verbose = verbose
     # execute
-    url = baseURLSSL + '/getFilesInUseForAnal'
+    url = baseURLSSL + '/getDisInUseForAnal'
     data = {'outDataset':outDataset}
     status,output = curl.post(url,data)
     try:
-        return pickle.loads(output)
+        inputDisList = pickle.loads(output)
+        # failed
+        if inputDisList == None:
+            print "ERROR getFilesInUseForAnal : failed to get shadow dis list from the panda server"
+            sys.exit(EC_Failed)
+        # split to small chunks to avoid timeout
+        retLFNs = []
+        nDis = 3
+        iDis = 0
+        while iDis < len(inputDisList):
+            # serialize
+            strInputDisList = pickle.dumps(inputDisList[iDis:iDis+nDis])
+            # get LFNs
+            url = baseURLSSL + '/getLFNsInUseForAnal'
+            data = {'inputDisList':strInputDisList}
+            status,output = curl.post(url,data)
+            tmpLFNs = pickle.loads(output)
+            if tmpLFNs == None:
+                print "ERROR getFilesInUseForAnal : failed to get LFNs in shadow dis from the panda server"
+                sys.exit(EC_Failed)
+            retLFNs += tmpLFNs
+            iDis += nDis
+            time.sleep(1)
+        return retLFNs
     except:
         type, value, traceBack = sys.exc_info()
         print "ERROR getFilesInUseForAnal : %s %s" % (type,value)
@@ -2988,6 +3043,9 @@ def getLatestDBRelease(verbose=False):
             continue
         # ignore user
         if tmpName.startswith('ddo.user'):
+            continue
+        # use Atlas.Ideal
+        if not ".Atlas.Ideal." in tmpName:
             continue
         match = re.search('\.v(\d+)(_*[^\.]*)$',tmpName)
         if match == None:
