@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.3.99 (5/18/2012)
+  * added --useShortLivedReplicas to pathena/prun to enable usage of short-lived replicas 
+
 0.3.98 (5/9/2012)
   * using pandaGridSetup.sh for CVMFS, as recommended by Asoka De Silva
 

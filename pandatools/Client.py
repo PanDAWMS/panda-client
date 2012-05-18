@@ -807,7 +807,12 @@ def getDatasets(name,verbose=False,withWC=False,onlyNames=False):
         sys.exit(EC_Failed)
     return datasets
 
-
+# disable expiring file check
+globalUseShortLivedReplicas = False
+def useExpiringFiles():
+    global globalUseShortLivedReplicas
+    globalUseShortLivedReplicas = True
+    
 # get expiring files
 globalCompleteDsMap = {}
 globalExpFilesMap = {}
@@ -821,6 +826,7 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose,getOKfiles=False):
     global globalExpFilesMap
     global globalExpOkFilesMap
     global expCompDq2FilesList
+    global globalUseShortLivedReplicas
     mapKey = (dsStr,siteID)
     if globalExpFilesMap.has_key(mapKey):
         if getOKfiles:
@@ -896,19 +902,20 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose,getOKfiles=False):
             # replica deleted
             if isinstance(metaItem,types.StringType) and "No replica found at the location" in metaItem:
                 continue
-            # check the archived attribute
-            if isinstance(metaItem['archived'],types.StringType) and metaItem['archived'].lower() in ['tobedeleted',]:
-                continue
-            # check replica lifetime
-            if metaItem.has_key('expirationdate') and isinstance(metaItem['expirationdate'],types.StringType):
-                try:
-                    import datetime
-                    expireDate = datetime.datetime.strptime(metaItem['expirationdate'],'%Y-%m-%d %H:%M:%S')
-                    # expire in 7 days
-                    if expireDate-datetime.datetime.utcnow() < datetime.timedelta(days=7):
-                        continue
-                except:
-                    pass
+            if not globalUseShortLivedReplicas:
+                # check the archived attribute
+                if isinstance(metaItem['archived'],types.StringType) and metaItem['archived'].lower() in ['tobedeleted',]:
+                    continue
+                # check replica lifetime
+                if metaItem.has_key('expirationdate') and isinstance(metaItem['expirationdate'],types.StringType):
+                    try:
+                        import datetime
+                        expireDate = datetime.datetime.strptime(metaItem['expirationdate'],'%Y-%m-%d %H:%M:%S')
+                        # expire in 7 days
+                        if expireDate-datetime.datetime.utcnow() < datetime.timedelta(days=7):
+                            continue
+                    except:
+                        pass
             # all OK
             metaOK = True
             break
@@ -932,7 +939,8 @@ def getExpiringFiles(dsStr,removedDS,siteID,verbose,getOKfiles=False):
         for tmpDsStr in expFilesMap['datasets']:
             msgStr += '%s,' % tmpDsStr
         msgStr = msgStr[:-1]
-        msgStr += ' at %s due to archived=ToBeDeleted or short lifetime < 7days' % siteID
+        msgStr += ' at %s due to archived=ToBeDeleted or short lifetime < 7days. ' % siteID
+        msgStr += 'If you want to use those replicas in spite of short lifetime, use --useShortLivedReplicas'
         tmpLog.info(msgStr)
     # return
     if getOKfiles:

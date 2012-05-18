@@ -292,6 +292,8 @@ optP.add_option('--burstSubmit', action='store', dest='burstSubmit', default='',
                 type='string', help="Please don't use this option. Only for site validation by experts")
 optP.add_option('--removeBurstLimit', action='store_const', const=True, dest='removeBurstLimit', default=False,
                 help="Please don't use this option. Only for site validation by experts")
+optP.add_option('--useShortLivedReplicas', action='store_const', const=True, dest='useShortLivedReplicas', default=False,
+                help="Use replicas even if they have very sort lifetime")
 optP.add_option('--devSrv', action='store_const', const=True, dest='devSrv',  default=False,
                 help="Please don't use this option. Only for developers to use the dev panda server")
 optP.add_option('--useAIDA', action='store_const', const=True, dest='useAIDA',  default=False,
@@ -517,6 +519,10 @@ if options.panda_inDS != '':
     options.inDS = options.panda_inDS
     options.goodRunListXML = ''
 
+# disable expiring file check
+if options.useShortLivedReplicas:
+    Client.useExpiringFiles()
+    
 # use staged dataset for event picking
 if options.eventPickStagedDS != '':
     if options.panda_inDSForEP == '':

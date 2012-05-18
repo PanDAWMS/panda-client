@@ -108,6 +108,8 @@ optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
                 help='Required memory size in MB. e.g., for 1GB --memory 1024')
 optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type='int',
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
+optP.add_option('--useShortLivedReplicas', action='store_const', const=True, dest='useShortLivedReplicas', default=False,
+                help="Use replicas even if they have very sort lifetime")
 optP.add_option('--official',action='store_const',const=True,dest='official',default=False,
                 help='Produce official dataset')
 optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
@@ -419,6 +421,10 @@ if options.panda_inDS != '':
     options.inDS = options.panda_inDS
     options.goodRunListXML = ''
 
+# disable expiring file check
+if options.useShortLivedReplicas:
+    Client.useExpiringFiles()
+    
 # use staged dataset for event picking
 if options.eventPickStagedDS != '':
     if options.panda_inDSForEP == '':
