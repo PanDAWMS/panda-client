@@ -66,6 +66,8 @@ optP.add_option('--nEventsPerFile', action='store', dest='nEventsPerFile',  defa
 optP.add_option('--nGBPerJob',action='store',dest='nGBPerJob',default=-1, help='Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value')
 optP.add_option('--site', action='store', dest='site',  default="AUTO",
                 type='string',    help='Site name where jobs are sent (default:AUTO)')
+optP.add_option('--athenaTag',action='store',dest='athenaTag',default='',type='string',
+                help='Use differnet version of Athena on remote WN. By defualt the same version which you are locally using is set up on WN. e.g., --athenaTag=AtlasProduction,14.2.24.3')
 optP.add_option('--inDS',  action='store', dest='inDS',  default='',
                 type='string', help='Input dataset names. wildcard and/or comma can be used to concatenate multiple datasets')
 optP.add_option('--inDsTxt',action='store',dest='inDsTxt',default='',
@@ -290,6 +292,8 @@ optP.add_option('--burstSubmit', action='store', dest='burstSubmit', default='',
                 type='string', help="Please don't use this option. Only for site validation by experts")
 optP.add_option('--removeBurstLimit', action='store_const', const=True, dest='removeBurstLimit', default=False,
                 help="Please don't use this option. Only for site validation by experts")
+optP.add_option('--useShortLivedReplicas', action='store_const', const=True, dest='useShortLivedReplicas', default=False,
+                help="Use replicas even if they have very sort lifetime")
 optP.add_option('--devSrv', action='store_const', const=True, dest='devSrv',  default=False,
                 help="Please don't use this option. Only for developers to use the dev panda server")
 optP.add_option('--useAIDA', action='store_const', const=True, dest='useAIDA',  default=False,
@@ -297,9 +301,9 @@ optP.add_option('--useAIDA', action='store_const', const=True, dest='useAIDA',  
 optP.add_option('--inputType', action='store', dest='inputType', default='',
                 type='string', help='File type in input dataset which contains multiple file types')
 optP.add_option('--outTarBall', action='store', dest='outTarBall', default='',
-                type='string', help='Save a copy of local files which is the input to buildXYZ')
+                type='string', help='Save a gzipped tarball of local files which is the input to buildXYZ')
 optP.add_option('--inTarBall', action='store', dest='inTarBall', default='',
-                type='string', help='Use a saved copy of local files as input to buildXYZ')
+                type='string', help='Use a gzipped tarball of local files as input to buildXYZ. Generall the tarball is created by using --outTarBall')
 optP.add_option('--outRunConfig', action='store', dest='outRunConfig', default='',
                 type='string', help='Save extracted config information to a local file')
 optP.add_option('--inRunConfig', action='store', dest='inRunConfig', default='',
@@ -318,6 +322,8 @@ optP.add_option('--disableRebrokerage',action='store_const',const=True,dest='dis
                 help="disable auto-rebrokerage")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
                 type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
+optP.add_option('--useGOForOutput',action='store',dest='useGOForOutput',default='',metavar='GOENDPOINT',
+                type='string', help='The Globus Online server where output files are written to. e.g., --useGOForOutput voatlas92.cern.ch')
 optP.add_option('--enableJEM',action='store_const',const=True,dest='enableJEM',default=False,
                 help="enable JEM")
 optP.add_option('--configJEM', action='store', dest='configJEM', default='',
@@ -513,6 +519,10 @@ if options.panda_inDS != '':
     options.inDS = options.panda_inDS
     options.goodRunListXML = ''
 
+# disable expiring file check
+if options.useShortLivedReplicas:
+    Client.useExpiringFiles()
+    
 # use staged dataset for event picking
 if options.eventPickStagedDS != '':
     if options.panda_inDSForEP == '':
@@ -623,7 +633,7 @@ if options.panda_singleLine != '':
 
 # AMI event-level split
 if options.useAMIEventLevelSplit == None:
-    if options.inDS.startswith('data'):
+    if options.inDS.startswith('data') or options.goodRunListXML != '':
         # use AMI for real data since the number of events per file is not uniform
         options.useAMIEventLevelSplit = True
     else:
@@ -818,8 +828,11 @@ distinguishedName = PsubUtils.getDN()
 # get nickname
 nickName = PsubUtils.getNickname()
 
-if distinguishedName == '' and nickName == '':
+if nickName == '':
     sys.exit(EC_Config)
+
+# set Rucio accounting
+PsubUtils.setRucioAccount(nickName,'pathena',True)
 
 # check outDS format
 if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,
@@ -843,6 +856,11 @@ if options.inRunConfig != '':
     options.inRunConfig = os.path.abspath(os.path.expanduser(options.inRunConfig))
 if options.outRunConfig != '':
     options.outRunConfig = os.path.abspath(os.path.expanduser(options.outRunConfig))
+
+# check maxCpuCount 
+if options.maxCpuCount > Client.maxCpuCountLimit:
+    tmpLog.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
+    sys.exit(EC_Config)
     
 # create tmp dir
 if options.tmpDir == '':
@@ -872,6 +890,55 @@ athenaVer = retA['athenaVer']
 groupArea = retA['groupArea'] 
 cacheVer  = retA['cacheVer'] 
 nightVer  = retA['nightVer']
+
+# overwrite with athenaTag
+if options.athenaTag != '':
+    athenaVer = ''
+    cacheVer  = ''
+    nightVer  = ''
+    # get list of Athena projects
+    listProjects = Client.getCachePrefixes(options.verbose)
+    items = options.athenaTag.split(',')
+    for item in items:
+        # releases
+        match = re.search('^(\d+\.\d+\.\d+)',item)
+        if match != None:
+            athenaVer = match.group(1)
+            # cache
+	    cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
+	    if cmatch != None:
+		cacheVer += '_%s' % cmatch.group(1)
+        # project
+        if item.startswith('Atlas') or item in listProjects:
+            # ignore AtlasOffline
+            if item in ['AtlasOffline']:
+                continue
+            cacheVer = '-'+item+cacheVer
+        # nightlies    
+        if item.startswith('rel_'):
+            if 'dev' in items:
+                nightVer  = '/dev'
+            elif 'bugfix' in items:
+                nightVer  = '/bugfix'
+            else:
+                tmpLog.error("unsupported nightly %s" % line)
+                sys.exit(EC_Config)
+	# CMTCONFIG
+        if item == '64':
+            options.cmtConfig = 'x86_64-slc5-gcc43-opt'
+        if item == '32':
+            options.cmtConfig = 'i686-slc5-gcc43-opt'
+    # check cache
+    if re.search('^-.+_.+$',cacheVer) == None:
+        if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) != None:
+            # use AtlasProduction
+            cacheVer = '-AtlasProduction'+cacheVer
+        else:
+            # unknown
+            cacheVer = ''
+
+# set CMTCONFIG
+options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
 
 # check CMTCONFIG
 if not AthenaUtils.checkCmtConfig(retA['cmtConfig'],options.cmtConfig,options.nobuild):
@@ -1350,10 +1417,13 @@ if (outputDSexist or outputContExist) and options.individualOutDS:
 
 # check if shadow dataset exists
 shadowDSexist = False
+"""
+# disable shadow stuff
 if not Client.isDQ2free(options.site):
     tmpDatasets = Client.getDatasets("%s%s" % (options.outDS,suffixShadow),options.verbose)
     if len(tmpDatasets) != 0:
         shadowDSexist = True
+"""
 
 # set location when outDS or libDS already exists
 checkLibDS = True
@@ -2064,11 +2134,13 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
             # LFC
             if options.nfiles == 0:
                 missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
-                                                     dsStr=options.inDS,removedDS=options.removedDS)
+                                                     dsStr=options.inDS,removedDS=options.removedDS,
+                                                     skipScan=options.skipScan)
             else:
                 missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
                                                      options.nfiles,shadowList,
-                                                     dsStr=options.inDS,removedDS=options.removedDS)
+                                                     dsStr=options.inDS,removedDS=options.removedDS,
+                                                     skipScan=options.skipScan)
         elif Client.getLRC(dsLocation) != None:
             tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
             # LRC
@@ -3004,6 +3076,9 @@ else:
 inputGroupFilesMap = new_inputGroupFilesMap
 
 
+# error messages
+givenErrorMessages = {}
+
 # loop over all blocks
 for b_dsFiledKey in inputGroupFilesMap.keys():
     b_inputDatasetName,b_fileFieldValue = b_dsFiledKey
@@ -3281,6 +3356,8 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                             file.dispatchDBlock = commonDispName
                             file.type           = 'input'
                             file.status         = 'ready'
+                            if options.trf and not isDirectAccess:
+                                file.prodDBlockToken = 'local'
                             # set noshadow since single TAG may point to multiple parent files
                             file.destinationDBlockToken = 'noshadow'
                             jobR.addFile(file)
@@ -3724,9 +3801,11 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     # replace parameters
                     tmpJobO = re.sub(match.group(0),'%s%s' % (tmpRndmNum,match.group(2)),tmpJobO)
             # skipEvent
+            tmpUseSkipEventsInTrf = False
             for tmpItem in tmpJobO.split():
                 match = re.search('%SKIPEVENTS(:*)(\d*)( |$|\'|\"|;)',tmpItem)
                 if match != None:
+                    tmpUseSkipEventsInTrf = True
                     if match.group(2) == '':
                         # replace %SKIPEVENTS
                         tmpJobO = re.sub(match.group(0),'%s%s' % (nEventsToSkip,match.group(3)),tmpJobO)
@@ -3734,6 +3813,18 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                         # replace %SKIPEVENTS:NN
                         tmpSkipEvents = int(match.group(2)) + nEventsToSkip 
                         tmpJobO = re.sub(match.group(0),'%s%s' % (tmpSkipEvents,match.group(3)),tmpJobO)
+            # give a warning to avoid event duplication when %SKIPEVENTS is unused in --trf
+            if not tmpUseSkipEventsInTrf and nEventsToSkip > 0 and not givenErrorMessages.has_key('missingSKIPEVENTS'):
+                tmpMsgStr  = "The number of events in an input file is larger than --nEventsPerJob "
+                tmpMsgStr += "but you didn't specify %SKIPEVENTS in --trf, "
+                tmpMsgStr += "so that some subjobs might run on the same events. "
+                tmpMsgStr += "Please make sure that %XYZ in --trf is automatically replaced to a real value "
+                tmpMsgStr += "but no parameter is automatically appended to --trf. "
+                tmpMsgStr += "You need to specify all necessary parameters in --trf"
+                print
+                tmpLog.warning(tmpMsgStr)
+                print
+                givenErrorMessages['missingSKIPEVENTS'] = tmpMsgStr
             # set jobO parameter
             param += '-j "%s" ' % urllib.quote(tmpJobO)		
         param += '-i "%s" ' % inList
@@ -3850,6 +3941,9 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
         # write outputs to Chirp Server
         if options.useChirpServer != '':
             PsubUtils.setCHIRPtokenToOutput(jobR,options.useChirpServer)
+	# write outputs to GlobusOnline    
+        if options.useGOForOutput != '':
+            PsubUtils.setCHIRPtokenToOutput(jobR,options.useGOForOutput,True)
         # disable redundant transfer if needed
         PsubUtils.disableRedundantTransfer(jobR,options.transferredDS)
         # check job spec
@@ -3954,12 +4048,14 @@ if not options.nosubmit:
                             Client.addDatasetsToContainer(tmpDsContMap[tmpIdvOutDS],[tmpIdvOutDS],options.verbose)                            
 
             # register shadow dataset
+            """
+            # disable shadow stuff
             if not outputDSexist:
                 # loop over all job lists
                 for serIndex,tmpJobList in enumerate(splitJobList):
                     tmpDsName = options.outDS+PsubUtils.getSuffixToSplitJobList(serIndex)+suffixShadow
                     Client.addDataset(tmpDsName,options.verbose)
-
+            """        
             # register libDS
             if options.libDS == '' and (not options.nobuild):
                 Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpLibDsLocation)
