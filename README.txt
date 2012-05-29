@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added --useDirectIOSites to pathena/prun
+
 0.3.99 (5/18/2012)
   * added --useShortLivedReplicas to pathena/prun to enable usage of short-lived replicas 
 

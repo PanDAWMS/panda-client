@@ -2147,14 +2147,51 @@ def getJobStatusFromMon(id,verbose=False):
     return parser.getMap()
 
 
+def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
+    # unknown site
+    if not PandaSites.has_key(site):
+        return False
+    # parse copysetup
+    params = PandaSites[site]['copysetup'].split('^')
+    # doesn't use special parameters
+    if len(params) < 5:
+        return False
+    # directIn
+    directIn = params[4]
+    if directIn != 'True':
+        return False
+    # xrootd uses local copy for RAW
+    newPrefix = params[2]
+    if newPrefix.startswith('root:'):
+        if usingRAW:
+            return False
+    # official TRF doesn't work with direct dcap/xrootd
+    if usingTRF and (not usingARA):
+        if newPrefix.startswith('root:') or newPrefix.startswith('dcap:') or \
+               newPrefix.startswith('dcache:') or newPrefix.startswith('gsidcap:'):
+            return False
+    # return
+    return True
+
+
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType='',
-                 loggingFlag=False,memorySize=0):
+                 loggingFlag=False,memorySize=0,useDirectIO=False):
     if sites == []:
         if not loggingFlag:
             return 0,'ERROR : no candidate'
         else:
-            return 0,{'site':'ERROR : no candidate','logInfo':[]}            
+            return 0,{'site':'ERROR : no candidate','logInfo':[]}
+    # use only directIO sites
+    nonDirectSites = []
+    if useDirectIO:
+        tmpNewSites = []
+        for tmpSite in sites:
+            if isDirectAccess(tmpSite):
+                tmpNewSites.append(tmpSite)
+            else:
+                nonDirectSites.append(tmpSite)
+        sites = tmpNewSites        
     # choose at most 50 sites randomly to avoid too many lookup
     random.shuffle(sites)
     sites = sites[:50]
@@ -2195,7 +2232,15 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
         if not loggingFlag:
             return status,output
         else:
-            return status,pickle.loads(output)
+            outputPK = pickle.loads(output)
+            # add directIO info
+            if nonDirectSites != []:
+                if not outputPK.has_key('logInfo'):
+                    outputPK['logInfo'] = []
+                for tmpSite in nonDirectSites:
+                    msgBody = 'action=skip site=%s reason=nondirect - not directIO site' % tmpSite
+                    outputPK['logInfo'].append(msgBody)
+            return status,outputPK
     except:
         type, value, traceBack = sys.exc_info()
         print output

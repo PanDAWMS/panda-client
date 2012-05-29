@@ -110,6 +110,8 @@ optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,typ
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--useShortLivedReplicas', action='store_const', const=True, dest='useShortLivedReplicas', default=False,
                 help="Use replicas even if they have very sort lifetime")
+optP.add_option('--useDirectIOSites', action='store_const', const=True, dest='useDirectIOSites', default=False,
+                help="Use only sites which use directIO to read input files")
 optP.add_option('--official',action='store_const',const=True,dest='official',default=False,
                 help='Produce official dataset')
 optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
@@ -929,7 +931,8 @@ if outputDSexist and options.destSE == '':
             # run brokerage to be sent to free site
             convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,
                                                                      options.verbose,options.cmtConfig,
-                                                                     memorySize=options.memory)
+                                                                     memorySize=options.memory,
+                                                                     useDirectIO=options.useDirectIOSites)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -973,7 +976,8 @@ if options.libDS != '' and not Client.isDQ2free(options.site):
             # run brokerage to be sent to free site
             convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,
                                                                      options.verbose,options.cmtConfig,
-                                                                     memorySize=options.memory)
+                                                                     memorySize=options.memory,
+                                                                     useDirectIO=options.useDirectIOSites)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -1227,7 +1231,8 @@ if options.inDS != '':
 		if tmpSites == []:
                     continue
                 status,outMap = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
-                                                    loggingFlag=True,cmtConfig=options.cmtConfig,memorySize=options.memory)
+                                                    loggingFlag=True,cmtConfig=options.cmtConfig,memorySize=options.memory,
+                                                    useDirectIO=options.useDirectIOSites)
                 if status != 0:
                     tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)
                     sys.exit(EC_Config)
@@ -1437,7 +1442,8 @@ else:
         tmpBrokerErr = ''
         for idxTmpSites,tmpSites in enumerate(tmpSitesList):
             status,outMap = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
-                                                loggingFlag=True,cmtConfig=options.cmtConfig,memorySize=options.memory)
+                                                loggingFlag=True,cmtConfig=options.cmtConfig,memorySize=options.memory,
+                                                useDirectIO=options.useDirectIOSites)
             if status != 0:
                 tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)  
                 sys.exit(EC_Config)

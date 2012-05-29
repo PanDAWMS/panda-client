@@ -819,30 +819,7 @@ def updatePackage(verbose=False):
 
 # check direct access
 def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
-    # unknown site
-    if not Client.PandaSites.has_key(site):
-        return False
-    # parse copysetup
-    params = Client.PandaSites[site]['copysetup'].split('^')
-    # doesn't use special parameters
-    if len(params) < 5:
-        return False
-    # directIn
-    directIn = params[4]
-    if directIn != 'True':
-        return False
-    # xrootd uses local copy for RAW
-    newPrefix = params[2]
-    if newPrefix.startswith('root:'):
-        if usingRAW:
-            return False
-    # official TRF doesn't work with direct dcap/xrootd
-    if usingTRF and (not usingARA):
-        if newPrefix.startswith('root:') or newPrefix.startswith('dcap:') or \
-               newPrefix.startswith('dcache:') or newPrefix.startswith('gsidcap:'):
-            return False
-    # return
-    return True
+    return Client.isDirectAccess(site,usingRAW,usingTRF,usingARA)
 
 
 # check destination SE
@@ -1142,12 +1119,12 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
 
 
 # run brokerage for composite site
-def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose,cmtConfig=None,memorySize=0):
+def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose,cmtConfig=None,memorySize=0,useDirectIO=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # run brokerage
     status,outMap = Client.runBrokerage(siteIDs,releaseVer,verbose=verbose,trustIS=True,cacheVer=cacheVer,loggingFlag=True,
-                                        cmtConfig=cmtConfig,memorySize=memorySize)
+                                        cmtConfig=cmtConfig,memorySize=memorySize,useDirectIO=useDirectIO)
     if status != 0:
         tmpLog.error('failed to run brokerage for composite site: %s' % outMap)
         sys.exit(EC_Config)
