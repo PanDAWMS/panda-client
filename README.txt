@@ -21,13 +21,61 @@ pathena -h
 
 ** Release Note
 
+0.4.0 (5/31/2012)
+  * added --noCompile to prun
+  * added --useDirectIOSites to pathena/prun
+
+0.3.99 (5/18/2012)
+  * added --useShortLivedReplicas to pathena/prun to enable usage of short-lived replicas 
+
+0.3.98 (5/9/2012)
+  * using pandaGridSetup.sh for CVMFS, as recommended by Asoka De Silva
+
+0.3.97 (5/9/2012)
+  * fixed warning message related to SKIPEVENTS in --trf
+  * using glite on CVMFS when athena is setup with CVMFS	
+  * changed nickname to be mandatory
+  * setting account and appid for Rucio
+  * added a protection against too large --maxCpuCount
+
+0.3.96 (4/25/2012)
+  * added reproduce() to pbook
+  * added a warning when nEventsPerFile>nEventsPerJob but no %SKIPEVENTS in --trf
+  * fixed --useGOForOutput
+  * fixed pathena to use AMI for --goodRunListXML + --nEventsPerJob
+ 
+0.3.95 (3/26/2012)
+  * fixed pathena for trf+TAG+remoteIO
+  * using x86_64-slc5-gcc43-opt by default for 17.5.0 or higher
+  * fixed --athenaTag to recognize 32 and 64
+  * added --useGOForOutput to pathena/prun
+  * removed redundant lookup for --dbRelease=LATEST
+
+0.3.94 (3/12/2012)
+  * fixed pbook to ignore DatasetExistsException when retrying
+
+0.3.93 (3/12/2012)
+  * fixed timeout in getFilesInUseForAnal 
+
+0.3.92 (3/9/2012)
+  * changed allowProdDisk in addDataset for DATADISK too 
+
+0.3.91 (3/7/2012)
+  * disabled shadow registration
+  * added --followLinks to prun
+
+0.3.90 (3/6/2012)
+  * added --athenaTag to pathena
+  * fixed --skipScan in pathena
+  * changed --skipScan to use complete replicas only
+
 0.3.89 (3/5/2012)
   * fixed SyntaxWarning
 
 0.3.88 (3/5/2012)
   * fixed pathena/prun to trigger LFC lookup only for incomplete replicas
   * fixed --skipScan in pathena/prun
-  * fixed replica lookup when two DQ2 IDs i the same site hold inDS
+  * fixed replica lookup when two DQ2 IDs in the same site hold inDS
 
 0.3.87 (3/1/2012)
   * fixed pathena/prun for libDS
