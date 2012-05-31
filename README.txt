@@ -21,7 +21,8 @@ pathena -h
 
 ** Release Note
 
-current
+0.4.0 (5/31/2012)
+  * added --noCompile to prun
   * added --useDirectIOSites to pathena/prun
 
 0.3.99 (5/18/2012)

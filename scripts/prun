@@ -86,6 +86,8 @@ optP.add_option('--useHomeDir', action='store_const',const=True,dest='useHomeDir
                 help='execute prun just under the HOME dir')
 optP.add_option('--noBuild', action='store_const',const=True,dest='nobuild',default=False,
                 help='Skip buildGen')
+optP.add_option('--noCompile', action='store_const',const=True,dest='noCompile',default=False,
+                help='Just upload a tarball in the build step to avoid the tighter size limit imposed by --noBuild. The tarball contains binaries compiled on your local computer, so that compilation is skipped in the build step on remote WN')
 optP.add_option('--individualOutDS',action='store_const',const=True,dest='individualOutDS',default=False,
                 help='Create individual output dataset for each data-type. By default, all output files are added to one output dataset')
 optP.add_option('--transferredDS',action='store', dest='transferredDS',default='',type='string',
@@ -339,6 +341,10 @@ if options.panda_cacheSrvURL != '':
 # version check
 PsubUtils.checkPandaClientVer(options.verbose)
 
+# noCompile uses noBuild stuff
+if options.noCompile:
+    options.nobuild = True
+    
 # files to be deleted
 delFilesOnExit = []
                             
@@ -483,7 +489,7 @@ if options.eventPickEvtList != '':
 
 # check rootVer
 if options.rootVer != '':
-    if options.nobuild:
+    if options.nobuild and not options.noCompile:
         tmpLog.error("--rootVer cannot be used together with --noBuild since ROOT is prepared in the build step")
         sys.exit(EC_Config)
     # change / to .
@@ -1501,13 +1507,16 @@ else:
                 tmpLog.error(tmpErrMsg)
                 sys.exit(EC_Config)
             # check grid_submit.sh
-            rootCoreSubmitSh   = os.environ['ROOTCOREDIR'] + '/scripts/grid_submit.sh'
-            rootCoreCompileSh  = os.environ['ROOTCOREDIR'] + '/scripts/grid_compile.sh'
-            rootCoreRunSh      = os.environ['ROOTCOREDIR'] + '/scripts/grid_run.sh'
-            rootCoreSubmitNbSh = os.environ['ROOTCOREDIR'] + '/scripts/grid_submit_nobuild.sh'
+            rootCoreSubmitSh    = os.environ['ROOTCOREDIR'] + '/scripts/grid_submit.sh'
+            rootCoreCompileSh   = os.environ['ROOTCOREDIR'] + '/scripts/grid_compile.sh'
+            rootCoreRunSh       = os.environ['ROOTCOREDIR'] + '/scripts/grid_run.sh'
+            rootCoreSubmitNbSh  = os.environ['ROOTCOREDIR'] + '/scripts/grid_submit_nobuild.sh'
+            rootCoreCompileNbSh = os.environ['ROOTCOREDIR'] + '/scripts/grid_compile_nobuild.sh'
             rootCoreShList = [rootCoreSubmitSh,rootCoreCompileSh,rootCoreRunSh]
             if options.nobuild:
                 rootCoreShList.append(rootCoreSubmitNbSh)
+                if options.noCompile:
+                    rootCoreShList.append(rootCoreCompileNbSh)
             for tmpShFile in rootCoreShList:
                 if not os.path.exists(tmpShFile):
                     tmpErrMsg  = "%s doesn't exist. Please use a newer version of RootCore" % tmpShFile
@@ -1533,6 +1542,8 @@ else:
             # copy build and run scripts
             shutil.copy(rootCoreRunSh,rootCoreDestWorkDir)            
             shutil.copy(rootCoreCompileSh,rootCoreDestWorkDir)
+            if options.noCompile:
+                shutil.copy(rootCoreCompileNbSh,rootCoreDestWorkDir)
         # gather Athena packages
 	if options.useAthenaPackages:
 	    # set extFile
@@ -1566,7 +1577,10 @@ else:
                 tmpLog.info("gathering files under %s" % options.workDir)
                 archStartDir = '.'
 	    # get files in the working dir
-	    skippedExt   = ['.o','.a','.so']
+            if options.noCompile:
+                skippedExt = []
+            else:
+                skippedExt   = ['.o','.a','.so']
 	    skippedFlag  = False
 	    workDirFiles = []
             if options.followLinks:
@@ -1660,7 +1674,7 @@ else:
             # set archive name
             if not options.useAthenaPackages:    
                 # create archive
-                if options.libDS != '' or options.nobuild:
+                if options.libDS != '' or (options.nobuild and not options.noCompile):
                     # use 'jobO' for libDS/noBuild
                     archiveName     = 'jobO.%s.tar' % MiscUtils.wrappedUuidGen()
                 else:
@@ -1722,7 +1736,7 @@ else:
         # go to tmp dir
         os.chdir(tmpDir)
         # use a saved copy
-        if options.libDS == '' and not options.nobuild:
+        if options.libDS == '' and (options.noCompile or not options.nobuild):
             archiveName     = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
             archiveFullName = "%s/%s" % (tmpDir,archiveName)
         else:
@@ -1808,7 +1822,7 @@ jobName = 'prun.%s' % MiscUtils.wrappedUuidGen()
 jobList = []
 
 # buildJob
-if options.nobuild:
+if options.nobuild and not options.noCompile:
     pass
 elif options.libDS == '':
     jobB = JobSpec()
@@ -1888,7 +1902,10 @@ elif options.libDS == '':
         jobB.jobParameters += "--useAthenaPackages "
     # use RootCore
     if options.useRootCore:
-        jobB.jobParameters += "--useRootCore "        
+        jobB.jobParameters += "--useRootCore "
+    # no compile
+    if options.noCompile:
+        jobB.jobParameters += "--noCompile "
     # root
     if options.rootVer != '':
         jobB.jobParameters += "--rootVer %s " % options.rootVer
@@ -2179,7 +2196,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             jobR.jobParameters += "--useAthenaPackages "
         # use RootCore
         if options.useRootCore:
-            jobR.jobParameters += "--useRootCore "        
+            jobR.jobParameters += "--useRootCore "
         # root
         if options.rootVer != '':
             jobR.jobParameters += "--rootVer %s " % options.rootVer
@@ -2210,7 +2227,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                 tmpJobO = tmpJobO.replace('%DB:LATEST',options.dbRelease.split(':')[-1])
             jobR.jobParameters += '-p "%s" ' % urllib.quote(tmpJobO)
         # source files
-        if not options.nobuild:
+        if options.noCompile or not options.nobuild:
             fileS = FileSpec()
             fileS.lfn            = fileBO.lfn
             fileS.GUID           = fileBO.GUID
@@ -2223,7 +2240,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             jobR.addFile(fileS)
             jobR.jobParameters  += '-l %s ' % fileS.lfn    
         # additional files for libDS or noBuild
-        if options.libDS != "" or options.nobuild:
+        if options.libDS != "" or (options.nobuild and not options.noCompile):
             jobR.jobParameters += '-a %s ' % archiveName
         # input files
         if options.inDS != '' or options.pfnList != '':
