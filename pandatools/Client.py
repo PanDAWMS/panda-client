@@ -2216,6 +2216,11 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
         match = re.search('^([^_]+)_(\d+\.\d+\.\d+\.\d+\.*\d*)$',cacheVer)
         if match != None:
             cacheVer = '%s-%s' % (match.group(1),match.group(2))
+        else:
+            # nightlies
+            match = re.search('_(rel_\d+)$',cacheVer)
+            if match != None:
+                cacheVer = '%s-%s' % (atlasRelease,match.group(1))
         # use cache for brokerage
         data['atlasRelease'] = cacheVer
     if processingType != '':

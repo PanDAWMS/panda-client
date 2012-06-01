@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * added support to pathena/prun to run nigitlies
+
 0.4.0 (5/31/2012)
   * added --noCompile to prun
   * added --useDirectIOSites to pathena/prun

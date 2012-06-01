@@ -231,13 +231,14 @@ def getAthenaVer():
                 athenaVer = os.path.basename(res.group(1))
                 # nightly
                 if athenaVer.startswith('rel'):
-                   if re.search('/bugfix',line) != None:
-                      nightVer  = '/bugfix'
-                   elif re.search('/dev',line) != None:
-                      nightVer  = '/dev'
-                   else:
-                      tmpLog.error("unsupported nightly %s" % line)
-                      return False,{}
+                    # extract base release
+                    tmpMatch = re.search('/([^/]+)/AtlasOffline/rel_\d+',line)
+                    if tmpMatch == None:
+                        tmpLog.error("unsupported nightly %s" % line)
+                        return False,{}
+                    # set athenaVer and cacheVer
+                    cacheVer  = '-AtlasOffline_%s' % athenaVer
+                    athenaVer = tmpMatch.group(1)
                 break
             # cache or analysis projects
             elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT'] or \
@@ -1842,6 +1843,25 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
         # use user-specified cmtconfig
         if cmtConfig != None:
             return cmtConfig
+        # nightlies
+        if cacheVer != None and re.search('_rel_\d+$',cacheVer) != None:
+            # dev nightlies
+            if athenaVer == 'dev':
+                return 'x86_64-slc5-gcc43-opt'
+            # get cmtconfig for nightlies
+            if athenaVer != None:
+                # remove prefix
+                verStr = re.sub('^[^-]+-','',athenaVer)
+                # extract version numbers
+                match = re.search('(\d+)\.([^\.+])\.',verStr)
+                # major,miner
+                maVer = int(match.group(1))
+                miVer = match.group(2)
+                # use x86_64-slc5-gcc43-opt for 17.X.0 or higher                
+                if maVer > 17 or (maVer == 17 and miVer == 'X'):
+                    return 'x86_64-slc5-gcc43-opt'
+                # use i686-slc4-gcc34-opt by default
+                return 'i686-slc4-gcc34-opt'
         # get default cmtconfig according to Atlas release
         if athenaVer != None:
             # remove prefix

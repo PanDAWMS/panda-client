@@ -2828,6 +2828,7 @@ if options.verbose:
         print "ProdCache  : %s" % cacheVer[1:]
     if nightVer != '':
         print "Nightly    : %s" % nightVer[1:]        
+    print "cmtConfig  : %s" % AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)	
     print "RunDir     : %s" % runDir
     print "jobO       : %s" % jobO.lstrip()
 
