@@ -114,6 +114,10 @@ class PBookCore:
         tmpLog.info("Synchronizing local repository ...")
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
+        # get nickname
+        nickName = PsubUtils.getNickname()
+        # set Rucio accounting
+        PsubUtils.setRucioAccount(nickName,'pbook',True)
         # get JobIDs in local repository
         localJobIDs = PdbUtils.getListOfJobIDs()
         # get recent JobIDs from panda server
@@ -455,6 +459,23 @@ class PBookCore:
 		return
             # done
             tmpLog.info('Done for %s' % JobID)
+        return
+
+
+    # set debug mode
+    def debug(self,pandaID,modeOn):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # check proxy
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
+        # rebrokerage
+        status,output = Client.setDebugMode(pandaID,modeOn,self.verbose)
+        if status != 0:
+            tmpLog.error(output)
+            tmpLog.error("Failed to set debug mode for %s" % pandaID)
+            return
+        # done
+        tmpLog.info(output)
         return
 
 
@@ -1204,6 +1225,16 @@ For more info, do help(show) for example."""
            >>> reassign(15,'CA')
         """
 	pbookCore.rebrokerage(JobID,cloud)
+
+
+    # debug mode
+    def debug(PandaID,modeOn):
+        """Turn the debug mode on/off for a subjob with PandaID. modeOn is True/False to enable/disable the debug mode. Note that the maxinum number of debug subjobs is limited. If you already hit the limit you need to disable the debug mode for a subjob before debugging another subjob
+        
+         example:
+           >>> reassign(1234,True)
+        """
+	pbookCore.debug(PandaID,modeOn)
 
 
     # delete jobs older than nDays

@@ -22,6 +22,9 @@ pathena -h
 ** Release Note
 
 current
+  * added debug() to pbook
+  * added --debugMode to pathena/prun	
+  * setting account and appid for Rucio in pbook
   * added support to pathena/prun to run nigitlies
 
 0.4.0 (5/31/2012)

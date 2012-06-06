@@ -2220,7 +2220,8 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
             # nightlies
             match = re.search('_(rel_\d+)$',cacheVer)
             if match != None:
-                cacheVer = '%s-%s' % (atlasRelease,match.group(1))
+                # use base release as cache version 
+                cacheVer = '%s:%s' % (atlasRelease,match.group(1))
         # use cache for brokerage
         data['atlasRelease'] = cacheVer
     if processingType != '':
@@ -2723,6 +2724,25 @@ def getFilesInUseForAnal(outDataset,verbose):
         sys.exit(EC_Failed)
 
 
+# set debug mode
+def setDebugMode(pandaID,modeOn,verbose):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/setDebugMode'
+    data = {'pandaID':pandaID,'modeOn':modeOn}
+    status,output = curl.post(url,data)
+    try:
+        return status,output
+    except:
+        type, value = sys.exc_info()[:2]
+        errStr = "setDebugMode failed with %s %s" % (type,value)
+        return EC_Failed,errStr
+
+    
 # set tmp dir
 def setGlobalTmpDir(tmpDir):
     global globalTmpDir

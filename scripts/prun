@@ -66,6 +66,8 @@ optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',defaul
                 type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
 optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
+optP.add_option('--debugMode', action='store_const',const=True,dest='debugMode',default=False,
+                help="Send the job with the debug mode on. If this option is specified the subjob will send stdout to the panda monitor every 5 min. The number of debug subjobs per user is limited. When this option is used and the quota has already exceeded, the panda server supresses the option so that subjobs will run without the debug mode. If you submit multiple subjobs in a single job, only the first subjob will set the debug mode on. Note that you can turn the debug mode on/off by using pbook after jobs are submitted" )
 optP.add_option('--useContElementBoundary',action='store_const',const=True,dest='useContElementBoundary',default=False,
                 help="Split job in such a way that sub jobs do not mix files of different datasets in the input container. See --useNthFieldForLFN too")
 optP.add_option('--useNthFieldForLFN',action='store',dest='useNthFieldForLFN',default=2,type='int',
@@ -1797,6 +1799,14 @@ if os.path.exists(jobid_file):
     except:
         pass
 
+# special handling
+specialHandling = ''
+if options.express:
+    specialHandling += 'express,'
+if options.debugMode:
+    specialHandling += 'debug,'
+specialHandling = specialHandling[:-1]
+    
 # check permission
 if not Client.checkSiteAccessPermission(options.site,options.workingGroup,options.verbose):
     sys.exit(EC_Config)
@@ -1843,8 +1853,7 @@ elif options.libDS == '':
         jobB.AtlasRelease  = athenaVer
         jobB.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
     jobB.transformation    = '%s/buildGen-00-00-01' % Client.baseURLSUB
-    if options.express:
-        jobB.specialHandling = 'express'
+    jobB.specialHandling   = specialHandling
     jobB.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
     if nickName == '':
         # old convention
@@ -2150,8 +2159,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             jobR.AtlasRelease  = athenaVer
             jobR.homepackage   = 'AnalysisTransforms'+cacheVer+nightVer
         jobR.transformation    = '%s/runGen-00-00-02' % Client.baseURLSUB
-        if options.express:
-            jobR.specialHandling = 'express'
+        jobR.specialHandling   = specialHandling
         jobR.cmtConfig         = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
         # disable automatic job retry on the server side
         if options.disableAutoRetry:
