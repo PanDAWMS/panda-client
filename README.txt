@@ -26,6 +26,7 @@ current
   * added --debugMode to pathena/prun	
   * setting account and appid for Rucio in pbook
   * added support to pathena/prun to run nigitlies
+  * modified putFile to reuse sandbox if CRC and size are identical
 
 0.4.0 (5/31/2012)
   * added --noCompile to prun
