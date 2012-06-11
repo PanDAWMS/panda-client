@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.4.1 (6/11/2012)
   * added debug() to pbook
   * added --debugMode to pathena/prun	
   * setting account and appid for Rucio in pbook
