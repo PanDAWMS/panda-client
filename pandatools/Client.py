@@ -11,6 +11,7 @@ import stat
 import types
 import random
 import urllib
+import struct
 import commands
 import cPickle as pickle
 import xml.dom.minidom
@@ -586,11 +587,11 @@ def queryLastFilesInDataset(datasets,verbose=False):
 
 
 # put file
-def putFile(file,verbose=False,useCacheSrv=False):
+def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
     # size check for noBuild
     sizeLimit = 10*1024*1024
+    fileSize = os.stat(file)[stat.ST_SIZE]
     if not file.startswith('sources.'):
-        fileSize = os.stat(file)[stat.ST_SIZE]
         if fileSize > sizeLimit:
             errStr  = 'Exceeded size limit (%sB >%sB). ' % (fileSize,sizeLimit)
             errStr += 'Your working directory contains too large files which cannot be put on cache area. '
@@ -604,6 +605,30 @@ def putFile(file,verbose=False,useCacheSrv=False):
     curl.sslCert = _x509()
     curl.sslKey  = _x509()
     curl.verbose = verbose
+    # check duplicationn
+    if reuseSandbox:
+        # get CRC
+        fo = open(file)
+        fileContent = fo.read()
+        fo.close()
+        footer = fileContent[-8:]
+        checkSum,isize = struct.unpack("II",footer)
+        # check duplication
+        url = baseURLSSL + '/checkSandboxFile'
+        data = {'fileSize':fileSize,'checkSum':checkSum}
+        status,output = curl.post(url,data)
+        if status != 0:
+            return EC_Failed,'ERROR: Could not check Sandbox duplication with %s' % status
+        elif output.startswith('FOUND:'):
+            # found reusable sandbox
+            hostName,reuseFileName = output.split(':')[1:]
+            # set cache server hostname
+            global baseURLCSRV
+            baseURLCSRV    = "http://%s:25080/server/panda" % hostName
+            global baseURLCSRVSSL
+            baseURLCSRVSSL = "https://%s:25443/server/panda" % hostName
+            # return reusable filename
+            return 0,"NewFileName:%s" % reuseFileName
     # execute
     if useCacheSrv:
         url = baseURLCSRVSSL + '/putFile'
