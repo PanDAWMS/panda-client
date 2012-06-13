@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.2 (6/13/2012)
+  * fixed runBrokerage for --useDirectIOSites
+
 0.4.1 (6/11/2012)
   * added debug() to pbook
   * added --debugMode to pathena/prun	

@@ -2202,11 +2202,6 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType='',
                  loggingFlag=False,memorySize=0,useDirectIO=False):
-    if sites == []:
-        if not loggingFlag:
-            return 0,'ERROR : no candidate'
-        else:
-            return 0,{'site':'ERROR : no candidate','logInfo':[]}
     # use only directIO sites
     nonDirectSites = []
     if useDirectIO:
@@ -2217,6 +2212,11 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
             else:
                 nonDirectSites.append(tmpSite)
         sites = tmpNewSites        
+    if sites == []:
+        if not loggingFlag:
+            return 0,'ERROR : no candidate.'
+        else:
+            return 0,{'site':'ERROR : no candidate.','logInfo':[]}
     # choose at most 50 sites randomly to avoid too many lookup
     random.shuffle(sites)
     sites = sites[:50]
