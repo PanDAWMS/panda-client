@@ -1373,8 +1373,12 @@ else:
     # put sources/jobO via HTTP POST
     if not options.nosubmit:
         tmpLog.info("uploading source/jobO files")
-        status,out = Client.putFile(archiveName,options.verbose,useCacheSrv=True)
-        if out != 'True':
+        status,out = Client.putFile(archiveName,options.verbose,useCacheSrv=True,reuseSandbox=True)
+	if out.startswith('NewFileName:'):
+	    # found the same input sandbox to reuse 
+	    archiveName = out.split(':')[-1]
+        elif out != 'True':
+            # failed
             print out
             tmpLog.error("Failed with %s" % status)
             sys.exit(EC_Post)

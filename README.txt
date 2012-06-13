@@ -21,11 +21,15 @@ pathena -h
 
 ** Release Note
 
-current
+0.4.2 (6/13/2012)
+  * fixed runBrokerage for --useDirectIOSites
+
+0.4.1 (6/11/2012)
   * added debug() to pbook
   * added --debugMode to pathena/prun	
   * setting account and appid for Rucio in pbook
   * added support to pathena/prun to run nigitlies
+  * modified putFile to reuse sandbox if CRC and size are identical
 
 0.4.0 (5/31/2012)
   * added --noCompile to prun
