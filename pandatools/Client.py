@@ -623,8 +623,6 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
             # found reusable sandbox
             hostName,reuseFileName = output.split(':')[1:]
             # set cache server hostname
-            global baseURLCSRV
-            baseURLCSRV    = "http://%s:25080/server/panda" % hostName
             global baseURLCSRVSSL
             baseURLCSRVSSL = "https://%s:25443/server/panda" % hostName
             # return reusable filename

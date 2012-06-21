@@ -973,8 +973,9 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # server URL
     if not '--panda_srvURL' in fullExecString:
         fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
-    if not '--panda_cacheSrvURL' in fullExecString:
-        fullExecString += ' --panda_cacheSrvURL=%s,%s' % (Client.baseURLCSRV,Client.baseURLCSRVSSL)
+    if '--panda_cacheSrvURL' in fullExecString:
+        fullExecString = re.sub('"*--panda_cacheSrvURL=[^ ]+','',fullExecString)
+    fullExecString += ' --panda_cacheSrvURL=%s,%s' % (Client.baseURLCSRV,Client.baseURLCSRVSSL)
     # devidedByGUID
     if devidedByGUID and not '--panda_devidedByGUID' in fullExecString:
         fullExecString += ' --panda_devidedByGUID'
@@ -1088,8 +1089,9 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
     # server URL
     if not '--panda_srvURL' in fullExecString:
         fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
-    if not '--panda_cacheSrvURL' in fullExecString:
-        fullExecString += ' --panda_cacheSrvURL=%s,%s' % (Client.baseURLCSRV,Client.baseURLCSRVSSL)
+    if '--panda_cacheSrvURL' in fullExecString:
+        fullExecString = re.sub('"*--panda_cacheSrvURL=[^ ]+','',fullExecString)
+    fullExecString += ' --panda_cacheSrvURL=%s,%s' % (Client.baseURLCSRV,Client.baseURLCSRVSSL)
     # set DBR
     if dbRelease != '' and not '--panda_dbRelease' in fullExecString:
         fullExecString += ' --panda_dbRelease=%s' % dbRelease

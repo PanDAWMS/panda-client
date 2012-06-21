@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.3 (6/21/2012)
+  * fixed cachesrv lookup to reuse sandbox
+
 0.4.2 (6/13/2012)
   * fixed runBrokerage for --useDirectIOSites
 
