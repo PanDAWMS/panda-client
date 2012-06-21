@@ -1751,6 +1751,19 @@ else:
     if options.outTarBall != '':
         shutil.copy(archiveName,options.outTarBall)
     
+    # upload source files
+    if not options.nosubmit:
+        # upload sources via HTTP POST
+        tmpLog.info("upload source files")
+        status,out = Client.putFile(archiveName,options.verbose,useCacheSrv=True,reuseSandbox=True)
+        if out.startswith('NewFileName:'):
+            # found the same input sandbox to reuse
+            archiveName = out.split(':')[-1]
+        elif out != 'True':
+            print out
+            tmpLog.error("failed to upload source files with %s" % status)
+            sys.exit(EC_Post)
+
 
 # look for pandatools package
 for path in sys.path:
@@ -2562,15 +2575,6 @@ if not options.nosubmit:
         if not delResult:
             tmpLog.error("failed to upload proxy")
             sys.exit(EC_MyProxy)
-
-    # upload sources via HTTP POST
-    if options.panda_srcName == '':
-        tmpLog.info("upload source files")
-        status,out = Client.putFile(archiveName,options.verbose,useCacheSrv=True)
-        if out != 'True':
-            print out
-            tmpLog.error("failed to upload source files with %s" % status)
-            sys.exit(EC_Post)
 
     # dataset location
     tmpOutDsLocation = Client.PandaSites[options.site]['ddm']
