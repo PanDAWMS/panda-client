@@ -2199,7 +2199,7 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
 
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType='',
-                 loggingFlag=False,memorySize=0,useDirectIO=False):
+                 loggingFlag=False,memorySize=0,useDirectIO=False,siteGroup=None):
     # use only directIO sites
     nonDirectSites = []
     if useDirectIO:
@@ -2256,6 +2256,9 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
     # memory size
     if not memorySize in [-1,0,None,'NULL']:
         data['memorySize'] = memorySize
+    # site group
+    if not siteGroup in [None,-1]:
+        data['siteGroup'] = siteGroup
     status,output = curl.get(url,data)
     try:
         if not loggingFlag:

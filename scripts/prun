@@ -204,6 +204,8 @@ optP.add_option('--mergeScript',action='store',dest='mergeScript',default='',typ
                 help='Specify user-defied script execution string for output merging')
 optP.add_option('--provenanceID',action='store',dest='provenanceID',default=-1,type='int',
                 help='provenanceID')
+optP.add_option('--useSiteGroup',action='store',dest='useSiteGroup',default=-1,type='int',
+                help='Use only site groups which have group numbers not higher than --siteGroup. Group 0: T1 or undefined, 1,2,3,4: alpha,bravo,charlie,delta which are defined based on site reliability')
 optP.add_option('-v',action='store_const',const=True,dest='verbose',default=False,
                 help='Verbose')
 optP.add_option('--long', action='store_const',const=True,dest='long',default=False,
@@ -940,7 +942,8 @@ if outputDSexist and options.destSE == '':
             convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,
                                                                      options.verbose,options.cmtConfig,
                                                                      memorySize=options.memory,
-                                                                     useDirectIO=options.useDirectIOSites)
+                                                                     useDirectIO=options.useDirectIOSites,
+                                                                     siteGroup=options.useSiteGroup)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -985,7 +988,8 @@ if options.libDS != '' and not Client.isDQ2free(options.site):
             convID,brokerageLogs = PsubUtils.runBrokerageForCompSite(tmpConvIDs,athenaVer,cacheVer,
                                                                      options.verbose,options.cmtConfig,
                                                                      memorySize=options.memory,
-                                                                     useDirectIO=options.useDirectIOSites)
+                                                                     useDirectIO=options.useDirectIOSites,
+                                                                     siteGroup=options.useSiteGroup)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -1240,7 +1244,7 @@ if options.inDS != '':
                     continue
                 status,outMap = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
                                                     loggingFlag=True,cmtConfig=options.cmtConfig,memorySize=options.memory,
-                                                    useDirectIO=options.useDirectIOSites)
+                                                    useDirectIO=options.useDirectIOSites,siteGroup=options.useSiteGroup)
                 if status != 0:
                     tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)
                     sys.exit(EC_Config)
@@ -1451,7 +1455,7 @@ else:
         for idxTmpSites,tmpSites in enumerate(tmpSitesList):
             status,outMap = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
                                                 loggingFlag=True,cmtConfig=options.cmtConfig,memorySize=options.memory,
-                                                useDirectIO=options.useDirectIOSites)
+                                                useDirectIO=options.useDirectIOSites,siteGroup=options.useSiteGroup)
             if status != 0:
                 tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)  
                 sys.exit(EC_Config)

@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.4 (6/27/2012)
+  * added --useSiteGroup to pathena/prun
+
 0.4.3 (6/21/2012)
   * fixed cachesrv lookup to reuse sandbox
 
