@@ -973,8 +973,9 @@ def runPathenaRec(runConfig,missList,tmpDir,fullExecString,nfiles,inputFileMap,s
     # server URL
     if not '--panda_srvURL' in fullExecString:
         fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
-    if not '--panda_cacheSrvURL' in fullExecString:
-        fullExecString += ' --panda_cacheSrvURL=%s,%s' % (Client.baseURLCSRV,Client.baseURLCSRVSSL)
+    if '--panda_cacheSrvURL' in fullExecString:
+        fullExecString = re.sub('"*--panda_cacheSrvURL=[^ ]+','',fullExecString)
+    fullExecString += ' --panda_cacheSrvURL=%s,%s' % (Client.baseURLCSRV,Client.baseURLCSRVSSL)
     # devidedByGUID
     if devidedByGUID and not '--panda_devidedByGUID' in fullExecString:
         fullExecString += ' --panda_devidedByGUID'
@@ -1088,8 +1089,9 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
     # server URL
     if not '--panda_srvURL' in fullExecString:
         fullExecString += ' --panda_srvURL=%s,%s' % (Client.baseURL,Client.baseURLSSL)
-    if not '--panda_cacheSrvURL' in fullExecString:
-        fullExecString += ' --panda_cacheSrvURL=%s,%s' % (Client.baseURLCSRV,Client.baseURLCSRVSSL)
+    if '--panda_cacheSrvURL' in fullExecString:
+        fullExecString = re.sub('"*--panda_cacheSrvURL=[^ ]+','',fullExecString)
+    fullExecString += ' --panda_cacheSrvURL=%s,%s' % (Client.baseURLCSRV,Client.baseURLCSRVSSL)
     # set DBR
     if dbRelease != '' and not '--panda_dbRelease' in fullExecString:
         fullExecString += ' --panda_dbRelease=%s' % dbRelease
@@ -1119,12 +1121,14 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
 
 
 # run brokerage for composite site
-def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose,cmtConfig=None,memorySize=0,useDirectIO=False):
+def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose,cmtConfig=None,
+                            memorySize=0,useDirectIO=False,siteGroup=None):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # run brokerage
     status,outMap = Client.runBrokerage(siteIDs,releaseVer,verbose=verbose,trustIS=True,cacheVer=cacheVer,loggingFlag=True,
-                                        cmtConfig=cmtConfig,memorySize=memorySize,useDirectIO=useDirectIO)
+                                        cmtConfig=cmtConfig,memorySize=memorySize,useDirectIO=useDirectIO,
+                                        siteGroup=siteGroup)
     if status != 0:
         tmpLog.error('failed to run brokerage for composite site: %s' % outMap)
         sys.exit(EC_Config)
