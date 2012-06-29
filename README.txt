@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * improved warning message of the brokerage
+
 0.4.4 (6/27/2012)
   * added --useSiteGroup to pathena/prun
 
