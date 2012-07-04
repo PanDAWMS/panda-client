@@ -2077,6 +2077,14 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 else:
                     errStr = "could not find supported/online sites for the missing files"
                     tmpLog.error(errStr)
+                # print missing files
+                if options.verbose:    
+                    tmpMsgStr = '=== missing file list ===\n'
+                    tmpInFileList = inputFileMap.keys()
+                    tmpInFileList.sort()
+                    for tmpFile in tmpInFileList:
+                        tmpMsgStr += '%s\n' % tmpFile
+                    tmpLog.debug(tmpMsgStr)    
                 sys.exit(EC_Dataset)
             # run brorage
             tmpDsLocationMapList = [dsLocationMap]

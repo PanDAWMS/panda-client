@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.4.5 (7/4/2012)
+  * improved warning message of the brokerage
+  * updated pathena/prun to show missing files in the debug mode
+
 0.4.4 (6/27/2012)
   * added --useSiteGroup to pathena/prun
 
