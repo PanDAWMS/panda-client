@@ -1190,6 +1190,12 @@ if options.inDS != '':
                     else:
                         errStr = "could not find supported/online sites for the missing files"
                         tmpLog.error(errStr)
+                    # print missing files
+                    if options.verbose:    
+                        tmpMsgStr = '=== missing file list ===\n'
+                        for tmpFile in inputFileList:
+                            tmpMsgStr += '%s\n' % tmpFile
+                        tmpLog.debug(tmpMsgStr)    
                     sys.exit(EC_Dataset)
                 # append
                 tmpDsLocationForTest[tmpDsForLookUp] = {'pri':tmpDsLocationMap,
