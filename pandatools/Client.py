@@ -2926,7 +2926,9 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
         rFile = open(inputFileListName)
         for line in rFile:
             line = re.sub('\n','',line)
-            filesToBeUsed.append(line)
+            line = line.strip()
+            if line != '':
+                filesToBeUsed.append(line)
         rFile.close()
     # get list of filters
     filters = []

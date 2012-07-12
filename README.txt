@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed --inputFileList of pathena/prun for whitespaces in list
+
 0.4.5 (7/4/2012)
   * improved warning message of the brokerage
   * updated pathena/prun to show missing files in the debug mode

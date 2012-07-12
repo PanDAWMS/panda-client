@@ -735,7 +735,9 @@ if options.inputFileList != '':
     rFile = open(options.inputFileList)
     for line in rFile:
         line = re.sub('\n','',line)
-        options.filelist.append(line)
+        line = line.strip()
+        if line != '':
+            options.filelist.append(line)
     rFile.close()
 
 # removed files
