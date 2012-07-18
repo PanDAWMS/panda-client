@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.4.6 (7/18/2012)
   * fixed --inputFileList of pathena/prun for whitespaces in list
+  * fixed Athena tag extraction for nightlies on CVMFS
 
 0.4.5 (7/4/2012)
   * improved warning message of the brokerage

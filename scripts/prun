@@ -602,7 +602,9 @@ if options.useAthenaPackages:
     sString=re.sub('[\+]','.',workArea)
     runDir = re.sub('^%s' % sString, '', curDir)
     if runDir == curDir:
-        tmpLog.error("you need to run prun in a directory under %s" % workArea)
+        errMsg  = "You need to run prun in a directory under %s. " % workArea
+        errMsg += "If '%s' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup." % workArea
+        tmpLog.error(errMsg)        
         sys.exit(EC_Config)
     elif runDir == '':
         runDir = '.'
@@ -613,6 +615,7 @@ elif options.athenaTag != '':
     # get list of Athena projects
     listProjects = Client.getCachePrefixes(options.verbose)
     items = options.athenaTag.split(',')
+    usingNightlies = False
     for item in items:
         # releases
         match = re.search('^(\d+\.\d+\.\d+)',item)
@@ -622,6 +625,11 @@ elif options.athenaTag != '':
 	    cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
 	    if cmatch != None:
 		cacheVer += '_%s' % cmatch.group(1)
+        else:
+            # nightlies
+            match = re.search('^(\d+\.\d+\.X|\d+\.X\.\d+)$',item)
+            if match != None:
+                athenaVer = 'Atlas-%s' % match.group(1)
         # project
         if item.startswith('Atlas') or item in listProjects:
             # ignore AtlasOffline
@@ -630,13 +638,12 @@ elif options.athenaTag != '':
             cacheVer = '-'+item+cacheVer
         # nightlies    
         if item.startswith('rel_'):
+            usingNightlies = True
             if 'dev' in items:
-                nightVer  = '/dev'
-            elif 'bugfix' in items:
-                nightVer  = '/bugfix'
-            else:
-                tmpLog.error("unsupported nightly %s" % line)
-                sys.exit(EC_Config)
+                athenaVer = 'Atlas-dev'
+            elif 'devval' in items:
+                athenaVer = 'Atlas-devval'
+            cacheVer  = '-AtlasOffline_%s' % item
 	# CMTCONFIG
         if item == '64':
             options.cmtConfig = 'x86_64-slc5-gcc43-opt'
@@ -650,6 +657,9 @@ elif options.athenaTag != '':
         else:
             # unknown
             cacheVer = ''
+    # use dev nightlies
+    if usingNightlies and athenaVer == '':
+        athenaVer = 'Atlas-dev'
 
 # set CMTCONFIG
 options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
@@ -832,7 +842,7 @@ if options.site != 'AUTO':
         options.site = "ANALY_BNL_ATLAS_1"
     # patch for CERN
     if options.site in ['CERN']:
-        options.site = "ANALY_CERN"        
+        options.site = "ANALY_CERN_XROOTD"        
     # try to convert DQ2ID to PandaID
     pID = PsubUtils.convertDQ2toPandaID(options.site)
     if pID != '':

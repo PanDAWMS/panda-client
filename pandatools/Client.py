@@ -2402,6 +2402,8 @@ def useDevServer():
     baseURLCSRV = 'https://voatlas220.cern.ch:25443/server/panda'
     global baseURLCSRVSSL
     baseURLCSRVSSL = 'https://voatlas220.cern.ch:25443/server/panda'
+    global baseURLSUB
+    baseURLSUB = 'http://atlpan.web.cern.ch/atlpan'
 
 
 # set server
