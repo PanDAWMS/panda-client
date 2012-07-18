@@ -232,7 +232,7 @@ def getAthenaVer():
                 # nightly
                 if athenaVer.startswith('rel'):
                     # extract base release
-                    tmpMatch = re.search('/([^/]+)/AtlasOffline/rel_\d+',line)
+                    tmpMatch = re.search('/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+',line)
                     if tmpMatch == None:
                         tmpLog.error("unsupported nightly %s" % line)
                         return False,{}
@@ -1860,8 +1860,8 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
                 # use x86_64-slc5-gcc43-opt for 17.X.0 or higher                
                 if maVer > 17 or (maVer == 17 and miVer == 'X'):
                     return 'x86_64-slc5-gcc43-opt'
-                # use i686-slc4-gcc34-opt by default
-                return 'i686-slc4-gcc34-opt'
+                # use i686-slc5-gcc43-opt by default
+                return 'i686-slc5-gcc43-opt'
         # get default cmtconfig according to Atlas release
         if athenaVer != None:
             # remove prefix
@@ -1908,7 +1908,7 @@ def checkCmtConfig(localCmtConfig,userCmtConfig,noBuild):
         return True
     # user-specified CMTCONFIG is inconsitent with local CMTCONFIG
     if userCmtConfig != localCmtConfig and noBuild:
-        errStr  = 'You cannot use --noBuild when --cmtConfig is inconsistent when local CMTCONFIG=%s ' % localCmtConfig
+        errStr  = 'You cannot use --noBuild when --cmtConfig=%s is inconsistent with local CMTCONFIG=%s ' % (userCmtConfig,localCmtConfig)
         errStr += 'since you need re-compile source files on remote worker-node. Please remove --noBuild'
         tmpLog.error(errStr)
         return False

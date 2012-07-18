@@ -1740,8 +1740,14 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 tmpLog.debug("getLocations sec -> %s" % resRetSiteMap)
         # print bad status sites for info    
         if retSiteMap == {} and resRetSiteMap == {} and resBadStSites != {}:
-            tmpLog.warning("the following sites hold %s but they are not online" % name)
+            msgFirstFlag = True
             for tmpStatus,tmpSites in resBadStSites.iteritems():
+                # ignore panda secific site
+                if tmpStatus.startswith('panda_'):
+                    continue
+                if msgFirstFlag:
+                    tmpLog.warning("the following sites hold %s but they are not online" % name)
+                    msgFirstFlag = False
                 print "   status=%s : %s" % (tmpStatus,tmpSites)
         if not getReserved:        
             return retSiteMap
@@ -2396,6 +2402,8 @@ def useDevServer():
     baseURLCSRV = 'https://voatlas220.cern.ch:25443/server/panda'
     global baseURLCSRVSSL
     baseURLCSRVSSL = 'https://voatlas220.cern.ch:25443/server/panda'
+    global baseURLSUB
+    baseURLSUB = 'http://atlpan.web.cern.ch/atlpan'
 
 
 # set server
@@ -2827,7 +2835,10 @@ def excludeSite(excludedSiteList,origFullExecString='',infoList=[]):
                         msgBody = 'action=exclude site=%s reason=useroption - excluded by user' % site
                         if not msgBody in infoList:
                             infoList.append(msgBody)
-                    PandaSites[site]['status'] = 'excluded'
+                        PandaSites[site]['status'] = 'excluded'
+                    else:
+                        # already used by previous submission cycles
+                        PandaSites[site]['status'] = 'panda_excluded'
                 except:
                     pass
 
@@ -2917,7 +2928,9 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
         rFile = open(inputFileListName)
         for line in rFile:
             line = re.sub('\n','',line)
-            filesToBeUsed.append(line)
+            line = line.strip()
+            if line != '':
+                filesToBeUsed.append(line)
         rFile.close()
     # get list of filters
     filters = []
