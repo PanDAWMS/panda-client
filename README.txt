@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.7 (7/19/2012)
+  * added --noOutput to pathena
+
 0.4.6 (7/18/2012)
   * fixed --inputFileList of pathena/prun for whitespaces in list
   * fixed Athena tag extraction for nightlies on CVMFS

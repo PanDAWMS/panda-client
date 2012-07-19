@@ -204,6 +204,8 @@ optP.add_option('--cloud',action='store', dest='cloud',default=None,
                 type='string', help='cloud where jobs are submitted. default is set according to your VOMS country group')
 optP.add_option('--noBuild', action='store_const', const=True, dest='nobuild',  default=False,
                 help='Skip buildJob')
+optP.add_option('--noOutput', action='store_const', const=True, dest='noOutput',  default=False,
+                help='Send job even if there is no output file')
 optP.add_option('--individualOutDS', action='store_const', const=True, dest='individualOutDS',  default=False,
                 help='Create individual output dataset for each data-type. By default, all output files are added to one output dataset')
 optP.add_option('--transferredDS',action='store', dest='transferredDS',default='',type='string',
@@ -1203,14 +1205,16 @@ for tmpIgnorKey in ['outUserData','alloutputs']:
         tmpOutKeys.remove(tmpIgnorKey)
     except:
         pass
-if tmpOutKeys == [] and options.extOutFile == []:
+if tmpOutKeys == [] and options.extOutFile == [] and not options.noOutput:
     errStr  = "No output stream was extracted from jobOs or --trf. "
     if not options.trf:
 	errStr += "If your job defines an output without Athena framework "
 	errStr += "(e.g., using ROOT.TFile.Open instead of THistSvc) "
 	errStr += "please specify the output filename by using --extOutFile. "
 	errStr += "Or if you define the output with a relatively new mechanism "
-	errStr += "please report it to Savannah to update the automatic extractor" 
+	errStr += "please report it to Savannah to update the automatic extractor. " 
+    errStr += "If you are sure that your job doesn't produce any output file "
+    errStr += "(e.g., HelloWorldOptions.py) please use --noOutput. " 
     tmpLog.error(errStr)  
     sys.exit(EC_Extractor)
 
