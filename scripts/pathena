@@ -204,6 +204,8 @@ optP.add_option('--cloud',action='store', dest='cloud',default=None,
                 type='string', help='cloud where jobs are submitted. default is set according to your VOMS country group')
 optP.add_option('--noBuild', action='store_const', const=True, dest='nobuild',  default=False,
                 help='Skip buildJob')
+optP.add_option('--noOutput', action='store_const', const=True, dest='noOutput',  default=False,
+                help='Send job even if there is no output file')
 optP.add_option('--individualOutDS', action='store_const', const=True, dest='individualOutDS',  default=False,
                 help='Create individual output dataset for each data-type. By default, all output files are added to one output dataset')
 optP.add_option('--transferredDS',action='store', dest='transferredDS',default='',type='string',
@@ -735,7 +737,9 @@ if options.inputFileList != '':
     rFile = open(options.inputFileList)
     for line in rFile:
         line = re.sub('\n','',line)
-        options.filelist.append(line)
+        line = line.strip()
+        if line != '':
+            options.filelist.append(line)
     rFile.close()
 
 # removed files
@@ -800,7 +804,7 @@ if options.site != 'AUTO' and options.burstSubmit == '':
         options.site = "ANALY_BNL_ATLAS_1"
     # patch for CERN
     if options.site in ['CERN']:
-        options.site = "ANALY_CERN"        
+        options.site = "ANALY_CERN_XROOTD"        
     # try to convert DQ2ID to PandaID
     pID = PsubUtils.convertDQ2toPandaID(options.site)
     if pID != '':
@@ -905,6 +909,7 @@ if options.athenaTag != '':
     # get list of Athena projects
     listProjects = Client.getCachePrefixes(options.verbose)
     items = options.athenaTag.split(',')
+    usingNightlies = False
     for item in items:
         # releases
         match = re.search('^(\d+\.\d+\.\d+)',item)
@@ -914,6 +919,11 @@ if options.athenaTag != '':
 	    cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
 	    if cmatch != None:
 		cacheVer += '_%s' % cmatch.group(1)
+        else:
+            # nightlies
+            match = re.search('^(\d+\.\d+\.X|\d+\.X\.\d+)$',item)
+            if match != None:
+                athenaVer = 'Atlas-%s' % match.group(1)
         # project
         if item.startswith('Atlas') or item in listProjects:
             # ignore AtlasOffline
@@ -922,13 +932,12 @@ if options.athenaTag != '':
             cacheVer = '-'+item+cacheVer
         # nightlies    
         if item.startswith('rel_'):
+            usingNightlies = True
             if 'dev' in items:
-                nightVer  = '/dev'
-            elif 'bugfix' in items:
-                nightVer  = '/bugfix'
-            else:
-                tmpLog.error("unsupported nightly %s" % line)
-                sys.exit(EC_Config)
+                athenaVer = 'Atlas-dev'
+            elif 'devval' in items:
+                athenaVer = 'Atlas-devval'
+            cacheVer  = '-AtlasOffline_%s' % item
 	# CMTCONFIG
         if item == '64':
             options.cmtConfig = 'x86_64-slc5-gcc43-opt'
@@ -942,6 +951,9 @@ if options.athenaTag != '':
         else:
             # unknown
             cacheVer = ''
+    # use dev nightlies
+    if usingNightlies and athenaVer == '':
+        athenaVer = 'Atlas-dev'
 
 # set CMTCONFIG
 options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
@@ -955,7 +967,9 @@ if not AthenaUtils.checkCmtConfig(retA['cmtConfig'],options.cmtConfig,options.no
 sString=re.sub('[\+]','.',workArea)
 runDir = re.sub('^%s' % sString, '', currentDir)
 if runDir == currentDir:
-    tmpLog.error("you need to run pathena in a directory under %s" % workArea)
+    errMsg  = "You need to run pathena in a directory under %s. " % workArea
+    errMsg += "If '%s' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup." % workArea
+    tmpLog.error(errMsg)
     sys.exit(EC_Config)
 elif runDir == '':
     runDir = '.'
@@ -1191,14 +1205,16 @@ for tmpIgnorKey in ['outUserData','alloutputs']:
         tmpOutKeys.remove(tmpIgnorKey)
     except:
         pass
-if tmpOutKeys == [] and options.extOutFile == []:
+if tmpOutKeys == [] and options.extOutFile == [] and not options.noOutput:
     errStr  = "No output stream was extracted from jobOs or --trf. "
     if not options.trf:
 	errStr += "If your job defines an output without Athena framework "
 	errStr += "(e.g., using ROOT.TFile.Open instead of THistSvc) "
 	errStr += "please specify the output filename by using --extOutFile. "
 	errStr += "Or if you define the output with a relatively new mechanism "
-	errStr += "please report it to Savannah to update the automatic extractor" 
+	errStr += "please report it to Savannah to update the automatic extractor. " 
+    errStr += "If you are sure that your job doesn't produce any output file "
+    errStr += "(e.g., HelloWorldOptions.py) please use --noOutput. " 
     tmpLog.error(errStr)  
     sys.exit(EC_Extractor)
 
@@ -2077,6 +2093,14 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 else:
                     errStr = "could not find supported/online sites for the missing files"
                     tmpLog.error(errStr)
+                # print missing files
+                if options.verbose:    
+                    tmpMsgStr = '=== missing file list ===\n'
+                    tmpInFileList = inputFileMap.keys()
+                    tmpInFileList.sort()
+                    for tmpFile in tmpInFileList:
+                        tmpMsgStr += '%s\n' % tmpFile
+                    tmpLog.debug(tmpMsgStr)    
                 sys.exit(EC_Dataset)
             # run brorage
             tmpDsLocationMapList = [dsLocationMap]
