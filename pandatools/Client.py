@@ -2040,7 +2040,7 @@ def _getGridSrc():
                     # CVMFS
                     if not os.environ.has_key('ATLAS_LOCAL_ROOT_BASE'):
                         os.environ['ATLAS_LOCAL_ROOT_BASE'] = '/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase'
-                    gridSrc = os.environ['ATLAS_LOCAL_ROOT_BASE'] + '/user/pandaGridSetup.sh > /dev/null'
+                    gridSrc = os.environ['ATLAS_LOCAL_ROOT_BASE'] + '/user/pandaGridSetup.sh'
                 else:
                     print "ERROR : PATHENA_GRID_SETUP_SH is not defined in envvars"
                     print "  for CERN : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh"
@@ -2049,7 +2049,7 @@ def _getGridSrc():
                     return False
     # check grid-proxy
     if gridSrc != '':
-        gridSrc = 'source %s;' % gridSrc
+        gridSrc = 'source %s > /dev/null;' % gridSrc
         # some grid_env.sh doen't correct PATH/LD_LIBRARY_PATH
         gridSrc = "unset LD_LIBRARY_PATH; unset PYTHONPATH; unset MANPATH; export PATH=/usr/local/bin:/bin:/usr/bin; %s" % gridSrc
     # return

@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * suppressed redundant messages when sourcing grid-env
+
 0.4.7 (7/19/2012)
   * added --noOutput to pathena
 
