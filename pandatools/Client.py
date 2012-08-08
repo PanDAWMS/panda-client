@@ -1740,8 +1740,14 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 tmpLog.debug("getLocations sec -> %s" % resRetSiteMap)
         # print bad status sites for info    
         if retSiteMap == {} and resRetSiteMap == {} and resBadStSites != {}:
-            tmpLog.warning("the following sites hold %s but they are not online" % name)
+            msgFirstFlag = True
             for tmpStatus,tmpSites in resBadStSites.iteritems():
+                # ignore panda secific site
+                if tmpStatus.startswith('panda_'):
+                    continue
+                if msgFirstFlag:
+                    tmpLog.warning("the following sites hold %s but they are not online" % name)
+                    msgFirstFlag = False
                 print "   status=%s : %s" % (tmpStatus,tmpSites)
         if not getReserved:        
             return retSiteMap
@@ -2034,7 +2040,7 @@ def _getGridSrc():
                     # CVMFS
                     if not os.environ.has_key('ATLAS_LOCAL_ROOT_BASE'):
                         os.environ['ATLAS_LOCAL_ROOT_BASE'] = '/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase'
-                    gridSrc = os.environ['ATLAS_LOCAL_ROOT_BASE'] + '/user/pandaGridSetup.sh > /dev/null'
+                    gridSrc = os.environ['ATLAS_LOCAL_ROOT_BASE'] + '/user/pandaGridSetup.sh'
                 else:
                     print "ERROR : PATHENA_GRID_SETUP_SH is not defined in envvars"
                     print "  for CERN : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh"
@@ -2043,7 +2049,7 @@ def _getGridSrc():
                     return False
     # check grid-proxy
     if gridSrc != '':
-        gridSrc = 'source %s;' % gridSrc
+        gridSrc = 'source %s > /dev/null;' % gridSrc
         # some grid_env.sh doen't correct PATH/LD_LIBRARY_PATH
         gridSrc = "unset LD_LIBRARY_PATH; unset PYTHONPATH; unset MANPATH; export PATH=/usr/local/bin:/bin:/usr/bin; %s" % gridSrc
     # return
@@ -2199,7 +2205,7 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
 
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType='',
-                 loggingFlag=False,memorySize=0,useDirectIO=False,siteGroup=None):
+                 loggingFlag=False,memorySize=0,useDirectIO=False,siteGroup=None,maxCpuCount=-1):
     # use only directIO sites
     nonDirectSites = []
     if useDirectIO:
@@ -2233,6 +2239,8 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
         data['cmtConfig'] = cmtConfig
     if trustIS:
         data['trustIS'] = True
+    if maxCpuCount > 0:
+        data['maxCpuCount'] = maxCpuCount
     if cacheVer != '':
         # change format if needed
         cacheVer = re.sub('^-','',cacheVer)
@@ -2396,6 +2404,8 @@ def useDevServer():
     baseURLCSRV = 'https://voatlas220.cern.ch:25443/server/panda'
     global baseURLCSRVSSL
     baseURLCSRVSSL = 'https://voatlas220.cern.ch:25443/server/panda'
+    global baseURLSUB
+    baseURLSUB = 'http://atlpan.web.cern.ch/atlpan'
 
 
 # set server
@@ -2827,7 +2837,10 @@ def excludeSite(excludedSiteList,origFullExecString='',infoList=[]):
                         msgBody = 'action=exclude site=%s reason=useroption - excluded by user' % site
                         if not msgBody in infoList:
                             infoList.append(msgBody)
-                    PandaSites[site]['status'] = 'excluded'
+                        PandaSites[site]['status'] = 'excluded'
+                    else:
+                        # already used by previous submission cycles
+                        PandaSites[site]['status'] = 'panda_excluded'
                 except:
                     pass
 
@@ -2917,7 +2930,9 @@ def getFilesInDatasetWithFilter(inDS,filter,shadowList,inputFileListName,verbose
         rFile = open(inputFileListName)
         for line in rFile:
             line = re.sub('\n','',line)
-            filesToBeUsed.append(line)
+            line = line.strip()
+            if line != '':
+                filesToBeUsed.append(line)
         rFile.close()
     # get list of filters
     filters = []
