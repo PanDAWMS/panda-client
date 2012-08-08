@@ -2205,7 +2205,7 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
 
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType='',
-                 loggingFlag=False,memorySize=0,useDirectIO=False,siteGroup=None):
+                 loggingFlag=False,memorySize=0,useDirectIO=False,siteGroup=None,maxCpuCount=-1):
     # use only directIO sites
     nonDirectSites = []
     if useDirectIO:
@@ -2239,6 +2239,8 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
         data['cmtConfig'] = cmtConfig
     if trustIS:
         data['trustIS'] = True
+    if maxCpuCount > 0:
+        data['maxCpuCount'] = maxCpuCount
     if cacheVer != '':
         # change format if needed
         cacheVer = re.sub('^-','',cacheVer)

@@ -953,7 +953,8 @@ if outputDSexist and options.destSE == '':
                                                                      options.verbose,options.cmtConfig,
                                                                      memorySize=options.memory,
                                                                      useDirectIO=options.useDirectIOSites,
-                                                                     siteGroup=options.useSiteGroup)
+                                                                     siteGroup=options.useSiteGroup,
+                                                                     maxCpuCount=options.maxCpuCount)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -999,7 +1000,8 @@ if options.libDS != '' and not Client.isDQ2free(options.site):
                                                                      options.verbose,options.cmtConfig,
                                                                      memorySize=options.memory,
                                                                      useDirectIO=options.useDirectIOSites,
-                                                                     siteGroup=options.useSiteGroup)
+                                                                     siteGroup=options.useSiteGroup,
+                                                                     maxCpuCount=options.maxCpuCount)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -1260,7 +1262,8 @@ if options.inDS != '':
                     continue
                 status,outMap = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
                                                     loggingFlag=True,cmtConfig=options.cmtConfig,memorySize=options.memory,
-                                                    useDirectIO=options.useDirectIOSites,siteGroup=options.useSiteGroup)
+                                                    useDirectIO=options.useDirectIOSites,siteGroup=options.useSiteGroup,
+                                                    maxCpuCount=options.maxCpuCount)
                 if status != 0:
                     tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)
                     sys.exit(EC_Config)
@@ -1471,7 +1474,8 @@ else:
         for idxTmpSites,tmpSites in enumerate(tmpSitesList):
             status,outMap = Client.runBrokerage(tmpSites,athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
                                                 loggingFlag=True,cmtConfig=options.cmtConfig,memorySize=options.memory,
-                                                useDirectIO=options.useDirectIOSites,siteGroup=options.useSiteGroup)
+                                                useDirectIO=options.useDirectIOSites,siteGroup=options.useSiteGroup,
+                                                maxCpuCount=options.maxCpuCount)
             if status != 0:
                 tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)  
                 sys.exit(EC_Config)

@@ -1486,7 +1486,8 @@ if outputDSexist and options.destSE == '':
                                                                      options.verbose,options.cmtConfig,
                                                                      memorySize=options.memory,
                                                                      useDirectIO=options.useDirectIOSites,
-                                                                     siteGroup=options.useSiteGroup)
+                                                                     siteGroup=options.useSiteGroup,
+                                                                     maxCpuCount=options.maxCpuCount)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -1532,7 +1533,8 @@ if options.libDS != '' and not Client.isDQ2free(options.site):
                                                                      options.verbose,options.cmtConfig,
                                                                      memorySize=options.memory,
                                                                      useDirectIO=options.useDirectIOSites,
-                                                                     siteGroup=options.useSiteGroup)
+                                                                     siteGroup=options.useSiteGroup,
+                                                                     maxCpuCount=options.maxCpuCount)
         # set    
         options.site  = convID
         options.cloud = Client.PandaSites[convID]['cloud']
@@ -2119,7 +2121,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                     continue
                 status,outMap = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
                                                     loggingFlag=True,cmtConfig=options.cmtConfig,memorySize=options.memory,
-                                                    useDirectIO=options.useDirectIOSites,siteGroup=options.useSiteGroup)
+                                                    useDirectIO=options.useDirectIOSites,siteGroup=options.useSiteGroup,
+                                                    maxCpuCount=options.maxCpuCount)
                 if status != 0:
                     tmpLog.error('failed to run brokerage for automatic assignment: %s' % outMap)
                     sys.exit(EC_Config)
@@ -2801,7 +2804,8 @@ if options.site == "AUTO":
         if tmpSites != []:
             status,outMap = Client.runBrokerage(tmpSites,'Atlas-%s' % athenaVer,verbose=options.verbose,trustIS=True,cacheVer=cacheVer,
                                                 loggingFlag=True,cmtConfig=options.cmtConfig,memorySize=options.memory,
-                                                useDirectIO=options.useDirectIOSites,siteGroup=options.useSiteGroup)
+                                                useDirectIO=options.useDirectIOSites,siteGroup=options.useSiteGroup,
+                                                maxCpuCount=options.maxCpuCount)
         else:
             status,outMap = 0,{'site':'ERROR : site list is empty.','logInfo':[]} 
         if status != 0:

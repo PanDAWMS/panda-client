@@ -1122,13 +1122,14 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
 
 # run brokerage for composite site
 def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose,cmtConfig=None,
-                            memorySize=0,useDirectIO=False,siteGroup=None):
+                            memorySize=0,useDirectIO=False,siteGroup=None,
+                            maxCpuCount=-1):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # run brokerage
     status,outMap = Client.runBrokerage(siteIDs,releaseVer,verbose=verbose,trustIS=True,cacheVer=cacheVer,loggingFlag=True,
                                         cmtConfig=cmtConfig,memorySize=memorySize,useDirectIO=useDirectIO,
-                                        siteGroup=siteGroup)
+                                        siteGroup=siteGroup,maxCpuCount=maxCpuCount)
     if status != 0:
         tmpLog.error('failed to run brokerage for composite site: %s' % outMap)
         sys.exit(EC_Config)
