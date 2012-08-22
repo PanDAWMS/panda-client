@@ -32,7 +32,12 @@ except:
     baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
 
 baseURLDQ2     = 'http://atlddmcat-reader.cern.ch/dq2'
-baseURLDQ2SSL  = 'https://atlddmcat-writer.cern.ch:443/dq2'
+
+# get real hostname since DQ2 host cert doesn't contain CNAME as SAN
+tmpAdders = socket.gethostbyname_ex('atlddmcat-writer.cern.ch')[2]
+random.shuffle(tmpAdders)
+baseURLDQ2SSL  = 'https://%s:443/dq2' % socket.gethostbyaddr(tmpAdders[0])[0]
+
 baseURLSUB     = "http://pandaserver.cern.ch:25080/trf/user"
 baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
 baseURLCSRV    = "http://pandacache.cern.ch:25080/server/panda"
@@ -119,7 +124,6 @@ def _x509_CApath():
     tmpOut = commands.getoutput(com)
     return tmpOut.split('\n')[-1]
 
-
 # keep list of tmp files for cleanup
 globalTmpDir = ''
 
@@ -131,7 +135,7 @@ class _Curl:
         # path to curl
         self.path = 'curl --user-agent "dqcurl" '
         # verification of the host certificate
-        self.verifyHost = False
+        self.verifyHost = True
         # request a compressed response
         self.compress = True
         # SSL cert/key
@@ -144,14 +148,17 @@ class _Curl:
     def get(self,url,data,rucioAccount=False):
         # make command
         com = '%s --silent --get' % self.path
-        if not self.verifyHost:
+        if not self.verifyHost or not url.startswith('https://'):
             com += ' --insecure'
         else:
-            com += ' --capath %s' %  _x509_CApath()
+            tmp_x509_CApath = _x509_CApath()
+            if tmp_x509_CApath != '':
+                com += ' --capath %s' % tmp_x509_CApath
         if self.compress:
             com += ' --compressed'
         if self.sslCert != '':
             com += ' --cert %s' % self.sslCert
+            com += ' --cacert %s' % self.sslCert
         if self.sslKey != '':
             com += ' --key %s' % self.sslKey
         # add rucio account info
@@ -197,14 +204,17 @@ class _Curl:
     def post(self,url,data,rucioAccount=False):
         # make command
         com = '%s --silent' % self.path
-        if not self.verifyHost:
+        if not self.verifyHost or not url.startswith('https://'):
             com += ' --insecure'
         else:
-            com += ' --capath %s' %  _x509_CApath()
+            tmp_x509_CApath = _x509_CApath()
+            if tmp_x509_CApath != '':
+                com += ' --capath %s' % tmp_x509_CApath
         if self.compress:
             com += ' --compressed'
         if self.sslCert != '':
             com += ' --cert %s' % self.sslCert
+            com += ' --cacert %s' % self.sslCert
         if self.sslKey != '':
             com += ' --key %s' % self.sslKey
         # add rucio account info
@@ -250,12 +260,17 @@ class _Curl:
     def put(self,url,data):
         # make command
         com = '%s --silent' % self.path
-        if not self.verifyHost:
+        if not self.verifyHost or not url.startswith('https://'):
             com += ' --insecure'
+        else:
+            tmp_x509_CApath = _x509_CApath()
+            if tmp_x509_CApath != '':
+                com += ' --capath %s' % tmp_x509_CApath
         if self.compress:
             com += ' --compressed'
         if self.sslCert != '':
             com += ' --cert %s' % self.sslCert
+            com += ' --cacert %s' % self.sslCert
         if self.sslKey != '':
             com += ' --key %s' % self.sslKey
         # emulate PUT 
@@ -3280,5 +3295,12 @@ def getTier1sites():
                 if not tmpPandaSite in PandaTier1Sites:
                     PandaTier1Sites.append(tmpPandaSite)
 getTier1sites()
+
+
+# set X509_CERT_DIR
+if not os.environ.has_key('X509_CERT_DIR') or os.environ['X509_CERT_DIR'] == '':
+    tmp_x509_CApath = _x509_CApath()
+    if tmp_x509_CApath != '':
+        os.environ['X509_CERT_DIR'] = tmp_x509_CApath
 
 

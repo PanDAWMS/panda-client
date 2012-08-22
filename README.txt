@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed for curl+NSS on SLC6
+
 0.4.8 (8/8/2012)
   * suppressed redundant messages when sourcing grid-env
   * improved the brokerage to use maxCpuCount
