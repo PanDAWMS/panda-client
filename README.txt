@@ -22,6 +22,7 @@ pathena -h
 ** Release Note
 
 current
+  * fixed newOpts in pbook.retry()	
   * fixed for CERN TMPDISK	
   * fixed for curl+NSS on SLC6
 

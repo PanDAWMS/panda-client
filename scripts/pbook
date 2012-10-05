@@ -528,12 +528,15 @@ class PBookCore:
                         
 
     # retry
-    def retry(self,JobsetID,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=False,
+    def retry(self,JobsetID,newSite=False,newOpts=None,noSubmit=False,ignoreDuplication=False,useJobsetID=False,
               retryBuild=False,reproduceFiles=[],unsetRetryID=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
+        # set an empty map since imutable default value is used
+        if newOpts == None:
+            newOpts = {}
         # get jobset
 	newJobsetID = -1
         jobList = self.getJobIDsWithSetID(JobsetID)
