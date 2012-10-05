@@ -22,6 +22,7 @@ pathena -h
 ** Release Note
 
 current
+  * fixed for CERN TMPDISK	
   * fixed for curl+NSS on SLC6
 
 0.4.8 (8/8/2012)

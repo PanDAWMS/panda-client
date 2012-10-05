@@ -1443,6 +1443,7 @@ def convSrmV2ID(tmpSite):
 def isTapeSite(origTmpSite):
     if re.search('TAPE$',origTmpSite) != None or \
            re.search('PROD_TZERO$',origTmpSite) != None or \
+           re.search('PROD_TMPDISK$',origTmpSite) != None or \
            re.search('PROD_DAQ$',origTmpSite) != None:
         return True
     return False
