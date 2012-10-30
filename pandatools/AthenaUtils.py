@@ -650,6 +650,30 @@ def matchExtFile(fileName):
     return False
 
 
+# extended extra stream name
+useExtendedExtStreamName = False
+
+# use extended extra stream name
+def enableExtendedExtStreamName():
+    global useExtendedExtStreamName
+    useExtendedExtStreamName = True
+        
+# get extended extra stream name
+def getExtendedExtStreamName(sIndex,sName,enableExtension):
+    tmpBaseExtName = 'EXT%s' % sIndex
+    if not useExtendedExtStreamName or not enableExtension:
+        return tmpBaseExtName
+    # change * to X and add .tgz
+    if sName.find('*') != -1:
+        sName = sName.replace('*','XYZ')
+        sName = '%s.tgz' % sName
+    # use extended extra stream name
+    tmpItems = sName.split('.')
+    if len(tmpItems) > 0:
+        tmpBaseExtName += '_%s' % tmpItems[0]
+    return tmpBaseExtName
+    
+
 # special files to be treated carefully
 specialFilesForAthena = ['dblookup.xml']
 
@@ -1216,7 +1240,8 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
                 getFilesWithSuffix(tmpList,'iROOT%s' % sIndex)
         if runConfig.output.extOutFile:
             for sIndex,sName in enumerate(extOutFile):
-                getFilesWithSuffix(tmpList,'EXT%s' % sIndex)
+                tmpExtStreamName = getExtendedExtStreamName(sIndex,sName,True)
+                getFilesWithSuffix(tmpList,tmpExtStreamName)
         if runConfig.output.outStreamG:
             for sName,fName in runConfig.output.outStreamG:
                 getFilesWithSuffix(tmpList,sName)                
@@ -1278,7 +1303,8 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
             if sName.find('*') != -1:
                 sName = sName.replace('*','XYZ')
                 sName = '%s.tgz' % sName
-            tmpIndex = getIndex(tmpList,"%s\.EXT%s\._(\d+)\.%s" % (shortPrefix,sIndex,sName))
+            tmpExtStreamName = getExtendedExtStreamName(sIndex,sName,False)
+            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.%s" % (shortPrefix,tmpExtStreamName,sName))
             if tmpIndex > indexEXT:
                 indexEXT  = tmpIndex
     if runConfig.output.outStreamG:
@@ -1561,15 +1587,17 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
                 sName = '%s.tgz' % sName
             file = FileSpec()
             file.type = 'output'
+            tmpExtStreamName = getExtendedExtStreamName(sIndex,sName,False)
             if original_outDS.endswith('/'):
-                file.lfn  = '%s.EXT%s._%05d.%s' % (outDSwoSlash,sIndex,indexEXT,sName)
+                file.lfn  = '%s.%s._%05d.%s' % (outDSwoSlash,tmpExtStreamName,indexEXT,sName)
                 file.dataset = original_outDS
             else:
-                file.lfn  = '%s.EXT%s._%05d.%s' % (jobR.destinationDBlock,sIndex,indexEXT,sName)
+                file.lfn  = '%s.%s._%05d.%s' % (jobR.destinationDBlock,tmpExtStreamName,indexEXT,sName)
                 file.dataset = jobR.destinationDBlock
             file.destinationDBlock = jobR.destinationDBlock
             if individualOutDS:
-                tmpSuffix = '_EXT%s' % sIndex
+                tmpExtStreamName = getExtendedExtStreamName(sIndex,sName,True)
+                tmpSuffix = '_%s' % tmpExtStreamName
                 if original_outDS.endswith('/'):
                     file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
                 else:
