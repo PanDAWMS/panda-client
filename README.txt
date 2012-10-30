@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.10 (10/30/2012)
+  * fixed Client to use the default X509_CERT_DIR if missing
+
 0.4.9 (10/30/2012)
   * added --appendStrToExtStream to pathena 	
   * fixed newOpts in pbook.retry()	
