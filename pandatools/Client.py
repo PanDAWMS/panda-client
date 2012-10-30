@@ -1443,6 +1443,7 @@ def convSrmV2ID(tmpSite):
 def isTapeSite(origTmpSite):
     if re.search('TAPE$',origTmpSite) != None or \
            re.search('PROD_TZERO$',origTmpSite) != None or \
+           re.search('PROD_TMPDISK$',origTmpSite) != None or \
            re.search('PROD_DAQ$',origTmpSite) != None:
         return True
     return False
@@ -2039,7 +2040,7 @@ def _getGridSrc():
             gridSrc = os.environ['PATHENA_GRID_SETUP_SH']
         else:
             if not os.environ.has_key('CMTSITE'):
-                print "ERROR : CMTSITE is no defined in envvars"
+                print "ERROR : CMTSITE is not defined in envvars"
                 return False
             if os.environ['CMTSITE'] == 'CERN' or (athenaStatus == 0 and \
                                                    re.search('^/afs/\.*cern.ch',athenaPath) != None):
@@ -3302,5 +3303,7 @@ if not os.environ.has_key('X509_CERT_DIR') or os.environ['X509_CERT_DIR'] == '':
     tmp_x509_CApath = _x509_CApath()
     if tmp_x509_CApath != '':
         os.environ['X509_CERT_DIR'] = tmp_x509_CApath
+    else:
+        os.environ['X509_CERT_DIR'] = '/etc/grid-security/certificates'
 
 

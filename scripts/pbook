@@ -534,6 +534,9 @@ class PBookCore:
         tmpLog = PLogger.getPandaLogger()
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
+        # set an empty map since mutable default value is used
+        if newOpts == {}:
+            newOpts = {}
         # get jobset
 	newJobsetID = -1
         jobList = self.getJobIDsWithSetID(JobsetID)
