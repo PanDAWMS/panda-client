@@ -21,7 +21,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.4.9 (10/30/2012)
+  * added --appendStrToExtStream to pathena 	
+  * fixed newOpts in pbook.retry()	
+  * fixed for CERN TMPDISK	
   * fixed for curl+NSS on SLC6
 
 0.4.8 (8/8/2012)
