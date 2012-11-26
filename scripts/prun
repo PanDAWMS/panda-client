@@ -1137,13 +1137,20 @@ if options.inDS != '':
             dsLocationMap = None
             dsLocationMapBack = None
             for tmpDsForLookUp in tmpDsForLookUpList:
+                # use CVMFS for DBR
+                tmpUseCVMFS = False
+                if tmpDsForLookUp in dbrDsList:
+                    tmpUseCVMFS = True
+                # check locations
+
                 tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites,tmpDsUsedDsMap = \
                                                                                  Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
                                                                                                      options.verbose,expCloud=expCloudFlag,
                                                                                                      getReserved=True,getTapeSites=True,
                                                                                                      removeDS=True,
                                                                                                      removedDatasets=options.removedDS,
-                                                                                                     useOutContainer=usingContainerForOut)
+                                                                                                     useOutContainer=usingContainerForOut,
+                                                                                                     useCVMFS=tmpUseCVMFS)
                 # use UsedDsMap of primary dataset
                 if tmpDsForLookUp == tmpDsForLookUpList[0]:
                     dsUsedDsMap = tmpDsUsedDsMap

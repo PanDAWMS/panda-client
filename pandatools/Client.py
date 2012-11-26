@@ -1469,7 +1469,7 @@ def isOnlineSite(origTmpSite):
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
                  getTapeSites=False,getDQ2IDs=False,locCandidates=None,removeDS=False,
                  removedDatasets=[],useOutContainer=False,includeIncomplete=False,
-                 notSiteStatusCheck=False):
+                 notSiteStatusCheck=False,useCVMFS=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1696,7 +1696,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 if tmpFirstDump:
                     if verbose:
                         pass
-                if tmpSite in srmv2ddmList or convSrmV2ID(tmpSpec['ddm']).startswith(tmpSite):
+                if tmpSite in srmv2ddmList or convSrmV2ID(tmpSpec['ddm']).startswith(tmpSite) \
+                       or (useCVMFS and tmpSpec['iscvmfs'] == True):
                     # overwrite tmpSite for srmv1
                     tmpSite = convSrmV2ID(tmpSpec['ddm'])
                     # exclude long,xrootd,local queues
@@ -3138,10 +3139,14 @@ def checkEnoughSitesHaveDBR(dq2IDs):
             nOnline += 1
             if tmpPandaSite in PandaTier1Sites:
                 nOnlineT1 += 1
-            if tmpPandaSite in sitesWithDBR:
+            if tmpPandaSite in sitesWithDBR or tmpSiteStat['iscvmfs'] == True:
                 nOnlineWithDBR += 1
-                if tmpPandaSite in PandaTier1Sites:
+                # DBR at enough T1 DISKs is used
+                if tmpPandaSite in PandaTier1Sites and tmpPandaSite in sitesWithDBR:
                     nOnlineT1WithDBR += 1
+    # enough replicas
+    if len(dq2IDs) < 40 or nOnlineWithDBR < 40:
+        return False
     # threshold 90%
     if float(nOnlineWithDBR) < 0.9 * float(nOnline):
         return False
@@ -3225,7 +3230,7 @@ def getLatestDBRelease(verbose=False):
                         continue
         # check replica locations to use well distributed DBRelease. i.e. to avoid DBR just created
         tmpLocations = getLocations(tmpName,[],'',False,verbose,getDQ2IDs=True)
-        if len(tmpLocations) < 40 or not checkEnoughSitesHaveDBR(tmpLocations):
+        if not checkEnoughSitesHaveDBR(tmpLocations):
             continue
         # check contents to exclude reprocessing DBR
         tmpDbrFileMap = queryFilesInDataset(tmpName,verbose)

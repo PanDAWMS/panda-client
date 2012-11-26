@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.11 (11/26/2012)
+  * improved DBR check to accept CVMFS sites even if DBR is missing at DISK 
+
 0.4.10 (10/30/2012)
   * fixed Client to use the default X509_CERT_DIR if missing
 

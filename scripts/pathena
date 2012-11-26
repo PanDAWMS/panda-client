@@ -1992,7 +1992,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                                                            False,options.verbose,
                                                                                            expCloud=expCloudFlag,getReserved=True,
                                                                                            getTapeSites=True,
-                                                                                           locCandidates=parentDSlocations)
+                                                                                           locCandidates=parentDSlocations,
+                                                                                           useCVMFS=True)
                 # remove if DBR is unavailable
                 tmpSiteKeys = dsLocationMap.keys()
                 for tmpSite in tmpSiteKeys:
