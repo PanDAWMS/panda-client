@@ -346,15 +346,13 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
     matStrO = '^user' + '\d{2}' + '\.' + distinguishedName + '\.'
     matStrN = '^user\.'+nickName+'\.'
     if re.match(matStrO,outDS) == None and (nickName == '' or re.match(matStrN,outDS) == None):
-        outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
-        if nickName != '':
+        if nickName == '':
+            errStr = "Could not get nickname from voms proxy\n"
+        else:
+            outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
             outDsPrefixN = 'user.%s' % nickName
-        errStr  = "outDS must be '%s.<user-controlled string...'\n" % outDsPrefixO
-        if nickName != '':
-            errStr += "           or '%s.<user-controlled string...'\n" % outDsPrefixN
-        errStr += "        e.g., %s.test1234" % outDsPrefixO
-        if nickName != '':        
-            errStr += "\n              %s.test1234" % outDsPrefixN        
+            errStr  = "outDS must be '%s.<user-controlled string...>'\n" % outDsPrefixN
+            errStr += "        e.g., %s.test1234" % outDsPrefixN
         tmpLog.error(errStr)
         return False
     # check convention

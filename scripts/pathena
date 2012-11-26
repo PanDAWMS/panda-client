@@ -142,6 +142,8 @@ optP.add_option('--splitWithNthFiledOfLFN',action='store',dest='splitWithNthFile
                 help="Split job in such a way that each sub job uses input files which have the same value in the Nth field of file names. This option would be useful to process a dataset which was produced with --useContElementBoundary, and in this case most likely that --splitWithNthFiledOfLFN=4")
 optP.add_option('--useAMIEventLevelSplit',action='store_const',const=True,dest='useAMIEventLevelSplit',default=None,
                 help="retrive the number of events per file from AMI to split the job using --nEventsPerJob")
+optP.add_option('--appendStrToExtStream',action='store_const',const=True,dest='appendStrToExtStream',default=False,
+                help='append the first part of filenames to extra stream names for --individualOutDS. E.g., if this option is used together with --individualOutDS, %OUT.AOD.pool.root will be contained in an EXT0_AOD dataset instead of an EXT0 dataset')
 optP.add_option('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
                 help="merge output files")
 optP.add_option('--mergeScript',action='store',dest='mergeScript',default='',type='string',
@@ -709,6 +711,10 @@ except:
 # set excludeFile
 if options.excludeFile != '':
     AthenaUtils.setExcludeFile(options.excludeFile)
+
+# mapping for extra stream names
+if options.appendStrToExtStream:
+    AthenaUtils.enableExtendedExtStreamName()
 
 # set ara on when ares is used
 if options.ares:
@@ -1986,7 +1992,8 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                                                            False,options.verbose,
                                                                                            expCloud=expCloudFlag,getReserved=True,
                                                                                            getTapeSites=True,
-                                                                                           locCandidates=parentDSlocations)
+                                                                                           locCandidates=parentDSlocations,
+                                                                                           useCVMFS=True)
                 # remove if DBR is unavailable
                 tmpSiteKeys = dsLocationMap.keys()
                 for tmpSite in tmpSiteKeys:
