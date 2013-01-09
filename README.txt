@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.12 (1/9/2013)
+  * improved pbook.retry() to allow newOpts without newSite=True
+
 0.4.11 (11/26/2012)
   * improved DBR check to accept CVMFS sites even if DBR is missing at DISK 
 

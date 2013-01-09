@@ -1619,7 +1619,7 @@ def setCHIRPtokenToOutput(job,serverName,useGO=False):
             
                           
 # execute pathena/prun with modify command-line paramters
-def execWithModifiedParams(jobs,newOpts,verbose):
+def execWithModifiedParams(jobs,newOpts,verbose,newSite=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # remove --
@@ -1628,16 +1628,21 @@ def execWithModifiedParams(jobs,newOpts,verbose):
         newKey = re.sub('^--','',tmpKey)
         tmpOpts[newKey] = newOpts[tmpKey]
     newOpts = tmpOpts
-    # look for excludedSite
-    matchEx = re.search('--excludedSite[ =]+\s*([^ "]+)',jobs[0].metadata)
-    # set excludedSite
-    if newOpts.has_key('excludedSite'):
-        newOpts['excludedSite'] += ',%s' % jobs[0].computingSite
+    # use new site or not
+    if newSite:
+        # look for excludedSite
+        matchEx = re.search('--excludedSite[ =]+\s*([^ "]+)',jobs[0].metadata)
+        # set excludedSite
+        if newOpts.has_key('excludedSite'):
+            newOpts['excludedSite'] += ',%s' % jobs[0].computingSite
+        else:
+            if matchEx != None:
+                newOpts['excludedSite'] = '%s,%s' % (matchEx.group(1),jobs[0].computingSite)
+            else:        
+                newOpts['excludedSite'] = '%s' % jobs[0].computingSite
     else:
-        if matchEx != None:
-            newOpts['excludedSite'] = '%s,%s' % (matchEx.group(1),jobs[0].computingSite)
-        else:        
-            newOpts['excludedSite'] = '%s' % jobs[0].computingSite
+        # send to the old site
+        newOpts['site'] = jobs[0].computingSite
     # set provenanceID
     newOpts['provenanceID'] = jobs[0].jobExecutionID
     # get inputs
