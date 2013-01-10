@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.13 (1/10/2013)
+  * added a debug option to prun
+
 0.4.12 (1/9/2013)
   * improved pbook.retry() to allow newOpts without newSite=True
 
