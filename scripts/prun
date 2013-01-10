@@ -236,6 +236,8 @@ optP.add_option('--forceStaged',action='store_const',const=True,dest='forceStage
                 help='Force files from primary DS to be staged to local disk, even if direct-access is possible')
 optP.add_option('--forceStagedSecondary',action='store_const',const=True,dest='forceStagedSecondary',default=False,
                 help='Force files from secondary DSs to be staged to local disk, even if direct-access is possible')
+optP.add_option('--queueData', action='store', dest='queueData', default='',
+                type='string', help="Please don't use this option. Only for developers")
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -1137,13 +1139,20 @@ if options.inDS != '':
             dsLocationMap = None
             dsLocationMapBack = None
             for tmpDsForLookUp in tmpDsForLookUpList:
+                # use CVMFS for DBR
+                tmpUseCVMFS = False
+                if tmpDsForLookUp in dbrDsList:
+                    tmpUseCVMFS = True
+                # check locations
+
                 tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites,tmpDsUsedDsMap = \
                                                                                  Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
                                                                                                      options.verbose,expCloud=expCloudFlag,
                                                                                                      getReserved=True,getTapeSites=True,
                                                                                                      removeDS=True,
                                                                                                      removedDatasets=options.removedDS,
-                                                                                                     useOutContainer=usingContainerForOut)
+                                                                                                     useOutContainer=usingContainerForOut,
+                                                                                                     useCVMFS=tmpUseCVMFS)
                 # use UsedDsMap of primary dataset
                 if tmpDsForLookUp == tmpDsForLookUpList[0]:
                     dsUsedDsMap = tmpDsUsedDsMap
@@ -1958,6 +1967,9 @@ elif options.libDS == '':
     # cmt config
     if not jobB.cmtConfig in ['','NULL',None]:
         jobB.jobParameters += "--cmtConfig %s " % jobB.cmtConfig
+    # debug parameters
+    if options.queueData != '':
+        jobB.jobParameters += "--overwriteQueuedata=%s " % options.queueData
     # log    
     file = FileSpec()
     file.lfn               = '%s.log.tgz' % libDsName
@@ -2245,6 +2257,9 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
         # root
         if options.rootVer != '':
             jobR.jobParameters += "--rootVer %s " % options.rootVer
+        # debug parameters
+        if options.queueData != '':
+            jobR.jobParameters += "--overwriteQueuedata=%s " % options.queueData
         # write input to txt
         if options.writeInputToTxt != '':
             jobR.jobParameters += "--writeInputToTxt %s " % options.writeInputToTxt
