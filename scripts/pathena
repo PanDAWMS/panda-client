@@ -122,6 +122,8 @@ optP.add_option('--eventPickStagedDS',action='store',dest='eventPickStagedDS',de
                 type='string', help='--eventPick options create a temporary dataset to stage-in interesting files when those files are available only on TAPE, and then a stage-in request is automatically sent to DaTRI. Once DaTRI transfers the dataset to DISK you can use the dataset as an input using this option')
 optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
                 type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
+optP.add_option('--useNewTRF', action='store_const',const=True,dest='useNewTRF',default=False,
+                help="Use the original filename with the attempt number for input in --trf when there is only one input, which follows the globbing scheme of new transformation framework")
 optP.add_option('--useTagInTRF', action='store_const',const=True,dest='useTagInTRF',default=False,
                 help="Set this option if you use TAG in --trf. If you run normal jobO this option is not required")
 optP.add_option('--tagStreamRef',action='store',dest='tagStreamRef',default='',
@@ -603,9 +605,13 @@ if options.burstSubmit != '':
 
 # split options are mutually exclusive
 if (options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob != -1):
-    tmpLog.error("split by files and split by events and split by file size can not be defined sumaltaneously")
+    tmpLog.error("split by files and split by events and split by file size can not be used simultaneously")
     sys.exit(EC_Config)
 
+# split options are mutually exclusive
+if (options.nEventsPerJob > 0 and options.nGBPerJob != -1):
+    tmpLog.error("split by events and split by file size can not be used simaltaneously")
+    sys.exit(EC_Config)
 
 # check nGBPerJob
 if options.nGBPerJob != -1:
@@ -3815,7 +3821,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                            ('%HIMBIN',highminList)]
             for tmpPatt,tmpInList in inPattList:
                 if tmpJobO.find(tmpPatt) != -1 and len(tmpInList) > 0:
-                    tmpJobO = AthenaUtils.replaceParam(tmpPatt,tmpInList,tmpJobO)
+                    tmpJobO = AthenaUtils.replaceParam(tmpPatt,tmpInList,tmpJobO,options.useNewTRF)
             # DBRelease
             tmpItems = tmpJobO.split()
             if options.dbRelease != '':

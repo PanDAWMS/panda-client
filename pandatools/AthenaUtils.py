@@ -11,7 +11,7 @@ EC_Config    = 10
 
 
 # replace parameter with compact LFNs
-def replaceParam(patt,inList,tmpJobO):
+def replaceParam(patt,inList,tmpJobO,useNewTRF=False):
     # remove attempt numbers
     compactLFNs = []
     for tmpLFN in inList:
@@ -21,7 +21,11 @@ def replaceParam(patt,inList,tmpJobO):
     # replace parameters
     if len(compactLFNs) < 2:
         # replace for single input
-        tmpJobO = tmpJobO.replace(patt,compactLFNs[0])
+        if not useNewTRF:
+            tmpJobO = tmpJobO.replace(patt,compactLFNs[0])
+        else:
+            # use original filename with attempt number in new trf
+            tmpJobO = tmpJobO.replace(patt,inList[0])
     else:
         # find head and tail to convert file.1.pool,file.2.pool,file.4.pool to file.[1,2,4].pool
         tmpHead = ''

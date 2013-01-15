@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.4.14 (1/11/2013)
+  * added --useNewTRF to pathena which keeps the attempt number when there is only one input
+  * added a protection to pathena for --nEventsPerJob and --nGBPerJob
+
 0.4.13 (1/10/2013)
   * added a debug option to prun
 
