@@ -610,7 +610,7 @@ if (options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob
 
 # split options are mutually exclusive
 if (options.nEventsPerJob > 0 and options.nGBPerJob != -1):
-    tmpLog.error("split by events and split by file size can not be used simaltaneously")
+    tmpLog.error("split by events and split by file size can not be used simultaneously")
     sys.exit(EC_Config)
 
 # check nGBPerJob
