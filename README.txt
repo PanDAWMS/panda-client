@@ -21,7 +21,30 @@ pathena -h
 
 ** Release Note
 
-current
+0.4.15 (1/23/2013)
+  * added --safetySize to prun
+  * setting scope to files for migration to Rucio
+
+0.4.14 (1/11/2013)
+  * added --useNewTRF to pathena which keeps the attempt number when there is only one input
+  * added a protection to pathena for --nEventsPerJob and --nGBPerJob
+
+0.4.13 (1/10/2013)
+  * added a debug option to prun
+
+0.4.12 (1/9/2013)
+  * improved pbook.retry() to allow newOpts without newSite=True
+
+0.4.11 (11/26/2012)
+  * improved DBR check to accept CVMFS sites even if DBR is missing at DISK 
+
+0.4.10 (10/30/2012)
+  * fixed Client to use the default X509_CERT_DIR if missing
+
+0.4.9 (10/30/2012)
+  * added --appendStrToExtStream to pathena 	
+  * fixed newOpts in pbook.retry()	
+  * fixed for CERN TMPDISK	
   * fixed for curl+NSS on SLC6
 
 0.4.8 (8/8/2012)

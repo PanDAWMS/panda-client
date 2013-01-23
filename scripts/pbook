@@ -534,6 +534,9 @@ class PBookCore:
         tmpLog = PLogger.getPandaLogger()
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose)
+        # set an empty map since mutable default value is used
+        if newOpts == {}:
+            newOpts = {}
         # get jobset
 	newJobsetID = -1
         jobList = self.getJobIDsWithSetID(JobsetID)
@@ -593,12 +596,8 @@ class PBookCore:
                     continue
                 else:
                     return
-            # new opts reqire newSite
-            if newOpts != {} and not newSite:
-                tmpLog.warning('You need to specify newSite=True if newOpts is used')
-                return
             # check opts for newSite
-            if newSite:
+            if newSite or newOpts != {}:
                 if not localJob.outDS.endswith('/') and not newOpts.has_key('outDS') and not newOpts.has_key('--outDS'):
                     tmpLog.warning('You need to specify --outDS in newOpts to retry at new site unless container is used as output')
                     return
@@ -900,7 +899,7 @@ class PBookCore:
 			tmpLog.error("Failed to generate a proxy with %s" % vomsRoles)
 			return
             # check runtime env for new site submission
-            if newSite:
+            if (newSite or newOpts != {}):
                 if retryJobs[0].processingType == 'pathena' or '--useAthenaPackages' in retryJobs[0].metadata:
                     from pandatools import AthenaUtils
                     stA,retA = AthenaUtils.getAthenaVer()
@@ -926,12 +925,12 @@ class PBookCore:
 	    if noSubmit:
 		continue
             # invoke pathena/prun to send job to new site
-            if newSite and retryJobs[0].processingType != 'usermerge':
+            if (newSite or newOpts != {}) and retryJobs[0].processingType != 'usermerge':
                 # set parent jobID and jobsetID
                 newOpts['provenanceID'] = retryJobs[0].jobExecutionID
                 newOpts['panda_parentJobsetID'] = retryJobs[0].sourceSite
                 tmpLog.info("Constructing job spec again to be sent to another site ...")
-                comStat= PsubUtils.execWithModifiedParams(retryJobs,newOpts,self.verbose)
+                comStat= PsubUtils.execWithModifiedParams(retryJobs,newOpts,self.verbose,newSite)
                 if comStat == 0:
                     # update database
                     time.sleep(2)
@@ -1190,7 +1189,7 @@ For more info, do help(show) for example."""
         
     # retry
     def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=True,retryBuild=False):
-        """Retry failed/cancelled subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be retried if upperJobID is given. Set useJobsetID=False if you want to retry JobIDs between JobID and UpperJobID. Set newSite=True when you want to retry at new site, which essentially runs pathena/prun again because new sub jobs need to be created for the new site. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. When newSite=True, one can use newOpts which is a map of options  and new arguments like {'nGBperJob':10,'excludedSite':'ABC,XYZ'} and is passed to pathena/prun as new parameters. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True. Set retryBuild=True if you want to retry jobs which have a failed buildJob
+        """Retry failed/cancelled subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be retried if upperJobID is given. Set useJobsetID=False if you want to retry JobIDs between JobID and UpperJobID. Set newSite=True when you want to retry at new site, which essentially runs pathena/prun again because new sub jobs need to be created for the new site. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. One can use newOpts which is a map of options and new arguments like {'nGBperJob':10,'excludedSite':'ABC,XYZ'} and is passed to pathena/prun as new parameters. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True. Set retryBuild=True if you want to retry jobs which have a failed buildJob
 
          example:
            >>> retry(15)
