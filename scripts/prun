@@ -112,6 +112,8 @@ optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
                 help='Required memory size in MB. e.g., for 1GB --memory 1024')
 optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type='int',
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
+optP.add_option('--safetySize',action='store',dest='safetySize',default=500,type='int',
+                help='Specify the expected size of input sandbox in MB. 500 by default')
 optP.add_option('--useShortLivedReplicas', action='store_const', const=True, dest='useShortLivedReplicas', default=False,
                 help="Use replicas even if they have very sort lifetime")
 optP.add_option('--useDirectIOSites', action='store_const', const=True, dest='useDirectIOSites', default=False,
@@ -1817,7 +1819,7 @@ from taskbuffer.FileSpec import FileSpec
 maxTotalSize = Client.PandaSites[options.site]['maxinputsize'] * 1024*1024
 if maxTotalSize in [0,'']:
     maxTotalSize = Client.maxTotalSize
-safetySize   = Client.safetySize
+safetySize   = options.safetySize * 1024 * 1024
 
 # check nGBPerJob
 if options.nGBPerJob != -1:
@@ -2003,6 +2005,7 @@ else:
     tmpGUIDmap = {}
     tmpMD5Sum  = None
     tmpFSize   = None
+    tmpScope   = None
     for fileName in tmpList.keys():
         # ignore log file
         if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
@@ -2012,6 +2015,7 @@ else:
         tmpGUIDmap[fileName] = tmpList[fileName]['guid'] 
 	tmpMD5Sum  = tmpList[fileName]['md5sum']
         tmpFSize   = tmpList[fileName]['fsize']
+        tmpScope   = tmpList[fileName]['scope']
     # incomplete libDS
     if tmpFileList == []:
         # query files in dataset from Panda
@@ -2049,7 +2053,10 @@ else:
     if tmpMD5Sum != None:
         fileBO.md5sum = tmpMD5Sum
     if tmpFSize != None:
-        fileBO.fsize = tmpFSize    
+        fileBO.fsize = tmpFSize
+    if tmpScope != None:
+        fileBO.scope = tmpScope
+        
 
 # modify outDS name when container is used for output
 if original_outDS_Name.endswith('/'):
@@ -2293,6 +2300,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             fileS.GUID           = fileBO.GUID
             fileS.md5sum         = fileBO.md5sum
             fileS.fsize          = fileBO.fsize
+            fileS.scope          = fileBO.scope
             fileS.type           = 'input'
             fileS.status         = fileBO.status
             fileS.dataset        = fileBO.destinationDBlock
@@ -2332,6 +2340,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                 fileI.GUID       = vals['guid']
                 fileI.fsize      = vals['fsize']
                 fileI.md5sum     = vals['md5sum']
+                fileI.scope      = vals['scope']                
                 if vals.has_key('dataset'):
                     fileI.dataset    = vals['dataset']
                 else:
@@ -2374,6 +2383,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     fileI.GUID       = vals['guid']
                     fileI.fsize      = vals['fsize']
                     fileI.md5sum     = vals['md5sum']
+                    fileI.scope      = vals['scope']                    
                     fileI.dataset    = tmpSecDS
                     fileI.prodDBlock = tmpSecDS
                     fileI.type       = 'input'
@@ -2426,6 +2436,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             file.GUID           = vals['guid']
             file.fsize          = vals['fsize']
             file.md5sum         = vals['md5sum']
+            file.scope          = vals['scope']            
             file.dataset        = tmpDbrDS
             file.prodDBlock     = tmpDbrDS
             file.dispatchDBlock = tmpDbrDS

@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+0.4.15 (1/23/2013)
+  * added --safetySize to prun
+  * setting scope to files for migration to Rucio
+
 0.4.14 (1/11/2013)
   * added --useNewTRF to pathena which keeps the attempt number when there is only one input
   * added a protection to pathena for --nEventsPerJob and --nGBPerJob

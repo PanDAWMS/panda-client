@@ -3033,6 +3033,7 @@ else:
     tmpGUIDmap = {}
     tmpMD5Sum  = None
     tmpFSize   = None
+    tmpScope   = None
     for fileName in tmpList.keys():
         # ignore log file
         if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
@@ -3042,6 +3043,7 @@ else:
         tmpGUIDmap[fileName] = tmpList[fileName]['guid']
         tmpMD5Sum  = tmpList[fileName]['md5sum']
         tmpFSize   = tmpList[fileName]['fsize']
+	tmpScope   = tmpList[fileName]['scope']
     # incomplete libDS
     if tmpFileList == []:
         # query files in dataset from Panda
@@ -3080,6 +3082,8 @@ else:
         fileBO.md5sum = tmpMD5Sum
     if tmpFSize != None:
         fileBO.fsize = tmpFSize    
+    if tmpScope != None:
+        fileBO.scope = tmpScope
 
 # run athena            
 
@@ -3270,7 +3274,8 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             fileS.lfn     = fileBO.lfn
             fileS.GUID    = fileBO.GUID
 	    fileS.md5sum  = fileBO.md5sum
-	    fileS.fsize   = fileBO.fsize 
+	    fileS.fsize   = fileBO.fsize
+            fileS.scope   = fileBO.scope
             fileS.type    = 'input'
             fileS.status  = fileBO.status
             fileS.dataset = fileBO.destinationDBlock
@@ -3382,6 +3387,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     file.GUID           = vals['guid']
                     file.fsize          = vals['fsize']
                     file.md5sum         = vals['md5sum']
+                    file.scope          = vals['scope']
                     if vals.has_key('dataset'):
                         file.dataset    = vals['dataset']
                     else:
@@ -3415,6 +3421,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                             file.GUID           = vals['guid']
                             file.fsize          = vals['fsize']
                             file.md5sum         = vals['md5sum']
+                            file.scope          = vals['scope']
                             file.dataset        = parentLfnToTagMap[fileName]['tagDS']
                             file.prodDBlock     = file.dataset
                             file.dispatchDBlock = commonDispName
@@ -3471,6 +3478,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     file.GUID           = vals['guid']
                     file.fsize          = vals['fsize']
                     file.md5sum         = vals['md5sum']
+                    file.scope          = vals['scope']
                     file.dataset        = minbiasDataset
                     file.prodDBlock     = minbiasDataset
                     file.dispatchDBlock = commonDispName
@@ -3502,6 +3510,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     file.GUID           = vals['guid']
                     file.fsize          = vals['fsize']
                     file.md5sum         = vals['md5sum']
+                    file.scope          = vals['scope']
                     file.dataset        = options.lowMinDS
                     file.prodDBlock     = options.lowMinDS
                     file.dispatchDBlock = commonDispName
@@ -3533,6 +3542,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     file.GUID           = vals['guid']
                     file.fsize          = vals['fsize']
                     file.md5sum         = vals['md5sum']
+                    file.scope          = vals['scope']
                     file.dataset        = options.highMinDS
                     file.prodDBlock     = options.highMinDS
                     file.dispatchDBlock = commonDispName
@@ -3566,6 +3576,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     file.GUID           = vals['guid']
                     file.fsize          = vals['fsize']
                     file.md5sum         = vals['md5sum']
+                    file.scope          = vals['scope']
                     file.dataset        = cavernDataset
                     file.prodDBlock     = cavernDataset
                     file.dispatchDBlock = commonDispName
@@ -3609,6 +3620,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     file.GUID           = vals['guid']
                     file.fsize          = vals['fsize']
                     file.md5sum         = vals['md5sum']
+                    file.scope          = vals['scope']
                     if options.useCommonHalo:
                         # integrated dataset
                         file.dataset        = beamHaloDataset
@@ -3670,6 +3682,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     file.GUID           = vals['guid']
                     file.fsize          = vals['fsize']
                     file.md5sum         = vals['md5sum']
+                    file.scope          = vals['scope']
                     if options.useCommonHalo:
                         # integrated dataset
                         file.dataset        = beamGasDataset
@@ -3786,6 +3799,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                 file.GUID           = vals['guid']
                 file.fsize          = vals['fsize']
                 file.md5sum         = vals['md5sum']
+                file.scope          = vals['scope']
                 file.dataset        = tmpDbrDS
                 file.prodDBlock     = tmpDbrDS
                 file.dispatchDBlock = tmpDbrDS
@@ -3843,6 +3857,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     file.GUID           = vals['guid']
                     file.fsize          = vals['fsize']
                     file.md5sum         = vals['md5sum']
+                    file.scope          = vals['scope']
                     file.dataset        = tmpDbrDS
                     file.prodDBlock     = tmpDbrDS
                     file.dispatchDBlock = tmpDbrDS

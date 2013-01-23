@@ -781,7 +781,8 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False,dsStri
                 generalLFNmap[generalLFN] = vals['lfn']
                 ret[vals['lfn']] = {'guid'   : guid,
                                     'fsize'  : vals['filesize'],
-                                    'md5sum' : vals['checksum']}
+                                    'md5sum' : vals['checksum'],
+                                    'scope'  : vals['scope']}
                 # add dataset name
                 if nameVuidsMap.has_key(tuple(vuids)):
                     ret[vals['lfn']]['dataset'] = nameVuidsMap[tuple(vuids)]
