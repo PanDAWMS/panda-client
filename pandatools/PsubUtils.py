@@ -401,7 +401,7 @@ def getSuffixToSplitJobList(sIndex):
     
 
 # split job list by the number of output files
-def splitJobsNumOutputFiles(jobList):
+def splitJobsNumOutputFiles(jobList,buildInLastChunk=False):
     nJobs = 0
     tmpJobList = []
     splitJobList = []
@@ -488,6 +488,14 @@ def splitJobsNumOutputFiles(jobList):
             for tmpFile in tmpJob.Files:
                 if tmpFile.type in ['output','log']:
                     tmpFile.destinationDBlock += getSuffixToSplitJobList(serIndex)
+    # move build job to the last chunk
+    if buildInLastChunk:
+        firstChunk = splitJobList[0]
+        lastChunk  = splitJobList[-1]
+        # check prodSourceLabel of the fist job 
+        if firstChunk[0].prodSourceLabel == 'panda':
+            tmpJob = firstChunk.pop(0)
+            lastChunk.insert(0,tmpJob)
     # return
     return splitJobList
 

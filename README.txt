@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.16 (1/27/2013)
+  * added --buildInLastChunk to pathena/prun
+
 0.4.15 (1/23/2013)
   * added --safetySize to prun
   * setting scope to files for migration to Rucio
