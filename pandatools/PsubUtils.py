@@ -346,15 +346,13 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',site='',vomsFQAN
     matStrO = '^user' + '\d{2}' + '\.' + distinguishedName + '\.'
     matStrN = '^user\.'+nickName+'\.'
     if re.match(matStrO,outDS) == None and (nickName == '' or re.match(matStrN,outDS) == None):
-        outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
-        if nickName != '':
+        if nickName == '':
+            errStr = "Could not get nickname from voms proxy\n"
+        else:
+            outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
             outDsPrefixN = 'user.%s' % nickName
-        errStr  = "outDS must be '%s.<user-controlled string...'\n" % outDsPrefixO
-        if nickName != '':
-            errStr += "           or '%s.<user-controlled string...'\n" % outDsPrefixN
-        errStr += "        e.g., %s.test1234" % outDsPrefixO
-        if nickName != '':        
-            errStr += "\n              %s.test1234" % outDsPrefixN        
+            errStr  = "outDS must be '%s.<user-controlled string...>'\n" % outDsPrefixN
+            errStr += "        e.g., %s.test1234" % outDsPrefixN
         tmpLog.error(errStr)
         return False
     # check convention
@@ -403,7 +401,7 @@ def getSuffixToSplitJobList(sIndex):
     
 
 # split job list by the number of output files
-def splitJobsNumOutputFiles(jobList):
+def splitJobsNumOutputFiles(jobList,buildInLastChunk=False):
     nJobs = 0
     tmpJobList = []
     splitJobList = []
@@ -490,6 +488,14 @@ def splitJobsNumOutputFiles(jobList):
             for tmpFile in tmpJob.Files:
                 if tmpFile.type in ['output','log']:
                     tmpFile.destinationDBlock += getSuffixToSplitJobList(serIndex)
+    # move build job to the last chunk
+    if buildInLastChunk:
+        firstChunk = splitJobList[0]
+        lastChunk  = splitJobList[-1]
+        # check prodSourceLabel of the fist job 
+        if firstChunk[0].prodSourceLabel == 'panda':
+            tmpJob = firstChunk.pop(0)
+            lastChunk.insert(0,tmpJob)
     # return
     return splitJobList
 
@@ -1621,7 +1627,7 @@ def setCHIRPtokenToOutput(job,serverName,useGO=False):
             
                           
 # execute pathena/prun with modify command-line paramters
-def execWithModifiedParams(jobs,newOpts,verbose):
+def execWithModifiedParams(jobs,newOpts,verbose,newSite=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # remove --
@@ -1630,16 +1636,21 @@ def execWithModifiedParams(jobs,newOpts,verbose):
         newKey = re.sub('^--','',tmpKey)
         tmpOpts[newKey] = newOpts[tmpKey]
     newOpts = tmpOpts
-    # look for excludedSite
-    matchEx = re.search('--excludedSite[ =]+\s*([^ "]+)',jobs[0].metadata)
-    # set excludedSite
-    if newOpts.has_key('excludedSite'):
-        newOpts['excludedSite'] += ',%s' % jobs[0].computingSite
+    # use new site or not
+    if newSite:
+        # look for excludedSite
+        matchEx = re.search('--excludedSite[ =]+\s*([^ "]+)',jobs[0].metadata)
+        # set excludedSite
+        if newOpts.has_key('excludedSite'):
+            newOpts['excludedSite'] += ',%s' % jobs[0].computingSite
+        else:
+            if matchEx != None:
+                newOpts['excludedSite'] = '%s,%s' % (matchEx.group(1),jobs[0].computingSite)
+            else:        
+                newOpts['excludedSite'] = '%s' % jobs[0].computingSite
     else:
-        if matchEx != None:
-            newOpts['excludedSite'] = '%s,%s' % (matchEx.group(1),jobs[0].computingSite)
-        else:        
-            newOpts['excludedSite'] = '%s' % jobs[0].computingSite
+        # send to the old site
+        newOpts['site'] = jobs[0].computingSite
     # set provenanceID
     newOpts['provenanceID'] = jobs[0].jobExecutionID
     # get inputs

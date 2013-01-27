@@ -781,7 +781,8 @@ def queryFilesInDataset(name,verbose=False,v_vuids=None,getDsString=False,dsStri
                 generalLFNmap[generalLFN] = vals['lfn']
                 ret[vals['lfn']] = {'guid'   : guid,
                                     'fsize'  : vals['filesize'],
-                                    'md5sum' : vals['checksum']}
+                                    'md5sum' : vals['checksum'],
+                                    'scope'  : vals['scope']}
                 # add dataset name
                 if nameVuidsMap.has_key(tuple(vuids)):
                     ret[vals['lfn']]['dataset'] = nameVuidsMap[tuple(vuids)]
@@ -1443,6 +1444,7 @@ def convSrmV2ID(tmpSite):
 def isTapeSite(origTmpSite):
     if re.search('TAPE$',origTmpSite) != None or \
            re.search('PROD_TZERO$',origTmpSite) != None or \
+           re.search('PROD_TMPDISK$',origTmpSite) != None or \
            re.search('PROD_DAQ$',origTmpSite) != None:
         return True
     return False
@@ -1468,7 +1470,7 @@ def isOnlineSite(origTmpSite):
 def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,getReserved=False,
                  getTapeSites=False,getDQ2IDs=False,locCandidates=None,removeDS=False,
                  removedDatasets=[],useOutContainer=False,includeIncomplete=False,
-                 notSiteStatusCheck=False):
+                 notSiteStatusCheck=False,useCVMFS=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1695,7 +1697,8 @@ def getLocations(name,fileList,cloud,woFileCheck,verbose=False,expCloud=False,ge
                 if tmpFirstDump:
                     if verbose:
                         pass
-                if tmpSite in srmv2ddmList or convSrmV2ID(tmpSpec['ddm']).startswith(tmpSite):
+                if tmpSite in srmv2ddmList or convSrmV2ID(tmpSpec['ddm']).startswith(tmpSite) \
+                       or (useCVMFS and tmpSpec['iscvmfs'] == True):
                     # overwrite tmpSite for srmv1
                     tmpSite = convSrmV2ID(tmpSpec['ddm'])
                     # exclude long,xrootd,local queues
@@ -2039,7 +2042,7 @@ def _getGridSrc():
             gridSrc = os.environ['PATHENA_GRID_SETUP_SH']
         else:
             if not os.environ.has_key('CMTSITE'):
-                print "ERROR : CMTSITE is no defined in envvars"
+                print "ERROR : CMTSITE is not defined in envvars"
                 return False
             if os.environ['CMTSITE'] == 'CERN' or (athenaStatus == 0 and \
                                                    re.search('^/afs/\.*cern.ch',athenaPath) != None):
@@ -3137,10 +3140,14 @@ def checkEnoughSitesHaveDBR(dq2IDs):
             nOnline += 1
             if tmpPandaSite in PandaTier1Sites:
                 nOnlineT1 += 1
-            if tmpPandaSite in sitesWithDBR:
+            if tmpPandaSite in sitesWithDBR or tmpSiteStat['iscvmfs'] == True:
                 nOnlineWithDBR += 1
-                if tmpPandaSite in PandaTier1Sites:
+                # DBR at enough T1 DISKs is used
+                if tmpPandaSite in PandaTier1Sites and tmpPandaSite in sitesWithDBR:
                     nOnlineT1WithDBR += 1
+    # enough replicas
+    if len(dq2IDs) < 40 or nOnlineWithDBR < 40:
+        return False
     # threshold 90%
     if float(nOnlineWithDBR) < 0.9 * float(nOnline):
         return False
@@ -3224,7 +3231,7 @@ def getLatestDBRelease(verbose=False):
                         continue
         # check replica locations to use well distributed DBRelease. i.e. to avoid DBR just created
         tmpLocations = getLocations(tmpName,[],'',False,verbose,getDQ2IDs=True)
-        if len(tmpLocations) < 40 or not checkEnoughSitesHaveDBR(tmpLocations):
+        if not checkEnoughSitesHaveDBR(tmpLocations):
             continue
         # check contents to exclude reprocessing DBR
         tmpDbrFileMap = queryFilesInDataset(tmpName,verbose)
@@ -3302,5 +3309,7 @@ if not os.environ.has_key('X509_CERT_DIR') or os.environ['X509_CERT_DIR'] == '':
     tmp_x509_CApath = _x509_CApath()
     if tmp_x509_CApath != '':
         os.environ['X509_CERT_DIR'] = tmp_x509_CApath
+    else:
+        os.environ['X509_CERT_DIR'] = '/etc/grid-security/certificates'
 
 

@@ -74,6 +74,8 @@ optP.add_option('--useNthFieldForLFN',action='store',dest='useNthFieldForLFN',de
                 help="all output files from a dataset in the input container have the same middle name in LFN, when --useContElementBoundary is used. The middle name is extracted from the dataset name. The second field is used by default. i.e., if the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is used and LFN is something like user.hoge.JOBSETID.00160387.blha. One can change the extracted field using this option")
 optP.add_option('--splitWithNthFiledOfLFN',action='store',dest='splitWithNthFiledOfLFN',default=-1,type='int',
                 help="Split job in such a way that each sub job uses input files which have the same value in the Nth field of file names. This option would be useful to process a dataset which was produced with --useContElementBoundary, and in this case most likely that --splitWithNthFiledOfLFN=4")
+optP.add_option('--buildInLastChunk',action='store_const',const=True,dest='buildInLastChunk',default=False,
+                help="Produce lib.tgz in the last chunk when jobs are split to multiple chunks due to the limit on the number of files in each chunk or due to --useContElementBoundary/--loadXML")
 optP.add_option('--followLinks',action='store_const',const=True,dest='followLinks',default=False,
                 help="Resolve symlinks to directories when building the input tarball. This option requires python2.6 or higher")
 optP.add_option('--outDS',action='store',dest='outDS',default='',type='string',
@@ -112,6 +114,8 @@ optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
                 help='Required memory size in MB. e.g., for 1GB --memory 1024')
 optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type='int',
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
+optP.add_option('--safetySize',action='store',dest='safetySize',default=500,type='int',
+                help='Specify the expected size of input sandbox in MB. 500 by default')
 optP.add_option('--useShortLivedReplicas', action='store_const', const=True, dest='useShortLivedReplicas', default=False,
                 help="Use replicas even if they have very sort lifetime")
 optP.add_option('--useDirectIOSites', action='store_const', const=True, dest='useDirectIOSites', default=False,
@@ -236,6 +240,8 @@ optP.add_option('--forceStaged',action='store_const',const=True,dest='forceStage
                 help='Force files from primary DS to be staged to local disk, even if direct-access is possible')
 optP.add_option('--forceStagedSecondary',action='store_const',const=True,dest='forceStagedSecondary',default=False,
                 help='Force files from secondary DSs to be staged to local disk, even if direct-access is possible')
+optP.add_option('--queueData', action='store', dest='queueData', default='',
+                type='string', help="Please don't use this option. Only for developers")
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -1137,13 +1143,20 @@ if options.inDS != '':
             dsLocationMap = None
             dsLocationMapBack = None
             for tmpDsForLookUp in tmpDsForLookUpList:
+                # use CVMFS for DBR
+                tmpUseCVMFS = False
+                if tmpDsForLookUp in dbrDsList:
+                    tmpUseCVMFS = True
+                # check locations
+
                 tmpDsLocationMap,tmpDsLocationMapBack,dsTapeSites,tmpDsUsedDsMap = \
                                                                                  Client.getLocations(tmpDsForLookUp,[],options.cloud,False,
                                                                                                      options.verbose,expCloud=expCloudFlag,
                                                                                                      getReserved=True,getTapeSites=True,
                                                                                                      removeDS=True,
                                                                                                      removedDatasets=options.removedDS,
-                                                                                                     useOutContainer=usingContainerForOut)
+                                                                                                     useOutContainer=usingContainerForOut,
+                                                                                                     useCVMFS=tmpUseCVMFS)
                 # use UsedDsMap of primary dataset
                 if tmpDsForLookUp == tmpDsForLookUpList[0]:
                     dsUsedDsMap = tmpDsUsedDsMap
@@ -1808,7 +1821,7 @@ from taskbuffer.FileSpec import FileSpec
 maxTotalSize = Client.PandaSites[options.site]['maxinputsize'] * 1024*1024
 if maxTotalSize in [0,'']:
     maxTotalSize = Client.maxTotalSize
-safetySize   = Client.safetySize
+safetySize   = options.safetySize * 1024 * 1024
 
 # check nGBPerJob
 if options.nGBPerJob != -1:
@@ -1958,6 +1971,9 @@ elif options.libDS == '':
     # cmt config
     if not jobB.cmtConfig in ['','NULL',None]:
         jobB.jobParameters += "--cmtConfig %s " % jobB.cmtConfig
+    # debug parameters
+    if options.queueData != '':
+        jobB.jobParameters += "--overwriteQueuedata=%s " % options.queueData
     # log    
     file = FileSpec()
     file.lfn               = '%s.log.tgz' % libDsName
@@ -1991,6 +2007,7 @@ else:
     tmpGUIDmap = {}
     tmpMD5Sum  = None
     tmpFSize   = None
+    tmpScope   = None
     for fileName in tmpList.keys():
         # ignore log file
         if re.search('\.log(\.\d+)*(\.tgz)*$',fileName) != None or \
@@ -2000,6 +2017,7 @@ else:
         tmpGUIDmap[fileName] = tmpList[fileName]['guid'] 
 	tmpMD5Sum  = tmpList[fileName]['md5sum']
         tmpFSize   = tmpList[fileName]['fsize']
+        tmpScope   = tmpList[fileName]['scope']
     # incomplete libDS
     if tmpFileList == []:
         # query files in dataset from Panda
@@ -2037,7 +2055,10 @@ else:
     if tmpMD5Sum != None:
         fileBO.md5sum = tmpMD5Sum
     if tmpFSize != None:
-        fileBO.fsize = tmpFSize    
+        fileBO.fsize = tmpFSize
+    if tmpScope != None:
+        fileBO.scope = tmpScope
+        
 
 # modify outDS name when container is used for output
 if original_outDS_Name.endswith('/'):
@@ -2245,6 +2266,9 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
         # root
         if options.rootVer != '':
             jobR.jobParameters += "--rootVer %s " % options.rootVer
+        # debug parameters
+        if options.queueData != '':
+            jobR.jobParameters += "--overwriteQueuedata=%s " % options.queueData
         # write input to txt
         if options.writeInputToTxt != '':
             jobR.jobParameters += "--writeInputToTxt %s " % options.writeInputToTxt
@@ -2278,6 +2302,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             fileS.GUID           = fileBO.GUID
             fileS.md5sum         = fileBO.md5sum
             fileS.fsize          = fileBO.fsize
+            fileS.scope          = fileBO.scope
             fileS.type           = 'input'
             fileS.status         = fileBO.status
             fileS.dataset        = fileBO.destinationDBlock
@@ -2317,6 +2342,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                 fileI.GUID       = vals['guid']
                 fileI.fsize      = vals['fsize']
                 fileI.md5sum     = vals['md5sum']
+                fileI.scope      = vals['scope']                
                 if vals.has_key('dataset'):
                     fileI.dataset    = vals['dataset']
                 else:
@@ -2359,6 +2385,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                     fileI.GUID       = vals['guid']
                     fileI.fsize      = vals['fsize']
                     fileI.md5sum     = vals['md5sum']
+                    fileI.scope      = vals['scope']                    
                     fileI.dataset    = tmpSecDS
                     fileI.prodDBlock = tmpSecDS
                     fileI.type       = 'input'
@@ -2411,6 +2438,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             file.GUID           = vals['guid']
             file.fsize          = vals['fsize']
             file.md5sum         = vals['md5sum']
+            file.scope          = vals['scope']            
             file.dataset        = tmpDbrDS
             file.prodDBlock     = tmpDbrDS
             file.dispatchDBlock = tmpDbrDS
@@ -2560,7 +2588,7 @@ if options.inDS != '' and options.secondaryDSs != {}:
 
 
 # check the number of output files
-splitJobList = PsubUtils.splitJobsNumOutputFiles(jobList)
+splitJobList = PsubUtils.splitJobsNumOutputFiles(jobList,options.buildInLastChunk)
 
 
 # check output dataset length for individualOutDS
