@@ -748,7 +748,7 @@ def updatePackage(verbose=False):
         packageName = 'panda-client-%s.tar.gz' % latestVer
     else:
         packageName = 'panda-client-%s-1.noarch.rpm' % latestVer
-    com = 'wget --no-check-certificate --timeout 120 https://twiki.cern.ch/twiki/pub/Atlas/PandaTools/%s' \
+    com = 'wget --no-check-certificate --timeout 120 https://atlpan.web.cern.ch/atlpan/panda-client/%s' \
           % packageName
     status = os.system(com)
     status %= 255    

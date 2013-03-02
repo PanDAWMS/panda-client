@@ -351,6 +351,8 @@ optP.add_option('-p',action='store',dest='preConfig',type='string',default='',me
                 help='location of bootstrap file')
 optP.add_option('-s',action='store_const',const=True,dest='codeTrace',default=False,
                 help='show printout of included files')
+optP.add_option('--queueData', action='store', dest='queueData', default='',
+                type='string', help="Please don't use this option. Only for developers")
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -3003,6 +3005,9 @@ elif options.libDS == '':
     matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
     if matchURL != None:
         jobB.jobParameters += " --sourceURL %s " % matchURL.group(1)
+    # debug parameters
+    if options.queueData != '':
+        jobB.jobParameters += "--overwriteQueuedata=%s " % options.queueData
     # log    
     file = FileSpec()
     file.lfn  = '%s.log.tgz' % libDsName
@@ -4004,6 +4009,9 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             param += "--enable-jem "
             if options.configJEM != '':
                 param += "--jem-config %s " % options.configJEM
+        # debug parameters
+        if options.queueData != '':
+            param += "--overwriteQueuedata=%s " % options.queueData
         # merge
         if options.mergeOutput:
             param += "--mergeOutput "
