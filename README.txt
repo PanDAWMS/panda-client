@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-0.4.17 (3/2/2013)
+0.4.17 (3/4/2013)
   * added a debug option to pathena
   * added --useMana to prun
   * changed tgz/rpm repository due to changes of CERN twiki policy
