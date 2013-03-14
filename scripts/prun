@@ -128,6 +128,8 @@ optP.add_option('--useRootCore',action='store_const',const=True,dest='useRootCor
                 help='Use RootCore. See PandaRun wiki page for detail')
 optP.add_option('--useMana',action='store_const',const=True,dest='useMana',default=False,
                 help='Use Mana. See PandaRun wiki page for detail')
+optP.add_option('--manaVer',action='store',dest='manaVer',default='',type='string',
+                help='Specify a mana version if you want to use an older version. If omitted, the latest version is used. e.g., --manaVer=20130301' )
 optP.add_option('--useAthenaPackages',action='store_const',const=True,dest='useAthenaPackages',default=False,
                 help='Use Athena packages. See PandaRun wiki page for detail')
 optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
@@ -542,12 +544,18 @@ if options.outTarBall != '':
 
 # set workdir for mana
 if options.useMana:
-    tmpSt,tmpOut = MiscUtils.getMataSetupParam('workarea')
+    tmpSt,tmpOut = MiscUtils.getManaSetupParam('workarea')
     if not tmpSt:
         tmpLog.error(tmpOut)
         sys.exit(EC_Config)
     options.workDir = tmpOut
     tmpLog.info("setting workDir=%s for mana" % options.workDir)
+    if options.manaVer != '':
+        tmpLog.info("checking manaVer=%s on CVMFS" % options.manaVer)
+        sMana,oMana = MiscUtils.checkManaVersion(options.manaVer)
+        if not sMana:
+            tmpLog.error(oMana)
+            sys.exit(EC_Config)
 
 # check working dir
 options.workDir = os.path.realpath(options.workDir)
@@ -1979,6 +1987,8 @@ elif options.libDS == '':
     # use mana
     if options.useMana:
         jobB.jobParameters += "--useMana "
+	if options.manaVer != '':
+	    jobB.jobParameters += "--manaVer %s " % options.manaVer
     # root
     if options.rootVer != '':
         jobB.jobParameters += "--rootVer %s " % options.rootVer
@@ -2280,6 +2290,8 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
         # use mana
         if options.useMana:
             jobR.jobParameters += "--useMana "
+	    if options.manaVer != '':
+		jobR.jobParameters += "--manaVer %s " % options.manaVer
         # root
         if options.rootVer != '':
             jobR.jobParameters += "--rootVer %s " % options.rootVer

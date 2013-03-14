@@ -210,6 +210,8 @@ optP.add_option('--cloud',action='store', dest='cloud',default=None,
                 type='string', help='cloud where jobs are submitted. default is set according to your VOMS country group')
 optP.add_option('--noBuild', action='store_const', const=True, dest='nobuild',  default=False,
                 help='Skip buildJob')
+optP.add_option('--noCompile', action='store_const',const=True,dest='noCompile',default=False,
+                help='Just upload a tarball in the build step to avoid the tighter size limit imposed by --noBuild. The tarball contains binaries compiled on your local computer, so that compilation is skipped in the build step on remote WN')
 optP.add_option('--noOutput', action='store_const', const=True, dest='noOutput',  default=False,
                 help='Send job even if there is no output file')
 optP.add_option('--individualOutDS', action='store_const', const=True, dest='individualOutDS',  default=False,
@@ -472,6 +474,13 @@ if options.panda_cacheSrvURL != '':
 # version check
 PsubUtils.checkPandaClientVer(options.verbose)
 
+# noCompile uses noBuild stuff
+if options.noCompile:
+    if options.nobuild:
+        tmpLog.error("--noBuild and --noCompile cannot be used simultaneously")
+        sys.exit(EC_Config)
+    options.nobuild = True
+
 # files to be deleted
 delFilesOnExit = []
                             
@@ -602,7 +611,7 @@ if options.burstSubmit != '':
     # disable individual output
     options.individualOutDS = False
     # check libDS stuff
-    if options.libDS != '' or options.nobuild:
+    if options.libDS != '' or (options.nobuild and not options.noCompile):
         tmpLog.error("--libDS or --nobuild cannot be used together with --burstSubmit")
         sys.exit(EC_Config)
         
@@ -1339,7 +1348,7 @@ else:
         AthenaUtils.setExtFile(options.extFile)
 
         archiveName = ""
-        if options.libDS == '' and not options.nobuild:
+        if options.libDS == '' and not (options.nobuild and not options.noCompile):
             # archive sources
             archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,currentDir,tmpDir,
                                                                          options.verbose,options.gluePackages) 
@@ -1394,7 +1403,7 @@ else:
         # go to tmp dir
         os.chdir(tmpDir)
         # use a saved copy
-        if options.libDS == '' and not options.nobuild:
+        if options.libDS == '' and not (options.nobuild and not options.noCompile):
             archiveName     = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
             archiveFullName = "%s/%s" % (tmpDir,archiveName)
         else:
@@ -1402,7 +1411,6 @@ else:
             archiveFullName = "%s/%s" % (tmpDir,archiveName)
         # make copy to avoid name duplication
         shutil.copy(options.inTarBall,archiveFullName)
-
         
     # put sources/jobO via HTTP POST
     if not options.nosubmit:
@@ -2935,7 +2943,7 @@ jobList = []
 jobName = MiscUtils.wrappedUuidGen()
 
 # build job
-if options.nobuild:
+if options.nobuild and not options.noCompile:
     pass
 elif options.libDS == '': 
     jobB = JobSpec()
@@ -3008,6 +3016,9 @@ elif options.libDS == '':
     # debug parameters
     if options.queueData != '':
         jobB.jobParameters += "--overwriteQueuedata=%s " % options.queueData
+    # no compile
+    if options.noCompile:
+        jobB.jobParameters += "--noCompile "
     # log    
     file = FileSpec()
     file.lfn  = '%s.log.tgz' % libDsName
@@ -3276,7 +3287,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
         if options.burstSubmit == '':
             jobR.cloud = Client.PandaSites[options.site]['cloud']
         # source files
-        if not options.nobuild:
+        if not (options.nobuild and not options.noCompile):
             fileS = FileSpec()
             fileS.lfn     = fileBO.lfn
             fileS.GUID    = fileBO.GUID
@@ -3773,7 +3784,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                         file.destinationDBlockToken = Client.getDefaultSpaceToken(vomsFQAN,defaulttoken)
         # job parameters
         param = ''
-        if not options.nobuild:
+        if not (options.nobuild and not options.noCompile):
             param  += '-l %s ' % fileS.lfn
         param += '-r %s ' % runDir
         if not options.trf:
@@ -3962,7 +3973,7 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             else:
                 param += '-f "%s;%s" ' % (pStr1,pStr2)
         # libDS 
-        if options.libDS != "" or options.nobuild:
+        if options.libDS != "" or (options.nobuild and not options.noCompile):
             param += '-a %s ' % archiveName
         # addPoolFC
         if options.addPoolFC != "":
@@ -4146,7 +4157,7 @@ if not options.nosubmit:
                     Client.addDataset(tmpDsName,options.verbose)
             """        
             # register libDS
-            if options.libDS == '' and (not options.nobuild):
+            if options.libDS == '' and not (options.nobuild and not options.noCompile):
                 Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpLibDsLocation)
 
         # submit
@@ -4281,11 +4292,11 @@ if not options.nosubmit:
                 # set jobsetID
                 if isinstance(o[2],types.DictionaryType):
                     jobsetID = o[2]['jobsetID']
-            if index==0 and options.libDS=='' and (not options.nobuild):
+            if index==0 and options.libDS=='' and not (options.nobuild and not options.noCompile):
                 outstr += "  > build\n"
                 outstr += "    PandaID=%s\n" % o[0]
                 buildStr = '%s' % o[0]            
-            elif (index==1 and options.libDS=='' and not options.nobuild) or \
+            elif (index==1 and options.libDS=='' and not (options.nobuild and not options.noCompile)) or \
                  (index==0 and (options.libDS!='' or options.nobuild)):
                 outstr += "  > run\n"
                 outstr += "    PandaID=%s" % o[0]
@@ -4313,7 +4324,7 @@ if not options.nosubmit:
     tmpJobIdFile.close()
 
     # record libDS
-    if options.libDS == '' and not options.nobuild:
+    if options.libDS == '' and not (options.nobuild and not options.noCompile):
         tmpFile = open(libds_file,'w')
         tmpFile.write(jobB.destinationDBlock)
         tmpFile.close()
