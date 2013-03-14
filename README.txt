@@ -21,6 +21,15 @@ pathena -h
 
 ** Release Note
 
+0.4.18 (3/14/2013)
+  * added --noCompile to pathena
+  * added --manaVer to prun
+
+0.4.17 (3/4/2013)
+  * added a debug option to pathena
+  * added --useMana to prun
+  * changed tgz/rpm repository due to changes of CERN twiki policy
+
 0.4.16 (1/27/2013)
   * added --buildInLastChunk to pathena/prun
 
