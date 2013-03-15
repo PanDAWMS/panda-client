@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * improved --manaVer of prun
+
 0.4.18 (3/14/2013)
   * added --noCompile to pathena
   * added --manaVer to prun

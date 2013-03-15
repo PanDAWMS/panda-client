@@ -550,12 +550,13 @@ if options.useMana:
         sys.exit(EC_Config)
     options.workDir = tmpOut
     tmpLog.info("setting workDir=%s for mana" % options.workDir)
-    if options.manaVer != '':
-        tmpLog.info("checking manaVer=%s on CVMFS" % options.manaVer)
-        sMana,oMana = MiscUtils.checkManaVersion(options.manaVer)
-        if not sMana:
-            tmpLog.error(oMana)
+    # extract mana version number
+    if options.manaVer == '':
+        tmpSt,tmpOut = MiscUtils.getManaVer()
+        if not tmpSt:
+            tmpLog.error(tmpOut)
             sys.exit(EC_Config)
+        options.manaVer = tmpOut    
 
 # check working dir
 options.workDir = os.path.realpath(options.workDir)
@@ -689,10 +690,20 @@ elif options.athenaTag != '':
 # set CMTCONFIG
 options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
 
+# set mana version
+if options.useMana and options.manaVer != '': 
+    if options.manaVer != '':
+        tmpLog.info("checking manaVer=%s on CVMFS" % options.manaVer)
+        sMana,oMana,options.manaVer,options.cmtConfig = MiscUtils.checkManaVersion(options.manaVer,options.cmtConfig)
+        if not sMana:
+            tmpLog.error(oMana)
+            sys.exit(EC_Config)
+        tmpLog.info("full manaVer=%s cmtConfig=%s" % (options.manaVer,options.cmtConfig))
+
 # check CMTCONFIG
 if not AthenaUtils.checkCmtConfig(cmtConfig,options.cmtConfig,options.nobuild):
     sys.exit(EC_Config)
-
+    
 # good run list
 if options.goodRunListXML != '':
     # look for pyAMI

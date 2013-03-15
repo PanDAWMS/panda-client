@@ -1,3 +1,4 @@
+import re
 import commands
 
 SWLISTURL='https://atlpan.web.cern.ch/atlpan/swlist/'
@@ -37,21 +38,66 @@ def getManaSetupParam(paramName):
            (paramName,comStr,tmpOut)
 
 
+# get mana version
+def getManaVer():
+    # get projects
+    getS,getO = getManaSetupParam('projects')
+    if not getS:
+        return getS,getO
+    # look for mana-core/XYZ
+    match = re.search('mana-core/(\d+)/',getO)
+    # not found
+    if match == None:
+        return False,"mana version number not found in '%s'" % getO
+    # found
+    return True,match.group(1)
+
+
 # check mana version
-def checkManaVersion(verStr):
+def checkManaVersion(verStr,cmtConfig):
     if verStr == '':
-        return True,''
+        return True,'',verStr,cmtConfig
     # get list
     import urllib2
     req = urllib2.Request(url=SWLISTURL+'mana')
     f = urllib2.urlopen(req)
     listStr = f.read()
-    swList = listStr.split('\n')
+    tmpSwList = listStr.split('\n')
+    # remove short format
+    swList = []
+    for tmpSW in tmpSwList:
+        if re.search('^\d+$',tmpSW) != None:
+            continue
+        # append
+        swList.append(tmpSW)
     # check
+    retVal = False
     if verStr in swList:
-        return True,''
+        retVal = True
+        retVer = verStr
+    else:
+        # add cmtConfig to short format version number
+        if re.search('^\d+$',verStr) != None:
+            # make search string
+            if not cmtConfig in ['',None]:
+                verStr += '-%s' % cmtConfig
+        # look for pattern
+        for tmpItem in swList:
+            if re.search('^%s' % verStr,tmpItem) != None:
+                retVal = True
+                retVer = tmpItem
+                # use default cmtConfig if available
+                if 'x86_64-slc5-gcc43-opt' in retVer:
+                    break
     # not found
-    errStr  = "mana version %s is unavailable on CVMFS. " % verStr
-    errStr += "Must be one of the following versions\n"
-    errStr += listStr
-    return False,errStr
+    if not retVal:
+        errStr  = "mana version %s is unavailable on CVMFS. " % verStr
+        errStr += "Must be one of the following versions\n"
+        errStr += listStr
+        return False,errStr,None,None
+    # extract cmtConfig
+    if cmtConfig in ['',None]:
+        cmtConfig = re.sub('^\d+-','',re.sub('-python.+$','',retVer))
+    # return
+    return True,'',retVer,cmtConfig
+    
