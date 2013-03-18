@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.4.19 (3/18/2013)
   * improved --manaVer of prun
 
 0.4.18 (3/14/2013)
