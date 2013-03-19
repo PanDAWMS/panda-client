@@ -2060,3 +2060,22 @@ def readDsFromFile(txtName):
                      % (txtName,errType,errValue))
         sys.exit(EC_Config)    
     return dsList
+
+
+# get list of datasets checked for the brokerage
+def getDsListCheckedForBrokerage(dsUsedDsMap):
+    dsList = []
+    for tmpDsUsedDsMapKey,tmpDsUsedDsVal in dsUsedDsMap.iteritems():
+        for tmpDsUsedDsValItem in tmpDsUsedDsVal:
+            if not tmpDsUsedDsValItem in dsList:
+                dsList.append(tmpDsUsedDsValItem)
+    # sort
+    dsList.sort()
+    # make return string
+    retStr = ''
+    for tmpDS in dsList:
+        retStr += '%s,' % tmpDS
+    retStr = retStr[:-1]
+    # return
+    return retStr
+

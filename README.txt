@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * improved error message of the brokerage in pathena
+
 0.4.19 (3/18/2013)
   * improved --manaVer of prun
 
