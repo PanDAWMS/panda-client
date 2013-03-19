@@ -2155,7 +2155,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                 brokerageLogs = outMap['logInfo']
                 if out.startswith('ERROR :'):
                     tmpCheckedDsList = PsubUtils.getDsListCheckedForBrokerage(dsUsedDsMap)
-                    tmpLog.info('tried to find candidate sites for %s' % tmpCheckedDsList)
+                    tmpLog.info('tried to find candidate sites for untouched datasets : %s' % tmpCheckedDsList)
 		    if idxDsLocationMap == 0:
 			tmpBrokerErr += out
                         if expCloudFlag:
