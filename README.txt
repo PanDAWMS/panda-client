@@ -21,8 +21,9 @@ pathena -h
 
 ** Release Note
 
-current
+0.4.20 (3/21/2013)
   * improved error message of the brokerage in pathena
+  * fixed pbook.reproduce for outDS used by multiple jobIDs 
 
 0.4.19 (3/18/2013)
   * improved --manaVer of prun
