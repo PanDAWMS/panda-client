@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.21 (4/3/2013)
+  * added missing attributes to JobSpec
+
 0.4.20 (3/21/2013)
   * improved error message of the brokerage in pathena
   * fixed pbook.reproduce for outDS used by multiple jobIDs 
