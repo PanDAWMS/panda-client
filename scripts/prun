@@ -2728,7 +2728,7 @@ if not options.nosubmit:
                 Client.addDataset(tmpDsName,options.verbose)
         """        
         # register libDS
-        if options.libDS == '' and not options.nobuild:
+        if options.libDS == '' and not (options.nobuild and not options.noCompile):
             Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpLibDsLocation)
 
     # submit

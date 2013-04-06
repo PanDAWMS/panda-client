@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed ownership of libDS for prun with --noCompile
+
 0.4.21 (4/3/2013)
   * added missing attributes to JobSpec
 
