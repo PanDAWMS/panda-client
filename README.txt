@@ -23,6 +23,7 @@ pathena -h
 
 current
   * fixed ownership of libDS for prun with --noCompile
+  * fixed --outTarBall of pathena when input sandbox is reused
 
 0.4.21 (4/3/2013)
   * added missing attributes to JobSpec

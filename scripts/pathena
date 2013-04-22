@@ -1412,6 +1412,10 @@ else:
         # make copy to avoid name duplication
         shutil.copy(options.inTarBall,archiveFullName)
         
+    # save
+    if options.outTarBall != '':
+        shutil.copy(archiveName,options.outTarBall)
+
     # put sources/jobO via HTTP POST
     if not options.nosubmit:
         tmpLog.info("uploading source/jobO files")
@@ -1424,11 +1428,6 @@ else:
             print out
             tmpLog.error("Failed with %s" % status)
             sys.exit(EC_Post)
-
-    # save
-    if options.outTarBall != '':
-        shutil.copy(archiveName,options.outTarBall)
-
 
 ####################################################################
 # datasets 
