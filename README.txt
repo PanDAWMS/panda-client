@@ -21,9 +21,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.4.22 (5/13/2013)
   * fixed ownership of libDS for prun with --noCompile
   * fixed --outTarBall of pathena when input sandbox is reused
+  * fixed ConfigExtractor for AthenaRootComps
 
 0.4.21 (4/3/2013)
   * added missing attributes to JobSpec

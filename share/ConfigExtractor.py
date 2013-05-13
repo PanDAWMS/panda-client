@@ -385,8 +385,8 @@ try:
     for genStream in theApp._streams.getAllChildren()+AlgSequence().getAllChildren():
         # check name
         fullName = genStream.getFullName()
-        if fullName.split('/')[0] == 'AthenaOutputStream' and \
-               (not fullName.split('/')[-1] in ignoredStreamList):
+        if (fullName.split('/')[0] == 'AthenaOutputStream' or fullName.split('/')[0] == 'Athena::RootNtupleOutputStream') \
+                and (not fullName.split('/')[-1] in ignoredStreamList):
             if hasattr(genStream,'OutputFile') and hasattr(genStream.OutputFile,'__len__') and len(genStream.OutputFile):
                 if (hasattr(genStream,'Enable') and genStream.Enable) or (not hasattr(genStream,'Enable')):
                     # keep meta data
