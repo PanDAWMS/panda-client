@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed wrong Indetity for proxy generation on SL(C)6
+  * fixed wrong message for PATHENA_GRID_SETUP_SH on CERN SLC6
+	
 0.4.22 (5/13/2013)
   * fixed ownership of libDS for prun with --noCompile
   * fixed --outTarBall of pathena when input sandbox is reused

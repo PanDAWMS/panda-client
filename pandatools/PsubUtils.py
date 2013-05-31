@@ -94,8 +94,12 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
         # GRID pass phrase
         if gridPassPhrase == '':
             import getpass
-            tmpLog.info("Need to generate a grid proxy")            
-            print "Your identity: " + commands.getoutput('%s grid-cert-info -subject' % gridSrc)
+            tmpLog.info("Need to generate a grid proxy")
+            if commands.getstatus('%s which grid-cert-info') == 0:
+                print "Your identity: " + commands.getoutput('%s grid-cert-info -subject' % gridSrc)
+            else:
+                print "Your identity: " + re.sub('subject= ','',
+                                                 commands.getoutput('%s openssl x509 -in ~/.globus/usercert.pem -noout -subject' % gridSrc))
             if sys.stdin.isatty():
                 gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:')
             else:
