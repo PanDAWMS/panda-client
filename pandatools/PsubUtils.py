@@ -95,7 +95,7 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
         if gridPassPhrase == '':
             import getpass
             tmpLog.info("Need to generate a grid proxy")
-            if commands.getstatus('%s which grid-cert-info') == 0:
+            if commands.getstatusoutput('%s which grid-cert-info' % gridSrc)[0] == 0:
                 print "Your identity: " + commands.getoutput('%s grid-cert-info -subject' % gridSrc)
             else:
                 print "Your identity: " + re.sub('subject= ','',

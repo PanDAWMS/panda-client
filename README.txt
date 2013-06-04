@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.24 (6/5/2013)
+  * fixed grid-cert-info check
+     
 0.4.23 (6/4/2013)
   * fixed wrong Indetity for proxy generation on SL(C)6
   * fixed wrong message for PATHENA_GRID_SETUP_SH on CERN SLC6
