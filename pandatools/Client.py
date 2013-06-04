@@ -2061,7 +2061,8 @@ def _getGridSrc():
                     gridSrc = os.environ['ATLAS_LOCAL_ROOT_BASE'] + '/user/pandaGridSetup.sh'
                 else:
                     print "ERROR : PATHENA_GRID_SETUP_SH is not defined in envvars"
-                    print "  for CERN : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh"
+                    print "  for CERN on SLC5 : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh"
+                    print "  for CERN on SLC6 : export PATHENA_GRID_SETUP_SH=/dev/null"
                     print "  for LYON : export PATHENA_GRID_SETUP_SH=/afs/in2p3.fr/grid/profiles/lcg_env.sh"
                     print "  for BNL  : export PATHENA_GRID_SETUP_SH=/afs/usatlas.bnl.gov/osg/client/@sys/current/setup.sh"
                     return False

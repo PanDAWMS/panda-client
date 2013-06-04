@@ -126,6 +126,10 @@ optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',defa
                 help='LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something')
 optP.add_option('--useRootCore',action='store_const',const=True,dest='useRootCore',default=False,
                 help='Use RootCore. See PandaRun wiki page for detail')
+optP.add_option('--useMana',action='store_const',const=True,dest='useMana',default=False,
+                help='Use Mana. See PandaRun wiki page for detail')
+optP.add_option('--manaVer',action='store',dest='manaVer',default='',type='string',
+                help='Specify a mana version if you want to use an older version. If omitted, the latest version is used. e.g., --manaVer=20130301' )
 optP.add_option('--useAthenaPackages',action='store_const',const=True,dest='useAthenaPackages',default=False,
                 help='Use Athena packages. See PandaRun wiki page for detail')
 optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
@@ -538,6 +542,22 @@ if options.inTarBall != '':
 if options.outTarBall != '':
     options.outTarBall = os.path.abspath(os.path.expanduser(options.outTarBall))
 
+# set workdir for mana
+if options.useMana:
+    tmpSt,tmpOut = MiscUtils.getManaSetupParam('workarea')
+    if not tmpSt:
+        tmpLog.error(tmpOut)
+        sys.exit(EC_Config)
+    options.workDir = tmpOut
+    tmpLog.info("setting workDir=%s for mana" % options.workDir)
+    # extract mana version number
+    if options.manaVer == '':
+        tmpSt,tmpOut = MiscUtils.getManaVer()
+        if not tmpSt:
+            tmpLog.error(tmpOut)
+            sys.exit(EC_Config)
+        options.manaVer = tmpOut    
+
 # check working dir
 options.workDir = os.path.realpath(options.workDir)
 if options.workDir != curDir and (not curDir.startswith(options.workDir+'/')):
@@ -670,10 +690,20 @@ elif options.athenaTag != '':
 # set CMTCONFIG
 options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
 
+# set mana version
+if options.useMana and options.manaVer != '': 
+    if options.manaVer != '':
+        tmpLog.info("checking manaVer=%s on CVMFS" % options.manaVer)
+        sMana,oMana,options.manaVer,options.cmtConfig = MiscUtils.checkManaVersion(options.manaVer,options.cmtConfig)
+        if not sMana:
+            tmpLog.error(oMana)
+            sys.exit(EC_Config)
+        tmpLog.info("full manaVer=%s cmtConfig=%s" % (options.manaVer,options.cmtConfig))
+
 # check CMTCONFIG
 if not AthenaUtils.checkCmtConfig(cmtConfig,options.cmtConfig,options.nobuild):
     sys.exit(EC_Config)
-
+    
 # good run list
 if options.goodRunListXML != '':
     # look for pyAMI
@@ -845,7 +875,7 @@ if options.site != 'AUTO':
     origSite = options.site
     # patch for BNL
     if options.site in ['BNL',"ANALY_BNL"]:
-        options.site = "ANALY_BNL_ATLAS_1"
+        options.site = "ANALY_BNL_SHORT"
     # patch for CERN
     if options.site in ['CERN']:
         options.site = "ANALY_CERN_XROOTD"        
@@ -1331,7 +1361,7 @@ if options.inDS != '':
                 missList = Client.getMissLFNsFromLFC(inputFileMap,options.site,True,options.verbose,
                                                      options.nFiles,
                                                      dsStr=options.inDS,removedDS=options.removedDS,
-                                                     skipScan=options.skipScan)                
+                                                     skipScan=options.skipScan)
         elif Client.getLRC(dsLocation) != None:
 	    tmpLog.info("scanning LRC %s for %s" % (Client.getLRC(dsLocation),options.site))
             # LRC
@@ -1965,6 +1995,11 @@ elif options.libDS == '':
     # no compile
     if options.noCompile:
         jobB.jobParameters += "--noCompile "
+    # use mana
+    if options.useMana:
+        jobB.jobParameters += "--useMana "
+	if options.manaVer != '':
+	    jobB.jobParameters += "--manaVer %s " % options.manaVer
     # root
     if options.rootVer != '':
         jobB.jobParameters += "--rootVer %s " % options.rootVer
@@ -2263,6 +2298,11 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
         # use RootCore
         if options.useRootCore:
             jobR.jobParameters += "--useRootCore "
+        # use mana
+        if options.useMana:
+            jobR.jobParameters += "--useMana "
+	    if options.manaVer != '':
+		jobR.jobParameters += "--manaVer %s " % options.manaVer
         # root
         if options.rootVer != '':
             jobR.jobParameters += "--rootVer %s " % options.rootVer
@@ -2688,7 +2728,7 @@ if not options.nosubmit:
                 Client.addDataset(tmpDsName,options.verbose)
         """        
         # register libDS
-        if options.libDS == '' and not options.nobuild:
+        if options.libDS == '' and not (options.nobuild and not options.noCompile):
             Client.addDataset(jobB.destinationDBlock,options.verbose,location=tmpLibDsLocation)
 
     # submit
