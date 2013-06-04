@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.25 (6/5/2013)
+  * fixed for the change to DQ2 CC 
+
 0.4.24 (6/5/2013)
   * fixed grid-cert-info check
      

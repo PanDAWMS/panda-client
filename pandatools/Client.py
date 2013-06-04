@@ -32,11 +32,7 @@ except:
     baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
 
 baseURLDQ2     = 'http://atlddmcat-reader.cern.ch/dq2'
-
-# get real hostname since DQ2 host cert doesn't contain CNAME as SAN
-tmpAdders = socket.gethostbyname_ex('atlddmcat-writer.cern.ch')[2]
-random.shuffle(tmpAdders)
-baseURLDQ2SSL  = 'https://%s:443/dq2' % socket.gethostbyaddr(tmpAdders[0])[0]
+baseURLDQ2SSL  = 'https://atlddmcat-writer.cern.ch:443/dq2'
 
 baseURLSUB     = "http://pandaserver.cern.ch:25080/trf/user"
 baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
