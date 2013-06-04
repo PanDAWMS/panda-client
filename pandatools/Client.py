@@ -32,11 +32,7 @@ except:
     baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
 
 baseURLDQ2     = 'http://atlddmcat-reader.cern.ch/dq2'
-
-# get real hostname since DQ2 host cert doesn't contain CNAME as SAN
-tmpAdders = socket.gethostbyname_ex('atlddmcat-writer.cern.ch')[2]
-random.shuffle(tmpAdders)
-baseURLDQ2SSL  = 'https://%s:443/dq2' % socket.gethostbyaddr(tmpAdders[0])[0]
+baseURLDQ2SSL  = 'https://atlddmcat-writer.cern.ch:443/dq2'
 
 baseURLSUB     = "http://pandaserver.cern.ch:25080/trf/user"
 baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
@@ -2061,7 +2057,8 @@ def _getGridSrc():
                     gridSrc = os.environ['ATLAS_LOCAL_ROOT_BASE'] + '/user/pandaGridSetup.sh'
                 else:
                     print "ERROR : PATHENA_GRID_SETUP_SH is not defined in envvars"
-                    print "  for CERN : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh"
+                    print "  for CERN on SLC5 : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh"
+                    print "  for CERN on SLC6 : export PATHENA_GRID_SETUP_SH=/dev/null"
                     print "  for LYON : export PATHENA_GRID_SETUP_SH=/afs/in2p3.fr/grid/profiles/lcg_env.sh"
                     print "  for BNL  : export PATHENA_GRID_SETUP_SH=/afs/usatlas.bnl.gov/osg/client/@sys/current/setup.sh"
                     return False

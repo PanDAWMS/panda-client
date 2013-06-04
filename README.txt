@@ -21,6 +21,41 @@ pathena -h
 
 ** Release Note
 
+0.4.25 (6/5/2013)
+  * fixed for the change to DQ2 CC 
+
+0.4.24 (6/5/2013)
+  * fixed grid-cert-info check
+     
+0.4.23 (6/4/2013)
+  * fixed wrong Indetity for proxy generation on SL(C)6
+  * fixed wrong message for PATHENA_GRID_SETUP_SH on CERN SLC6
+  * fixed --site BNL to send jobs to ANALY_BNL_SHORT
+	
+0.4.22 (5/13/2013)
+  * fixed ownership of libDS for prun with --noCompile
+  * fixed --outTarBall of pathena when input sandbox is reused
+  * fixed ConfigExtractor for AthenaRootComps
+
+0.4.21 (4/3/2013)
+  * added missing attributes to JobSpec
+
+0.4.20 (3/21/2013)
+  * improved error message of the brokerage in pathena
+  * fixed pbook.reproduce for outDS used by multiple jobIDs 
+
+0.4.19 (3/18/2013)
+  * improved --manaVer of prun
+
+0.4.18 (3/14/2013)
+  * added --noCompile to pathena
+  * added --manaVer to prun
+
+0.4.17 (3/4/2013)
+  * added a debug option to pathena
+  * added --useMana to prun
+  * changed tgz/rpm repository due to changes of CERN twiki policy
+
 0.4.16 (1/27/2013)
   * added --buildInLastChunk to pathena/prun
 
