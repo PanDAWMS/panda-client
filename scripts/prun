@@ -875,7 +875,7 @@ if options.site != 'AUTO':
     origSite = options.site
     # patch for BNL
     if options.site in ['BNL',"ANALY_BNL"]:
-        options.site = "ANALY_BNL_ATLAS_1"
+        options.site = "ANALY_BNL_SHORT"
     # patch for CERN
     if options.site in ['CERN']:
         options.site = "ANALY_CERN_XROOTD"        

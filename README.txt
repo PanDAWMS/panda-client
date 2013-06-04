@@ -21,9 +21,10 @@ pathena -h
 
 ** Release Note
 
-current
+0.4.23 (6/4/2013)
   * fixed wrong Indetity for proxy generation on SL(C)6
   * fixed wrong message for PATHENA_GRID_SETUP_SH on CERN SLC6
+  * fixed --site BNL to send jobs to ANALY_BNL_SHORT
 	
 0.4.22 (5/13/2013)
   * fixed ownership of libDS for prun with --noCompile
