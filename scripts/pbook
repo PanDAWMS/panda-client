@@ -653,7 +653,7 @@ class PBookCore:
                     # check names
                     tmpMatchFlag = False
                     for tmpFile in tmpPandaJob.Files:
-                        if tmpFile.type == 'output':
+                        if tmpFile.type == 'output' and tmpFile.status == 'ready':
                             for tmpReproduceFile in reproduceFilePatt:
                                 # normal matching
                                 if tmpReproduceFile == tmpFile.lfn:
@@ -674,7 +674,7 @@ class PBookCore:
                 jobList = tmpJobList
                 pandaJobs = tmpPandaJobs
                 if jobList == []:
-                    tmpLog.info('No jobs to reproduce files')
+                    tmpLog.info("No jobs to reproduce files : Jobs in JobID=%s didn't produce lost files" % JobID)
                     continue
             # jobdefID
             newJobdefID = PsubUtils.readJobDefID()
@@ -1158,11 +1158,12 @@ For more info, do help(show) for example."""
            >>> reproduce(JobsetID=15,reproduceFiles=['user.XYZ._00001.root','user.XYZ._0005*.root'])
            >>> reproduce(outDS='user.ABC.hoge/',reproduceFiles=['user.XYZ._00001.root','user.XYZ._0005*.root'])
         """
+	jobIdList = []
+	tmpLog = PLogger.getPandaLogger()
         # look for JobID
         if JobsetID == None:
             # outDS is not given either
             if outDS == None:
-                tmpLog = PLogger.getPandaLogger()
                 tmpLog.error("Either JobsetID or outDS must be given")
                 return
             # get all jobs
@@ -1170,21 +1171,27 @@ For more info, do help(show) for example."""
             # reverse sort to find largest JobID
             jobList.reverse()
             # look for outDS
+	    jobIdListStr = ''
             for tmpJob in jobList:
                 if tmpJob.outDS == outDS: 
                     if hasattr(tmpJob,'JobID'):
                         JobsetID = tmpJob.JobID
                     else:
                         JobsetID = long(tmpJob.JobsetID)
-                    break
+                    jobIdList.append(JobsetID)
+		    jobIdListStr += '%s,' % JobsetID
+	    jobIdListStr = jobIdListStr[:-1]	    
             # not found
-            if JobsetID == None:
-                tmpLog = PLogger.getPandaLogger()
+            if jobIdList == []:
                 tmpLog.error("Could not find corresponding JobsetID for outDS=%s" % outDS)
                 return
-        # retry    
-        pbookCore.retry(JobsetID,noSubmit=noSubmit,ignoreDuplication=True,reproduceFiles=reproduceFiles,
-                        unsetRetryID=True)
+            tmpLog.info("JobsetIDs=%s contribute to the outDS. Looking for jobs which produced the lost files" % jobIdListStr)
+        else:
+            jobIdList = [JobsetID]
+        # retry
+        for tmpJobsetID in jobIdList:
+            pbookCore.retry(tmpJobsetID,noSubmit=noSubmit,ignoreDuplication=True,reproduceFiles=reproduceFiles,
+                            unsetRetryID=True)
 
         
     # retry
