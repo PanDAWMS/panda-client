@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed datriHandler for SLC6
+ 
 0.4.25 (6/5/2013)
   * fixed for the change to DQ2 CC 
 
