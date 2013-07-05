@@ -2220,7 +2220,7 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
 
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType='',
-                 loggingFlag=False,memorySize=0,useDirectIO=False,siteGroup=None,maxCpuCount=-1):
+                 loggingFlag=False,memorySize=0,useDirectIO=False,siteGroup=None,maxCpuCount=-1,rootVer=''):
     # use only directIO sites
     nonDirectSites = []
     if useDirectIO:
@@ -2270,6 +2270,9 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
                 cacheVer = '%s:%s' % (atlasRelease,match.group(1))
         # use cache for brokerage
         data['atlasRelease'] = cacheVer
+    # use ROOT ver    
+    if rootVer != '' and data['atlasRelease'] == '':
+        data['atlasRelease'] = 'ROOT-%s' % rootVer
     if processingType != '':
         # set processingType mainly for HC
         data['processingType'] = processingType

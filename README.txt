@@ -21,7 +21,8 @@ pathena -h
 
 ** Release Note
 
-current
+0.4.26 (7/5/2013)
+  * added support for ROOT/x86_64-slc6-gcc47-opt	
   * fixed datriHandler for SLC6
  
 0.4.25 (6/5/2013)
