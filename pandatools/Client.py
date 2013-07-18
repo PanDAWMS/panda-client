@@ -2021,7 +2021,7 @@ def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList
 # get grid source file
 def _getGridSrc():
     # set Grid setup.sh if needed
-    status,out = commands.getstatusoutput('which voms-proxy-info')
+    status,out = commands.getstatusoutput('voms-proxy-info --version')
     stLFC,outLFC = commands.getstatusoutput('python -c "import lfc"')
     athenaStatus,athenaPath = commands.getstatusoutput('which athena.py')
     if status == 0 and stLFC == 0:
@@ -2038,7 +2038,7 @@ def _getGridSrc():
             gridSrc = os.environ['PATHENA_GRID_SETUP_SH']
         else:
             if not os.environ.has_key('CMTSITE'):
-                print "ERROR : CMTSITE is not defined in envvars"
+                print "INFO : CMTSITE is not defined in envvars"
                 return False
             if os.environ['CMTSITE'] == 'CERN' or (athenaStatus == 0 and \
                                                    re.search('^/afs/\.*cern.ch',athenaPath) != None):
@@ -2057,8 +2057,8 @@ def _getGridSrc():
                     gridSrc = os.environ['ATLAS_LOCAL_ROOT_BASE'] + '/user/pandaGridSetup.sh'
                 else:
                     print "ERROR : PATHENA_GRID_SETUP_SH is not defined in envvars"
-                    print "  for CERN on SLC5 : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh"
                     print "  for CERN on SLC6 : export PATHENA_GRID_SETUP_SH=/dev/null"
+                    print "  for CERN on SLC5 : export PATHENA_GRID_SETUP_SH=/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh"
                     print "  for LYON : export PATHENA_GRID_SETUP_SH=/afs/in2p3.fr/grid/profiles/lcg_env.sh"
                     print "  for BNL  : export PATHENA_GRID_SETUP_SH=/afs/usatlas.bnl.gov/osg/client/@sys/current/setup.sh"
                     return False
@@ -2220,7 +2220,7 @@ def isDirectAccess(site,usingRAW=False,usingTRF=False,usingARA=False):
 
 # run brokerage
 def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,cacheVer='',processingType='',
-                 loggingFlag=False,memorySize=0,useDirectIO=False,siteGroup=None,maxCpuCount=-1):
+                 loggingFlag=False,memorySize=0,useDirectIO=False,siteGroup=None,maxCpuCount=-1,rootVer=''):
     # use only directIO sites
     nonDirectSites = []
     if useDirectIO:
@@ -2270,6 +2270,9 @@ def runBrokerage(sites,atlasRelease,cmtConfig=None,verbose=False,trustIS=False,c
                 cacheVer = '%s:%s' % (atlasRelease,match.group(1))
         # use cache for brokerage
         data['atlasRelease'] = cacheVer
+    # use ROOT ver    
+    if rootVer != '' and data['atlasRelease'] == '':
+        data['atlasRelease'] = 'ROOT-%s' % rootVer
     if processingType != '':
         # set processingType mainly for HC
         data['processingType'] = processingType
