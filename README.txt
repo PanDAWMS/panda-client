@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.27 (7/18/2013)
+  * fixed voms-proxy-info check for PATHENA_GRID_SETUP_SH setting
+
 0.4.26 (7/5/2013)
   * added support for ROOT/x86_64-slc6-gcc47-opt	
   * fixed datriHandler for SLC6
