@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.28 (7/30/2013)
+  * fixed pathena to respect --nFilesPerJob when --nEventsPerJob
+
 0.4.27 (7/18/2013)
   * fixed voms-proxy-info check for PATHENA_GRID_SETUP_SH setting
 
