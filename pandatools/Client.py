@@ -3146,7 +3146,7 @@ def checkEnoughSitesHaveDBR(dq2IDs):
                 if tmpPandaSite in PandaTier1Sites and tmpPandaSite in sitesWithDBR:
                     nOnlineT1WithDBR += 1
     # enough replicas
-    if len(dq2IDs) < 40 or nOnlineWithDBR < 40:
+    if nOnlineWithDBR < 40:
         return False
     # threshold 90%
     if float(nOnlineWithDBR) < 0.9 * float(nOnline):

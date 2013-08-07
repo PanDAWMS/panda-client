@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.29 (8/7/2013)
+  * fixed getLatestDBRelease for the change of DBR replication policy
+
 0.4.28 (7/30/2013)
   * fixed pathena to respect --nFilesPerJob when --nEventsPerJob
 
