@@ -21,7 +21,17 @@ pathena -h
 
 ** Release Note
 
-current
+0.4.29 (8/7/2013)
+  * fixed getLatestDBRelease for the change of DBR replication policy
+
+0.4.28 (7/30/2013)
+  * fixed pathena to respect --nFilesPerJob when --nEventsPerJob
+
+0.4.27 (7/18/2013)
+  * fixed voms-proxy-info check for PATHENA_GRID_SETUP_SH setting
+
+0.4.26 (7/5/2013)
+  * added support for ROOT/x86_64-slc6-gcc47-opt	
   * fixed datriHandler for SLC6
  
 0.4.25 (6/5/2013)
