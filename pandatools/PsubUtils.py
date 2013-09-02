@@ -1133,13 +1133,13 @@ def runPrunRec(missList,tmpDir,fullExecString,nFiles,inputFileMap,site,crossSite
 # run brokerage for composite site
 def runBrokerageForCompSite(siteIDs,releaseVer,cacheVer,verbose,cmtConfig=None,
                             memorySize=0,useDirectIO=False,siteGroup=None,
-                            maxCpuCount=-1):
+                            maxCpuCount=-1,rootVer=''):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # run brokerage
     status,outMap = Client.runBrokerage(siteIDs,releaseVer,verbose=verbose,trustIS=True,cacheVer=cacheVer,loggingFlag=True,
                                         cmtConfig=cmtConfig,memorySize=memorySize,useDirectIO=useDirectIO,
-                                        siteGroup=siteGroup,maxCpuCount=maxCpuCount)
+                                        siteGroup=siteGroup,maxCpuCount=maxCpuCount,rootVer=rootVer)
     if status != 0:
         tmpLog.error('failed to run brokerage for composite site: %s' % outMap)
         sys.exit(EC_Config)
@@ -1889,14 +1889,43 @@ def calculateNumSplitEvent(nEventsPerJob,inputFileList,shipinput,currentDir,nEve
 
 
 # calculate the number of subjobs when TAG parent is used
-def calculateNumSplitTAG(nEventsPerJob,inputFileList,parentLfnToTagMap):
+def calculateNumSplitTAG(nEventsPerJob,inputFileList,parentLfnToTagMap,nFilesPerJob=-1):
     # the number of events is avaliable via TAG DB
-    tmpTotalEvents = 0
-    for fileName in inputFileList:
-        tmpTotalEvents += parentLfnToTagMap[fileName]['nEvents']
-    split,tmpMod = divmod(tmpTotalEvents,nEventsPerJob)
-    if tmpMod != 0:
-        split += 1
+    if nFilesPerJob < 0:
+        tmpTotalEvents = 0
+        for fileName in inputFileList:
+            tmpTotalEvents += parentLfnToTagMap[fileName]['nEvents']
+        split,tmpMod = divmod(tmpTotalEvents,nEventsPerJob)
+        if tmpMod != 0:
+            split += 1
+    else:
+        # the number of files is specified
+        split = 0
+        nEventUsed = 0
+        indexFile = 0
+        while indexFile < len(inputFileList):
+            nFilesInChunk = 0
+            for fileName in inputFileList[indexFile:]:
+                # events remain in the same file
+                if parentLfnToTagMap[fileName]['nEvents'] - nEventUsed > nEventsPerJob:
+                    nEventUsed += nEventsPerJob
+                    split += 1
+                    break
+                else:
+                    # go to next file
+                    nFilesInChunk += 1
+                    # the number of files is exceeded
+                    if nFilesInChunk >= nFilesPerJob:
+                        split += 1
+                        nEventUsed = 0
+                        break
+                    # no more files
+                    if indexFile + nFilesInChunk >= len(inputFileList):
+                        split += 1
+                        break
+                    # set nEventUsed
+                    nEventUsed = nEventUsed - parentLfnToTagMap[fileName]['nEvents']
+            indexFile += nFilesInChunk
     # return
     return split
     
