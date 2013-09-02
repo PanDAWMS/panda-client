@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.30 (9/2/2013)
+  * fixed cmtShowProjects to ignore CMTUSERCONTEXT
+
 0.4.29 (8/7/2013)
   * fixed getLatestDBRelease for the change of DBR replication policy
 

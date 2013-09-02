@@ -186,6 +186,8 @@ def getCmtProjects(dir='.'):
     tupLines = tuple(lines)
     lines = []
     for line in tupLines:
+        if 'CMTUSERCONTEXT' in line:
+            continue
         if not line.startswith('#'):
             lines.append(line)
     # back to the current dir
