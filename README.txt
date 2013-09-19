@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.31 (9/19/2013)
+  * fixed threading in pbook
+
 0.4.30 (9/2/2013)
   * fixed cmtShowProjects to ignore CMTUSERCONTEXT
 

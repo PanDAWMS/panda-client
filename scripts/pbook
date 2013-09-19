@@ -16,12 +16,15 @@ import tempfile
 import commands
 
 # tweak sys.path since threading cannot be imported with Athena 15 on SLC5/64
-tmpOut = commands.getoutput('unset LD_LIBRARY_PATH; unset PYTHONPATH; /usr/bin/python -c "import sys;print sys.path"')
 try:
-    exec "tmpSysPath = %s" % tmpOut.split('\n')[-1]
-    sys.path = tmpSysPath + sys.path
+    import threading
 except:
-    pass
+    tmpOut = commands.getoutput('unset LD_LIBRARY_PATH; unset PYTHONPATH; /usr/bin/python -c "import sys;print sys.path"')
+    try:
+        exec "tmpSysPath = %s" % tmpOut.split('\n')[-1]
+        sys.path = tmpSysPath + sys.path
+    except:
+        pass
 
 import optparse
 import readline
