@@ -3190,9 +3190,9 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
             # the number of events is avaliable via TAG DB
             if b_split < 0:
                 if useTagParentLookup:
-                    b_split = PsubUtils.calculateNumSplitTAG(b_nEventsPerJob,b_inputFileList,parentLfnToTagMap)
+                    b_split = PsubUtils.calculateNumSplitTAG(b_nEventsPerJob,b_inputFileList,parentLfnToTagMap,b_nFilesPerJob)
                 else:
-                    b_split = PsubUtils.calculateNumSplitTAG(b_nEventsPerJob,b_inputFileList,amiFileMetadataMap)
+                    b_split = PsubUtils.calculateNumSplitTAG(b_nEventsPerJob,b_inputFileList,amiFileMetadataMap,b_nFilesPerJob)
     if b_split == -1:
         # calculate # of subjobs using all files
         b_split = PsubUtils.calculateNumSplit(b_nFilesPerJob,options.nGBPerJob,b_nEventsPerJob,b_nEventsPerFile,
@@ -3360,6 +3360,9 @@ for b_dsFiledKey in inputGroupFilesMap.keys():
                                 nUsedByPreviousLoop = 0
                                 # next file is not used
                                 if tmpSubTotalEvents == b_nEventsPerJob:
+                                    break
+				# the number of input files is specified    
+				if b_nFilesPerJob > 0 and nUsedFilesForEventSplit >= b_nFilesPerJob:
                                     break
                                 # increment the number of files used by the subjob 
                                 divF += 1

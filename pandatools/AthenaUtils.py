@@ -186,6 +186,8 @@ def getCmtProjects(dir='.'):
     tupLines = tuple(lines)
     lines = []
     for line in tupLines:
+        if 'CMTUSERCONTEXT' in line:
+            continue
         if not line.startswith('#'):
             lines.append(line)
     # back to the current dir
@@ -1927,7 +1929,7 @@ def checkCmtConfig(localCmtConfig,userCmtConfig,noBuild):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # check if valid cmtconfig
-    validCmtCofnigList = ['i686-slc4-gcc34-opt','i686-slc5-gcc43-opt','x86_64-slc5-gcc43-opt','x86_64-slc6-gcc46-opt']
+    validCmtCofnigList = ['i686-slc4-gcc34-opt','i686-slc5-gcc43-opt','x86_64-slc5-gcc43-opt','x86_64-slc6-gcc46-opt','x86_64-slc6-gcc47-opt']
     if not userCmtConfig in validCmtCofnigList:
         errStr = '%s is not a valid CMTCONFIG distributed on the grid. The following CMTCONFIGs are allowed:\n' % userCmtConfig
         for tmpC in validCmtCofnigList:
