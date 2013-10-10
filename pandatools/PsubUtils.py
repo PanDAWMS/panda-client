@@ -38,7 +38,7 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
     vomsFQAN = ''
     if status == 0:
         # with VOMS extension 
-        com = '%s voms-proxy-info -fqan -exists' % gridSrc
+        com = '%s voms-proxy-info -fqan -exists' % gridSrc    
         if verbose:
             tmpLog.debug(com)
         status,out = commands.getstatusoutput(com)
