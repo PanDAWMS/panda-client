@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+current
+  * set 12h to maxCpuCount in pathena and prun by default
+  * set --useNewTRF by default in pathena
+
 0.4.31 (9/19/2013)
   * fixed threading in pbook
 
