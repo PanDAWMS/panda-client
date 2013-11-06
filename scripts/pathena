@@ -44,6 +44,9 @@ defaultCloud = None
 # max lookup for cross site option
 maxCrossSite = 50
 
+# default maxCpuCount
+defaultMaxCpuCount = 12*60*60
+
 usage = """%prog [options] <jobOption1.py> [<jobOption2.py> [...]]
 
 '%prog --help' prints a summary of the options
@@ -226,7 +229,7 @@ optP.add_option('--useAMIAutoConf',action='store_const',const=True,dest='useAMIA
                 help='Use AMI for AutoConfiguration')
 optP.add_option('--memory', action='store', dest='memory',  default=-1,
                 type='int',    help='Required memory size in MB. e.g., for 1GB --memory 1024')
-optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=12*60*60, type='int',
+optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=defaultMaxCpuCount, type='int',
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--official', action='store_const', const=True, dest='official',  default=False,
                 help='Produce official dataset')
@@ -903,6 +906,9 @@ if options.maxCpuCount > Client.maxCpuCountLimit:
     tmpLog.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
     sys.exit(EC_Config)
     
+# give warning for maxCpuCount
+PsubUtils.giveWarningForMaxCpuCount(defaultMaxCpuCount,options.maxCpuCount,tmpLog)
+
 # create tmp dir
 if options.tmpDir == '':
     tmpDir = '%s/%s' % (currentDir,MiscUtils.wrappedUuidGen())

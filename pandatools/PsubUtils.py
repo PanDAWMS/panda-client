@@ -2112,3 +2112,11 @@ def getDsListCheckedForBrokerage(dsUsedDsMap):
     # return
     return retStr
 
+
+# give warning for maxCpuCount
+def giveWarningForMaxCpuCount(defMaxCpuCount,maxCpuCount,tmpLog):
+    # only when the default value is used
+    if defMaxCpuCount == maxCpuCount:
+        msg  = 'Time limit for each subjob is set to %ssec. ' % maxCpuCount
+        msg += 'Set --maxCpuCount if your job requires longer execution time.' 
+        tmpLog.info(msg)
