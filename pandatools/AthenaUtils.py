@@ -5,6 +5,7 @@ import commands
 
 import MiscUtils
 import PLogger
+import Client
 
 # error code
 EC_Config    = 10
@@ -1872,53 +1873,62 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
 
 
 # get CMTCONFIG
-def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None):
-    try:
-        # use user-specified cmtconfig
-        if cmtConfig != None:
-            return cmtConfig
-        # nightlies
-        if cacheVer != None and re.search('_rel_\d+$',cacheVer) != None:
-            # dev nightlies
-            if athenaVer == 'dev':
-                return 'x86_64-slc5-gcc43-opt'
-            # get cmtconfig for nightlies
-            if athenaVer != None:
-                # remove prefix
-                verStr = re.sub('^[^-]+-','',athenaVer)
-                # extract version numbers
-                match = re.search('(\d+)\.([^\.+])\.',verStr)
-                # major,miner
-                maVer = int(match.group(1))
-                miVer = match.group(2)
-                # use x86_64-slc5-gcc43-opt for 17.X.0 or higher                
-                if maVer > 17 or (maVer == 17 and miVer == 'X'):
-                    return 'x86_64-slc5-gcc43-opt'
-                # use i686-slc5-gcc43-opt by default
-                return 'i686-slc5-gcc43-opt'
-        # get default cmtconfig according to Atlas release
+def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbose=False):
+    # use user-specified cmtconfig
+    if cmtConfig != None:
+        return cmtConfig
+    # nightlies
+    if cacheVer != None and re.search('_rel_\d+$',cacheVer) != None:
+        # dev nightlies
+        if athenaVer == 'dev':
+            return 'x86_64-slc5-gcc43-opt'
+        # get cmtconfig for nightlies
         if athenaVer != None:
             # remove prefix
             verStr = re.sub('^[^-]+-','',athenaVer)
             # extract version numbers
-            match = re.search('(\d+)\.(\d+)\.(\d+)',verStr)
-            if match == None:
-                return None
-            # major,miner,rev
+            match = re.search('(\d+)\.([^\.+])\.',verStr)
+            # major,miner
             maVer = int(match.group(1))
-            miVer = int(match.group(2))
-            reVer = int(match.group(3))
-            # use x86_64-slc5-gcc43-opt for 17.5.0 or higher
-            if maVer > 17 or (maVer == 17 and miVer > 5) or (maVer == 17 and miVer == 5 and reVer >= 0):
+            miVer = match.group(2)
+            # use x86_64-slc5-gcc43-opt for 17.X.0 or higher                
+            if maVer > 17 or (maVer == 17 and miVer == 'X'):
                 return 'x86_64-slc5-gcc43-opt'
-            # use i686-slc5-gcc43-opt for 15.6.3 or higher
-            if maVer > 15 or (maVer == 15 and miVer > 6) or (maVer == 15 and miVer == 6 and reVer >= 3):
-                return 'i686-slc5-gcc43-opt'
-            # use i686-slc4-gcc34-opt by default
-            return 'i686-slc4-gcc34-opt'
-        return None
-    except:
-        return None
+            # use i686-slc5-gcc43-opt by default
+            return 'i686-slc5-gcc43-opt'
+    # get default cmtconfig according to Atlas release
+    if athenaVer != None:
+        # remove prefix
+        verStr = re.sub('^[^-]+-','',athenaVer)
+        # get cmtconfig list
+        cmtConfigList = Client.getCmtConfigList(athenaVer,verbose)
+        if len(cmtConfigList) == 1:
+            # no choice
+            return cmtConfigList[0]
+        elif len(cmtConfigList) > 1:
+            # use local cmtconfig if it is available
+            if os.environ['CMTCONFIG'] in cmtConfigList:
+                return os.environ['CMTCONFIG']
+            # use the latest one
+            cmtConfigList.sort()
+            return cmtConfigList[-1]
+        # extract version numbers
+        match = re.search('(\d+)\.(\d+)\.(\d+)',verStr)
+        if match == None:
+            return None
+        # major,miner,rev
+        maVer = int(match.group(1))
+        miVer = int(match.group(2))
+        reVer = int(match.group(3))
+        # use x86_64-slc5-gcc43-opt for 17.5.0 or higher
+        if maVer > 17 or (maVer == 17 and miVer > 5) or (maVer == 17 and miVer == 5 and reVer >= 0):
+            return 'x86_64-slc5-gcc43-opt'
+        # use i686-slc5-gcc43-opt for 15.6.3 or higher
+        if maVer > 15 or (maVer == 15 and miVer > 6) or (maVer == 15 and miVer == 6 and reVer >= 3):
+            return 'i686-slc5-gcc43-opt'
+        # use i686-slc4-gcc34-opt by default
+        return 'i686-slc4-gcc34-opt'
+    return None
     
 
 # check CMTCONFIG

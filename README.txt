@@ -22,6 +22,7 @@ pathena -h
 ** Release Note
 
 current
+  * fixed getCmtConfig to check with installedSW	
   * set 12h to maxCpuCount in pathena and prun by default
   * set --useNewTRF by default in pathena
 

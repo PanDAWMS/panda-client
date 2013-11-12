@@ -993,11 +993,13 @@ if options.athenaTag != '':
         athenaVer = 'Atlas-dev'
 
 # set CMTCONFIG
-options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
+options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig,verbose=options.verbose)
 
 # check CMTCONFIG
 if not AthenaUtils.checkCmtConfig(retA['cmtConfig'],options.cmtConfig,options.nobuild):
     sys.exit(EC_CMT)
+
+tmpLog.info('using CMTCONFIG=%s' % options.cmtConfig)
 
 # get run directory
 # remove special characters                    
