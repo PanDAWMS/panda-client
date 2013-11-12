@@ -115,7 +115,8 @@ optP.add_option('--skipScan',action='store_const',const=True,dest='skipScan',def
                 help='Skip LFC lookup at job submission')
 optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
                 help='Required memory size in MB. e.g., for 1GB --memory 1024')
-optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=defaultMaxCpuCount,type='int',
+#optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=defaultMaxCpuCount,type='int',
+optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type='int',
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--safetySize',action='store',dest='safetySize',default=500,type='int',
                 help='Specify the expected size of input sandbox in MB. 500 by default')
@@ -595,7 +596,7 @@ if options.maxCpuCount > Client.maxCpuCountLimit:
     sys.exit(EC_Config)
 
 # give warning for maxCpuCount
-PsubUtils.giveWarningForMaxCpuCount(defaultMaxCpuCount,options.maxCpuCount,tmpLog)
+#PsubUtils.giveWarningForMaxCpuCount(defaultMaxCpuCount,options.maxCpuCount,tmpLog)
 
 # create tmp dir
 if options.tmpDir == '':

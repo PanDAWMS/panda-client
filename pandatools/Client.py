@@ -163,6 +163,7 @@ class _Curl:
                 data['account'] = os.environ['RUCIO_ACCOUNT']
             if os.environ.has_key('RUCIO_APPID'):    
                 data['appid'] = os.environ['RUCIO_APPID']
+            data['client_version'] = '2.4.1'
         # data
         strData = ''
         for key in data.keys():
@@ -219,6 +220,7 @@ class _Curl:
                 data['account'] = os.environ['RUCIO_ACCOUNT']
             if os.environ.has_key('RUCIO_APPID'):    
                 data['appid'] = os.environ['RUCIO_APPID']
+            data['client_version'] = '2.4.1'
         # data
         strData = ''
         for key in data.keys():
