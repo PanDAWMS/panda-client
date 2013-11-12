@@ -20,6 +20,9 @@ import types
 defaultCloud = None
 defaultSite  = 'AUTO'
 
+# default maxCpuCount
+defaultMaxCpuCount = 12*60*60
+
 # max lookup for cross site option
 maxCrossSite = 50
 
@@ -112,6 +115,7 @@ optP.add_option('--skipScan',action='store_const',const=True,dest='skipScan',def
                 help='Skip LFC lookup at job submission')
 optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
                 help='Required memory size in MB. e.g., for 1GB --memory 1024')
+#optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=defaultMaxCpuCount,type='int',
 optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type='int',
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--safetySize',action='store',dest='safetySize',default=500,type='int',
@@ -590,6 +594,9 @@ if curDir != options.workDir:
 if options.maxCpuCount > Client.maxCpuCountLimit:
     tmpLog.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
     sys.exit(EC_Config)
+
+# give warning for maxCpuCount
+#PsubUtils.giveWarningForMaxCpuCount(defaultMaxCpuCount,options.maxCpuCount,tmpLog)
 
 # create tmp dir
 if options.tmpDir == '':

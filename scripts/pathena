@@ -44,6 +44,9 @@ defaultCloud = None
 # max lookup for cross site option
 maxCrossSite = 50
 
+# default maxCpuCount
+defaultMaxCpuCount = 12*60*60
+
 usage = """%prog [options] <jobOption1.py> [<jobOption2.py> [...]]
 
 '%prog --help' prints a summary of the options
@@ -122,8 +125,10 @@ optP.add_option('--eventPickStagedDS',action='store',dest='eventPickStagedDS',de
                 type='string', help='--eventPick options create a temporary dataset to stage-in interesting files when those files are available only on TAPE, and then a stage-in request is automatically sent to DaTRI. Once DaTRI transfers the dataset to DISK you can use the dataset as an input using this option')
 optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
                 type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
-optP.add_option('--useNewTRF', action='store_const',const=True,dest='useNewTRF',default=False,
+optP.add_option('--useNewTRF', action='store_const',const=True,dest='useNewTRF',default=True,
                 help="Use the original filename with the attempt number for input in --trf when there is only one input, which follows the globbing scheme of new transformation framework")
+optP.add_option('--useOldTRF', action='store_const',const=True,dest='useOldTRF',default=False,
+                help="Remove the attempt number from the original filename for input in --trf when there is only one input")
 optP.add_option('--useTagInTRF', action='store_const',const=True,dest='useTagInTRF',default=False,
                 help="Set this option if you use TAG in --trf. If you run normal jobO this option is not required")
 optP.add_option('--tagStreamRef',action='store',dest='tagStreamRef',default='',
@@ -224,6 +229,8 @@ optP.add_option('--useAMIAutoConf',action='store_const',const=True,dest='useAMIA
                 help='Use AMI for AutoConfiguration')
 optP.add_option('--memory', action='store', dest='memory',  default=-1,
                 type='int',    help='Required memory size in MB. e.g., for 1GB --memory 1024')
+# FIXME
+#optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=defaultMaxCpuCount, type='int',
 optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=-1, type='int',
                 help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
 optP.add_option('--official', action='store_const', const=True, dest='official',  default=False,
@@ -473,6 +480,10 @@ if options.panda_cacheSrvURL != '':
 
 # version check
 PsubUtils.checkPandaClientVer(options.verbose)
+
+# use old trf parameterization
+if options.useOldTRF:
+    options.useNewTRF = False
 
 # noCompile uses noBuild stuff
 if options.noCompile:
@@ -897,6 +908,10 @@ if options.maxCpuCount > Client.maxCpuCountLimit:
     tmpLog.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
     sys.exit(EC_Config)
     
+# give warning for maxCpuCount
+# FIXME
+#PsubUtils.giveWarningForMaxCpuCount(defaultMaxCpuCount,options.maxCpuCount,tmpLog)
+
 # create tmp dir
 if options.tmpDir == '':
     tmpDir = '%s/%s' % (currentDir,MiscUtils.wrappedUuidGen())
@@ -981,11 +996,13 @@ if options.athenaTag != '':
         athenaVer = 'Atlas-dev'
 
 # set CMTCONFIG
-options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
+options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig,verbose=options.verbose)
 
 # check CMTCONFIG
 if not AthenaUtils.checkCmtConfig(retA['cmtConfig'],options.cmtConfig,options.nobuild):
     sys.exit(EC_CMT)
+
+tmpLog.info('using CMTCONFIG=%s' % options.cmtConfig)
 
 # get run directory
 # remove special characters                    

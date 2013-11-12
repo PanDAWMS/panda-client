@@ -163,6 +163,7 @@ class _Curl:
                 data['account'] = os.environ['RUCIO_ACCOUNT']
             if os.environ.has_key('RUCIO_APPID'):    
                 data['appid'] = os.environ['RUCIO_APPID']
+            data['client_version'] = '2.4.1'
         # data
         strData = ''
         for key in data.keys():
@@ -219,6 +220,7 @@ class _Curl:
                 data['account'] = os.environ['RUCIO_ACCOUNT']
             if os.environ.has_key('RUCIO_APPID'):    
                 data['appid'] = os.environ['RUCIO_APPID']
+            data['client_version'] = '2.4.1'
         # data
         strData = ''
         for key in data.keys():
@@ -2927,6 +2929,32 @@ def getCachePrefixes(verbose):
         print output
         errType,errValue = sys.exc_info()[:2]
         print "ERROR: getCachePrefixes : %s %s" % (errType,errValue)
+        sys.exit(EC_Failed)
+
+
+# get list of cmtConfig
+def getCmtConfigList(athenaVer,verbose):
+    # instantiate curl
+    curl = _Curl()
+    curl.verbose = verbose
+    # execute
+    url = baseURL + '/getCmtConfigList'
+    data = {}
+    data['relaseVer'] = athenaVer
+    status,output = curl.get(url,data)
+    # failed
+    if status != 0:
+        print output
+        errStr = "cannot get the list of cmtconfig for %s" % athenaVer
+        tmpLog.error(errStr)
+        sys.exit(EC_Failed)
+    # return
+    try:
+        return pickle.loads(output)
+    except:
+        print output
+        errType,errValue = sys.exc_info()[:2]
+        print "ERROR: getCmtConfigList : %s %s" % (errType,errValue)
         sys.exit(EC_Failed)
 
 
