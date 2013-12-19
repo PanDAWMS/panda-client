@@ -337,6 +337,81 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
     ddata.jobType = pandaJob.processingType
     # the number of rebrokerage actions
     ddata.nRebro = pandaJob.specialHandling.split(',').count('rebro')
+    # jediTaskID
+    ddata.jediTaskID = -1
+    # return
+    return ddata
+
+
+
+# convert JediTask to DB representation
+def convertJTtoD(jediTaskDict,localJob=None):
+    statusOnly = False
+    if localJob != None:
+        # update status only 
+        ddata = localJob
+        statusOnly = True
+    else:
+        # create new spec
+        ddata = LocalJobSpec()
+    # task status
+    ddata.taskStatus = jediTaskDict['status']
+    # statistic
+    ddata.jobStatus = jediTaskDict['statistics']
+    # PandaID
+    ddata.PandaID = ''
+    for tmpPandaID in jediTaskDict['PandaID']:
+        ddata.PandaID += '%s,' % tmpPandaID
+    ddata.PandaID = ddata.PandaID[:-1]
+    # merge status
+    if not 'mergeStatus' in jediTaskDict or jediTaskDict['mergeStatus'] == None:
+        ddata.mergeJobStatus = 'NA'
+    else:
+        ddata.mergeJobStatus = jediTaskDict['mergeStatus']
+    # merge PandaID
+    ddata.mergeJobID = ''
+    for tmpPandaID in jediTaskDict['mergePandaID']:
+        ddata.mergeJobID += '%s,' % tmpPandaID
+    ddata.mergeJobID = ddata.mergeJobID[:-1]
+    # return if update status only
+    if statusOnly:
+        return ddata
+    # release
+    ddata.releaseVar = jediTaskDict['transUses']
+    # cache
+    tmpCache = re.sub('^[^-]+-*','',jediTaskDict['transHome'])
+    tmpCache = re.sub('_','-',tmpCache)
+    ddata.cacheVar = tmpCache
+    # job parameters
+    ddata.jobParams = jediTaskDict['cliParams']
+    # datasets
+    ddata.inDS = jediTaskDict['inDS']
+    ddata.outDS = jediTaskDict['outDS']
+    # job name
+    ddata.jobName = jediTaskDict['taskName']
+    # creation time
+    ddata.creationTime = jediTaskDict['creationDate']
+    # job type
+    ddata.jobType = jediTaskDict['processingType']
+    # site
+    ddata.site = jediTaskDict['site']
+    # cloud 
+    ddata.cloud = jediTaskDict['cloud']
+    # job ID
+    ddata.JobID = jediTaskDict['reqID']
+    # retry ID
+    ddata.retryID = 0
+    # provenance ID
+    ddata.provenanceID = 0
+    # groupID
+    ddata.groupID = jediTaskDict['reqID']
+    # jediTaskID
+    ddata.jediTaskID = jediTaskDict['jediTaskID']
+    # IDs for retry 
+    ddata.retryJobsetID = -1
+    ddata.parentJobsetID = -1
+    # the number of rebrokerage actions
+    ddata.nRebro = 0
     # return
     return ddata
 
@@ -356,6 +431,7 @@ def initialzieDB(verbose=False,restoreDB=False):
 
 # insert job info to DB
 def insertJobDB(job,verbose=False):
+    tmpLog = PLogger.getPandaLogger()
     # set update time
     job.lastUpdate = datetime.datetime.utcnow()
     # make sql
@@ -380,7 +456,7 @@ def updateJobDB(job,verbose=False,updateTime=None):
         job.lastUpdate = datetime.datetime.utcnow()
     status,out = pdbProxy.execute(sql1)
     if not status:
-        raise RuntimeError,"failed to insert job"
+        raise RuntimeError,"failed to update job"
 
 
 # set retryID

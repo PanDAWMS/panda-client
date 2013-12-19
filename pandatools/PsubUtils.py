@@ -1,12 +1,18 @@
-import re
 import os
+
+if os.environ.has_key('PANDA_DEBUG'):
+    print "DEBUG : importing %s" % __name__
+
+import re
 import sys
 import time
 import random
 import commands
 import urllib
 import pickle
+import datetime
 import tempfile
+import gzip
 
 import Client
 import MyproxyUtils
@@ -16,45 +22,93 @@ import AthenaUtils
 
 # error code
 EC_Config    = 10
+EC_Post      = 11
+
+
+cacheProxyStatus = None
+cacheVomsStatus = None
+cacheActimeStatus = None
+cacheVomsFQAN = ''
+cacheActime = ''
+cacheLastUpdate = None
+
+
+# reset cache values
+def resetCacheValues():
+    global cacheProxyStatus
+    global cacheVomsStatus
+    global cacheActimeStatus
+    global cacheVomsFQAN
+    global cacheActime
+    global cacheLastUpdate
+    timeNow = datetime.datetime.utcnow()
+    if cacheLastUpdate == None or (timeNow-cacheLastUpdate) > datetime.timedelta(minutes=60):
+        cacheLastUpdate = timeNow
+        cacheProxyStatus = None
+        cacheVomsStatus = None
+        cacheActimeStatus = None
+        cacheVomsFQAN = ''
+        cacheActime = ''
+
 
 
 # check proxy
-def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=None):
+def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=None,useCache=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # check grid-proxy
     gridSrc = Client._getGridSrc()
     if gridSrc == False:
         sys.exit(EC_Config)
+    # reset cache values
+    if useCache:
+        resetCacheValues()
+    global cacheProxyStatus
+    global cacheVomsStatus
+    global cacheActimeStatus
+    global cacheVomsFQAN
+    global cacheActime
     # use grid-proxy-info first becaus of bug #36573 of voms-proxy-info
-    com = '%s grid-proxy-info -e' % gridSrc
-    if verbose:
-        tmpLog.debug(com)
-    status,out = commands.getstatusoutput(com)
-    if verbose:
-        tmpLog.debug(status % 255)
-        tmpLog.debug(out)
-    # check VOMS extension
-    vomsFQAN = ''
-    if status == 0:
-        # with VOMS extension 
-        com = '%s voms-proxy-info -fqan -exists' % gridSrc    
+    if useCache and cacheProxyStatus == 0:
+        status,out = 0,''
+    else:
+        com = '%s grid-proxy-info -e' % gridSrc
         if verbose:
             tmpLog.debug(com)
         status,out = commands.getstatusoutput(com)
         if verbose:
             tmpLog.debug(status % 255)
             tmpLog.debug(out)
+        cacheProxyStatus = status
+    # check VOMS extension
+    vomsFQAN = ''
+    if status == 0:
+        # with VOMS extension 
+        if useCache and cacheVomsStatus == 0:
+            status,out = 0,cacheVomsFQAN
+        else:
+            com = '%s voms-proxy-info -fqan -exists' % gridSrc    
+            if verbose:
+                tmpLog.debug(com)
+            status,out = commands.getstatusoutput(com)
+            if verbose:
+                tmpLog.debug(status % 255)
+                tmpLog.debug(out)
+            cacheVomsStatus,cacheVomsFQAN = status,out
         if status == 0:
             vomsFQAN = out
             # check actime
-            com = '%s voms-proxy-info -actimeleft' % gridSrc    
-            if verbose:
-                tmpLog.debug(com)
-            acstatus,acout = commands.getstatusoutput(com)
-            if verbose:
-                tmpLog.debug(acstatus % 255)
-                tmpLog.debug(acout)
+            if useCache and cacheActimeStatus == 0:
+                acstatus,acout = 0,cacheActime
+            else:
+                com = '%s voms-proxy-info -actimeleft' % gridSrc    
+                if verbose:
+                    tmpLog.debug(com)
+                acstatus,acout = commands.getstatusoutput(com)
+                if verbose:
+                    tmpLog.debug(acstatus % 255)
+                    tmpLog.debug(acout)
+                cacheActimeStatus,cacheActime = acstatus,acout
             if acstatus == 0:
                 # get actime
                 acTimeLeft = 0
@@ -569,17 +623,26 @@ def uploadProxy(site,myproxy,gridPassPhrase,pilotownerDN,verbose=False):
 # convet sys.argv to string
 def convSysArgv():
     # job params
-    paramStr = ''
+    paramStr = sys.argv[0].split('/')[-1]
     for item in sys.argv[1:]:
-        match = re.search('(\*| |\'|=)',item)
+        # remove option
+        match = re.search('(^-[^=]+=)(.+)',item)
+        noSpace = False
+        if match != None:
+            paramStr += ' %s' % match.group(1)
+            item = match.group(2)
+            noSpace = True
+        if not noSpace:
+            paramStr += ' '
+        match = re.search('(\*| |\')',item)
         if match == None:
             # normal parameters
-            paramStr += '%s ' % item
+            paramStr += '%s' % item
         else:
             # quote string
-            paramStr += '"%s" ' % item
+            paramStr += '"%s"' % item
     # return
-    return paramStr[:-1]
+    return paramStr
 
 
 # compare version
@@ -2113,6 +2176,88 @@ def getDsListCheckedForBrokerage(dsUsedDsMap):
     return retStr
 
 
+# convert param string to JEDI params
+def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding):
+    # list of place holders for input 
+    inList = ['IN','CAVIN','MININ','LOMBIN','HIMBIN','BHIN','BGIN']
+    # place holder for output
+    outHolder = 'SN'
+    # place holders with extension
+    exList = ['RNDMSEED','DBR']  
+    # mapping of client and JEDI place holders
+    holders = {'RNDMSEED'  : 'RNDM',
+               'DBR'       : 'DB',
+               'SKIPEVENTS': 'SKIPEVENTS',
+               'FIRSTEVENT': None,
+               'MAXEVENTS' : None
+               }
+    # replace %XYZ with ${XYZ}
+    for tmpH in inList:
+        encStr = re.sub('%'+tmpH,'${'+tmpH+'}',encStr)
+    # replace %XYZ with ${newXYZ}
+    for newH,oldH in holders.iteritems():
+        # skip JEDI-only place holders
+        if oldH == None:
+            continue
+        oldH = '%' + oldH
+        # with extension
+        if newH in exList:
+            newH = '${' + newH + '\g<ext>}'
+            oldH += '(?P<ext>:[^ \'\"\}]+)'
+        else:
+            newH = '${' + newH + '}'
+        encStr = re.sub(oldH,newH,encStr)
+    # replace %OUT to outDS${SN}
+    encStr = re.sub('%OUT',outNamePrefix+'.${'+outHolder+'}',encStr)    
+    # make pattern for split
+    patS  = "("
+    for tmpH in holders.keys() + inList + [outHolder]:
+        patS += '[^=,\"\' \(\{;]*\$\{' + tmpH + '[^\}]*\}[^,\"\' \)\};]*|'
+    patS  = patS[:-1]
+    patS += ")"
+    # split
+    tmpItems = re.split(patS,encStr)
+    # make parameters
+    jobParams = []
+    for tmpItem in tmpItems:
+        # check if a place holder
+        matchP = re.search('\$\{([^:\}]+)',tmpItem)
+        if re.search(patS,tmpItem) != None and matchP != None:
+            tmpHolder = matchP.group(1)
+            # make dict element
+            tmpDict = {'type':'template'}
+            # set attributes
+            if tmpHolder in inList:
+                if encode:
+                    tmpDict['value'] = '${' + tmpHolder + '/E}' 
+                else:
+                    tmpDict['value'] = tmpItem
+                tmpDict['param_type'] = 'input'
+                tmpDict['dataset'] = inputMap[tmpHolder]
+            elif tmpHolder == outHolder:
+                tmpDict['value'] = tmpItem
+                tmpDict['param_type'] = 'output'
+                tmpDict['dataset'] = outNamePrefix + tmpItem.split('}')[-1] + '/'
+                tmpDict['container'] = tmpDict['dataset']
+            else:
+                tmpDict['value'] = tmpItem
+                tmpDict['param_type'] = 'number'
+        else:
+            # constant
+            tmpDict = {'type':'constant'}
+            if encode:
+                tmpDict['value'] = urllib.quote(tmpItem)
+            else:
+                tmpDict['value'] = tmpItem
+        # no padding
+        if not padding:
+            tmpDict['padding'] = False
+        # append
+        jobParams.append(tmpDict)
+    # return
+    return jobParams
+
+
 # give warning for maxCpuCount
 def giveWarningForMaxCpuCount(defMaxCpuCount,maxCpuCount,tmpLog):
     # only when the default value is used
@@ -2120,3 +2265,56 @@ def giveWarningForMaxCpuCount(defMaxCpuCount,maxCpuCount,tmpLog):
         msg  = 'Time limit for each subjob is set to %ssec. ' % maxCpuCount
         msg += 'Use --maxCpuCount if your job requires longer execution time.' 
         tmpLog.warning(msg)
+
+
+# split comma-concatenated list items
+def splitCommaConcatenatedItems(oldList):
+    newList = []
+    for oldItem in oldList:
+        temItems = oldItem.split(',')
+        for tmpItem in temItems:
+            tmpItem = tmpItem.strip()
+            # remove empty
+            if tmpItem == '':
+                continue
+            if not tmpItem in newList:
+                newList.append(tmpItem)
+    return newList
+
+
+# upload gzipped file
+def uploadGzippedFile(origFileName,currentDir,tmpLog,delFilesOnExit,nosubmit,verbose):
+    # open original file
+    if origFileName.startswith('/'):
+        # absolute path 
+	tmpIn = open(origFileName)
+    else:
+        # relative path
+        tmpIn = open('%s/%s' % (currentDir,origFileName))
+    # use unique name for gzip
+    newFileName = 'pre_%s.dat' % MiscUtils.wrappedUuidGen()
+    gzipFullPath = '%s/%s.gz' % (currentDir,newFileName)
+    delFilesOnExit.append(gzipFullPath)
+    # make gzip
+    tmpOut = gzip.open(gzipFullPath,'wb')
+    tmpOut.writelines(tmpIn)
+    tmpOut.close()
+    tmpIn.close()
+    # upload
+    if not nosubmit:
+        tmpLog.info("uploading data file for preprocessing")
+        status,out = Client.putFile(gzipFullPath,verbose,useCacheSrv=True,reuseSandbox=False)
+        if status != 0 or out != 'True':
+            # failed
+            print out
+            tmpLog.error("Failed with %s" % status)
+            sys.exit(EC_Post)
+    # delete
+    os.remove(gzipFullPath)
+    # return new filename
+    return newFileName
+
+
+
+if os.environ.has_key('PANDA_DEBUG'):
+    print "DEBUG : imported %s" % __name__    

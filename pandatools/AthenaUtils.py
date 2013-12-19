@@ -1335,175 +1335,60 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
 
 
 # convert runConfig to outMap
-def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,original_outDS='',descriptionInLFN=''):
-    from taskbuffer.FileSpec import FileSpec    
-    # use global to increment index
-    global indexHIST
-    global indexRDO
-    global indexESD
-    global indexAOD
-    global indexTAG
-    global indexTAGX    
-    global indexStream1
-    global indexStream2
-    global indexBS
-    global indexSelBS
-    global indexNT
-    global indexTHIST
-    global indexAANT
-    global indexIROOT
-    global indexEXT
-    global indexStreamG
-    global indexMeta
-    global indexMS
+def convertConfToOutput(runConfig,extOutFile,original_outDS):
+    outMap = {}
+    paramList = []
     # add IROOT
     if not outMap.has_key('IROOT'):
         outMap['IROOT'] = []
     # remove /
     outDSwoSlash = re.sub('/$','',original_outDS)
+    outDsNameBase = outDSwoSlash
     tmpMatch = re.search('^([^\.]+)\.([^\.]+)\.',original_outDS)
     if tmpMatch != None and original_outDS.endswith('/'):
         outDSwoSlash = '%s.%s.' % (tmpMatch.group(1),tmpMatch.group(2))
-        if globalSerialnumber == None:
-            if outDSwoSlash.startswith('group'):
-                outDSwoSlash += "$GROUPJOBSN_"
-            outDSwoSlash += '$JOBSETID'
-        else:
-            outDSwoSlash += globalSerialnumber
-        if descriptionInLFN != '':
-            outDSwoSlash += '.%s' % descriptionInLFN
+        outDSwoSlash += '$JOBSETID'
     # start conversion
     if runConfig.output.outNtuple:
-        indexNT += 1
         for sName in runConfig.output.outNtuple:
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.root' % (outDSwoSlash,sName,indexNT)                
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexNT)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_%s' % sName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
+            lfn  = '%s.%s._${SN/P}.root' % (outDSwoSlash,sName)
+            tmpSuffix = '_%s' % sName
+            dataset = outDsNameBase + tmpSuffix + '/'
             if not outMap.has_key('ntuple'):
                 outMap['ntuple'] = []
-            outMap['ntuple'].append((sName,file.lfn))
+            outMap['ntuple'].append((sName,lfn))
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outHist:
-        indexHIST += 1
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.hist._%05d.root' % (outDSwoSlash,indexHIST)            
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.hist._%05d.root' % (jobR.destinationDBlock,indexHIST)
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_HIST'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:                    
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['hist'] = file.lfn
+        lfn  = '%s.hist._${SN/P}.root' % outDSwoSlash
+        tmpSuffix = '_HIST'
+        dataset = outDsNameBase + tmpSuffix + '/'
+        outMap['hist'] = lfn
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outRDO:
-        indexRDO += 1        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.RDO._%05d.pool.root' % (outDSwoSlash,indexRDO)                    
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.RDO._%05d.pool.root' % (jobR.destinationDBlock,indexRDO)        
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_RDO'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['IROOT'].append((runConfig.output.outRDO,file.lfn))        
+        lfn  = '%s.RDO._${SN/P}.pool.root' % outDSwoSlash
+        tmpSuffix = '_RDO'
+        dataset = outDsNameBase + tmpSuffix + '/'
+        outMap['IROOT'].append((runConfig.output.outRDO,lfn))
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)        
     if runConfig.output.outESD:
-        indexESD += 1        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.ESD._%05d.pool.root' % (outDSwoSlash,indexESD)        
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.ESD._%05d.pool.root' % (jobR.destinationDBlock,indexESD)        
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_ESD'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['IROOT'].append((runConfig.output.outESD,file.lfn))
+        lfn  = '%s.ESD._${SN/P}.pool.root' % outDSwoSlash
+        tmpSuffix = '_ESD'
+        dataset = outDsNameBase + tmpSuffix + '/'
+        outMap['IROOT'].append((runConfig.output.outESD,lfn))
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outAOD:
-        indexAOD += 1                
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.AOD._%05d.pool.root' % (outDSwoSlash,indexAOD)        
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.AOD._%05d.pool.root' % (jobR.destinationDBlock,indexAOD)        
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_AOD'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['IROOT'].append((runConfig.output.outAOD,file.lfn))
+        lfn  = '%s.AOD._${SN/P}.pool.root' % outDSwoSlash
+        tmpSuffix = '_AOD'
+        dataset = outDsNameBase + tmpSuffix + '/'
+        outMap['IROOT'].append((runConfig.output.outAOD,lfn))
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outTAG:
-        indexTAG += 1                        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.TAG._%05d.coll.root' % (outDSwoSlash,indexTAG)                
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.TAG._%05d.coll.root' % (jobR.destinationDBlock,indexTAG)                
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_TAG'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['TAG'] = file.lfn
+        lfn  = '%s.TAG._${SN/P}.coll.root' % outDSwoSlash
+        tmpSuffix = '_TAG'
+        dataset = outDsNameBase + tmpSuffix + '/'
+        outMap['TAG'] = lfn
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outAANT:
-        indexAANT += 1
         sNameList = []
         fsNameMap = {}
         for aName,sName,fName in runConfig.output.outAANT:
@@ -1513,267 +1398,102 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
                 sName = fsNameMap[fName]
             else:
                 fsNameMap[fName] = sName
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.root' % (outDSwoSlash,sName,indexAANT)       
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexAANT)       
-                file.dataset = jobR.destinationDBlock        
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_%s' % sName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
+            lfn  = '%s.%s._${SN/P}.root' % (outDSwoSlash,sName)       
+            tmpSuffix = '_%s' % sName
+            dataset = outDsNameBase + tmpSuffix + '/'
             if not sName in sNameList:
                 sNameList.append(sName)
-                jobR.addFile(file)
             if not outMap.has_key('AANT'):
                 outMap['AANT'] = []
-            outMap['AANT'].append((aName,realStreamName,file.lfn))
+            outMap['AANT'].append((aName,realStreamName,lfn))
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outTHIST:
-        indexTHIST += 1
         for sName in runConfig.output.outTHIST:
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.root' % (outDSwoSlash,sName,indexTHIST)
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexTHIST)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_%s' % sName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
+            lfn  = '%s.%s._${SN/P}.root' % (outDSwoSlash,sName)
+            tmpSuffix = '_%s' % sName
+            dataset = outDsNameBase + tmpSuffix + '/'
             if not outMap.has_key('THIST'):
                 outMap['THIST'] = []
-            outMap['THIST'].append((sName,file.lfn))
+            outMap['THIST'].append((sName,lfn))
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outIROOT:
-        indexIROOT += 1
         for sIndex,sName in enumerate(runConfig.output.outIROOT):
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.iROOT%s._%05d.%s' % (outDSwoSlash,sIndex,indexIROOT,sName)
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.iROOT%s._%05d.%s' % (jobR.destinationDBlock,sIndex,indexIROOT,sName)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_iROOT%s' % sIndex
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
+            lfn  = '%s.iROOT%s._${SN/P}.%s' % (outDSwoSlash,sIndex,sName)
+            tmpSuffix = '_iROOT%s' % sIndex
+            dataset = outDsNameBase + tmpSuffix + '/'
             if not outMap.has_key('IROOT'):
                 outMap['IROOT'] = []
-            outMap['IROOT'].append((sName,file.lfn))
+            outMap['IROOT'].append((sName,lfn))
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if extOutFile:
-        indexEXT += 1
         for sIndex,sName in enumerate(extOutFile):
             # change * to X and add .tgz
             origSName = sName
             if sName.find('*') != -1:
                 sName = sName.replace('*','XYZ')
                 sName = '%s.tgz' % sName
-            file = FileSpec()
-            file.type = 'output'
             tmpExtStreamName = getExtendedExtStreamName(sIndex,sName,False)
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.%s' % (outDSwoSlash,tmpExtStreamName,indexEXT,sName)
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.%s' % (jobR.destinationDBlock,tmpExtStreamName,indexEXT,sName)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpExtStreamName = getExtendedExtStreamName(sIndex,sName,True)
-                tmpSuffix = '_%s' % tmpExtStreamName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
+            lfn  = '%s.%s._${SN/P}.%s' % (outDSwoSlash,tmpExtStreamName,sName)
+            tmpSuffix = '_%s' % tmpExtStreamName
+            dataset = outDsNameBase + tmpSuffix + '/'
             if not outMap.has_key('IROOT'):
                 outMap['IROOT'] = []
-            outMap['IROOT'].append((origSName,file.lfn))
+            outMap['IROOT'].append((origSName,lfn))
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outTAGX:
-        indexTAGX += 1
         for sName,oName in runConfig.output.outTAGX:
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.%s' % (outDSwoSlash,sName,indexTAGX,oName)
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.%s' % (jobR.destinationDBlock,sName,indexTAGX,oName)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_%s' % sName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
+            lfn  = '%s.%s._${SN/P}.%s' % (outDSwoSlash,sName,oName)
+            tmpSuffix = '_%s' % sName
+            dataset = outDsNameBase + tmpSuffix + '/'
             if not outMap.has_key('IROOT'):
                 outMap['IROOT'] = []
-            outMap['IROOT'].append((oName,file.lfn))
+            outMap['IROOT'].append((oName,lfn))
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outStream1:
-        indexStream1 += 1                                        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.Stream1._%05d.pool.root' % (outDSwoSlash,indexStream1)
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.Stream1._%05d.pool.root' % (jobR.destinationDBlock,indexStream1)
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_Stream1'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['IROOT'].append((runConfig.output.outStream1,file.lfn))                
+        lfn  = '%s.Stream1._${SN/P}.pool.root' % outDSwoSlash
+        tmpSuffix = '_Stream1'
+        dataset = outDsNameBase + tmpSuffix + '/'
+        outMap['IROOT'].append((runConfig.output.outStream1,lfn))
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)                
     if runConfig.output.outStream2:
-        indexStream2 += 1                                        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.Stream2._%05d.pool.root' % (outDSwoSlash,indexStream2)
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.Stream2._%05d.pool.root' % (jobR.destinationDBlock,indexStream2)
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_Stream2'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['IROOT'].append((runConfig.output.outStream2,file.lfn))
+        lfn  = '%s.Stream2._${SN/P}.pool.root' % outDSwoSlash
+        tmpSuffix = '_Stream2'
+        dataset = outDsNameBase + tmpSuffix + '/'
+        outMap['IROOT'].append((runConfig.output.outStream2,lfn))
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outBS:
-        indexBS += 1                                        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.BS._%05d.data' % (outDSwoSlash,indexBS)
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.BS._%05d.data' % (jobR.destinationDBlock,indexBS)
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_BS'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['BS'] = file.lfn
+        lfn  = '%s.BS._${SN/P}.data' % outDSwoSlash
+        tmpSuffix = '_BS'
+        dataset = outDsNameBase + tmpSuffix + '/'
+        outMap['BS'] = lfn
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outSelBS:
-        indexSelBS += 1                                        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.%s._%05d.data' % (outDSwoSlash,runConfig.output.outSelBS,indexSelBS)
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.%s._%05d.data' % (jobR.destinationDBlock,runConfig.output.outSelBS,indexSelBS)
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_SelBS'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
+        lfn  = '%s.%s._${SN/P}.data' % (outDSwoSlash,runConfig.output.outSelBS)
+        tmpSuffix = '_SelBS'
+        dataset = outDsNameBase + tmpSuffix + '/'
         if not outMap.has_key('IROOT'):
             outMap['IROOT'] = []
-        outMap['IROOT'].append(('%s.*.data' % runConfig.output.outSelBS,file.lfn))
+        outMap['IROOT'].append(('%s.*.data' % runConfig.output.outSelBS,lfn))
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outStreamG:
-        indexStreamG += 1
         for sName,sOrigFileName in runConfig.output.outStreamG:
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.pool.root' % (outDSwoSlash,sName,indexStreamG)
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.pool.root' % (jobR.destinationDBlock,sName,indexStreamG)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_%s' % sName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
-            outMap['IROOT'].append((sOrigFileName,file.lfn))                
+            lfn  = '%s.%s._${SN/P}.pool.root' % (outDSwoSlash,sName)
+            tmpSuffix = '_%s' % sName
+            dataset = outDsNameBase + tmpSuffix + '/'
+            outMap['IROOT'].append((sOrigFileName,lfn))
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)                
     if runConfig.output.outMeta:
         iMeta = 0
-	indexMeta += 1
         for sName,sAsso in runConfig.output.outMeta:
             foundLFN = ''
             if sAsso == 'None':
                 # non-associated metadata
-                file = FileSpec()
-                file.type = 'output'
-                if original_outDS.endswith('/'):
-                    file.lfn  = '%s.META%s._%05d.root' % (outDSwoSlash,iMeta,indexMeta)
-                    file.dataset = original_outDS
-                else:
-                    file.lfn  = '%s.META%s._%05d.root' % (jobR.destinationDBlock,iMeta,indexMeta)
-                    file.dataset = jobR.destinationDBlock
-                file.destinationDBlock = jobR.destinationDBlock
-                if individualOutDS:
-                    tmpSuffix = '_META%s' % iMeta
-                    if original_outDS.endswith('/'):
-                        file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                    else:
-                        file.dataset += tmpSuffix
-                    file.destinationDBlock += tmpSuffix
-                file.destinationSE = jobR.destinationSE
-                jobR.addFile(file)
+                lfn  = '%s.META%s._${SN/P}.root' % (outDSwoSlash,iMeta)
+                tmpSuffix = '_META%s' % iMeta
+                dataset = outDsNameBase + tmpSuffix + '/'
+                paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
                 iMeta += 1
-                foundLFN = file.lfn
+                foundLFN = lfn
             elif outMap.has_key(sAsso):
                 # Stream1,2
                 foundLFN = outMap[sAsso]
@@ -1804,29 +1524,14 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
                     outMap['Meta'] = []
                 outMap['Meta'].append((sName,foundLFN))
     if runConfig.output.outMS:
-	indexMS += 1
         for sName,sAsso in runConfig.output.outMS:
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.pool.root' % (outDSwoSlash,sName,indexMS)
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.pool.root' % (jobR.destinationDBlock,sName,indexMS)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_%s' % sName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
+            lfn  = '%s.%s._${SN/P}.pool.root' % (outDSwoSlash,sName)
+            tmpSuffix = '_%s' % sName
+            dataset = outDsNameBase + tmpSuffix + '/'
             if not outMap.has_key('IROOT'):
                 outMap['IROOT'] = []
-            outMap['IROOT'].append((sAsso,file.lfn))
+            outMap['IROOT'].append((sAsso,lfn))
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
     if runConfig.output.outUserData:
         for sAsso in runConfig.output.outUserData:
             # look for associated LFN
@@ -1849,26 +1554,11 @@ def convertConfToOutput(runConfig,jobR,outMap,individualOutDS,extOutFile,origina
                 if not outMap.has_key('UserData'):
                     outMap['UserData'] = []
                 outMap['UserData'].append(foundLFN)
-    # log
-    file = FileSpec()
-    if original_outDS.endswith('/'):
-        file.lfn  = '%s._$PANDAID.log.tgz' % outDSwoSlash
-    else:
-        file.lfn  = '%s._$PANDAID.log.tgz' % jobR.destinationDBlock
-    file.type = 'log'
-    if original_outDS.endswith('/'):
-        file.dataset = original_outDS
-    else:
-        file.dataset = jobR.destinationDBlock    
-    file.destinationDBlock = jobR.destinationDBlock
-    if individualOutDS:
-        # use original outDS for log, which guarantees location registration and shadow tracing
-        pass
-    file.destinationSE = jobR.destinationSE
-    jobR.addFile(file)
     # remove IROOT if unnecessary
     if outMap.has_key('IROOT') and outMap['IROOT'] == []:
         del outMap['IROOT'] 
+    # return
+    return outMap,paramList
 
 
 

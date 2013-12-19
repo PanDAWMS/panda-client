@@ -23,6 +23,8 @@ class LocalJobSpec(object):
         'mergeJobStatus': 'VARCHAR(20)',
         'mergeJobID'    : 'TEXT',
         'nRebro'        : 'INTEGER',
+        'jediTaskID'    : 'INTEGER',
+        'taskStatus'    : 'VARCHAR(16)',
         }
     
     _attributes += tuple(appended.keys())
@@ -254,13 +256,25 @@ class LocalJobSpec(object):
 
 
     # make compact values
-    def encodeCompact(self):
+    def encodeCompact(self,includeMerge=False):
         ret = {}
+        if self.isJEDI():
+            if self.taskStatus in ['finished','failed','partial','broken','aborted']:
+                self.dbStatus = 'frozen'
+            else:
+                self.dbStatus = 'running'
+        # job parameters
+        ret['jobParams'] = urllib.quote(self.jobParams)
         # PandaID
         pStr = ''
         sID = None
         eID = None
-        for item in self.PandaID.split(','):
+        tmpPandaIDs = self.PandaID.split(',')
+        if includeMerge:
+            tmpPandaIDs += self.mergeJobID.split(',')    
+        for item in tmpPandaIDs:
+            if item in ['','None']:
+                continue
             # convert to long
             tmpID = long(item)
             # set start/end ID
@@ -286,6 +300,8 @@ class LocalJobSpec(object):
         else:
             pStr += '%s-%s,' % (sID,eID)
         ret['PandaID'] = pStr[:-1]
+        if self.isJEDI():
+            return ret
         # job status
         sStr = ''
         sStatus = None
@@ -318,8 +334,6 @@ class LocalJobSpec(object):
         else:
             sStr += '%s*%s,' % (sStatus,nStatus)
         ret['jobStatus'] = sStr[:-1]
-        # job parameters
-        ret['jobParams'] = urllib.quote(self.jobParams)
         # set merge job status
         if '--mergeOutput' in self.jobParams and not self.jobType in ['usermerge']:
             if not self.mergeJobStatus in ['NA','standby','generating','generated','aborted']:
@@ -360,4 +374,9 @@ class LocalJobSpec(object):
         return ret
     columnNames = classmethod(columnNames)
 
-#  LocalWords:  PandaIDs
+
+    # check if JEDI
+    def isJEDI(self):
+        if self.jediTaskID in [-1,'-1']:
+            return False
+        return True

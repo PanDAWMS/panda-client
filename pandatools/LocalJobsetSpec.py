@@ -9,7 +9,8 @@ import datetime
 class LocalJobsetSpec(object):
     # attributes
     _attributes = ('JobsetID','dbStatus','JobMap','PandaID','inDS','outDS',
-                   'parentSetID','retrySetID','creationTime','jobStatus')
+                   'parentSetID','retrySetID','creationTime','jobStatus',
+                   'jediTaskID','taskStatus')
     # slots
     __slots__ = _attributes + ('flag_showSubstatus','flag_longFormat')
 
@@ -21,6 +22,7 @@ class LocalJobsetSpec(object):
             setattr(self,attr,None)
         self.flag_showSubstatus = ''
         self.flag_longFormat = False
+
 
     # string format
     def __str__(self):
@@ -61,6 +63,9 @@ class LocalJobsetSpec(object):
                     cacheStr = job.cacheVar
                 # common string representation
                 strOut1 += strFormat % ("JobsetID",     self.JobsetID)                
+                if self.isJEDI():
+                    strOut1 += strFormat % ("jediTaskID", self.jediTaskID)
+                    strOut1 += strFormat % ("taskStatus", self.taskStatus)
                 strOut1 += strFormat % ("type",         job.jobType)
                 strOut1 += strFormat % ("release",      relStr)
                 strOut1 += strFormat % ("cache",        cacheStr)
@@ -68,12 +73,16 @@ class LocalJobsetSpec(object):
                 strOut2 += strFormat % ("PandaID",      self.PandaID)
                 strOut2 += strFormat % ("inDS",         self.inDS)
                 strOut2 += strFormat % ("outDS",        self.outDS)
-                strOut2 += strFormat % ("parentSetID",  self.parentSetID)                                
-                strOut2 += strFormat % ("retrySetID",   self.retrySetID)
+                if not self.isJEDI():
+                    strOut2 += strFormat % ("parentSetID",  self.parentSetID)                                
+                    strOut2 += strFormat % ("retrySetID",   self.retrySetID)
                 strOut2 += strFormat % ("creationTime", job.creationTime.strftime('%Y-%m-%d %H:%M:%S'))
                 strOut2 += strFormat % ("lastUpdate",   job.lastUpdate.strftime('%Y-%m-%d %H:%M:%S'))
                 strOut2 += strFormat % ("params",       job.jobParams)
-                strOut2 += strFormat % ("status",       self.dbStatus)
+                if not self.isJEDI():
+                    strOut2 += strFormat % ("status",   self.dbStatus)
+                else:
+                    strOut2 += strFormat % ("inputStatus",'')
             # job status
             statusMap = {}
             for item in job.jobStatus.split(','):
@@ -95,25 +104,28 @@ class LocalJobsetSpec(object):
                 usingMerge = True
             # get PandaIDs for each status 
             pandaIDstatusMap = {}
-            tmpStatusList  = job.jobStatus.split(',')
-            tmpPandaIDList = job.PandaID.split(',')
-            for tmpIndex,tmpPandaID in enumerate(tmpPandaIDList):
-                if tmpIndex < len(tmpStatusList):
-                    tmpStatus = tmpStatusList[tmpIndex]
-                else:
-                    # use unkown for out-range
-                    tmpStatus = 'unknown'
-                # append for all jobs
-                if not totalJobStatus.has_key(tmpStatus):
-                    totalJobStatus[tmpStatus] = 0
-                totalJobStatus[tmpStatus] += 1    
-                # status of interest
-                if not tmpStatus in self.flag_showSubstatus.split(','):
-                    continue
-                # append for individual job
-                if not pandaIDstatusMap.has_key(tmpStatus):
-                    pandaIDstatusMap[tmpStatus] = 'PandaID='
-                pandaIDstatusMap[tmpStatus] += '%s,' % tmpPandaID
+            if not self.isJEDI():
+                tmpStatusList  = job.jobStatus.split(',')
+                tmpPandaIDList = job.PandaID.split(',')
+                for tmpIndex,tmpPandaID in enumerate(tmpPandaIDList):
+                    if tmpIndex < len(tmpStatusList):
+                        tmpStatus = tmpStatusList[tmpIndex]
+                    else:
+                        # use unkown for out-range
+                        tmpStatus = 'unknown'
+                    # append for all jobs
+                    if not totalJobStatus.has_key(tmpStatus):
+                        totalJobStatus[tmpStatus] = 0
+                    totalJobStatus[tmpStatus] += 1    
+                    # status of interest
+                    if not tmpStatus in self.flag_showSubstatus.split(','):
+                        continue
+                    # append for individual job
+                    if not pandaIDstatusMap.has_key(tmpStatus):
+                        pandaIDstatusMap[tmpStatus] = 'PandaID='
+                    pandaIDstatusMap[tmpStatus] += '%s,' % tmpPandaID
+            else:
+                totalJobStatus = statusMap
             statusStr = job.dbStatus
             for tmpStatus,tmpCount in statusMap.iteritems():
                 statusStr += '\n%8s   %10s : %s' % ('',tmpStatus,tmpCount)
@@ -136,6 +148,9 @@ class LocalJobsetSpec(object):
                     totalMerge += nJobs
                 else:
                     totalRun += nJobs
+            # merging
+            if self.isJEDI() and job.mergeJobID != '':
+                totalMerge += len(job.mergeJobID.split(','))
             # job specific string representation
             if self.flag_longFormat:
                 strOutJob += '\n'
@@ -197,6 +212,8 @@ class LocalJobsetSpec(object):
                 self.JobsetID = job.groupID
                 self.JobMap = {}
                 self.creationTime = job.creationTime
+                self.jediTaskID = job.jediTaskID
+                self.taskStatus = job.taskStatus
             self.JobMap[job.JobID] = job
             # get parent/retry
             if not job.retryJobsetID in [0,-1,'0','-1']:
@@ -228,8 +245,10 @@ class LocalJobsetSpec(object):
         for jobID in jobIDs:
             job = self.JobMap[jobID]
             # PandaID
-            pStr += job.encodeCompact()['PandaID']
-            pStr += ','
+            tmpPStr = job.encodeCompact(includeMerge=True)['PandaID']
+            if tmpPStr != '':
+                pStr += tmpPStr
+                pStr += ','
             # inDS and outDS
             try:
                 for tmpItem in str(job.inDS).split(','):
@@ -252,3 +271,10 @@ class LocalJobsetSpec(object):
         self.inDS      = strInDS[:-1]
         self.outDS     = strOutDS[:-1]
         self.jobStatus = sStatus[:-1]
+
+
+    # check if JEDI
+    def isJEDI(self):
+        if self.jediTaskID in [-1,'-1']:
+            return False
+        return True

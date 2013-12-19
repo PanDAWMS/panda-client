@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.5.0
+  * migrated to work with JEDI
+
 0.4.33 (12/13/2013)
   * fixed for new pyAMI
 

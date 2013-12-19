@@ -4,11 +4,16 @@ client methods
 '''
 
 import os
+
+if os.environ.has_key('PANDA_DEBUG'):
+    print "DEBUG : importing %s" % __name__
+
 import re
 import sys
 import time
 import stat
 import types
+import json
 import random
 import urllib
 import struct
@@ -62,6 +67,8 @@ try:
 except:
     pass
 # get panda server's name
+if os.environ.has_key('PANDA_DEBUG'):
+    print "DEBUG : getting panda server's name"
 try:
     getServerURL = baseURL + '/getServer'
     res = urllib.urlopen(getServerURL)
@@ -72,6 +79,8 @@ except:
     print type,value
     print "ERROR : could not getServer from %s" % getServerURL
     sys.exit(EC_Failed)
+if os.environ.has_key('PANDA_DEBUG'):
+    print "DEBUG : getting panda cache server's name"
 # get panda cache server's name
 try:
     getServerURL = baseURLCSRV + '/getServer'
@@ -88,7 +97,8 @@ try:
     socket.setdefaulttimeout(defTimeOut)
 except:
     pass
-
+if os.environ.has_key('PANDA_DEBUG'):
+    print "DEBUG : ready"
 
 # look for a grid proxy certificate
 def _x509():
@@ -539,6 +549,44 @@ def killJobs(ids,verbose=False):
     except:
         type, value, traceBack = sys.exc_info()
         print "ERROR killJobs : %s %s" % (type,value)
+        return EC_Failed,None
+
+
+# kill task
+def killTask(jediTaskID,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/killTask'
+    data = {'jediTaskID':jediTaskID}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR killTask : %s %s" % (type,value)
+        return EC_Failed,None
+
+
+# retry task
+def retryTask(jediTaskID,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/retryTask'
+    data = {'jediTaskID':jediTaskID}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR retryTask : %s %s" % (type,value)
         return EC_Failed,None
 
 
@@ -2428,6 +2476,14 @@ def useDevServer():
     baseURLSUB = 'http://atlpan.web.cern.ch/atlpan'
 
 
+# use INTR server
+def useIntrServer():
+    global baseURL
+    baseURL = 'http://voatlas334.cern.ch:25080/server/panda'
+    global baseURLSSL
+    baseURLSSL = 'https://voatlas334.cern.ch:25443/server/panda'
+
+
 # set server
 def setServer(urls):
     global baseURL
@@ -2645,6 +2701,70 @@ def getJobIDsInTimeRange(timeRange,dn=None,verbose=False):
     except:
         type, value, traceBack = sys.exc_info()
         print "ERROR getJobIDsInTimeRange : %s %s" % (type,value)
+        return EC_Failed,None
+
+
+# get JobIDs and jediTasks in a time range
+def getJobIDsJediTasksInTimeRange(timeRange,dn=None,readOld=False,verbose=False):
+    # get jobIDs
+    if readOld:
+        status,remoteJobIDs = getJobIDsInTimeRange(timeRange,dn,verbose)
+        if status != 0:
+            return status,None,None
+    else:
+        remoteJobIDs = []
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/getJediTasksInTimeRange'
+    data = {'timeRange':timeRange}
+    if dn != None:
+        data['dn'] = dn
+    status,output = curl.post(url,data)
+    if status!=0:
+        print output
+        return status,None,None
+    try:
+        jediTaskDicts = pickle.loads(output)
+        return 0,remoteJobIDs+jediTaskDicts.keys(),jediTaskDicts
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR getJediTasksInTimeRange : %s %s" % (type,value)
+        return EC_Failed,None,None
+
+
+# get details of jedi task
+def getJediTaskDetails(taskDict,fullFlag,withTaskInfo,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/getJediTaskDetails'
+    data = {'jediTaskID':taskDict['jediTaskID'],
+            'fullFlag':fullFlag,
+            'withTaskInfo':withTaskInfo}
+    status,output = curl.post(url,data)
+    if status != 0:
+        print output
+        return status,None
+    try:
+        newDict = pickle.loads(output)
+        # server error
+        if newDict == {}:
+            print "ERROR getJediTaskDetails got empty"
+            return EC_Failed,None
+        # copy 
+        for tmpKey,tmpVal in taskDict.iteritems():
+            newDict[tmpKey] = tmpVal
+        return 0,newDict
+    except:
+        errType,errValue = sys.exc_info()[:2]
+        print "ERROR getJediTaskDetails : %s %s" % (errType,errValue)
         return EC_Failed,None
 
 
@@ -3314,6 +3434,39 @@ def getInconsistentDS(missList,newUsedDsList):
     return inconDSs
 
 
+# submit task
+def insertTaskParams(taskParams,verbose):
+    """Insert task parameters 
+
+       args:
+           taskParams: a dictionary of task parameters
+       returns:
+           status code
+                 0: communication succeeded to the panda server 
+                 255: communication failure
+           tuple of return code and JediTaskID
+                 True: request is processed
+                 False: not processed
+    """     
+    # serialize
+    taskParamsStr = json.dumps(taskParams)
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/insertTaskParams'
+    data = {'taskParams':taskParamsStr}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        errtype,errvalue = sys.exc_info()[:2]
+        errStr = "ERROR insertTaskParams : %s %s" % (errtype,errvalue)
+        return EC_Failed,output+'\n'+errStr
+
+
 # get T1 sites
 def getTier1sites():
     global PandaTier1Sites
@@ -3333,6 +3486,8 @@ getTier1sites()
 
 
 # set X509_CERT_DIR
+if os.environ.has_key('PANDA_DEBUG'):
+    print "DEBUG : setting X509_CERT_DIR"
 if not os.environ.has_key('X509_CERT_DIR') or os.environ['X509_CERT_DIR'] == '':
     tmp_x509_CApath = _x509_CApath()
     if tmp_x509_CApath != '':
@@ -3340,4 +3495,7 @@ if not os.environ.has_key('X509_CERT_DIR') or os.environ['X509_CERT_DIR'] == '':
     else:
         os.environ['X509_CERT_DIR'] = '/etc/grid-security/certificates'
 
+
+if os.environ.has_key('PANDA_DEBUG'):
+    print "DEBUG : imported %s" % __name__    
 

@@ -101,3 +101,20 @@ def checkManaVersion(verStr,cmtConfig):
     # return
     return True,'',retVer,cmtConfig
     
+
+
+# make JEDI job parameter
+def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False):
+    dictItem = {}
+    if paramType == 'output':
+        dictItem['type']       = 'template'
+        dictItem['value']      = lfn
+        dictItem['param_type'] = paramType
+        dictItem['dataset']    = dataset
+        dictItem['container']  = dataset
+        if not padding:
+            dictItem['padding'] = padding
+        if hidden:
+            dictItem['hidden']  = hidden
+    return [dictItem]
+        
