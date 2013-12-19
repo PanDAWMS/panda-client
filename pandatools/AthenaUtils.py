@@ -1879,13 +1879,16 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbo
         return cmtConfig
     # nightlies
     if cacheVer != None and re.search('_rel_\d+$',cacheVer) != None:
-        # dev nightlies
-        if athenaVer == 'dev':
-            return 'x86_64-slc5-gcc43-opt'
+        # use local cmtconfig if it is available
+        if os.environ.has_key('CMTCONFIG'):
+            return os.environ['CMTCONFIG']
         # get cmtconfig for nightlies
         if athenaVer != None:
             # remove prefix
             verStr = re.sub('^[^-]+-','',athenaVer)
+            # dev nightlies
+            if verStr in ['dev','devval']:
+                return 'x86_64-slc6-gcc47-opt'
             # extract version numbers
             match = re.search('(\d+)\.([^\.+])\.',verStr)
             # major,miner
@@ -2014,16 +2017,19 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
     try:
         from pyAMI import pyAMI
     except:
-        errType,errValue = sys.exc_info()[:2]
-        print "%s %s" % (errType,errValue)
-        tmpLog.error('cannot import pyAMI module')
-        return False,''
+        try:
+            from pyAMI.client import AMIClient
+        except:
+            errType,errValue = sys.exc_info()[:2]
+            print "%s %s" % (errType,errValue)
+            tmpLog.error('cannot import pyAMI module')
+            return False,'',''
     # read XML
     try:
         gl_xml = open(goodRunListXML)
     except:
         tmpLog.error('cannot open %s' % goodRunListXML)
-        return False,''
+        return False,'',''
     # parse XML to get run/lumi
     runLumiMap = {}
     import xml.dom.minidom
@@ -2061,17 +2067,24 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
         amiclient=pyAMI.AMI()
         amiOut = amiclient.execute(amiArgv)
     except:
-        errType,errValue = sys.exc_info()[:2]
-        tmpLog.error("%s %s" % (errType,errValue))
-        tmpLog.error('pyAMI failed')
-        return False,''
+        try:
+            amiclient = AMIClient()
+            amiOut = amiclient.execute(amiArgv)
+        except:
+            errType,errValue = sys.exc_info()[:2]
+            tmpLog.error("%s %s" % (errType,errValue))
+            tmpLog.error('pyAMI failed')
+            return False,'',''
     # get dataset map
-    amiOutDict = amiOut.getDict()
+    try:
+        amiOutDict = amiOut.getDict()
+    except:
+        amiOutDict = amiOut.to_dict()
     if verbose:
         tmpLog.debug(amiOutDict)
     if not amiOutDict.has_key('goodDatasetList'):
         tmpLog.error("output from pyAMI doesn't contain goodDatasetList")
-        return False,''
+        return False,'',''
     amiDsDict = amiOutDict['goodDatasetList']
     # parse
     import Client    
@@ -2154,7 +2167,7 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
                 if not runLumiMap.has_key(tmpRunNum):
                     tmpLog.error('AMI gives a wrong run number (%s) which is not contained in %s' % \
                                  (tmpRunNum,goodRunListXML))
-                    return False,''
+                    return False,'',''
                 inRange = False
                 for LBstartXML,LBendXML in runLumiMap[tmpRunNum]:
                     if (LBstart_LFN >= LBstartXML and LBstart_LFN <= LBendXML) or \
@@ -2168,7 +2181,7 @@ def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep=
             # check if files are found
             if tmpFilesStr == '':
                 tmpLog.error('found no files with corresponding LBs in %s' % dsName)
-                return False,''
+                return False,'',''
             filesStr += tmpFilesStr    
     datasets = datasets[:-1]
     if verbose:
@@ -2235,10 +2248,13 @@ def listFilesUsingAMI(inDsStr,verbose):
     try:
         from pyAMI import pyAMI
     except:
-        errType,errValue = sys.exc_info()[:2]
-        print "%s %s" % (errType,errValue)
-        tmpLog.error('cannot import pyAMI module')
-        sys.exit(EC_Config)
+        try:
+            from pyAMI.client import AMIClient
+        except:
+            errType,errValue = sys.exc_info()[:2]
+            print "%s %s" % (errType,errValue)
+            tmpLog.error('cannot import pyAMI module')
+            sys.exit(EC_Config)
     # loop over all datasets
     for inDS in inDsStr.split(','):
         # make arguments
@@ -2255,16 +2271,23 @@ def listFilesUsingAMI(inDsStr,verbose):
                 amiclient=pyAMI.AMI()
                 amiOut = amiclient.execute(amiArgv)
             except:
-                errType,errValue = sys.exc_info()[:2]
-                tmpLog.error("%s %s" % (errType,errValue))
-                errStr  = 'pyAMI failed. '
-                errStr += 'If %s is not an official dataset, ' % inDS
-                errStr += 'please manually set --nEventsPerFile '
-                errStr += 'since metadata is unavailable in AMI'
-                tmpLog.error(errStr)
-                sys.exit(EC_Config)
+                try:
+                    amiclient = AMIClient()
+                    amiOut = amiclient.execute(amiArgv)
+                except:
+                    errType,errValue = sys.exc_info()[:2]
+                    tmpLog.error("%s %s" % (errType,errValue))
+                    errStr  = 'pyAMI failed. '
+                    errStr += 'If %s is not an official dataset, ' % inDS
+                    errStr += 'please manually set --nEventsPerFile '
+                    errStr += 'since metadata is unavailable in AMI'
+                    tmpLog.error(errStr)
+                    sys.exit(EC_Config)
             # get file metadata
-            amiOutDict = amiOut.getDict()
+            try:
+                amiOutDict = amiOut.getDict()
+            except:
+                amiOutDict = amiOut.to_dict()
             if verbose:
                 tmpLog.debug(amiOutDict)
             # no more files
