@@ -78,29 +78,21 @@ optP.add_option('--inDsTxt',action='store',dest='inDsTxt',default='',
 optP.add_option('--minDS',  action='store', dest='minDS',  default='',
                 type='string', help='Dataset name for minimum bias stream')
 optP.add_option('--nMin',  action='store', dest='nMin',  default=-1,
-                type='int', help='Number of minimum bias files per one signal file')
-optP.add_option('--nMinPerJob',  action='store', dest='nMinPerJob',  default=-1,
                 type='int', help='Number of minimum bias files per sub job')
 optP.add_option('--lowMinDS',  action='store', dest='lowMinDS',  default='',
                 type='string', help='Dataset name for low pT minimum bias stream')
 optP.add_option('--nLowMin',  action='store', dest='nLowMin',  default=-1,
-                type='int', help='Number of low pT minimum bias files per one signal file')
-optP.add_option('--nLowMinPerJob',  action='store', dest='nLowMinPerJob',  default=-1,
-                type='int', help='Number of low pT minimum bias files per sub job')
+                type='int', help='Number of low pT minimum bias files per job')
 optP.add_option('--highMinDS',  action='store', dest='highMinDS',  default='',
                 type='string', help='Dataset name for high pT minimum bias stream')
 optP.add_option('--nHighMin',  action='store', dest='nHighMin',  default=-1,
-                type='int', help='Number of high pT minimum bias files per one signal file')
-optP.add_option('--nHighMinPerJob',  action='store', dest='nHighMinPerJob',  default=-1,
-                type='int', help='Number of high pT minimum bias files per sub job')
+                type='int', help='Number of high pT minimum bias files per job')
 optP.add_option('--randomMin',action='store_const',const=True,dest='randomMin',default=False,
                 help='randomize files in minimum bias dataset')
 optP.add_option('--cavDS',  action='store', dest='cavDS',  default='',
                 type='string', help='Dataset name for cavern stream')
 optP.add_option('--nCav',  action='store', dest='nCav',  default=-1,
-                type='int', help='Number of cavern files per one signal file')
-optP.add_option('--nCavPerJob',  action='store', dest='nCavPerJob',  default=-1,
-                type='int', help='Number of cavern files per sub job')
+                type='int', help='Number of cavern files per job')
 optP.add_option('--randomCav',action='store_const',const=True,dest='randomCav',default=False,
                 help='randomize files in cavern dataset')
 optP.add_option('--libDS', action='store', dest='libDS', default='',
@@ -788,13 +780,6 @@ else:
     rFile.close()
     options.removeFileList = rList
 
-# file type
-options.inputType = options.inputType.split(',')
-try:
-    options.inputType.remove('')
-except:
-    pass
-
 # suppressed streams
 options.supStream = options.supStream.upper().split(',')
 try:
@@ -1279,6 +1264,83 @@ if options.trf and AthenaUtils.checkUseTagInTrf(jobO,options.useTagInTRF):
     if options.tagQuery != '':
         runConfig.input.tagQuery = options.tagQuery
 
+
+
+#####################################################################
+# input datasets
+
+if options.inDS != '' or options.shipinput or options.pfnList != '':
+    # minimum bias dataset
+    if options.trf and jobO.find('%MININ') != -1:
+        runConfig.input.inMinBias = True
+    if runConfig.input.inMinBias:
+        options.minDS,options.nMin = MiscUtils.getDatasetNameAndNumFiles(options.minDS,
+                                                                         options.nMin,
+                                                                         'Minimum-Bias')
+    # low pT minimum bias dataset
+    if options.trf and jobO.find('%LOMBIN') != -1:
+        runConfig.input.inLoMinBias = True
+    if runConfig.input.inLoMinBias:
+        options.lowMinDS,options.nLowMin = MiscUtils.getDatasetNameAndNumFiles(options.lowMinDS,
+                                                                               options.nLowMin,
+                                                                               'Low pT Minimum-Bias')
+    # high pT minimum bias dataset
+    if options.trf and jobO.find('%HIMBIN') != -1:
+        runConfig.input.inHiMinBias = True
+    if runConfig.input.inHiMinBias:
+        options.highMinDS,options.nHighMin = MiscUtils.getDatasetNameAndNumFiles(options.highMinDS,
+                                                                                 options.nHighMin,
+                                                                                 'High pT Minimum-Bias')
+    # cavern dataset
+    if options.trf and jobO.find('%CAVIN') != -1:
+        runConfig.input.inCavern = True
+    if runConfig.input.inCavern:
+        options.cavDS,options.nCav = MiscUtils.getDatasetNameAndNumFiles(options.cavDS,
+                                                                         options.nCav,
+                                                                         'Cavern')
+    # beam halo dataset
+    if options.trf and jobO.find('%BHIN') != -1:
+        runConfig.input.inBeamHalo = True 
+    if runConfig.input.inBeamHalo:
+	# use common DS
+	if options.useCommonHalo:
+            options.beamHaloDS,options.nBeamHalo = MiscUtils.getDatasetNameAndNumFiles(options.beamHaloDS,
+                                                                                       options.nBeamHalo,
+                                                                                       'BeamHalo')
+	else:	
+            # get DS for A-side        
+            options.beamHaloADS,options.nBeamHaloA = MiscUtils.getDatasetNameAndNumFiles(options.beamHaloADS,
+                                                                                         options.nBeamHaloA,
+                                                                                         'BeamHalo A-side')
+            # get DS for C-side
+            options.beamHaloCDS,options.nBeamHaloC = MiscUtils.getDatasetNameAndNumFiles(options.beamHaloCDS,
+                                                                                         options.nBeamHaloC,
+                                                                                         'BeamHalo C-side')
+    # beam gas dataset
+    if options.trf and jobO.find('%BGIN') != -1:
+        runConfig.input.inBeamGas = True  
+    if runConfig.input.inBeamGas: 
+	# use common DS
+	if options.useCommonGas:
+            options.beamGasDS,options.nBeamGas = MiscUtils.getDatasetNameAndNumFiles(options.beamGasDS,
+                                                                                     options.nBeamGas,
+                                                                                     'BeamGas')
+        else:
+            # get DS for H
+            options.beamGasHDS,options.nBeamGasH = MiscUtils.getDatasetNameAndNumFiles(options.beamGasHDS,
+                                                                                       options.nBeamGasH,
+                                                                                       'BeamGas Hydrogen')
+            # get DS for C
+            options.beamGasCDS,options.nBeamGasC = MiscUtils.getDatasetNameAndNumFiles(options.beamGasCDS,
+                                                                                       options.nBeamGasC,
+                                                                                       'BeamGas Carbon')
+            # get DS for O
+            options.beamGasODS,options.nBeamGasO = MiscUtils.getDatasetNameAndNumFiles(options.beamGasODS,
+                                                                                       options.nBeamGasO,
+                                                                                       'BeamGas Oxygen')
+
+
+
 #####################################################################
 # archive sources and send it to HTTP-reachable location
 
@@ -1521,6 +1583,13 @@ if runConfig.other.rndmStream != []:
         num = runConfig.other.rndmNumbers[runConfig.other.rndmStream.index(stream)]
         pStr1 += "'%s ${RNDMSEED} %s'," % (stream,num[1])
     pStr1 += "]"
+    dictItem = {'type':'template',
+                'param_type':'number',
+                'value':'${RNDMSEED}',
+                'hidden':True,
+                'offset':runConfig.other.rndmStream[0][0],
+                }
+    taskParamMap['jobParameters'] += [dictItem]
 # split by event option was invoked
 pStr2 = ''
 if options.nEventsPerJob > 0 and (not options.trf):
@@ -1612,15 +1681,16 @@ if param != '':
 # input
 inputMap = {}
 if options.inDS != '':
-    taskParamMap['jobParameters'] += [
-        {'type':'template',
-         'param_type':'input',
-         'value':'-i "[${IN/L/A}]"',
-         'dataset':options.inDS,
-         'expand':True,
-         'exclude':'\.log\.tgz(\.\d+)*$',
-         },
-        ]
+    tmpDict = {'type':'template',
+               'param_type':'input',
+               'value':'-i "${IN/T}"',
+               'dataset':options.inDS,
+               'expand':True,
+               'exclude':'\.log\.tgz(\.\d+)*$',
+               }
+    if options.inputType != '':
+        tmpDict['include'] = options.inputType
+    taskParamMap['jobParameters'].append(tmpDict)
     taskParamMap['dsForIN'] = options.inDS
     inputMap['IN'] = options.inDS
 else:
@@ -1663,16 +1733,114 @@ if options.dbRelease != '':
                     }
         taskParamMap['jobParameters'] += [dictItem]
 
-### TODO
-"""    
-        param += '-i "%s" ' % inList
-        param += '-m "%s" ' % (minList+lowminList+highminList)
-        param += '-n "%s" ' % cavList
-        if bhaloList != []:
-            param += '--beamHalo "%s" ' % bhaloList
-        if bgasList != []:
-            param += '--beamGas "%s" ' % bgasList
-"""
+# minimum bias
+minBiasStream = ''        
+if options.minDS != '':
+    dictItem = MiscUtils.makeJediJobParam('${MININ}',options.minDS,'input',hidden=True,
+                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          nFilesPerJob=options.nMin)
+    taskParamMap['jobParameters'] += dictItem
+    inputMap['MININ'] = options.minDS
+    minBiasStream += 'MININ,'
+if options.lowMinDS != '':
+    dictItem = MiscUtils.makeJediJobParam('${LOMBIN}',options.lowMinDS,'input',hidden=True,
+                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          nFilesPerJob=options.nLowMin)
+    taskParamMap['jobParameters'] += dictItem
+    inputMap['LOMBIN'] = options.lowMinDS
+    minBiasStream += 'LOMBIN,'
+if options.highMinDS != '':
+    dictItem = MiscUtils.makeJediJobParam('${HIMBIN}',options.highMinDS,'input',hidden=True,
+                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          nFilesPerJob=options.nHighMin)
+    taskParamMap['jobParameters'] += dictItem
+    inputMap['HIMBIN'] = options.highMinDS
+    minBiasStream += 'HIMBIN,'
+minBiasStream = minBiasStream[:-1]
+if minBiasStream != '':
+    dictItem = {'type':'constant',
+                'value':'-m "${{{0}/T}}"'.format(minBiasStream),
+                }
+    taskParamMap['jobParameters'] += [dictItem]
+    
+    
+# cavern
+if options.cavDS != '':
+    dictItem = MiscUtils.makeJediJobParam('-c "${CAVIN/T}"',options.cavDS,'input',
+                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          nFilesPerJob=options.nCav)
+    taskParamMap['jobParameters'] += dictItem
+    inputMap['CAVIN'] = options.cavDS
+
+
+# beam halo
+beamHaloStream = ''
+if options.beamHaloDS != '':
+    dictItem = MiscUtils.makeJediJobParam('${BHIN}',options.beamHaloDS,'input',hidden=True,
+                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          nFilesPerJob=options.nBeamHalo)
+    taskParamMap['jobParameters'] += dictItem
+    inputMap['BHIN'] = options.beamHaloDS
+    beamHaloStream += 'BHIN,'    
+if options.beamHaloADS != '':
+    dictItem = MiscUtils.makeJediJobParam('${BHAIN}',options.beamHaloADS,'input',hidden=True,
+                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          nFilesPerJob=options.nBeamHaloA)
+    taskParamMap['jobParameters'] += dictItem
+    inputMap['BHAIN'] = options.beamHaloADS
+    beamHaloStream += 'BHAIN,'
+if options.beamHaloCDS != '':
+    dictItem = MiscUtils.makeJediJobParam('${BHCIN}',options.beamHaloCDS,'input',hidden=True,
+                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          nFilesPerJob=options.nBeamHaloC)
+    taskParamMap['jobParameters'] += dictItem
+    inputMap['BHCIN'] = options.beamHaloCDS
+    beamHaloStream += 'BHCIN,'    
+beamHaloStream = beamHaloStream[:-1]
+if beamHaloStream != '':
+    dictItem = {'type':'constant',
+                'value':'--beamHalo "${{{0}/T}}"'.format(beamHaloStream)
+                }
+    taskParamMap['jobParameters'] += [dictItem]
+
+
+# beam gas
+beamGasStream = ''
+if options.beamGasDS != '':
+    dictItem = MiscUtils.makeJediJobParam('${BGIN}',options.beamGasDS,'input',hidden=True,
+                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          nFilesPerJob=options.nBeamGas)
+    taskParamMap['jobParameters'] += dictItem
+    inputMap['BGIN'] = options.beamGasDS
+    beamGasStream += 'BGIN,'    
+if options.beamGasHDS != '':
+    dictItem = MiscUtils.makeJediJobParam('${BGHIN}',options.beamGasHDS,'input',hidden=True,
+                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          nFilesPerJob=options.nBeamGasH)
+    taskParamMap['jobParameters'] += dictItem
+    inputMap['BGHIN'] = options.beamGasHDS
+    beamGasStream += 'BGHIN,'    
+if options.beamGasCDS != '':
+    dictItem = MiscUtils.makeJediJobParam('${BGCIN}',options.beamGasCDS,'input',hidden=True,
+                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          nFilesPerJob=options.nBeamGasC)
+    taskParamMap['jobParameters'] += dictItem
+    inputMap['BGCIN'] = options.beamGasHDS
+    beamGasStream += 'BGCIN,'    
+if options.beamGasODS != '':
+    dictItem = MiscUtils.makeJediJobParam('${BGOIN}',options.beamGasODS,'input',hidden=True,
+                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          nFilesPerJob=options.nBeamGasO)
+    taskParamMap['jobParameters'] += dictItem
+    inputMap['BGOIN'] = options.beamGasODS
+    beamGasStream += 'BGOIN,'    
+beamGasStream = beamGasStream[:-1]
+if beamGasStream != '':
+    dictItem = {'type':'constant',
+                'value':'--beamGas "${{{0}/T}}"'.format(beamGasStream)
+                }
+    taskParamMap['jobParameters'] += [dictItem]
+
 
 # output 
 outMap,tmpParamList = AthenaUtils.convertConfToOutput(runConfig,options.extOutFile,options.outDS)
@@ -1683,6 +1851,7 @@ if outMap != {}:
          },
         ]
     taskParamMap['jobParameters'] += tmpParamList 
+
 
 # jobO parameter
 if not options.trf:
@@ -1698,6 +1867,13 @@ if not options.trf:
                                  % options.singleLine,tmpJobO)
         else:
             tmpJobO = '-c "from G4AtlasApps.SimFlags import SimFlags;SimFlags.SeedsG4=${RNDMSEED}" '
+        dictItem = {'type':'template',
+                    'param_type':'number',
+                    'value':'${RNDMSEED}',
+                    'hidden':True,
+                    'offset':runConfig.other.G4RandomSeeds,
+                    }
+        taskParamMap['jobParameters'] += [dictItem]
 else:
     # replace parameters for TRF
     tmpJobO = jobO

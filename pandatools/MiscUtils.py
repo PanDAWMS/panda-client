@@ -104,7 +104,8 @@ def checkManaVersion(verStr,cmtConfig):
 
 
 # make JEDI job parameter
-def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False):
+def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=False,
+                     include='',exclude='',nFilesPerJob=None,offset=0):
     dictItem = {}
     if paramType == 'output':
         dictItem['type']       = 'template'
@@ -114,7 +115,46 @@ def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False):
         dictItem['container']  = dataset
         if not padding:
             dictItem['padding'] = padding
-        if hidden:
-            dictItem['hidden']  = hidden
+    elif paramType == 'input':
+        dictItem['type']       = 'template'
+        dictItem['value']      = lfn
+        dictItem['param_type'] = paramType
+        dictItem['dataset']    = dataset
+        if offset > 0:
+            dictItem['offset'] = offset
+        if include != '':
+            dictItem['include'] = include
+        if exclude != '':
+            dictItem['exclude'] = exclude
+        if expand:
+            dictItem['expand'] = expand
+        if nFilesPerJob != None:
+            dictItem['nFilesPerJob'] = nFilesPerJob
+    if hidden:
+        dictItem['hidden'] = hidden
     return [dictItem]
         
+
+
+# get dataset name and num of files for a stream
+def getDatasetNameAndNumFiles(streamDS,nFilesPerJob,streamName):
+    if streamDS == "":
+        # read from stdin   
+        print
+        print "This job uses %s stream" % streamName
+        while True:
+            streamDS = raw_input("Enter dataset name for Minimum Bias : ")
+            streamDS = streamDS.strip()
+            if streamDS != "":
+                break
+    # number of files per one signal
+    if nFilesPerJob < 0:
+        while True:
+            tmpStr = raw_input("Enter the number of %s files per job : " % streamName)
+            try:
+                nFilesPerJob = int(tmpStr)
+                break
+            except:
+                pass
+    # return
+    return streamDS,nFilesPerJob

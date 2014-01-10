@@ -859,13 +859,6 @@ if options.site != 'AUTO':
     # set cloud
     options.cloud = Client.PandaSites[options.site]['cloud']
 
-# get the latest of DBRelease
-if options.dbRelease == 'LATEST' or '%DB:LATEST' in options.jobParams:
-    if options.panda_dbRelease == '':
-        options.dbRelease = Client.getLatestDBRelease(options.verbose)
-        options.panda_dbRelease = options.dbRelease
-    else:
-        options.dbRelease = options.panda_dbRelease
         
 # get DN
 distinguishedName = PsubUtils.getDN()
@@ -1302,7 +1295,7 @@ if options.outputs != '':
 if options.inDS != '': 
     tmpDict = {'type':'template',
                'param_type':'input',
-               'value':'-i "[${IN/L/A}]"',
+               'value':'-i "${IN/T}"',
                'dataset':options.inDS,
 	       'expand':True,
                'exclude':'\.log\.tgz(\.\d+)*$',
@@ -1319,6 +1312,49 @@ else:
     else:
         taskParamMap['nEvents'] = 1
     taskParamMap['nEventsPerJob'] = 1
+
+# param for DBR     
+if options.dbRelease != '':
+    dbrDS = options.dbRelease.split(':')[0]
+    # change LATEST to DBR_LATEST
+    if dbrDS == 'LATEST':
+        dbrDS = 'DBR_LATEST'
+    dictItem = {'type':'template',
+                'param_type':'input',
+                'value':'--dbrFile=${DBR}',
+                'dataset':dbrDS,
+                }
+    taskParamMap['jobParameters'] += [dictItem]
+    # no expansion
+    if options.notExpandDBR:
+        dictItem = {'type':'constant',
+                    'value':'--noExpandDBR',
+                    }
+        taskParamMap['jobParameters'] += [dictItem]
+
+# secondary
+if options.secondaryDSs != {}:
+    inMap = {}
+    streamNames = []
+    for tmpDsName,tmpMap in options.secondaryDSs.iteritems():
+        # make template item
+        streamName = tmpMap['streamName']
+        dictItem = MiscUtils.makeJediJobParam('${'+streamName+'}',tmpDsName,'input',hidden=True,
+                                              expand=True,include=tmpMap['pattern'],offset=tmpMap['nSkip'],
+                                              nFilesPerJob=tmpMap['nFiles'])
+        taskParamMap['jobParameters'] += dictItem
+        inMap[streamName] = 'tmp_'+streamName 
+        streamNames.append(streamName)
+    # make constant item
+    strInMap = str(inMap)
+    # set placeholders
+    for streamName in streamNames:
+        strInMap = strInMap.replace("'tmp_"+streamName+"'",'${'+streamName+'/T}')
+    dictItem = {'type':'constant',
+                'value':'--inMap "%s"' % strInMap,
+                }
+    taskParamMap['jobParameters'] += [dictItem]
+
 # misc
 jobParameters = ''
 # use Athena packages

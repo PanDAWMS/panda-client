@@ -2179,7 +2179,7 @@ def getDsListCheckedForBrokerage(dsUsedDsMap):
 # convert param string to JEDI params
 def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding):
     # list of place holders for input 
-    inList = ['IN','CAVIN','MININ','LOMBIN','HIMBIN','BHIN','BGIN']
+    inList = ['IN','CAVIN','MININ','LOMBIN','HIMBIN','BHIN','BGIN','BGHIN','BGCIN','BGOIN']
     # place holder for output
     outHolder = 'SN'
     # place holders with extension
@@ -2224,10 +2224,10 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding):
         matchP = re.search('\$\{([^:\}]+)',tmpItem)
         if re.search(patS,tmpItem) != None and matchP != None:
             tmpHolder = matchP.group(1)
-            # make dict element
-            tmpDict = {'type':'template'}
             # set attributes
             if tmpHolder in inList:
+                # use constant since it is templated in another option e.g., -i
+                tmpDict = {'type':'constant'}
                 if encode:
                     tmpDict['value'] = '${' + tmpHolder + '/E}' 
                 else:
@@ -2235,11 +2235,13 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding):
                 tmpDict['param_type'] = 'input'
                 tmpDict['dataset'] = inputMap[tmpHolder]
             elif tmpHolder == outHolder:
+                tmpDict = {'type':'template'}
                 tmpDict['value'] = tmpItem
                 tmpDict['param_type'] = 'output'
                 tmpDict['dataset'] = outNamePrefix + tmpItem.split('}')[-1] + '/'
                 tmpDict['container'] = tmpDict['dataset']
             else:
+                tmpDict = {'type':'template'}
                 tmpDict['value'] = tmpItem
                 tmpDict['param_type'] = 'number'
         else:
