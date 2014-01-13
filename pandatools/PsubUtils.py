@@ -665,8 +665,12 @@ def isLatestVersion(latestVer):
     # compare
     if latestMajorVer > localMajorVer:
         return False
+    if latestMajorVer < localMajorVer:
+        return True
     if latestMinorVer > localMinorVer:
         return False
+    if latestMinorVer < localMinorVer:
+        return True
     if latestBugfixVer > localBugfixVer:
         return False
     # latest or higher

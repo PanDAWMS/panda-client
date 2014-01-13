@@ -311,6 +311,8 @@ optP.add_option('--useShortLivedReplicas', action='store_const', const=True, des
                 help="Use replicas even if they have very sort lifetime")
 optP.add_option('--useDirectIOSites', action='store_const', const=True, dest='useDirectIOSites', default=False,
                 help="Use only sites which use directIO to read input files")
+optP.add_option('--skipScout', action='store_const',const=True,dest='skipScout',default=False,
+                help="skip scout jobs")
 optP.add_option('--devSrv', action='store_const', const=True, dest='devSrv',  default=False,
                 help="Please don't use this option. Only for developers to use the dev panda server")
 optP.add_option('--intrSrv', action='store_const', const=True, dest='intrSrv',  default=False,
@@ -1522,7 +1524,7 @@ taskParamMap['vo'] = 'atlas'
 taskParamMap['architecture'] = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
 taskParamMap['transUses'] = 'Atlas-%s' % athenaVer
 taskParamMap['transHome'] = 'AnalysisTransforms'+cacheVer+nightVer
-taskParamMap['processingType'] = 'jedi-athena'
+taskParamMap['processingType'] = 'panda-client-{0}-jedi-athena'.format(PandaToolsPkgInfo.release_version)
 if options.trf:
     taskParamMap['processingType'] += '-trf'
 if options.eventPickEvtList != '':
@@ -1545,6 +1547,8 @@ if options.nFilesPerJob > 0:
 taskParamMap['cliParams'] = fullExecString
 if options.noEmail:
     taskParamMap['noEmail'] = True
+if options.skipScout:
+    taskParamMap['skipScout'] = True
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:

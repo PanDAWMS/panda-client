@@ -188,6 +188,8 @@ optP.add_option('--update', action='store_const', const=True, dest='update',  de
                 help='Update panda-client to the latest version')
 optP.add_option('--spaceToken',action='store',dest='spaceToken',default='',type='string',
                 help='spacetoken for outputs. e.g., ATLASLOCALGROUPDISK')
+optP.add_option('--skipScout', action='store_const',const=True,dest='skipScout',default=False,
+                help="skip scout jobs")
 optP.add_option('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
                 help="Please don't use this option. Only for developers to use the dev panda server")
 optP.add_option('--intrSrv', action='store_const', const=True, dest='intrSrv',  default=False,
@@ -1216,7 +1218,7 @@ taskParamMap['vo'] = 'atlas'
 taskParamMap['architecture'] = options.cmtConfig
 taskParamMap['transUses'] = athenaVer
 taskParamMap['transHome'] = 'AnalysisTransforms'+cacheVer+nightVer
-taskParamMap['processingType'] = 'jedi-run'
+taskParamMap['processingType'] = 'panda-client-{0}-jedi-run'.format(PandaToolsPkgInfo.release_version)
 if options.eventPickEvtList != '':
     taskParamMap['processingType'] += '-evp'
 taskParamMap['prodSourceLabel'] = 'user'
@@ -1235,6 +1237,9 @@ if options.nFilesPerJob != None:
 taskParamMap['cliParams'] = fullExecString
 if options.noEmail:
     taskParamMap['noEmail'] = True
+if options.skipScout:
+    taskParamMap['skipScout'] = True
+taskParamMap['nMaxFilesPerJob'] = options.maxNFilesPerJob
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:
@@ -1371,9 +1376,17 @@ if options.useMana:
 # root
 if options.rootVer != '':
     jobParameters += "--rootVer %s " % options.rootVer
+# write input to txt
+if options.writeInputToTxt != '':
+    jobParameters += "--writeInputToTxt %s " % options.writeInputToTxt
 # debug parameters
 if options.queueData != '':
     jobParameters += "--overwriteQueuedata=%s " % options.queueData
+# JEM
+if options.enableJEM:
+    jobParameters += "--enable-jem "
+    if options.configJEM != '':
+        jobParameters += "--jem-config %s " % options.configJEM
 # set task param
 if jobParameters != '':
     taskParamMap['jobParameters'] += [ 
@@ -1385,6 +1398,7 @@ if jobParameters != '':
 # build step
 if not options.nobuild:
     jobParameters = '-i ${IN} -o ${OUT} --sourceURL ${SURL} '
+    jobParameters += '-r {0} '.format(runDir)
     # use Athena packages
     if options.useAthenaPackages:
         jobParameters += "--useAthenaPackages "
