@@ -126,6 +126,8 @@ optP.add_option('--useDirectIOSites', action='store_const', const=True, dest='us
                 help="Use only sites which use directIO to read input files")
 optP.add_option('--official',action='store_const',const=True,dest='official',default=False,
                 help='Produce official dataset')
+optP.add_option('--unlimitNumOutputs', action='store_const', const=True, dest='unlimitNumOutputs',  default=False,
+                help='Remove the limit on the number of outputs. Note that having too many outputs per job causes a severe load on the system. You may be banned if you carelessly use this option') 
 optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
                 help='LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something')
 optP.add_option('--useRootCore',action='store_const',const=True,dest='useRootCore',default=False,
@@ -2636,7 +2638,7 @@ if options.inDS != '' and options.secondaryDSs != {}:
     tmpLog.info(msgStr[:-1])
 
 
-# check the number of output files
+# split jobs by the number of output files
 splitJobList = PsubUtils.splitJobsNumOutputFiles(jobList,options.buildInLastChunk)
 
 
@@ -2653,6 +2655,13 @@ if options.individualOutDS:
                 tmpIdvOutDsList.append(tmpFile.dataset)
     
         
+# check the number of output files
+if not options.unlimitNumOutputs:
+    tmpStat = PsubUtils.checkNumOutputs(jobList)
+    if not tmpStat:
+        sys.exit(EC_Config)
+
+
 # jobsetID
 jobsetID = options.panda_jobsetID
 

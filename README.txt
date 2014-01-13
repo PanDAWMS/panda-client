@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.34 (1/13/2013)
+  * limited the number of output files
+
 0.4.33 (12/13/2013)
   * fixed for new pyAMI
 
