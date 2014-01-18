@@ -381,18 +381,22 @@ suffixShadow = Client.suffixShadow
 
 # load submission configuration from xml file (if provided)
 xconfig = None
-if options.loadXML:
+if options.loadXML != None:
     from pandatools import ParseJobXML
     xconfig = ParseJobXML.dom_parser(options.loadXML)
     xconfig.dump(options.verbose)
     if options.outDS=='':
         options.outDS=xconfig.outDS()
-    options.outputs='WILL_BE_REDEFINED_FOR_EACH_SUBJOB'
-    options.jobParams='WILL_BE_REDEFINED_FOR_EACH_SUBJOB'
+    options.outputs='all'
+    options.jobParams='${XML_EXESTR}'
     options.inDS=xconfig.inDS()
     # inDS match and secondaryDS filter will be determined later from xconfig
     options.match=''
     options.secondaryDSs = xconfig.secondaryDSs_config(filter=False)
+    # read XML
+    xmlFH = open(options.loadXML)
+    options.loadXML = xmlFH.read()
+    xmlFH.close()
 
 # save current dir
 curDir = os.path.realpath(os.getcwd())
@@ -772,10 +776,6 @@ if options.antiMatch != '':
 
 # get job script
 jobScript = ''
-if options.panda_bexec != '':
-    options.bexec = urllib.unquote(options.panda_bexec)
-if options.panda_exec != '':
-    options.jobParams = urllib.unquote(options.panda_exec)
 if options.jobParams == '':
     tmpLog.error("you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
     sys.exit(EC_Config)
@@ -1244,6 +1244,9 @@ taskParamMap['nMaxFilesPerJob'] = options.maxNFilesPerJob
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:
     taskParamMap['sourceURL'] = matchURL.group(1)
+# XML config
+if options.loadXML != None:
+    taskParamMap['loadXML'] = options.loadXML
 # dataset names
 outDatasetName = options.outDS
 logDatasetName = re.sub('/$','.log/',options.outDS)
@@ -1262,10 +1265,21 @@ taskParamMap['jobParameters'] = [
     {'type':'constant',
      'value': '-r {0}'.format(runDir),
      },
-    {'type':'constant',
-     'value': '-p "{0}"'.format(urllib.quote(options.jobParams)),
-     },
     ]
+if options.loadXML == None:
+    taskParamMap['jobParameters'] += [
+        {'type':'constant',
+         'value': '-p "{0}"'.format(urllib.quote(options.jobParams)),
+         },
+        ]
+else:
+    taskParamMap['jobParameters'] += [
+        {'type':'constant',
+         'value': '-p "{0}"'.format(options.jobParams),
+         },
+        ]
+
+
 # build
 if options.nobuild:
     taskParamMap['jobParameters'] += [
@@ -1291,11 +1305,18 @@ if options.outputs != '':
         dataset = '{0}_{1}/'.format(outDatasetName[:-1],tmpLFN)
         taskParamMap['jobParameters'] += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
         outMap[tmpLFN] = lfn
-    taskParamMap['jobParameters'] += [ 
-        {'type':'constant',
-         'value': '-o "{0}"'.format(str(outMap)),
-         },
-        ]
+    if options.loadXML:
+        taskParamMap['jobParameters'] += [ 
+            {'type':'constant',
+             'value': '-o "${XML_OUTMAP}"',
+             },
+            ]
+    else:
+        taskParamMap['jobParameters'] += [ 
+            {'type':'constant',
+             'value': '-o "{0}"'.format(str(outMap)),
+             },
+            ]
 # input
 if options.inDS != '': 
     tmpDict = {'type':'template',
