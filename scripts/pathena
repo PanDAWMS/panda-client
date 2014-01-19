@@ -628,7 +628,7 @@ if (options.nEventsPerJob > 0 and options.nGBPerJob != -1):
     sys.exit(EC_Config)
 
 # check nGBPerJob
-if options.nGBPerJob != -1:
+if not options.nGBPerJob in [-1,'MAX']:
     # convert to int
     try:
         if options.nGBPerJob != 'MAX':
@@ -640,14 +640,6 @@ if options.nGBPerJob != -1:
     if options.nGBPerJob <= 0:
         tmpLog.error("nGBPerJob must be positive")
         sys.exit(EC_Config)
-    # convert MAX to default max value
-    if options.nGBPerJob == 'MAX':
-        options.nGBPerJob = maxTotalSize
-    else:
-        # convert to Bytes
-        options.nGBPerJob = long(int(options.nGBPerJob)*1024*1024*1024)
-        # reset max size per job
-        maxTotalSize = options.nGBPerJob
     
 # trf parameter
 if options.panda_trf != '':
@@ -1544,11 +1536,16 @@ if options.nfiles > 0:
     taskParamMap['nFiles'] = options.nfiles
 if options.nFilesPerJob > 0:
     taskParamMap['nFilesPerJob'] = options.nFilesPerJob
+if not options.nGBPerJob in [-1,'MAX']:
+    # don't set MAX since it is the defalt on the server side
+    taskParamMap['nGBPerJob'] = options.nGBPerJob
 taskParamMap['cliParams'] = fullExecString
 if options.noEmail:
     taskParamMap['noEmail'] = True
 if options.skipScout:
     taskParamMap['skipScout'] = True
+if options.disableAutoRetry:
+    taskParamMap['disableAutoRetry'] = 1
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:

@@ -885,6 +885,20 @@ if options.destSE != '':
     if not PsubUtils.checkDestSE(options.destSE,options.outDS,options.verbose):
         sys.exit(EC_Config)
 
+# check nGBPerJob
+if not options.nGBPerJob in [-1,'MAX']:
+    # convert to int
+    try:
+        if options.nGBPerJob != 'MAX':
+            options.nGBPerJob = int(options.nGBPerJob)
+    except:
+        tmpLog.error("nGBPerJob must be an integer or MAX")
+        sys.exit(EC_Config)
+    # check negative    
+    if options.nGBPerJob <= 0:
+        tmpLog.error("nGBPerJob must be positive")
+        sys.exit(EC_Config)
+
 
 
 
@@ -1234,11 +1248,16 @@ if options.nFiles != 0:
     taskParamMap['nFiles'] = options.nFiles
 if options.nFilesPerJob != None:    
     taskParamMap['nFilesPerJob'] = options.nFilesPerJob
+if not options.nGBPerJob in [-1,'MAX']:
+    # don't set MAX since it is the defalt on the server side
+    taskParamMap['nGBPerJob'] = options.nGBPerJob
 taskParamMap['cliParams'] = fullExecString
 if options.noEmail:
     taskParamMap['noEmail'] = True
 if options.skipScout:
     taskParamMap['skipScout'] = True
+if options.disableAutoRetry:
+    taskParamMap['disableAutoRetry'] = 1
 taskParamMap['nMaxFilesPerJob'] = options.maxNFilesPerJob
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
