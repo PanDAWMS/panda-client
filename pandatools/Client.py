@@ -3467,6 +3467,25 @@ def insertTaskParams(taskParams,verbose):
         return EC_Failed,output+'\n'+errStr
 
 
+# get history of job retry
+def getRetryHistory(jediTaskID,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/getRetryHistory'
+    data = {'jediTaskID':jediTaskID}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR getRetryHistory : %s %s" % (type,value)
+        return EC_Failed,None
+
+
 # get T1 sites
 def getTier1sites():
     global PandaTier1Sites

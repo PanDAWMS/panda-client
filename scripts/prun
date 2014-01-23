@@ -1349,6 +1349,17 @@ if options.inDS != '':
         tmpDict['offset'] = options.nSkipFiles
     taskParamMap['jobParameters'].append(tmpDict)
     taskParamMap['dsForIN'] = options.inDS
+elif options.pfnList != '':
+    taskParamMap['pfnList'] = PsubUtils.getListPFN(options.pfnList)
+    # use noInput mecahism
+    taskParamMap['noInput'] = True
+    if options.nFiles == 0:
+        taskParamMap['nFiles'] = len(taskParamMap['pfnList'])
+    taskParamMap['jobParameters'] += [
+        {'type':'constant',
+         'value':'-i "${IN/T}"',
+         },
+        ]
 else:
     # no input
     taskParamMap['noInput'] = True
@@ -1402,6 +1413,9 @@ if options.secondaryDSs != {}:
 
 # misc
 jobParameters = ''
+# given PFN 
+if options.pfnList != '':
+    jobParameters += '--givenPFN '
 # use Athena packages
 if options.useAthenaPackages:
     jobParameters += "--useAthenaPackages "

@@ -2181,7 +2181,7 @@ def getDsListCheckedForBrokerage(dsUsedDsMap):
 
 
 # convert param string to JEDI params
-def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding):
+def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,usePfnList=False):
     # list of place holders for input 
     inList = ['IN','CAVIN','MININ','LOMBIN','HIMBIN','BHIN','BGIN','BGHIN','BGCIN','BGOIN']
     # place holder for output
@@ -2236,8 +2236,10 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding):
                     tmpDict['value'] = '${' + tmpHolder + '/E}' 
                 else:
                     tmpDict['value'] = tmpItem
-                tmpDict['param_type'] = 'input'
-                tmpDict['dataset'] = inputMap[tmpHolder]
+                # set dataset if PFN list is not used or the stream is not primary
+                if not usePfnList or not tmpHolder in ['IN']:
+                    tmpDict['param_type'] = 'input'
+                    tmpDict['dataset'] = inputMap[tmpHolder]
             elif tmpHolder == outHolder:
                 tmpDict = {'type':'template'}
                 tmpDict['value'] = tmpItem
@@ -2319,6 +2321,25 @@ def uploadGzippedFile(origFileName,currentDir,tmpLog,delFilesOnExit,nosubmit,ver
     os.remove(gzipFullPath)
     # return new filename
     return newFileName
+
+
+# get PFN list
+def getListPFN(pfnFile):
+    rFile = open(pfnFile)
+    inputFileList = []
+    for line in rFile:
+        line = re.sub('\n','',line)
+        line.strip()
+        if line != '':
+            inputFileList.append(line)
+    rFile.close()
+    inputFileList.sort()
+    if len(inputFileList) == 0:
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        tmpLog.error("{0} doesn't contain any PFNs".format(pfnFile))
+        sys.exit(EC_Config)
+    return inputFileList
 
 
 

@@ -579,9 +579,16 @@ if options.outDS == '':
 if options.split < -1 :
     tmpLog.error("Number of jobs should be a positive integer")
     sys.exit(EC_Config)
-if options.shipinput and options.inDS != '' and options.pfnList != '':
-    tmpLog.error("--shipInput, --pfnList and --inDS cannot be used at the same time")
-    sys.exit(EC_Config)
+if options.pfnList != '':
+    if options.inDS != '': 
+        tmpLog.error("--pfnList and --inDS cannot be used at the same time")
+        sys.exit(EC_Config)
+    if options.shipinput:
+        tmpLog.error("--shipInput and --inDS cannot be used at the same time")
+        sys.exit(EC_Config)
+    if options.site == 'AUTO':
+	tmpLog.error("--site must be specified when --pfnList is used")
+	sys.exit(EC_Config)
 
 # libDS
 libds_file = '%s/libds_pathena.dat' % os.environ['PANDA_CONFIG_ROOT']
@@ -599,8 +606,10 @@ if options.libDS == 'LAST':
     options.libDS = tmpLibDS
 
 # absolute path for PFN list
+usePfnList = False
 if options.pfnList != '':
     options.pfnList = os.path.realpath(options.pfnList)
+    usePfnList = True
 
 # burst submission
 if options.burstSubmit != '':
@@ -1694,6 +1703,17 @@ if options.inDS != '':
     taskParamMap['jobParameters'].append(tmpDict)
     taskParamMap['dsForIN'] = options.inDS
     inputMap['IN'] = options.inDS
+elif options.pfnList != '':
+    taskParamMap['pfnList'] = PsubUtils.getListPFN(options.pfnList)
+    # use noInput mecahism
+    taskParamMap['noInput'] = True
+    if options.nfiles == 0:
+        taskParamMap['nFiles'] = len(taskParamMap['pfnList'])
+    taskParamMap['jobParameters'] += [
+        {'type':'constant',
+         'value':'-i "${IN/T}"',
+         },
+        ]
 else:
     # no input
     taskParamMap['noInput'] = True
@@ -1891,7 +1911,7 @@ taskParamMap['jobParameters'] += [
      },
     ]
 taskParamMap['jobParameters'] += PsubUtils.convertParamStrToJediParam(tmpJobO,inputMap,options.outDS[:-1],
-                                                                      True,False)
+                                                                      True,False,usePfnList)
 taskParamMap['jobParameters'] += [
     {'type':'constant',
      'value': '"',
@@ -1972,8 +1992,6 @@ if options.mergeOutput:
     taskParamMap['mergeSpec']['useLocalIO'] = 1
     taskParamMap['mergeSpec']['jobParameters'] = jobParameters
     taskParamMap['mergeOutput'] = True
-
-taskParamMap['transPath'] = 'http://atlpan.web.cern.ch/atlpan/runAthena-00-00-12'
 
 if options.verbose:
     tmpLog.debug("==== taskParams ====")
