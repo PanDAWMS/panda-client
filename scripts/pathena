@@ -1864,7 +1864,8 @@ if beamGasStream != '':
 
 
 # output 
-outMap,tmpParamList = AthenaUtils.convertConfToOutput(runConfig,options.extOutFile,options.outDS)
+outMap,tmpParamList = AthenaUtils.convertConfToOutput(runConfig,options.extOutFile,options.outDS,
+                                                      destination=options.destSE,spaceToken=options.spaceToken)
 taskParamMap['jobParameters'] += [
     {'type':'constant',
      'value': '-o "%s" ' % outMap

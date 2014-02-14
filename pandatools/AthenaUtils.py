@@ -1335,7 +1335,7 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
 
 
 # convert runConfig to outMap
-def convertConfToOutput(runConfig,extOutFile,original_outDS):
+def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',spaceToken=''):
     outMap = {}
     paramList = []
     # add IROOT
@@ -1557,6 +1557,14 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS):
     # remove IROOT if unnecessary
     if outMap.has_key('IROOT') and outMap['IROOT'] == []:
         del outMap['IROOT'] 
+    # set destination
+    if destination != '':
+        for tmpParam in paramList:
+            tmpParam['destination'] = destination
+    # set token
+    if spaceToken != '':
+        for tmpParam in paramList:
+            tmpParam['token'] = token
     # return
     return outMap,paramList
 

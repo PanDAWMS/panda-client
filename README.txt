@@ -8,7 +8,7 @@ python setup.py install --prefix=/path/to/install/dir
 or 
 
 echo "%_unpackaged_files_terminate_build 0" >> ~/.rpmmacros
-python setup.py bdist_rpm
+QA_SKIP_BUILD_ROOT=1 python setup.py bdist_rpm
 rm ~/.rpmmacros
 
 
@@ -21,8 +21,11 @@ pathena -h
 
 ** Release Note
 
+0.5.1
+  * fixed for --bexec and --destSE
+
 0.5.0
-  * migrated to work with JEDI
+  * the first version with JEDI
 
 0.4.33 (12/13/2013)
   * fixed for new pyAMI

@@ -1322,7 +1322,9 @@ if options.outputs != '':
             lfn = outDatasetName[:-1]
         lfn += '.$JOBSETID._${{SN/P}}.{0}'.format(tmpLFN)
         dataset = '{0}_{1}/'.format(outDatasetName[:-1],tmpLFN)
-        taskParamMap['jobParameters'] += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+        taskParamMap['jobParameters'] += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,
+                                                                    destination=options.destSE,
+                                                                    token=options.spaceToken)
         outMap[tmpLFN] = lfn
     if options.loadXML:
         taskParamMap['jobParameters'] += [ 
@@ -1457,6 +1459,9 @@ if options.forceStaged or options.forceStagedSecondary:
 if not options.nobuild:
     jobParameters = '-i ${IN} -o ${OUT} --sourceURL ${SURL} '
     jobParameters += '-r {0} '.format(runDir)
+    # exec
+    if options.bexec != '':
+	jobParameters += '--bexec "{0}" '.format(urllib.quote(options.bexec))
     # use Athena packages
     if options.useAthenaPackages:
         jobParameters += "--useAthenaPackages "
