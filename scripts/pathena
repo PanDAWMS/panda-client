@@ -1555,6 +1555,8 @@ if options.skipScout:
     taskParamMap['skipScout'] = True
 if options.disableAutoRetry:
     taskParamMap['disableAutoRetry'] = 1
+if options.workingGroup != None:
+    taskParamMap['workingGroup'] = options.workingGroup
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:

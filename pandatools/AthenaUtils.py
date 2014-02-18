@@ -1564,7 +1564,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
     # set token
     if spaceToken != '':
         for tmpParam in paramList:
-            tmpParam['token'] = token
+            tmpParam['token'] = spaceToken
     # return
     return outMap,paramList
 

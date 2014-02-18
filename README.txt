@@ -21,6 +21,10 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed --spaceToken
+  * fixed --workingGroup
+
 0.5.2
   * fixed for transHome=None
 
