@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.5.2
+  * fixed for transHome=None
+
 0.5.1
   * fixed for --bexec and --destSE
 
