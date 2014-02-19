@@ -21,8 +21,14 @@ pathena -h
 
 ** Release Note
 
-current
-  * set 12h to maxCpuCount in pathena and prun by default
+0.4.35 (2/19/2013)
+  * changed client_version to 2.5.0
+
+0.4.34 (1/13/2013)
+  * limited the number of output files
+
+0.4.33 (12/13/2013)
+  * fixed for new pyAMI
 
 0.4.32 (11/12/2013)
   * setting client_version

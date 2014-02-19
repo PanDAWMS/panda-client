@@ -2120,3 +2120,22 @@ def giveWarningForMaxCpuCount(defMaxCpuCount,maxCpuCount,tmpLog):
         msg  = 'Time limit for each subjob is set to %ssec. ' % maxCpuCount
         msg += 'Use --maxCpuCount if your job requires longer execution time.' 
         tmpLog.warning(msg)
+
+
+# check the number of output files
+def checkNumOutputs(jobList):
+    nOutputs = 0
+    for tmpFile in jobList[-1].Files:
+        if tmpFile.type == 'output':
+            nOutputs += 1
+    maxNumOutputs = 10 
+    if nOutputs > maxNumOutputs:
+        errStr  ='Too many output files (=%s) per job. The default limit is %s. ' % (nOutputs,maxNumOutputs)
+        errStr += 'You can remove the constraint by using the --unlimitNumOutputs option. '
+        errStr += 'But please note that having too many outputs per job causes a severe load on the system. '
+        errStr += 'You may be banned if you carelessly use the option'
+        tmpLog = PLogger.getPandaLogger()
+        tmpLog.error(errStr)
+        return False
+    return True
+
