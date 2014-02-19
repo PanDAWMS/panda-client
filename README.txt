@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.35 (2/19/2013)
+  * changed client_version to 2.5.0
+
 0.4.34 (1/13/2013)
   * limited the number of output files
 
