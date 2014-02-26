@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.36 (2/26/2013)
+  * fixed for CERN-PROD_LOCALGROUPDISK
+
 0.4.35 (2/19/2013)
   * changed client_version to 2.5.0
 
