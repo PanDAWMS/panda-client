@@ -24,6 +24,9 @@ pathena -h
 current
   * fixed --spaceToken
   * fixed --workingGroup
+  * fixed json error for SL5
+  * fixed RNDM in --exec of prun 
+  * added --nEvents and --nEventsPerChunk to prun
 
 0.5.2
   * fixed for transHome=None

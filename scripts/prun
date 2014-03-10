@@ -146,6 +146,10 @@ optP.add_option('--nFilesPerJob',action='store',dest='nFilesPerJob',default=None
                 help='Number of files on which each sub-job runs (default 50). Note that this is the number of files per sub-job in the primary dataset even if --secondaryDSs is used')
 optP.add_option('--nJobs',action='store',dest='nJobs',default=-1,type='int',
                 help='Maximum number of sub-jobs. If the number of input files (N_in) is less than nJobs*nFilesPerJob, only N_in/nFilesPerJob sub-jobs will be instantiated')
+optP.add_option('--nEvents',action='store',dest='nEvents',default=-1,type='int',
+                help='The total number of events to be processed. This option is considered only when either --inDS or --pfnList is not used')
+optP.add_option('--nEventsPerChunk',action='store',dest='nEventsPerChunk',default=-1,type='int',
+                help='Set granuarity to split events. The number of events per job is multiples of nEventsPerChunk. This option is considered only when --nEvents is used but --nJobs is not used. If this option is not set, nEvents/20 is used as nEventsPerChunk')
 optP.add_option('--nGBPerJob',action='store',dest='nGBPerJob',default=-1,
                 help='Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value')
 optP.add_option('--maxFileSize',action='store',dest='maxFileSize',default=1024*1024,type='int',
@@ -490,6 +494,12 @@ if options.libDS == 'LAST':
 # absolute path for PFN list
 if options.pfnList != '':
     options.pfnList = os.path.realpath(options.pfnList)
+
+# extract DBR from exec
+tmpMatch = re.search('%DB:([^ \'\";]+)',options.jobParams)
+if tmpMatch != None:
+    options.dbRelease = tmpMatch.group(1)
+    options.notExpandDBR = True
 
 # check DBRelease
 if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
@@ -1263,6 +1273,8 @@ if options.disableAutoRetry:
     taskParamMap['disableAutoRetry'] = 1
 if options.workingGroup != None:
     taskParamMap['workingGroup'] = options.workingGroup
+if options.official:
+    taskParamMap['official'] = True
 taskParamMap['nMaxFilesPerJob'] = options.maxNFilesPerJob
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
@@ -1293,7 +1305,16 @@ taskParamMap['jobParameters'] = [
 if options.loadXML == None:
     taskParamMap['jobParameters'] += [
         {'type':'constant',
-         'value': '-p "{0}"'.format(urllib.quote(options.jobParams)),
+         'value': '-p "',
+         'padding':False,
+         },
+        ]
+    taskParamMap['jobParameters'] += PsubUtils.convertParamStrToJediParam(options.jobParams,{},'',
+                                                                          True,False,
+                                                                          includeIO=False)
+    taskParamMap['jobParameters'] += [
+        {'type':'constant',
+         'value': '"',
          },
         ]
 else:
@@ -1370,11 +1391,25 @@ elif options.pfnList != '':
 else:
     # no input
     taskParamMap['noInput'] = True
-    if options.nJobs > 0:
-        taskParamMap['nEvents'] = options.nJobs
+    if options.nEvents > 0:
+	taskParamMap['nEvents'] = options.nEvents
+	if options.nJobs > 0:
+	    taskParamMap['nEventsPerJob'] = options.nEvents / options.nJobs
+        else:
+            # set granularity
+            if options.nEventsPerChunk > 0:
+                taskParamMap['nEventsPerRange'] = options.nEventsPerChunk
+            else:
+                # use 1/20 by default
+                taskParamMap['nEventsPerRange'] = options.nEvents / 20
+                if taskParamMap['nEventsPerRange'] <= 0:
+                    taskParamMap['nEventsPerRange'] = 1
     else:
-        taskParamMap['nEvents'] = 1
-    taskParamMap['nEventsPerJob'] = 1
+        if options.nJobs > 0:
+            taskParamMap['nEvents'] = options.nJobs
+        else:
+            taskParamMap['nEvents'] = 1
+        taskParamMap['nEventsPerJob'] = 1
 
 # param for DBR     
 if options.dbRelease != '':

@@ -13,7 +13,10 @@ import sys
 import time
 import stat
 import types
-import json
+try:
+    import json
+except:
+    import simplejson as json
 import random
 import urllib
 import struct

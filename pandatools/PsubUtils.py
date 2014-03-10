@@ -2181,13 +2181,13 @@ def getDsListCheckedForBrokerage(dsUsedDsMap):
 
 
 # convert param string to JEDI params
-def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,usePfnList=False):
+def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,usePfnList=False,includeIO=True):
     # list of place holders for input 
     inList = ['IN','CAVIN','MININ','LOMBIN','HIMBIN','BHIN','BGIN','BGHIN','BGCIN','BGOIN']
     # place holder for output
     outHolder = 'SN'
     # place holders with extension
-    exList = ['RNDMSEED','DBR']  
+    exList = ['RNDMSEED','DBR','FIRSTEVENT']  
     # mapping of client and JEDI place holders
     holders = {'RNDMSEED'  : 'RNDM',
                'DBR'       : 'DB',
@@ -2196,26 +2196,37 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
                'MAXEVENTS' : None
                }
     # replace %XYZ with ${XYZ}
-    for tmpH in inList:
-        encStr = re.sub('%'+tmpH,'${'+tmpH+'}',encStr)
+    if includeIO:
+        for tmpH in inList:
+            encStr = re.sub('%'+tmpH,'${'+tmpH+'}',encStr)
     # replace %XYZ with ${newXYZ}
+    extensionMap = {}
     for newH,oldH in holders.iteritems():
-        # skip JEDI-only place holders
+        # JEDI-only place holders
         if oldH == None:
-            continue
+            oldH = newH
         oldH = '%' + oldH
         # with extension
         if newH in exList:
-            newH = '${' + newH + '\g<ext>}'
-            oldH += '(?P<ext>:[^ \'\"\}]+)'
+            oldH += '(?P<ext>(:|=)[^ \'\"\}]+)'
+            # look for extension
+            tmpM = re.search(oldH,encStr)
+            if tmpM != None:
+                extensionMap[newH] = tmpM.group('ext')[1:]
+            newH = '${' + newH + '}'
         else:
             newH = '${' + newH + '}'
         encStr = re.sub(oldH,newH,encStr)
     # replace %OUT to outDS${SN}
-    encStr = re.sub('%OUT',outNamePrefix+'.${'+outHolder+'}',encStr)    
+    if includeIO:
+        encStr = re.sub('%OUT',outNamePrefix+'.${'+outHolder+'}',encStr)    
     # make pattern for split
     patS  = "("
-    for tmpH in holders.keys() + inList + [outHolder]:
+    allKeys = holders.keys()
+    if includeIO:
+        allKeys += inList
+        allKeys += [outHolder]
+    for tmpH in allKeys:
         patS += '[^=,\"\' \(\{;]*\$\{' + tmpH + '[^\}]*\}[^,\"\' \)\};]*|'
     patS  = patS[:-1]
     patS += ")"
@@ -2250,6 +2261,11 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
                 tmpDict = {'type':'template'}
                 tmpDict['value'] = tmpItem
                 tmpDict['param_type'] = 'number'
+                if extensionMap.has_key(tmpHolder):
+                    try:
+                        tmpDict['offset'] = long(extensionMap[tmpHolder])
+                    except:
+                        pass
         else:
             # constant
             tmpDict = {'type':'constant'}
