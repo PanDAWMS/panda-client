@@ -68,7 +68,7 @@ optP.add_option('--nEventsPerFile', action='store', dest='nEventsPerFile',  defa
                 type='int',    help='Number of events per file')
 optP.add_option('--nGBPerJob',action='store',dest='nGBPerJob',default=-1, help='Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value')
 optP.add_option('--site', action='store', dest='site',  default="AUTO",
-                type='string',    help='Site name where jobs are sent (default:AUTO)')
+                type='string',    help='Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites')
 optP.add_option('--athenaTag',action='store',dest='athenaTag',default='',type='string',
                 help='Use differnet version of Athena on remote WN. By defualt the same version which you are locally using is set up on WN. e.g., --athenaTag=AtlasProduction,14.2.24.3')
 optP.add_option('--inDS',  action='store', dest='inDS',  default='',
