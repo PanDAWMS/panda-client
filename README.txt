@@ -21,7 +21,7 @@ pathena -h
 
 ** Release Note
 
-current
+0.5.3
   * fixed --spaceToken
   * fixed --workingGroup
   * fixed json error for SL5
