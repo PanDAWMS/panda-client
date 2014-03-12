@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.5.4
+  * fixed --mergeScript
+
 0.5.3
   * fixed --spaceToken
   * fixed --workingGroup

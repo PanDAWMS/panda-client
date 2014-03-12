@@ -1572,7 +1572,7 @@ if options.goodRunListXML != '':
 if options.mergeOutput:
     jobParameters = '-r {0} '.format(runDir)
     if options.mergeScript != '':
-        jobParameters += '-j {0} '.format(options.mergeScript)
+        jobParameters += '-j "{0}" '.format(options.mergeScript)
     if options.rootVer != '':
         jobParameters += "--rootVer %s " % options.rootVer
     if options.useRootCore:
@@ -1581,6 +1581,7 @@ if options.mergeOutput:
         jobParameters += '-l ${LIB} '
     else:
         jobParameters += '-a {0} '.format(archiveName)
+        jobParameters += "--sourceURL ${SURL} "
     jobParameters += '${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}'
     taskParamMap['mergeSpec'] = {}
     taskParamMap['mergeSpec']['useLocalIO'] = 1
