@@ -1395,7 +1395,7 @@ def convSrmV2ID(tmpSite):
     if tmpSite.startswith('CERN-PROD_TMP'):
         return 'CERN-PROD_TMPDISK'
     # parch for CERN OLD
-    if tmpSite.startswith('CERN-PROD_OLD') or tmpSite.startswith('CERN-PROD_LOCAL'):
+    if tmpSite.startswith('CERN-PROD_OLD'):
         return 'CERN-PROD_OLDDISK'
     # patch for SRM v2
     tmpSite = re.sub('-[^-_]+_[A-Z,0-9]+DISK$', 'DISK',tmpSite)
@@ -2417,13 +2417,13 @@ def getDefaultSpaceToken(fqans,defaulttoken):
 # use dev server
 def useDevServer():
     global baseURL
-    baseURL = 'http://voatlas220.cern.ch:25080/server/panda'
+    baseURL = 'http://aipanda007.cern.ch:25080/server/panda'
     global baseURLSSL
-    baseURLSSL = 'https://voatlas220.cern.ch:25443/server/panda'    
+    baseURLSSL = 'https://aipanda007.cern.ch:25443/server/panda'    
     global baseURLCSRV
-    baseURLCSRV = 'https://voatlas220.cern.ch:25443/server/panda'
+    baseURLCSRV = 'https://aipanda007.cern.ch:25443/server/panda'
     global baseURLCSRVSSL
-    baseURLCSRVSSL = 'https://voatlas220.cern.ch:25443/server/panda'
+    baseURLCSRVSSL = 'https://aipanda007.cern.ch:25443/server/panda'
     global baseURLSUB
     baseURLSUB = 'http://atlpan.web.cern.ch/atlpan'
 

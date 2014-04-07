@@ -102,7 +102,7 @@ optP.add_option('--transferredDS',action='store', dest='transferredDS',default='
 optP.add_option('--secondaryDSs',action='store',dest='secondaryDSs',default='',type='string',
                 help='List of secondary datasets when the job requires multiple inputs. See PandaRun wiki page for detail')
 optP.add_option('--site',action='store',dest='site',default=defaultSite,type='string',
-                help='Site name where jobs are sent (default:%s)' % defaultSite)
+                help='Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that the best site(s) is chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites')
 optP.add_option('--cloud',action='store',dest='cloud',default=None,type='string',
                 help='Cloud where jobs are submitted. default is set according to your VOMS country group')
 optP.add_option('--match',action='store',dest='match',default='',type='string',
