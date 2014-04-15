@@ -2425,7 +2425,7 @@ def useDevServer():
     global baseURLCSRVSSL
     baseURLCSRVSSL = 'https://aipanda007.cern.ch:25443/server/panda'
     global baseURLSUB
-    baseURLSUB = 'http://atlpan.web.cern.ch/atlpan'
+    baseURLSUB = 'http://atlpan.web.cern.ch/atlpan/panda-wnscript'
 
 
 # set server

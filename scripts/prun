@@ -241,7 +241,7 @@ optP.add_option('--enableJEM',action='store_const',const=True,dest='enableJEM',d
 optP.add_option('--configJEM', action='store', dest='configJEM', default='',
                 type='string', help='configration parameters for JEM')
 optP.add_option('--cmtConfig', action='store', dest='cmtConfig', default=None,
-                type='string', help='CMTCONFIG=i686-slc5-gcc43-opt is used on remote worker-node by default even if you use another CMTCONFIG locally. This option allows you to use another CMTCONFIG remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt. If you use --libDS together with this option, make sure that the libDS was compiled with the same CMTCONFIG, in order to avoid failures due to inconsistency in binary files')
+                type='string', help='CMTCONFIG=i686-slc5-gcc43-opt is used on remote worker-node by default even if you use another CMTCONFIG locally. This option allows you to use another CMTCONFIG remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt. For ROOT on CVMFS, something like x86_64-slc6-gcc4.8 is also allowed. If you use --libDS together with this option, make sure that the libDS was compiled with the same CMTCONFIG, in order to avoid failures due to inconsistency in binary files')
 optP.add_option('--requireLFC',action='store_const',const=True,dest='requireLFC',default=False,
                 help='Require that LFC lookup is 100% successful (a single miss will fail the submission)')
 optP.add_option('--loadXML',action='store',dest='loadXML',default=None,

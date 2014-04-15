@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+0.4.38 (4/15/2013)
+  * fixed prun to accept CVMFS ROOT version format
+
 0.4.37 (4/7/2013)
   * added a protection to pbook against too many inDS
   * changed dev srv URL
