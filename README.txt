@@ -21,6 +21,9 @@ pathena -h
 
 ** Release Note
 
+current
+  * fixed prun to accept CVMFS ROOT version format
+
 0.5.4
   * fixed --mergeScript
 

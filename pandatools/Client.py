@@ -46,6 +46,8 @@ baseURLSUB     = "http://pandaserver.cern.ch:25080/trf/user"
 baseURLMON     = "http://panda.cern.ch:25980/server/pandamon/query"
 baseURLCSRV    = "http://pandacache.cern.ch:25080/server/panda"
 baseURLCSRVSSL = "http://pandacache.cern.ch:25443/server/panda"
+#baseURLCSRV    = "http://aipanda011.cern.ch:25080/server/panda"
+#baseURLCSRVSSL = "http://aipanda011.cern.ch:25443/server/panda"
 
 # exit code
 EC_Failed = 255
@@ -2482,9 +2484,9 @@ def useDevServer():
 # use INTR server
 def useIntrServer():
     global baseURL
-    baseURL = 'http://voatlas334.cern.ch:25080/server/panda'
+    baseURL = 'http://aipanda027.cern.ch:25080/server/panda'
     global baseURLSSL
-    baseURLSSL = 'https://voatlas334.cern.ch:25443/server/panda'
+    baseURLSSL = 'https://aipanda027.cern.ch:25443/server/panda'
 
 
 # set server
