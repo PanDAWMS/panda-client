@@ -290,6 +290,10 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
     if fileInfo != {}:
         if fileInfo.has_key('inDS'):
             iDSlist = fileInfo['inDS']
+            maxInDS = 20
+            if len(iDSlist) > maxInDS:
+                totalInDS = len(iDSlist)
+                iDSlist = iDSlist[:maxInDS] + [' and %s more datasets' % (totalInDS-maxInDS)]
         if fileInfo.has_key('outDS'):
             oDSlist = fileInfo['outDS']
     else:

@@ -21,6 +21,16 @@ pathena -h
 
 ** Release Note
 
+0.4.38 (4/15/2013)
+  * fixed prun to accept CVMFS ROOT version format
+
+0.4.37 (4/7/2013)
+  * added a protection to pbook against too many inDS
+  * changed dev srv URL
+
+0.4.36 (2/26/2013)
+  * fixed for CERN-PROD_LOCALGROUPDISK
+
 0.4.35 (2/19/2013)
   * changed client_version to 2.5.0
 
