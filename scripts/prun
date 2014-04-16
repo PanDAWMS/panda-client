@@ -37,7 +37,7 @@ EC_Submit    = 90
 
 usage = """%prog [options]
 
-  HowTo is available at https://twiki.cern.ch/twiki/bin/view/Atlas/PandaRun"""
+  HowTo is available at https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun"""
 
 # command-line parameters
 optP = optparse.OptionParser(usage=usage,conflict_handler="resolve")
