@@ -51,7 +51,7 @@ usage = """%prog [options] <jobOption1.py> [<jobOption2.py> [...]]
 
 '%prog --help' prints a summary of the options
 
-  HowTo is available at https://twiki.cern.ch/twiki/bin/view/Atlas/PandaAthena"""
+  HowTo is available at https://twiki.cern.ch/twiki/bin/view/PanDA/PandaAthena"""
 
 
 # command-line parameters
