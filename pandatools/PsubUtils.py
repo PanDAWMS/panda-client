@@ -69,6 +69,11 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
         # check roles
         if vomsRoles != None:
             hasAttr = True
+            # remove redundant messages
+            outVomsList = []
+            for tmpItem in out.split('\n'):
+                if tmpItem.startswith('/'):
+                    outVomsList.append(tmpItem)
             for indexAttr,attrItem in enumerate(vomsRoles.split(',')):
                 vomsCommand = attrItem.split(':')[-1]
                 if not '/Role' in vomsCommand:
@@ -78,7 +83,7 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
                     break
                 # check order
                 try:
-                    if not vomsCommand in out.split('\n')[indexAttr]:
+                    if not vomsCommand in outVomsList[indexAttr]:
                         hasAttr = False
                         break
                 except:
