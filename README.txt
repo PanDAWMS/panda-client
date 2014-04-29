@@ -1,6 +1,6 @@
 ** How to install
 
-svn co svn+ssh://svn.cern.ch/reps/panda/panda-client/current panda-client
+git clone https://github.com/PanDAWMS/panda-client.git
 cd panda-client
 
 python setup.py install --prefix=/path/to/install/dir
@@ -22,6 +22,7 @@ pathena -h
 ** Release Note
 
 current
+  * added a protection against junk message given by voms-proxy-info
   * fixed prun to accept CVMFS ROOT version format
 
 0.5.4
