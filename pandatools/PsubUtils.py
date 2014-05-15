@@ -2351,7 +2351,7 @@ def getListPFN(pfnFile):
     for line in rFile:
         line = re.sub('\n','',line)
         line.strip()
-        if line != '':
+        if line != '' and not line.startswith('#'):
             inputFileList.append(line)
     rFile.close()
     inputFileList.sort()
