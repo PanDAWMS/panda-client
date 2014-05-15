@@ -1496,7 +1496,7 @@ elif options.pfnList != '':
     for tmpLine in rFile:
         tmpLine = tmpLine.rstrip("\n")
         tmpLine = tmpLine.strip()
-        if tmpLine != '':
+        if tmpLine != '' and not tmpLine.startswith('#'):
             inputFileList.append(tmpLine)
             # make dummy map for splitting
             inputFileMap[tmpLine] = {'fsize':1}

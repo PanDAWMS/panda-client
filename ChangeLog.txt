@@ -1,0 +1,1320 @@
+** Release Note
+
+0.4.40 (5/15/2014)
+  * ignoring pound symbols in --pfnList 
+
+0.4.39 (4/29/2014)
+  * added a protection against junk message given by voms-proxy-info
+
+0.4.38 (4/15/2014)
+  * fixed prun to accept CVMFS ROOT version format
+
+0.4.37 (4/7/2014)
+  * added a protection to pbook against too many inDS
+  * changed dev srv URL
+
+0.4.36 (2/26/2014)
+  * fixed for CERN-PROD_LOCALGROUPDISK
+
+0.4.35 (2/19/2014)
+  * changed client_version to 2.5.0
+
+0.4.34 (1/13/2014)
+  * limited the number of output files
+
+0.4.33 (12/13/2013)
+  * fixed for new pyAMI
+
+0.4.32 (11/12/2013)
+  * setting client_version
+  * fixed getCmtConfig to check with installedSW	
+  * set --useNewTRF by default in pathena
+
+0.4.31 (9/19/2013)
+  * fixed threading in pbook
+
+0.4.30 (9/2/2013)
+  * fixed cmtShowProjects to ignore CMTUSERCONTEXT
+
+0.4.29 (8/7/2013)
+  * fixed getLatestDBRelease for the change of DBR replication policy
+
+0.4.28 (7/30/2013)
+  * fixed pathena to respect --nFilesPerJob when --nEventsPerJob
+
+0.4.27 (7/18/2013)
+  * fixed voms-proxy-info check for PATHENA_GRID_SETUP_SH setting
+
+0.4.26 (7/5/2013)
+  * added support for ROOT/x86_64-slc6-gcc47-opt	
+  * fixed datriHandler for SLC6
+ 
+0.4.25 (6/5/2013)
+  * fixed for the change to DQ2 CC 
+
+0.4.24 (6/5/2013)
+  * fixed grid-cert-info check
+     
+0.4.23 (6/4/2013)
+  * fixed wrong Indetity for proxy generation on SL(C)6
+  * fixed wrong message for PATHENA_GRID_SETUP_SH on CERN SLC6
+  * fixed --site BNL to send jobs to ANALY_BNL_SHORT
+	
+0.4.22 (5/13/2013)
+  * fixed ownership of libDS for prun with --noCompile
+  * fixed --outTarBall of pathena when input sandbox is reused
+  * fixed ConfigExtractor for AthenaRootComps
+
+0.4.21 (4/3/2013)
+  * added missing attributes to JobSpec
+
+0.4.20 (3/21/2013)
+  * improved error message of the brokerage in pathena
+  * fixed pbook.reproduce for outDS used by multiple jobIDs 
+
+0.4.19 (3/18/2013)
+  * improved --manaVer of prun
+
+0.4.18 (3/14/2013)
+  * added --noCompile to pathena
+  * added --manaVer to prun
+
+0.4.17 (3/4/2013)
+  * added a debug option to pathena
+  * added --useMana to prun
+  * changed tgz/rpm repository due to changes of CERN twiki policy
+
+0.4.16 (1/27/2013)
+  * added --buildInLastChunk to pathena/prun
+
+0.4.15 (1/23/2013)
+  * added --safetySize to prun
+  * setting scope to files for migration to Rucio
+
+0.4.14 (1/11/2013)
+  * added --useNewTRF to pathena which keeps the attempt number when there is only one input
+  * added a protection to pathena for --nEventsPerJob and --nGBPerJob
+
+0.4.13 (1/10/2013)
+  * added a debug option to prun
+
+0.4.12 (1/9/2013)
+  * improved pbook.retry() to allow newOpts without newSite=True
+
+0.4.11 (11/26/2012)
+  * improved DBR check to accept CVMFS sites even if DBR is missing at DISK 
+
+0.4.10 (10/30/2012)
+  * fixed Client to use the default X509_CERT_DIR if missing
+
+0.4.9 (10/30/2012)
+  * added --appendStrToExtStream to pathena 	
+  * fixed newOpts in pbook.retry()	
+  * fixed for CERN TMPDISK	
+  * fixed for curl+NSS on SLC6
+
+0.4.8 (8/8/2012)
+  * suppressed redundant messages when sourcing grid-env
+  * improved the brokerage to use maxCpuCount
+
+0.4.7 (7/19/2012)
+  * added --noOutput to pathena
+
+0.4.6 (7/18/2012)
+  * fixed --inputFileList of pathena/prun for whitespaces in list
+  * fixed Athena tag extraction for nightlies on CVMFS
+
+0.4.5 (7/4/2012)
+  * improved warning message of the brokerage
+  * updated pathena/prun to show missing files in the debug mode
+
+0.4.4 (6/27/2012)
+  * added --useSiteGroup to pathena/prun
+
+0.4.3 (6/21/2012)
+  * fixed cachesrv lookup to reuse sandbox
+
+0.4.2 (6/13/2012)
+  * fixed runBrokerage for --useDirectIOSites
+
+0.4.1 (6/11/2012)
+  * added debug() to pbook
+  * added --debugMode to pathena/prun	
+  * setting account and appid for Rucio in pbook
+  * added support to pathena/prun to run nigitlies
+  * modified putFile to reuse sandbox if CRC and size are identical
+
+0.4.0 (5/31/2012)
+  * added --noCompile to prun
+  * added --useDirectIOSites to pathena/prun
+
+0.3.99 (5/18/2012)
+  * added --useShortLivedReplicas to pathena/prun to enable usage of short-lived replicas 
+
+0.3.98 (5/9/2012)
+  * using pandaGridSetup.sh for CVMFS, as recommended by Asoka De Silva
+
+0.3.97 (5/9/2012)
+  * fixed warning message related to SKIPEVENTS in --trf
+  * using glite on CVMFS when athena is setup with CVMFS	
+  * changed nickname to be mandatory
+  * setting account and appid for Rucio
+  * added a protection against too large --maxCpuCount
+
+0.3.96 (4/25/2012)
+  * added reproduce() to pbook
+  * added a warning when nEventsPerFile>nEventsPerJob but no %SKIPEVENTS in --trf
+  * fixed --useGOForOutput
+  * fixed pathena to use AMI for --goodRunListXML + --nEventsPerJob
+ 
+0.3.95 (3/26/2012)
+  * fixed pathena for trf+TAG+remoteIO
+  * using x86_64-slc5-gcc43-opt by default for 17.5.0 or higher
+  * fixed --athenaTag to recognize 32 and 64
+  * added --useGOForOutput to pathena/prun
+  * removed redundant lookup for --dbRelease=LATEST
+
+0.3.94 (3/12/2012)
+  * fixed pbook to ignore DatasetExistsException when retrying
+
+0.3.93 (3/12/2012)
+  * fixed timeout in getFilesInUseForAnal 
+
+0.3.92 (3/9/2012)
+  * changed allowProdDisk in addDataset for DATADISK too 
+
+0.3.91 (3/7/2012)
+  * disabled shadow registration
+  * added --followLinks to prun
+
+0.3.90 (3/6/2012)
+  * added --athenaTag to pathena
+  * fixed --skipScan in pathena
+  * changed --skipScan to use complete replicas only
+
+0.3.89 (3/5/2012)
+  * fixed SyntaxWarning
+
+0.3.88 (3/5/2012)
+  * fixed pathena/prun to trigger LFC lookup only for incomplete replicas
+  * fixed --skipScan in pathena/prun
+  * fixed replica lookup when two DQ2 IDs in the same site hold inDS
+
+0.3.87 (3/1/2012)
+  * fixed pathena/prun for libDS
+
+0.3.86 (2/24/2012)
+  * fixed site lookup for _SOFT
+
+0.3.85 (2/15/2012)
+  * fixed output file indexing of pathena for general streams
+
+0.3.84 (2/9/2012)
+  * Mikhail Titov updated datriHandler
+  * fixed site lookup for _DET
+
+0.3.83 (2/3/2012)
+  * imposed tighter limit on the length of outDS for mergeOutput
+
+0.3.82 (2/1/2012)
+  * fixed to use glite 3.2 on CERN AFS 
+
+0.3.81 (1/30/2012)
+  * added a protection to prun against --nGBPerJob plus too large --nJobs 
+  * updated prun for 64bit --rootVer
+
+0.3.80 (1/26/2012)
+  * fixed site exclusion for access controlled sites
+
+0.3.79 (1/23/2012)
+  * fixed pathena to use all files in secondary streams
+
+0.3.78 (1/19/2012)
+  * fixed site lookup for CERN + libDS
+
+0.3.77 (1/19/2012)
+  * fixed AthenaUtils for general streams
+
+0.3.76 (1/18/2012)
+  * fixed pathena/prun to solve conflict between --site and --excludedSite
+
+0.3.75 (1/18/2012)
+  * fixed pathena to use renaming for pool file production to be properly compressed
+  * added allowProdDisk to Client.addDataset for HC
+
+0.3.74 (1/13/2012)
+  * added --splitWithNthFiledOfLFN to pathena/prun
+  * added a warning to pbook.retry when newOpts is used without newSite
+  * added --disableAutoRetry to pathena/prun
+
+0.3.73 (12/13/2011)
+  * fixed pbook.retry(newSite) for multiple input jobs
+
+0.3.72 (12/8/2011)
+  * fixed checkData with DaTRI to ignore diagnostics messages in T3 grid setup script 
+
+0.3.71 (11/28/2011)
+  * fixed site lookup for CERN GROUPDISK 
+
+0.3.70 (11/27/2011)
+  * added --inDsTxt to pathena and prun
+  * changed --excludedSite of pathena/prun to use action=append 
+  * fixed parameter setting via panda.cfg for multi-site jobs
+  * modified panda.cfg to be written in metadata
+
+0.3.69 (11/9/2011)
+  * added --lowMinDS and --highMinDS to pathena for %LOMBIN and %HIMBIN in --trf
+
+0.3.68 (11/7/2011)
+  * fixed for pyAMI
+
+0.3.67 (11/1/2011)
+  * updated prun for --useRootCore + --noBuild
+  * added --pfnList to prun
+
+0.3.66 (10/26/2011)
+  * fixed --mergeScript of pathena/prun for execution string   
+
+0.3.65 (10/25/2011)
+  * added pbook.kill(running)
+  * updated pathena/prun so that any option can have a default value in panda.cfg
+  * updated pathena/prun to allow users to overwrite the default option values with ./panda.cfg 
+  * added a protection to pathena against duplicated streams in THistSvc
+  * added excludedSite info to brokerage log
+  * fixed duplicated archiving in pathena/prun
+
+0.3.64 (10/7/2011)
+  * fixed retryBuild in pbook
+
+0.3.63 (10/7/2011)
+  * added a patch for CERN-PROD_DET-IBL
+  * added --transferredDS to pathena/prun 
+
+0.3.62 (9/30/2011)
+  * fixed email scan in psequencer for atlpan@cern.ch+imap.cern.ch
+
+0.3.61 (9/28/2011)
+  * fixed sorting in listView of pbook --gui
+  * added --initScanDepth and getFrozenPandaJobs() to psequencer
+  * fixed getPandaJob() of psequencer to work with frozen jobs
+ 
+0.3.60 (9/27/2011)
+  * Lauren Tompkins added --loadXML,--forceStaged,--forceStagedSecondary,--requireLFC to prun
+  * fixed pbook for jobs retried on the server side
+  * fixed PStep for env
+  * fixed email scan in psequencer for Atlas Pangaea
+
+0.3.59 (9/13/2011)
+  * fixed --nSkipFiles of pathena/prun for containers
+  * improved doc on --memory of pathena/prun 
+
+0.3.58 (9/13/2011)
+  * fixed pbook for jobs reassigned by rebrokerage
+  * added a temporary patch for CERN EOS migration
+
+0.3.57 (9/5/2011)
+  * made pbook transaction-safe
+  * fixed pbook.retry() to allow reattempt for failed subjobs in running job
+
+0.3.56 (9/2/2011)
+  * fixed --trf of pathena for TAG reading 
+
+0.3.55 (8/31/2011)
+  * fixed pbook -c for multiple/keyworded arguments
+
+0.3.54 (8/17/2011)
+  * fixed file gathering in prun for --useRootCore 
+
+0.3.53 (8/5/2011)
+  * fixed for US T2 TRIG-DAQ
+  * added retry for registering datasets to DQ2
+
+0.3.52 (8/5/2011)
+  * fixed for CERN TMP
+
+0.3.51 (7/28/2011)
+  * fixed --trf of pathena to use TagGUIDCount svc when TAG is used
+  * added --useRootCore to prun
+
+0.3.50 (7/26/2011)
+  * added --nMinPerJob and --nCavPerJob to pathena
+
+0.3.49 (7/14/2011)
+  * fixed termination of prun when --nFiles is used
+
+0.3.48 (7/12/2011)
+  * fixed tar-archiving for files with special characters
+  * fixed sendLogInfo for --useOldStyleOutput
+  * fixed --supStream of pathena to accept wild cards
+  * fixed ConfigExtractor for DESD
+
+0.3.47 (7/1/2011)
+  * fixed ConfigExtractor for multiple AANT streams to write to the same file
+  * changed pathena/prun to make a stage-in request for TAPE files when event-picking
+  * added --eventPickStagedDS to pathena/prun
+
+0.3.46 (6/30/2011)
+  * updated pathena/prun to ignore dataset replicas with short lifetime
+  * added --mergeScript to pathena/prun
+  * added a protection to DBR lookup to see T1 replicas
+
+0.3.45 (6/20/2011)
+  * fixed --extFile of pathena to work with sub directories
+  * added --cmtConfig to pathena/prun
+  * using uuid.py when uuidgen is unavailable
+  * updated brokerage to take --memory into account
+  * added site/cloud/libDS/outDS info to brokerage logging
+  * added retryBuild to pbook.retry() 
+
+0.3.44 (6/6/2011)
+  * fixed pbook to kill or retry only jobsetIDs by default when uppserJobID is given
+
+0.3.43 (5/31/2011)
+  * fixed --tmpDir of pathena/prun for relative path
+  * fixed pathena/prun to prevent running twice on the same input files for --mergeOutput
+
+0.3.42 (5/18/2011)
+  * increased maxCrossSite to 50
+  * fixed pathena/prun for ssc5
+  * added a protection to DBR lookup for DQ2 failure 
+  * fixed pathena to check the size of MinimumBias,Cavern,BeamHalo,BeamGas files
+
+0.3.41 (5/11/2011)
+  * updated pathena/prun to give warning message if files are missing
+  * fixed pathena for TAG with trf
+
+0.3.40 (5/5/2011)
+  * changed TAG reference names to StreamTAG_ref
+
+0.3.39 (5/5/2011)
+  * added --mergeOutout to pathena/prun
+  * updated pbook to allow reattempt for merge jobs
+  * updated pathena/prun for brokerage logging
+
+0.3.38 (4/27/2011)
+  * fixed excludePattern in archiveFiles
+  * added more conservative definition for LATEST DBR
+
+0.3.37 (4/18/2011)
+  * updated DBR lookup to ignore ddo.user.*
+  * fixed cache server lookup
+
+0.3.36 (4/13/2011)
+  * added a protection against extremely fain-grained jobs
+  * added a protection to prun not to send files just under HOME
+  * fixed prun not to send hidden files
+  * added a protection when DQ2 complete dataset is incomplete in LFC
+  * fixed pbook to set parentSetID in retry(newSite=True)
+  * using new cache server to upload source files
+  * fixed pathena to use the latest DBR when DBRelease is unset in --trf
+  * fixed truncation of --execludedSite in pbook.retry(newSite=True)
+  * fixed string replacement in pbook.retry(newSite=True)
+  * improved error message related to TAPE in pathena/prun
+
+0.3.35 (4/1/2011)
+  * added protection not to produce jumbo shadow datasets
+
+0.3.34 (3/29/2011)
+  * removing whiles paces from --outputs and --extOutFile
+  * added automatic splitting to pathena/prun to avoid producing jumbo datasets
+
+0.3.33 (3/22/2011)
+  * fixed AMI lookup in --trf of pathena
+
+0.3.32 (2/26/2011)
+  * added --notSkipLog to prun
+
+0.3.31 (2/25/2011)
+  * modified doc on --useNextEvent in pathena
+  * added --randomMin/Cav to pathena
+
+0.3.30 (2/24/2011)
+  * added --eventPickAmiTag to pathena/prun
+
+0.3.29 (2/9/2011)
+  * added --enableJEM and --configJEM to pathena/prun
+  * added dereferenceSymLinks to archiveSourceFiles
+  * modified --rootVer to follow versioning convention of ROOT
+
+0.3.28 (2/2/2011)
+  * added --rootVer to prun
+
+0.3.27 (1/25/2011)
+  * fixed update for twiki.cern.ch's cert
+  * fixed Client.convSrmV2ID for MWT2
+
+0.3.26 (1/24/2011)
+  * added --individualOutDS to prun
+
+0.3.25 (1/20/2011)
+  * fixed pbook.retry(newSite=True)
+  * changed URL for dev server
+
+0.3.24 (1/10/2011)
+  * fixed pbook.retry() for multiple reattempts
+
+0.3.23 (1/10/2011)
+  * fixed pbook.retry() for automatic freezing
+
+0.3.22 (1/6/2011)
+  * added --in/outRunConfig to pathena
+
+0.3.21 (1/6/2011)
+  * updated LFC scan to try another site when timed out
+  * fixed --useAMIEventLevelSplit of pathena
+
+0.3.20 (12/6/2010)
+  * fixed --trf of pathena for gsidcap sites
+
+0.3.19 (11/24/2010)
+  * fixed metadata check to ignore site status
+
+0.3.18 (11/23/2010)
+  * fixed --pfnList of pathena
+
+0.3.17 (11/21/2010)
+  * fixed filename duplication for AANT in --individualOutDS of pathena
+
+0.3.16 (11/18/2010)
+  * fixed for CERN EOS
+  
+0.3.15 (11/16/2010)
+  * added --useAMIEventLevelSplit to pathena
+  * fixed nEventsPerFile in pathena
+
+0.3.14 (11/15/2010)
+  * fixed interference between --split and --nEventsPerJob in pathena
+
+0.3.13 (11/13/2010)
+  * fixed getRunningPandaJobs() in psequencer
+
+0.3.12 (11/9/2010)
+  * fixed splitter for prun
+
+0.3.11 (11/9/2010)
+  * added --useContElementBoundary to pathena/prun 
+  * added --prodSourceLabel to prun
+  * fixed --excludeFile of prun
+
+0.3.10 (11/3/2010)
+  * fixed a bug related to useTagParent
+
+0.3.9 (11/3/2010)
+  * updated TAG analysis framework in pathena to use TagGUIDCount svc 
+  * added --notUseTagLookup to pathena not to use TagGUIDCount svc 
+
+0.3.8 (10/31/2010)
+  * added --in/outTarBall to pathena/prun
+  * fixed --removeFile in pathena
+
+0.3.7 (10/27/2010)
+  * added --express to pathena/prun
+
+0.3.6 (10/20/2010)
+  * fixed --eventPick for JSP failures
+
+0.3.5 (10/15/2010)
+  * fixed misleading message in prun when --secondaryDSs is used
+  * fixes messages in pathena/prun when no jobs are submitted due to lack
+    of unused input files
+  * added pbook.show(X,Y)
+
+0.3.4 (10/9/2010)
+  * added --restoreDB to pbook
+
+0.3.3 (10/9/2010)
+  * disallowed userXY
+  * fixed ConfigExtractor for StreamESD/AOD defined as normal streams
+
+0.3.2 (10/4/2010)
+  * fixed metadata check for wildcard in --inDS
+
+0.3.1 (10/1/2010)
+  * fixed --athenaTag of prun for analysis projects
+  * added --disableRebrokerage to pathena/prun
+
+0.3.0 (9/29/2010)
+  * fixed pathena for jobO specified with a full path
+
+0.2.99 (9/28/2010)
+  * updated --eventPick to use bulk lookup function of new server 
+
+0.2.98 (9/23/2010)
+  * added protection to metadata check against missing replicas
+
+0.2.97 (9/22/2010)
+  * added refreshSpecs to Client.py	
+  * fixed grid source setup for AtlasSetup
+  * fixed replica lookup in metadata check for MWT2
+
+0.2.96 (9/17/2010)
+  * fixed --useOldStyleOutput
+
+0.2.95 (9/16/2010)
+  * fixed site lookup in metadata check for brokeroff sites
+
+0.2.94 (9/16/2010)
+  * fixed dataset lookup in metadata check
+
+0.2.93 (9/15/2010)
+  * fixed pathena/prun to ignore dataset replicas with archived=ToBeDeleted
+  * fixed --shipInput of pathena to check dataset availability when --parentDS is used for container as well as dataset
+
+0.2.92 (9/12/2010)
+  * changed pbook.retry to show JobsetID when the job was already retried
+
+0.2.91 (9/8/2010)
+  * changed getpass to work without a tty 
+  * check actimeleft of voms-proxy to avoid expiration of VOMS FQANs
+  * fixed pbook.retry(newSite=True) to distinguish DBR from regular inputs
+
+0.2.90 (9/3/2010)
+  * added a protection to pbook against jobsetID=NULL or ''
+
+0.2.89 (8/28/2010)
+  * fixed --secondaryDSs of prun for multiple streams
+
+0.2.88 (8/27/2010)
+  * changed archiveFiles to include dict dirs when archiving
+
+0.2.87 (8/26/2010)
+  * fixed prun to use short LFN for log files
+  * fixed DBR lookup to ignore DBRs with special suffixes
+  * unset MANPATH to avoid an error message caused by a corrupted MANPATH in OSG middle-ware
+
+0.2.86 (8/24/2010)
+  * fixed a misleading error message in prun when --outDS is reused together with --match
+
+0.2.85 (8/21/2010)
+  * fixed --eventPick of pathena for multiple run numbers
+
+0.2.84 (8/18/2010)
+  * added a protection against empty --excludedSite
+  * added a protection against duplicated counties in unused cloud
+
+0.2.83 (8/18/2010)
+  * fixed key error in pathena when --individualOutDS is used for existing outDS
+
+0.2.82 (8/12/2010)
+  * fixed directory scan for python 2.6
+
+0.2.81 (8/12/2010)
+  * fixed misuse of incomplete replica locations in site lookup
+
+0.2.80 (8/10/2010)
+  * fixed pathena to check DQ2/LFC for MinimumBias/Cavern/BeamGas/BeamHalo datasets
+  * fixed prun to check LFC for secondary datasets
+
+0.2.79 (8/9/2010)
+  * added protection to pbook against duplication of jobID and jobsetID
+  * added ignoreDuplication to pbook.retry()
+
+0.2.78 (8/9/2010)
+  * added --maxNFilesPerJob and --writeInputToTxt to prun
+
+0.2.77 (8/7/2010)
+  * added global SN into group file names to guarantee LFN uniqueness 
+  * fixed error message about missing DBR
+  * fixed prun to check DBR location
+  * increased the minimum number of the latest DBR replicas to 40 
+  * fixed error message about TAPE sites
+  * fixed --exec/--bexec of prun and --trf/-c of pathena to keep special characters
+
+0.2.76 (8/6/2010)
+  * fixed pathena/prun to exit immediately when all input files were used by other jobs 
+
+0.2.75 (8/5/2010)
+  * added --descriptionInLFN to pathena/prun
+  * fixed ConfigExtractor for StreamRDO
+
+0.2.74 (8/2/2010)
+  * fixed pbook.show('running')
+  * fixed string conversion error in prun
+
+0.2.73 (8/2/2010)
+  * changed pathena/prun to use output container by default
+  * changed --outDS to append / when / is missing
+  * introduced a short LFN format to follow new DQ2 limitation on LFN length
+  * added --useOldStyleOutput to pathena/prun to allow output dataset and old LFN convention
+  * fixed --individualOutDS of pathena to create separate containers
+  * fixed pbook to work with JobsetID instead of JobID
+  * added longFormat option to pbook.show() to show jobs individually
+  * fixed pbook.retry() to check input duplication
+  * increased the minimum number of complete replicas for the latest DBR
+  * made LFC lookup faster by increasing the number of GUIDs per cycle
+  * added --nGBPerJob to prun
+
+0.2.72 (7/29/2010)
+  * fixed the range check in --goodRunList for LFNs with finer-grained LBs
+
+0.2.71 (7/26/2010)
+  * added --antiMatch to prun
+     
+0.2.70 (7/23/2010)
+  * fixed pbook.retry() to check VOMS role when retrying group jobs
+  * fixed local job conversion to set jobType using processingType
+  * fixed a crash in pathena when no file is available at a site
+  * added noSubmit to pbook.retry()
+
+0.2.69 (7/23/2010)
+  * fixed --trf of pathena to override DBR when DBR is explicitly specified in the argument
+
+0.2.68 (7/23/2010)
+  * improved --shipInput of pathena to find parentDS using GUIDs in TAG
+  * added --useChirpServer to pathena/prun
+
+0.2.67 (7/21/2010)
+  * added a protection against unregistered GUID lookup in eventPicking 
+
+0.2.66 (7/21/2010)
+  * fixed --trf of pathena and --exec of prun to allow %DB:LATEST 	
+  * fixed misleading errors when inDS is empty
+  * fixed DBR lookup to ignore CDRelease
+
+0.2.65 (7/20/2010)
+  * added more warning for migration of naming convention
+  * updated --destSE to accept a list of destinations
+  * added showPandaIDinState to pbook.show()
+
+0.2.64 (7/16/2010)
+  * fixed --goodRunListXML to parse multiple LBRange items in a single LumiBlockCollection
+
+0.2.63 (7/15/2010)
+  * added a protection against looping on empty datasets for input/output containers
+
+0.2.62 (7/15/2010)
+  * fixed --nGBPerJob of pathena to take the number of files into account
+
+0.2.61 (7/7/2010)
+  * added a protection against deleted DS lookup in eventPicking 
+
+0.2.60 (7/5/2010)
+  * added a protection to DS lookup against unmapped GUID in eventPicking 
+
+0.2.59 (6/25/2010)
+  * changed --eventPickStreamName to be optional for MC
+
+0.2.58 (6/25/2010)
+  * use non-certificate authentication in pyAMI
+
+0.2.57 (6/24/2010)
+  * made --dbRelease=LATEST the default in pathena
+
+0.2.56 (6/23/2010)
+  * fixed unsupported cloud error due to OSG
+
+0.2.55 (6/18/2010)
+  * fixed cmtConfig
+
+0.2.54 (6/18/2010)
+  * added newSite option to pbook.retry()	
+  * send .cpp and .hpp to WN by default
+
+0.2.53 (6/15/2010)
+  * set prodDBlock appropriately for GRL
+
+0.2.52 (6/11/2010)
+  * added protection for quotes in --trf of pathena
+
+0.2.51 (6/9/2010)
+  * verify spaceToken for ANALY_ARC
+  * fixed a wrong option in tar archiving
+
+0.2.50 (6/4/2010)
+  * fixed slow DQ2 lookup for --dbRelease=LATEST
+
+0.2.49 (6/4/2010)
+  * use LBs for the range check in --goodRunList if they are available in LFN
+  * changed the brokerage policy when container is used for output, to send
+    jobs to the site where many CPUs are available rather than many files
+
+0.2.48 (6/1/2010)
+  * fixed --match in prun so that . matches \.
+  * fixed LFN duplication check for event picking
+  * added a protection for wrong case in outDS
+  * added a protection against too many input files for ANALY_ARC
+
+0.2.47 (5/26/2010)
+  * fixed replica registration when --destSE is used for existing outDS
+
+0.2.46 (5/25/2010)
+  * fixed unused file check when --nFiles is used in pathena
+
+0.2.45 (5/21/2010)
+  * added safety margin to --nGBPerJob in pathena
+
+0.2.44 (5/21/2010)
+  * fixed insufficient skipping of CERN-PROD_TZERO and CERN-PROD_DAQ
+
+0.2.43 (5/20/2010)
+  * changed TRF URLs for SVN repository migration
+
+0.2.42 (5/18/2010)
+  * added a protection to pbook.retry for lib.tgz with GUID=NULL
+  * fixed status() in pbook to set buildStatus correctly
+
+0.2.41 (5/18/2010)
+  * fixed error message in prun when files are on tape
+  * fixed file check when outDS is reused by avoiding dirty-reading  
+
+0.2.40 (5/14/2010)
+  * added a protection against location mismatch between outDS and libDS
+  * improved error reporting about pyAMI import
+
+0.2.39 (5/12/2010)
+  * increased the default nFilesPerJob in prun
+  * fixed for --destSE
+  * added event picking to prun
+
+0.2.38 (5/12/2010)
+  * fixed --eventPickDS
+  * ignore irrelevant datasets for event-picking more
+
+0.2.37 (5/11/2010)
+  * fixed warning for event-picking + trf
+  * ignore panda internal datasets for event-picking 
+  * added warning for unmerged dataset usage
+  * fixed site lookup for TRIG-DAQ
+  * fixed input size calculation to take DBR into account
+
+0.2.36 (5/9/2010)
+  * fixed CollListFileGUID to remove duplication
+  * added event-picking stuff
+
+0.2.35 (5/7/2010)
+  * added protection against invalid characters in --outDS
+  * fixed --goodRunListXML to remove duplicated datasets for the same run number
+  
+0.2.34 (5/5/2010)
+  * added warning message for missing nicknames
+  * enabled --destSE for any DQ2 destination
+
+0.2.33 (4/30/2010)
+  * to follow new DQ2 naming convention
+
+0.2.32 (4/29/2010)
+  * fixed fakeAppMgr for allConfigurables access
+
+0.2.31 (4/29/2010)
+  * fixed site lookup for composit sites when outDS/libDS is reused
+
+0.2.30 (4/28/2010)
+  * removed .svn from archiving
+  * ignore CERN-PROD_TZERO and CERN-PROD_DAQ to avoid tape access
+  * fixed archiving in prun to skip pseudo empty dirs
+
+0.2.29 (4/20/2010)
+  * fixed --dbRelease=LATEST to exclude reprocessing DBR
+  * added an automatic scrollbar to summary window in pbook --gui
+
+0.2.28 (4/14/2010)
+  * fixed --goodRunListXML to use pyAMI module	
+  * added error message when wrong LFNs are given for input
+ 
+0.2.27 (4/9/2010)
+  * fixed --gui of pbook
+
+0.2.26 (4/6/2010)
+  * added --maxCpuCount and --memory to prun
+
+0.2.25 (4/2/2010)
+  * fixed file duplication check when --supStream is used
+
+0.2.24 (3/31/2010)
+  * fixed pathena for --minDS
+
+0.2.23 (3/27/2010)
+  * fixed for DQ2 DNS change
+
+0.2.22 (3/23/2010)
+  * updated --secondaryDSs in prun for nFiles=0 to use all files
+  * added --dbRelease,dbRunNumber,notExpandDBR to prun
+
+0.2.21 (3/16/2010)
+  * fixed --secondaryDSs in prun
+
+0.2.20 (3/15/2010)
+  * fixed --supStream
+  * added siteType to getSiteSpecs
+  * added --useAMIAutoConf to pathena
+
+0.2.19 (3/12/2010)
+  * added --goodRunListXML,goodRunListDataType,goodRunListDataType,goodRunListDS to pathena/prun
+  * added processingType to runBrokerage for HC	
+  * added sequencer.mail_dirs to panda.cfg
+  * increased the default value of --crossSite to 5
+
+0.2.18 (3/5/2010)
+  * fixed ImapFetcher for apostrophe in directory names
+
+0.2.17 (3/4/2010)
+  * updated pathena/prun to send jobs to multiple sites when the input dataset container
+    splits over multiple sites and an output dataset container is used as --outDS
+  * fixed outputPath for T3  
+  * fixed libDS for T3
+
+0.2.16 (3/1/2010)
+  * fixed for analysis projects
+
+0.2.15 (2/26/2010)
+  * added --dbRelease=LATEST to pathena  	
+  * updated pbook for canceled state
+  * added --excludeFile to pathena/prun
+
+0.2.14 (2/11/2010)
+  * added warning message for busy sites
+  * check production role for group production
+
+0.2.13 (2/3/2010)
+  * changed max input size to a site parameter
+
+0.2.12 (1/28/2010)
+  * removed cloud constraint using VOMS attributes from brokerage
+
+0.2.11 (1/27/2010)
+  * fixed the default value in getCloudUsingFQAN
+  * fixed the brokerage to check DBRelease locations
+
+0.2.10 (1/22/2010)
+  * set cmtConfig for old releases for SL5 sites
+
+0.2.9 (1/21/2010)
+  * added killAndRetry to pbook
+  * fixed error message in pathena for wrong DBR filename
+  * set cmtConfig for 15.6.3 or higher for now
+  * added retry in database sessions in pbook
+
+0.2.8 (1/12/2010)
+  * fixed prun to allow submission with unready libDS
+
+0.2.7 (1/9/2010)
+  * fixed the brokerage to check minBias/CavernBeamGas/Halo DSs
+
+0.2.6 (1/8/2010)
+  * removed strict number checking on output dataset name
+
+0.2.5 (1/3/2010)
+  * added --nGBPerJob to pathena
+
+0.2.4 (12/17/2009)
+  * fixed --excludedSite to treat composite sites properly
+  * supported TAGCOMM in pathena
+  * changed --site to allow a list of sites
+
+0.2.3 (12/6/2009)
+  * updated brokerage to use cache version if applicable
+  * fixed location lookup to ignore TAPE when checking available files
+  * fixed pathena for --burstSubmit
+
+0.2.2 (11/20/2009)
+  * protection against unchecked replica info in DQ2
+
+0.2.1 (11/19/2009)
+  * added schema evolution to pbook
+  * added release/cache info to pbook.show
+  * set version info to lockedby
+  * added clean() to pbook  
+
+0.2.0 (11/18/2009)
+  * fixed dataset lookup
+
+0.1.99 (11/15/2009)
+  * removed case sensitivity from dataset lookup
+
+0.1.98 (11/13/2009)
+  * added kill(X,Y) to pbook
+  * added rebrokerage() to pbook 
+  * added --outputPath for DQ2-free sites like T3
+  * fixed pathena for UserDataSvc
+	
+0.1.97 (11/4/2009)
+  * fixed PANDA_SYS in rpm
+  * fixed pathena/prun to give warning message when the number of sub-jobs exceeds the limit
+  * added --long to prun
+  * fixed long queue brokerage
+  * changed parameter format in --exec of prun to be consistent with pathena
+  * allowed to set the start number to %SKIPEVENTS in --trf of pathena
+  * fixed parameter replacement in --trf/pathena and --exec/prun to take delimiter into account
+  * added protection to pbook against orphan directories created by distutils
+  * fixed pbook not to show duplicated datasets in inDS/outDS
+
+0.1.96 (10/24/2009)
+  * added --parentDS to pathena
+
+0.1.95 (10/20/2009)
+  * enabled %SKIPEVENTS for evgen trf
+  * fixed compact parameters in --trf of pathena for changes to T0 naming convention
+	
+0.1.94 (10/13/2009)
+  * changed the default site of CERN to ANALY_CERN 
+  * changed parameter formatting of DB and RNDM in --trf of pathena 
+
+0.1.93 (10/8/2009)
+  * enabled --destSE in pathena/prun
+  * added pbook.show(-N) to show last N jobs
+  * fixed pbook.retry() to correct short/long mixture of destSE
+
+0.1.92 (10/3/2009)
+  * fixed fakeProperty for serialization by RecExCommon/PrintRecoSummary
+  * added --noBuild to prun
+
+0.1.91 (9/16/2009)
+  * fixed site lookup for ANALY_CERN when outDS is reused
+
+0.1.90 (9/16/2009)
+  * changed the default MyProxy for ANALY_ARC etc
+
+0.1.89 (9/15/2009)
+  * check LFC module for grid source
+  * added -s to pathena
+
+0.1.88 (9/10/2009)
+  * fixed ownership of dataset replicas
+  * added --prodSourceLabel to pathena
+
+0.1.87 (8/31/2009)
+  * fixed archiving for --noBuild to ignore symlinks in InstallArea/include
+
+0.1.86 (8/31/2009)
+  * fixed --pfnList of pathena
+  * fixed pbook to update buildStatus
+  * added forceUpdate to pbook.show()
+
+0.1.85 (8/19/2009)
+  * fixed ArchiveSource not to resolve symlink in run dir
+  * allowed wildcard and/or comma in --inDS of pathena/prun to concatenate multiple datasets
+  * updated pbook for the above change
+
+0.1.84 (8/12/2009)
+  * added askUser to Client.nEvents
+  * enabled peer verification in registerProxyKey to protect against pharming
+  * fixed libDS in pbook
+  * fixed --trf of pathena for remortIO sites
+  * fixed --update of pathena/prun
+  * added convertConfToOutput to AthenaUtils
+  * fixed index incrementation of --individualOutDS for active jobs
+  * changed starting JobID to 1
+  * fixed looping on BeamGas files
+  * changed matching pattern for log files
+  * allowed to use --dbRelease together with --trf in pathena
+  * use LFC as primary replica catalog
+  * fixed pbook for SL5/64 + Athena rel15
+  
+0.1.83 (7/28/2009)
+  * exclude TAPE in brokerage
+
+0.1.82 (7/28/2009)
+  * removed size limitation for direct access sites
+  * increased default extensions to be picked up by prun
+
+0.1.81 (7/22/2009)
+  * fixed --trf of pathena for duplicated DBRelease 
+  * fixed --trf of pathena for AMI=tag
+  * fixed version check
+  * fixed resetting of sites which have a duplicated DQ2 ID
+
+0.1.80 (7/21/2009)
+  * fixed POOL-ref extraction for old Athena to work with new CollectionTree name
+  * added a protection to runBrokerage to avoid too many lookup
+  * support rpm installation in --update of pathena/prun
+  * fixed proxy delegation for expiring certificate
+
+0.1.79 (7/17/2009)
+  * dropped the default to use US cloud
+
+0.1.78 (7/15/2009)
+  * added error message when common location is not found for --secondaryDSs in prun  
+  * added --useAthenaPackages to compile Athena packages in build step of prun
+  * ignore log.tgz in prun
+  * ignore .svn in AthenaUtils.getPackages
+
+0.1.77 (7/14/2009)
+  * added --secondaryDSs to prun
+
+0.1.76 (7/10/2009)
+  * added --gluePackages to pathena
+
+0.1.75 (7/10/2009)
+  * fixed checkSiteAccessPermission for --burstSubmit
+  * fixed result() of PStep in non-blocking mode
+  * fixed getRunningPandaJobs in psequencer
+
+0.1.74 (7/9/2009)
+  * removed urllib2 and md5 to avoid the hashlib problem in Athena on SL5
+  * added -c to pbook	
+  * added getPandaJob and getRunningPandaJobs to psequencer
+  * fixed AthenaUtils for Lhapdf
+
+0.1.73 (6/29/2009)
+  * improved --update in pathena/prun
+  * added version check to pathena/prun 
+  * added site permission check to pathena/prun
+
+0.1.72 (6/18/2009)
+  * added --nSkipFiles to prun
+
+0.1.71 (6/15/2009)
+  * changed the maximum length of the output datasetname to 200
+
+0.1.70 (6/11/2009)
+  * added trustIS to runBrokerage
+
+0.1.69 (6/11/2009)
+  * added set to puserinfo
+  * added the longFormat option to puserinfo
+
+0.1.68 (6/10/2009)
+  * fixed site selection algorithm in pathena/prun
+
+0.1.67 (6/10/2009)
+  * fixed pbook.show() to show jobs in numeric order
+
+0.1.66 (6/9/2009)
+  * fixed location lookup for UNI-,RU-,LIP-,RO-
+  * added methods to puserinfo for privileged users
+
+0.1.65 (6/8/2009)
+  * fixed prun for direct input
+  * added --workingGroup option to pathena/prun
+  * added a warning message for some special XMLs
+ 
+0.1.64 (6/1/2009)
+  * set default processingType
+  * changed dev URLs
+  * put size limit for file uploading with --libDS/--noBuild
+
+0.1.63 (5/28/2009)
+  * fixed variable pollution for --noRandom in pathena
+
+0.1.62 (5/28/2009)
+  * fixed convSrmV2ID for DESY-*
+
+0.1.61 (5/25/2009)
+  * fixed AthenaUtils.archiveInstallArea for --noBuild
+
+0.1.60 (5/24/2009)
+  * fixed resubmission of pathena/prun to skip input files which are being used by active jobs
+
+0.1.59 (5/24/2009)
+  * fixed Panda SiteID lookup with DQ2 SiteID to skip long/test sites
+
+0.1.58 (5/19/2009)
+  * fixed no-output checking in pathena
+
+0.1.57 (5/13/2009)
+  * use /opt/panda for rpm to avoid mixture of site-packages
+  * protection against too long output datasetname
+
+0.1.56 (5/13/2009)
+  * fixed zero division in pathena
+
+0.1.55 (5/12/2009)
+  * fixed pathena for UserDataSvc
+
+0.1.54 (5/11/2009)
+  * fixed Athena ver extraction for non-AtlasOffline env
+  * changed URLs of dev server
+
+0.1.53 (5/11/2009)
+  * changed default server to CERN
+
+0.1.52 (5/8/2009)
+  * fixed Athena version check in pathena
+
+0.1.51 (5/6/2009)
+  * try cmt in a sub dir when it is executed in top dir
+
+0.1.50 (5/4/2009)
+  * fixed file indexing for --individualOutDS
+
+0.1.49 (5/3/2009)
+  * added retry(X,Y) to pbook
+
+0.1.48 (5/2/2009)
+  * fixed pollution of built-in function in pathena
+
+0.1.47 (4/30/2009)
+  * fixed pathena for pileup
+  * added message to prun when site is redirected
+
+0.1.46 (4/28/2009)
+  * improved messages when site is skipped due to bad status
+  * fixed error message when input files are unavailable
+
+0.1.45 (4/27/2009)
+  * fixed location lookup for _PERF_XYZ
+
+0.1.44 (4/25/2009)
+  * fixed pathena to increment file index for --trf
+  * added show('running') to pbook
+
+0.1.43 (4/24/2009)
+  * set a list of DNs for proxy delegation
+
+0.1.42 (4/17/2009)
+  * protection against redundant filename in --extOutFile 
+
+0.1.41 (4/15/2009)
+  * fixed --removeBurstLimit in pathena
+
+0.1.40 (4/13/2009)
+  * added --processingType and --seriesLabel
+
+0.1.39 (4/10/2009)
+  * fixed extraction of cache ver in prun
+
+0.1.38 (4/9/2009)
+  * improved performance of show() in pbook
+  * fixed location lookup for _PHYS_XYZ
+
+0.1.37 (4/8/2009)
+  * added --removeBurstLimit to pathena
+  * fixed prun to contain empty directories in tar archive
+
+0.1.36 (4/7/2009)
+  * set sites online when they are allowed in siteaccess
+  * cache jobID for --burstSubmit 
+  * use UTC timestamp in libDS to avoid duplication
+  * removed unicode from puserinfo
+	
+0.1.35 (4/3/2009)
+  * fixed --individualOutDS in pathena
+
+0.1.34 (4/2/2009)
+  * fixed pathena to allow a full pathname for jobO
+
+0.1.33 (4/2/2009)
+  * protection against VOMS cert expiration
+
+0.1.32 (3/31/2009)
+  * use panda.cern.ch:25980 for now	
+  * added puserinfo
+
+0.1.31 (3/19/2009)
+  * randomize G4RandomSeeds
+  * AthSequence support 
+
+0.1.30 (3/12/2009)
+  * disabled location lookup for --burstSubmit in pathena
+
+0.1.29 (3/12/2009)
+  * fixed --burstSubmit in pathena
+
+0.1.28 (3/11/2009)
+  * warning messages for site status in pathena/prun
+
+0.1.27 (3/10/2009)
+  * fixed psequencer for CERN relocation
+  * introduced archiveXYZ in AthenaUtils
+
+0.1.26 (3/5/2009)
+  * resolve relative path in InstallArea
+
+0.1.25 (3/5/2009)
+  * ignore cache when it is a base release
+
+0.1.24 (3/4/2009)
+  * fixed pathena for CollListFileGUID.exe
+
+0.1.23 (3/4/2009)
+  * fixed collRefName 
+
+0.1.22 (3/3/2009)
+  * read RAW via TAG
+
+0.1.21 (2/26/2009)
+  * protection against rc loading messages in pbook
+
+0.1.20 (2/25/2009)
+  * fixed http://savannah.cern.ch/bugs/?47396
+
+0.1.19 (2/23/2009)
+  * fixed --noBuild in pathena
+  * added crossSite to pathena/prun	
+
+0.1.18 (2/19/2009)
+  * allowed downstream job to use upstream output as input in --trf
+
+0.1.17 (2/17/2009)
+  * added --update to pathena/prun
+  * fixed renaming error for --trf
+  * fixed --libDS=LAST  
+
+0.1.16 (2/16/2009)
+  * fixed the order of voms arguments in voms-proxy-init
+
+0.1.15 (2/16/2009)
+  * added --voms to pathena/prun
+
+0.1.14 (2/12/2009)
+  * fixed unpack failure in pathena
+
+0.1.13 (2/11/2009)
+  * fixed index calcuration when reusing outDS
+
+0.1.12 (2/5/2009)
+  * fixed nFilesPerJob in pathena
+  * limited dataset names for the official option
+
+0.1.11 (2/4/2009)
+  * fixed http://savannah.cern.ch/bugs/?46617
+
+0.1.10 (2/3/2009)
+  * added --dbRunNumber to pathena to save disk usage of DBRelease
+
+0.1.9 (2/2/2009)
+  * fixed BS extraction when multiple streams exist
+
+0.1.8 (1/29/2009)
+  * fixed LFC looup 
+  * more diagnostic message for LFC failures
+  * added retry for LFC failures
+
+0.1.7 (1/29/2009)
+  * fixed error message when files are unavailable at the site
+
+0.1.6 (1/23/2009)
+  * added pathena
+  * modified pathena to use pandatools modules
+  * freed pathena from Athena runtime-structure
+  * removed database stuff from pathena/prun
+  * added RSS feed reader
+  * copy constructor of steps in psequencer
+  * capability to give env variables to steps in psequencer
+
+0.1.5 (12/17/2008)
+  * escape $ in pass phrase
+  * added _XROOTD to AUTO sites
+  * migrated to the latest DB schema
+  * added pbook
+  * added logger
+  * added GUI stuff
+  * automatic adjustment for nFilesPerJob in prun
+  * unified config file
+	
+0.1.4 (11/25/2008)
+  * fixed --match in prun
+
+0.1.3 (11/24/2008)
+  * added PkgInfo
+  * moved psequencer from PandaTools CVS repo
+  * make python unbuffered
+  * increment jobID using local cache
+  * introduced PANDA_CONFIG_ROOT
+
+0.1.2 (11/22/2008) 
+  * added --bexec. See C++ ROOT example 
+  * fixed templates generating setup scripts 
+  * support for proxy delegation 
+
+0.1.1 (11/19/2008) 
+  * fixed --libDS 
+  * increment file index for existing outDS 
+
+0.1.0 (11/16/2008) 
+  * first release
+
+
+** Acknowledge
+
+   Icons from http://iconka.com

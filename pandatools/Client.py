@@ -3142,7 +3142,9 @@ def requestEventPicking(eventPickEvtList,eventPickDataType,eventPickStreamName,
 
 
 # check if enough sites have DBR
-def checkEnoughSitesHaveDBR(dq2IDs):
+def checkEnoughSitesHaveDBR(dq2IDs,verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
     # collect sites correspond to DQ2 IDs
     sitesWithDBR = []
     for tmpDQ2ID in dq2IDs:
@@ -3173,6 +3175,9 @@ def checkEnoughSitesHaveDBR(dq2IDs):
                 # DBR at enough T1 DISKs is used
                 if tmpPandaSite in PandaTier1Sites and tmpPandaSite in sitesWithDBR:
                     nOnlineT1WithDBR += 1
+    if verbose:
+        tmpLog.debug("nOnlineWithDBR=%s nOnlineWithDBR=%s nOnline=%s nOnlineT1=%s nOnlineT1WithDBR=%s" % \
+                         (nOnlineWithDBR,nOnlineWithDBR,nOnline,nOnlineT1,nOnlineT1WithDBR))
     # enough replicas
     if nOnlineWithDBR < 40:
         return False
@@ -3259,7 +3264,7 @@ def getLatestDBRelease(verbose=False):
                         continue
         # check replica locations to use well distributed DBRelease. i.e. to avoid DBR just created
         tmpLocations = getLocations(tmpName,[],'',False,verbose,getDQ2IDs=True)
-        if not checkEnoughSitesHaveDBR(tmpLocations):
+        if not checkEnoughSitesHaveDBR(tmpLocations,verbose):
             continue
         # check contents to exclude reprocessing DBR
         tmpDbrFileMap = queryFilesInDataset(tmpName,verbose)
