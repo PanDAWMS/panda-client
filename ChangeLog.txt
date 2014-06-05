@@ -1,6 +1,6 @@
 ** Release Notes
 
-current
+0.5.5 (6/5/2014)
   * ignoring pound symbols in --pfnListignoring pound symbols in --pfnList
   * added a protection against junk message given by voms-proxy-info
   * fixed prun to accept CVMFS ROOT version format
