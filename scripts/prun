@@ -697,11 +697,6 @@ elif options.athenaTag != '':
             elif 'devval' in items:
                 athenaVer = 'Atlas-devval'
             cacheVer  = '-AtlasOffline_%s' % item
-	# CMTCONFIG
-        if item == '64':
-            options.cmtConfig = 'x86_64-slc5-gcc43-opt'
-        if item == '32':
-            options.cmtConfig = 'i686-slc5-gcc43-opt'
     # check cache
     if re.search('^-.+_.+$',cacheVer) == None:
         if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) != None:

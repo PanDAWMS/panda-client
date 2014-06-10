@@ -1,6 +1,6 @@
 ** How to install
 
-git clone https://github.com/PanDAWMS/panda-client.git
+git clone git://github.com/PanDAWMS/panda-client.git
 cd panda-client
 
 python setup.py install --prefix=/path/to/install/dir
