@@ -2192,7 +2192,8 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
     # place holder for output
     outHolder = 'SN'
     # place holders with extension
-    exList = ['RNDMSEED','DBR','FIRSTEVENT']  
+    digExList = ['RNDMSEED','FIRSTEVENT']  
+    allExList = digExList + ['DBR']
     # mapping of client and JEDI place holders
     holders = {'RNDMSEED'  : 'RNDM',
                'DBR'       : 'DB',
@@ -2212,12 +2213,15 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
             oldH = newH
         oldH = '%' + oldH
         # with extension
-        if newH in exList:
-            oldH += '(?P<ext>(:|=)[^ \'\"\}]+)'
+        if newH in allExList:
+            if newH in digExList:
+                oldH += '(:|=)(\d+)%{0,1}'
+            else:
+                oldH += '(:|=)([^ \'\"\}]+)'
             # look for extension
             tmpM = re.search(oldH,encStr)
             if tmpM != None:
-                extensionMap[newH] = tmpM.group('ext')[1:]
+                extensionMap[newH] = tmpM.group(2)
             newH = '${' + newH + '}'
         else:
             newH = '${' + newH + '}'

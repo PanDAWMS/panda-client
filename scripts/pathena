@@ -954,6 +954,9 @@ if options.athenaTag != '':
             elif 'devval' in items:
                 athenaVer = 'Atlas-devval'
             cacheVer  = '-AtlasOffline_%s' % item
+	# CMTCONFIG
+        if item in ['32','64']:
+            tmpLog.warning("%s in --athenaTag is unsupported. Please use --cmtConfig instead" % item)
     # check cache
     if re.search('^-.+_.+$',cacheVer) == None:
         if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) != None:
@@ -2026,7 +2029,7 @@ else:
     if tmpOut[0] == False:
         tmpLog.error("task submission failed. {0}".format(tmpOut[1]))
         sys.exit(EC_Submit)
-    tmpLog.info("suceeded new jediTaskID={0}".format(tmpOut[1]))
+    tmpLog.info("suceeded new TaskID={0}".format(tmpOut[1]))
 
 # go back to current dir
 os.chdir(currentDir)
