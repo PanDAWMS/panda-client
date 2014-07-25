@@ -1,6 +1,8 @@
 ** Release Notes
 
 current
+  * changed prun to allow --secondaryDSs without --inDS	
+  * added support for cache nightlies
   * modified %RNDM replacement to allow usage of % as terminator
   * removed 64/32 support in --athenaTag (only --cmtConfig is recommended)
 

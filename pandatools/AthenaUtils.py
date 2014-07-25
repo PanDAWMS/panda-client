@@ -255,9 +255,19 @@ def getAthenaVer():
                     continue
                 # production cache
                 cacheTag = os.path.basename(res.group(1))
-                # doesn't use when it is a base release since it is not installed in EGEE
-                if re.search('^\d+\.\d+\.\d+$',cacheTag) == None:
-                    cacheVer = '-%s_%s' % (items[0],cacheTag)
+                if items[0] == 'AtlasProduction' and cacheTag.startswith('rel'):
+                    # nightlies for cache
+                    tmpMatch = re.search('/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+',line)
+                    if tmpMatch == None:
+                        tmpLog.error("unsupported nightly %s" % line)
+                        return False,{}
+                    cacheVer  = '-AtlasOffline_%s' % cacheTag
+                    athenaVer = tmpMatch.group(1)
+                    break
+                else:
+                    # doesn't use when it is a base release since it is not installed in EGEE
+                    if re.search('^\d+\.\d+\.\d+$',cacheTag) == None:
+                        cacheVer = '-%s_%s' % (items[0],cacheTag)
             else:
                 # group area
                 groupArea = os.path.realpath(res.group(1))

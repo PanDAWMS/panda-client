@@ -812,9 +812,6 @@ if options.pfnList != '':
         
 # secondary datasets
 if options.secondaryDSs != '':
-    if options.inDS == '':
-        tmpLog.error("Primary input dataset is not defined using --inDS although --secondaryDSs is set")
-        sys.exit(EC_Config)
     # parse
     tmpMap = {}
     for tmpItem in options.secondaryDSs.split(','):
@@ -1386,6 +1383,17 @@ elif options.pfnList != '':
          'value':'-i "${IN/T}"',
          },
         ]
+elif options.goodRunListXML != '' or options.eventPickEvtList != '':
+    tmpDict = {'type':'template',
+               'param_type':'input',
+               'value':'-i "${IN/T}"',
+               'dataset':'%%INDS%%',
+	       'expand':True,
+               'exclude':'\.log\.tgz(\.\d+)*$',
+               'files':'%%INLFNLIST%%',
+               }
+    taskParamMap['jobParameters'].append(tmpDict)
+    taskParamMap['dsForIN'] = '%%INDS%%'
 else:
     # no input
     taskParamMap['noInput'] = True

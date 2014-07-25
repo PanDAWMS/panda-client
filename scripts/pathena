@@ -1716,6 +1716,17 @@ elif options.pfnList != '':
          'value':'-i "${IN/T}"',
          },
         ]
+elif options.goodRunListXML != '' or options.eventPickEvtList != '':
+    tmpDict = {'type':'template',
+               'param_type':'input',
+               'value':'-i "${IN/T}"',
+               'dataset':'%%INDS%%',
+	       'expand':True,
+               'exclude':'\.log\.tgz(\.\d+)*$',
+               'files':'%%INLFNLIST%%',
+               }
+    taskParamMap['jobParameters'].append(tmpDict)
+    taskParamMap['dsForIN'] = '%%INDS%%'
 else:
     # no input
     taskParamMap['noInput'] = True
