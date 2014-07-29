@@ -1,6 +1,7 @@
 ** Release Notes
 
-current
+0.5.6 (7/29/2014)
+  * fixed pbook for empty transHome    
   * changed prun to allow --secondaryDSs without --inDS	
   * added support for cache nightlies
   * modified %RNDM replacement to allow usage of % as terminator

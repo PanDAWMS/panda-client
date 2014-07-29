@@ -379,8 +379,11 @@ def convertJTtoD(jediTaskDict,localJob=None):
     # release
     ddata.releaseVar = jediTaskDict['transUses']
     # cache
-    tmpCache = re.sub('^[^-]+-*','',jediTaskDict['transHome'])
-    tmpCache = re.sub('_','-',tmpCache)
+    if jediTaskDict['transHome'] == None:
+        tmpCache = ''
+    else:
+        tmpCache = re.sub('^[^-]+-*','',jediTaskDict['transHome'])
+        tmpCache = re.sub('_','-',tmpCache)
     ddata.cacheVar = tmpCache
     # job parameters
     ddata.jobParams = jediTaskDict['cliParams']
