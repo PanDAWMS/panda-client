@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * fixed pathena and prun for event picking
+
 0.5.6 (7/29/2014)
   * fixed pbook for empty transHome    
   * changed prun to allow --secondaryDSs without --inDS	

@@ -556,22 +556,6 @@ if options.inDsTxt != '':
 if options.useShortLivedReplicas:
     Client.useExpiringFiles()
     
-# use staged dataset for event picking
-if options.eventPickStagedDS != '':
-    if options.panda_inDSForEP == '':
-        options.panda_inDSForEP = options.eventPickStagedDS
-        options.panda_eventPickRunEvtDat = '%s/ep_%s.dat' % (currentDir,MiscUtils.wrappedUuidGen())
-        evI = open(options.eventPickEvtList)
-        evO = open(options.panda_eventPickRunEvtDat,'w')
-        evO.write(evI.read())
-        # close
-        evI.close()
-        evO.close()
-        # add to be deleted on exit
-        delFilesOnExit.append(options.panda_eventPickRunEvtDat)
-
-
-
 # error
 if options.outDS == '':
     tmpLog.error("no outDS is given\n pathena [--inDS input] --outDS output myJobO.py")
@@ -1003,10 +987,35 @@ if options.goodRunListXML != '':
 
 # event picking
 if options.eventPickEvtList != '':
-    options.eventPickEvtList = PsubUtils.uploadGzippedFile(options.eventPickEvtList,currentDir,tmpLog,delFilesOnExit,
-                                                           options.nosubmit,options.verbose)
+    epLockedBy = 'pathena'
+    if not options.nosubmit:
+        epStat,epOutput = Client.requestEventPicking(options.eventPickEvtList,
+                                                     options.eventPickDataType,
+                                                     options.eventPickStreamName,
+                                                     options.eventPickDS,
+                                                     options.eventPickAmiTag,
+                                                     options.filelist,
+                                                     '',
+                                                     options.outDS,
+                                                     epLockedBy,
+                                                     fullExecString,
+                                                     options.verbose)
+        # set input dataset 
+        options.inDS = epOutput
+    else:
+        options.inDS = 'dummy'
+    tmpLog.info('requested Event Picking service to stage input as %s' % options.inDS)
+    # make run/event list file for event picking
+    eventPickRunEvtDat = '%s/ep_%s.dat' % (currentDir,MiscUtils.wrappedUuidGen())
+    evI = open(options.eventPickEvtList)
+    evO = open(eventPickRunEvtDat,'w')
+    evO.write(evI.read())
+    # close
+    evI.close()
+    evO.close()
+    # add to be deleted on exit
+    delFilesOnExit.append(eventPickRunEvtDat)
 
-    
 # get job options
 jobO = ''
 if options.trf:
@@ -1528,6 +1537,7 @@ if options.trf:
     taskParamMap['processingType'] += '-trf'
 if options.eventPickEvtList != '':
     taskParamMap['processingType'] += '-evp'
+    taskParamMap['waitInput'] = 1
 if options.goodRunListXML != '':
     taskParamMap['processingType'] += '-grl'
 taskParamMap['prodSourceLabel'] = 'user'
@@ -1683,6 +1693,10 @@ if runConfig.input.backNavi:
 # ship input
 if options.shipinput:
     param += '--shipInput '
+# event picking
+if options.eventPickEvtList != '':
+    param += '--eventPickTxt=%s ' % eventPickRunEvtDat.split('/')[-1]
+# assign
 if param != '':
     taskParamMap['jobParameters'] += [
         {'type':'constant',
@@ -1716,7 +1730,7 @@ elif options.pfnList != '':
          'value':'-i "${IN/T}"',
          },
         ]
-elif options.goodRunListXML != '' or options.eventPickEvtList != '':
+elif options.goodRunListXML != '':
     tmpDict = {'type':'template',
                'param_type':'input',
                'value':'-i "${IN/T}"',
@@ -1957,24 +1971,6 @@ if not options.nobuild:
         }
 
 # preprocessing step
-
-# event picking
-if options.eventPickEvtList != '':
-    jobParameters = "--eventPickEvtList {0} ".format(options.eventPickEvtList)
-    if options.eventPickDataType != '':
-        jobParameters += "--eventPickDataType {0} ".format(options.eventPickDataType)
-    if options.eventPickStreamName != '':
-        jobParameters += "--eventPickStreamName {0} ".format(options.eventPickStreamName)
-    if options.eventPickDS != '':
-        jobParameters += "--eventPickDS {0} ".format(options.eventPickDS)
-    if options.eventPickAmiTag != '':
-        jobParameters += "--eventPickAmiTag {0} ".format(options.eventPickAmiTag)
-    jobParameters += "--sourceURL ${SURL} "
-    # set task param
-    taskParamMap['preproSpec'] = {
-        'prodSourceLabel':'panda',
-        'jobParameters':jobParameters,
-        }
 
 # good run list
 if options.goodRunListXML != '':
