@@ -1520,7 +1520,9 @@ if options.forceStaged or options.forceStagedSecondary:
     taskParamMap['useLocalIO'] = 1
 
 # build step
-if not options.nobuild:
+if options.nobuild and not options.noCompile:
+    pass
+else:
     jobParameters = '-i ${IN} -o ${OUT} --sourceURL ${SURL} '
     jobParameters += '-r {0} '.format(runDir)
     # exec
@@ -1594,6 +1596,8 @@ if options.mergeOutput:
     taskParamMap['mergeSpec']['jobParameters'] = jobParameters
     taskParamMap['mergeOutput'] = True
 
+# check task parameters
+PsubUtils.checkTaskParam(taskParamMap)
 
 if options.verbose:
     tmpLog.debug("==== taskParams ====")

@@ -1,7 +1,9 @@
 ** Release Notes
 
-current
+0.5.6 (8/12/2014)
   * fixed pathena and prun for event picking
+  * fixed --noCompile
+  * added a protection against too long output container names
 
 0.5.6 (7/29/2014)
   * fixed pbook for empty transHome    

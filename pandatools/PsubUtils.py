@@ -2367,6 +2367,23 @@ def getListPFN(pfnFile):
     return inputFileList
 
 
+# check task parameters
+def checkTaskParam(taskParamMap):
+    # check output dataset names
+    maxLengthCont = 132
+    if 'jobParameters' in taskParamMap:
+        for tmpDict in taskParamMap['jobParameters']:
+            if tmpDict['type'] == 'template' and tmpDict['param_type'] == 'output':
+                if len(tmpDict['dataset']) > maxLengthCont:
+                    tmpErrStr  = "The name of an output dataset container (%s)is too long (%s). " % (tmpDict['dataset'],len(tmpDict['dataset']))
+                    tmpErrStr += "The length must be less than %s. " % maxLengthCont
+                    tmpErrStr += "Please note that one dataset container is creted per output type and "
+                    tmpErrStr += "each name is <outDS>_<extension made from the output filename>. "
+                    # get logger
+                    tmpLog = PLogger.getPandaLogger()
+                    tmpLog.error(tmpErrStr)
+                    sys.exit(EC_Config)
+            
 
 if os.environ.has_key('PANDA_DEBUG'):
     print "DEBUG : imported %s" % __name__    
