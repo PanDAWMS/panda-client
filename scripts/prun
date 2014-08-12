@@ -1339,7 +1339,7 @@ else:
 
 
 # build
-if options.nobuild:
+if options.nobuild and not options.noCompile:
     taskParamMap['jobParameters'] += [
         {'type':'constant',
          'value': '-a {0}'.format(archiveName),
