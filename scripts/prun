@@ -1355,12 +1355,17 @@ else:
 if options.outputs != '':
     outMap = {}
     for tmpLFN in options.outputs.split(','):
+        tmpNewLFN = tmpLFN
+	# change * to XYZ and add .tgz
+	if '*' in tmpNewLFN:
+	    tmpNewLFN = tmpNewLFN.replace('*','XYZ')
+	    tmpNewLFN += '.tgz'
         if len(outDatasetName.split('.')) > 2:
             lfn = '{0}.{1}'.format(*outDatasetName.split('.')[:2])
         else:
             lfn = outDatasetName[:-1]
-        lfn += '.$JOBSETID._${{SN/P}}.{0}'.format(tmpLFN)
-        dataset = '{0}_{1}/'.format(outDatasetName[:-1],tmpLFN)
+        lfn += '.$JOBSETID._${{SN/P}}.{0}'.format(tmpNewLFN)
+        dataset = '{0}_{1}/'.format(outDatasetName[:-1],tmpNewLFN)
         taskParamMap['jobParameters'] += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,
                                                                     destination=options.destSE,
                                                                     token=options.spaceToken)

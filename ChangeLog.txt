@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.9 (8/12/2014)
+  * fixed prun for wildcards in --outputs
+
 0.5.8 (8/12/2014)
   * fixed --noCompile more
 
