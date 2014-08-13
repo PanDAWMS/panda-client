@@ -275,6 +275,6 @@ class LocalJobsetSpec(object):
 
     # check if JEDI
     def isJEDI(self):
-        if self.jediTaskID in [-1,'-1']:
+        if self.jediTaskID in [-1,'-1','']:
             return False
         return True

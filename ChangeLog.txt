@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.5.10 (8/13/2014)
+  * fixed prun for --secondaryDS
+  * fixed pbook for backward compatibility
+
 0.5.9 (8/12/2014)
   * fixed prun for wildcards in --outputs
 

@@ -1461,8 +1461,8 @@ if options.dbRelease != '':
 
 # secondary
 if options.secondaryDSs != {}:
-    inMap = {}
-    streamNames = []
+    inMap = {'IN':'tmp_IN'}
+    streamNames = ['IN']
     for tmpDsName,tmpMap in options.secondaryDSs.iteritems():
         # make template item
         streamName = tmpMap['streamName']
