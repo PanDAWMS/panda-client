@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.5.11 (8/14/2014)
+  * fixed pathen for --nEventsPerJob and --nEventsPerFile
+  * disabled obsolete --useOldStyleOutput
+
 0.5.10 (8/13/2014)
   * fixed prun for --secondaryDS
   * fixed pbook for backward compatibility

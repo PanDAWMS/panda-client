@@ -338,7 +338,7 @@ optP.add_option('--outputPath',action='store',dest='outputPath', default='./',
 optP.add_option('--useExperimental', action='store_const', const=True, dest='useExperimental',  default=False,
                 help='use experimental features')
 optP.add_option('--useOldStyleOutput',action='store_const',const=True,dest='useOldStyleOutput',default=False,
-                help="use output dataset and long LFN instead of output dataset container and short LFN")
+                help="use output dataset and long LFN instead of output dataset container and short LFN (obsolete)")
 optP.add_option('--disableRebrokerage',action='store_const',const=True,dest='disableRebrokerage',default=False,
                 help="disable auto-rebrokerage")
 optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
@@ -482,6 +482,11 @@ if options.panda_cacheSrvURL != '':
 
 # version check
 PsubUtils.checkPandaClientVer(options.verbose)
+
+# obsolete options
+if options.useOldStyleOutput:
+    options.useOldStyleOutput = False
+    tmpLog.warning("disabled --useOldStyleOutput since it is obsolete")
 
 # use old trf parameterization
 if options.useOldTRF:
@@ -1556,6 +1561,10 @@ if options.nFilesPerJob > 0:
 if not options.nGBPerJob in [-1,'MAX']:
     # don't set MAX since it is the defalt on the server side
     taskParamMap['nGBPerJob'] = options.nGBPerJob
+if options.nEventsPerJob > 0:
+    taskParamMap['nEventsPerJob'] = options.nEventsPerJob
+if options.nEventsPerFile > 0:
+    taskParamMap['nEventsPerFile'] = options.nEventsPerFile
 taskParamMap['cliParams'] = fullExecString
 if options.noEmail:
     taskParamMap['noEmail'] = True

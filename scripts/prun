@@ -373,6 +373,11 @@ if options.panda_cacheSrvURL != '':
 # version check
 PsubUtils.checkPandaClientVer(options.verbose)
 
+# obsolete options
+if options.useOldStyleOutput:
+    options.useOldStyleOutput = False
+    tmpLog.warning("disabled --useOldStyleOutput since it is obsolete")
+
 # noCompile uses noBuild stuff
 if options.noCompile:
     options.nobuild = True
