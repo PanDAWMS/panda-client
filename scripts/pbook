@@ -1421,6 +1421,8 @@ if __name__ == "__main__":
                       help='Displays version')
     parser.add_option('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
                       help="Please don't use this option. Only for developers to use the dev panda server")
+    parser.add_option('--intrSrv',action='store_const',const=True, dest='intrSrv',default=False,
+                      help="Please don't use this option. Only for developers to use the intr panda server")
     
     options,args = parser.parse_args()
 
@@ -1432,6 +1434,10 @@ if __name__ == "__main__":
     # use dev server
     if options.devSrv:
         Client.useDevServer()
+
+    # use INTR server
+    if options.intrSrv:
+        Client.useIntrServer()
 
     # fork for Ctl-c
     fork_child_pid = os.fork()

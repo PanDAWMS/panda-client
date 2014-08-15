@@ -2042,15 +2042,16 @@ else:
             sys.exit(EC_MyProxy)
     # submit task
     tmpLog.info("submit")
-    status,tmpOut = Client.insertTaskParams(taskParamMap,options.verbose)
+    status,tmpOut = Client.insertTaskParams(taskParamMap,options.verbose,True)
     # result
     if status != 0:
         tmpLog.error("task submission failed with {0}".format(status))
         sys.exit(EC_Submit)
-    if tmpOut[0] == False:
+    if tmpOut[0] in [0,3]:
+        tmpLog.info(format(tmpOut[1]))
+    else:
         tmpLog.error("task submission failed. {0}".format(tmpOut[1]))
         sys.exit(EC_Submit)
-    tmpLog.info("suceeded new TaskID={0}".format(tmpOut[1]))
 
 # go back to current dir
 os.chdir(currentDir)

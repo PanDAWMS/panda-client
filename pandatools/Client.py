@@ -3440,7 +3440,7 @@ def getInconsistentDS(missList,newUsedDsList):
 
 
 # submit task
-def insertTaskParams(taskParams,verbose):
+def insertTaskParams(taskParams,verbose,properErrorCode=False):
     """Insert task parameters 
 
        args:
@@ -3449,9 +3449,12 @@ def insertTaskParams(taskParams,verbose):
            status code
                  0: communication succeeded to the panda server 
                  255: communication failure
-           tuple of return code and JediTaskID
-                 True: request is processed
-                 False: not processed
+           tuple of return code and message from the server
+                 0: request is processed
+                 1: duplication in DEFT
+                 2: duplication in JEDI
+                 3: accepted for incremental execution
+                 4: server error
     """     
     # serialize
     taskParamsStr = json.dumps(taskParams)
@@ -3462,7 +3465,8 @@ def insertTaskParams(taskParams,verbose):
     curl.verbose = verbose
     # execute
     url = baseURLSSL + '/insertTaskParams'
-    data = {'taskParams':taskParamsStr}
+    data = {'taskParams':taskParamsStr,
+            'properErrorCode':properErrorCode}
     status,output = curl.post(url,data)
     try:
         return status,pickle.loads(output)

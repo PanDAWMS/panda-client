@@ -169,7 +169,7 @@ optP.add_option('--inputFileList', action='store', dest='inputFileListName', def
 optP.add_option('--crossSite',action='store',dest='crossSite',default=maxCrossSite,
                 type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=%s by default)' % maxCrossSite)
 optP.add_option('--outputs',action='store',dest='outputs',default='',type='string',
-                help='Names of output files. Comma separated. e.g., --outputs out1.dat,out2.txt')
+                help='Names of output files. Comma separated. e.g., --outputs out1.dat,out2.txt. You can specify a suffix for each output container like <datasetNameSuffix>:<outputFileName>. e.g., --outputs AAA:out1.dat,BBB:out2.txt. In this case output container names are outDS_AAA/ and outDS_BBB/ instead of outDS_out1.dat/ and outDS_out2.txt/')
 optP.add_option('--excludedSite', action='append', dest='excludedSite',  default=[],
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
 optP.add_option('--noSubmit',action='store_const',const=True,dest='nosubmit',default=False,
@@ -1359,7 +1359,16 @@ else:
 # output
 if options.outputs != '':
     outMap = {}
+    dsSuffix = []
     for tmpLFN in options.outputs.split(','):
+        tmpDsSuffix = ''
+        if ':' in tmpLFN:
+            tmpDsSuffix,tmpLFN = tmpLFN.split(':')
+            if tmpDsSuffix in dsSuffix:
+                tmpErrMsg  = 'dataset suffix %s is used for multiple files in --outputs. ' % tmpDsSuffix
+                tmpErrMsg += 'each output must have a unique suffix.' 
+                tmpLog.error(tmpErrMsg)
+                sys.exit(EC_Config)
         tmpNewLFN = tmpLFN
 	# change * to XYZ and add .tgz
 	if '*' in tmpNewLFN:
@@ -1370,7 +1379,9 @@ if options.outputs != '':
         else:
             lfn = outDatasetName[:-1]
         lfn += '.$JOBSETID._${{SN/P}}.{0}'.format(tmpNewLFN)
-        dataset = '{0}_{1}/'.format(outDatasetName[:-1],tmpNewLFN)
+        if tmpDsSuffix == '':
+            tmpDsSuffix = tmpNewLFN
+        dataset = '{0}_{1}/'.format(outDatasetName[:-1],tmpDsSuffix)
         taskParamMap['jobParameters'] += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,
                                                                     destination=options.destSE,
                                                                     token=options.spaceToken)
@@ -1393,9 +1404,10 @@ if options.inDS != '':
                'param_type':'input',
                'value':'-i "${IN/T}"',
                'dataset':options.inDS,
-	       'expand':True,
                'exclude':'\.log\.tgz(\.\d+)*$',
                }
+    if options.loadXML == None:
+        tmpDict['expand'] = True
     if options.nSkipFiles != 0:
         tmpDict['offset'] = options.nSkipFiles
     taskParamMap['jobParameters'].append(tmpDict)
@@ -1632,15 +1644,16 @@ else:
             sys.exit(EC_MyProxy)
     # submit task
     tmpLog.info("submit")
-    status,tmpOut = Client.insertTaskParams(taskParamMap,options.verbose)
+    status,tmpOut = Client.insertTaskParams(taskParamMap,options.verbose,True)
     # result
     if status != 0:
         tmpLog.error("task submission failed with {0}".format(status))
         sys.exit(EC_Submit)
-    if tmpOut[0] == False:
+    if tmpOut[0] in [0,3]:
+        tmpLog.info(format(tmpOut[1]))
+    else:
         tmpLog.error("task submission failed. {0}".format(tmpOut[1]))
         sys.exit(EC_Submit)
-    tmpLog.info("suceeded new TaskID={0}".format(tmpOut[1]))
 
 # go back to current dir
 os.chdir(curDir)

@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.5.12 (8/15/2014)
+  * fixed --loadXML in prun
+  * changed prun to allow users to specify suffixes for output containers
+
 0.5.11 (8/14/2014)
   * fixed pathen for --nEventsPerJob and --nEventsPerFile
   * disabled obsolete --useOldStyleOutput
