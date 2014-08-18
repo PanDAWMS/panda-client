@@ -677,3 +677,23 @@ def makeJobsetSpec(jobList):
     jobset = LocalJobsetSpec()
     jobset.setJobs(jobList)
     return jobset
+
+
+# get map of jobsetID and jediTaskID
+def getJobsetTaskMap(verbose=False):
+    # make sql
+    sql1 = "SELECT groupID,jediTaskID FROM %s WHERE groupID is not NULL and groupID != 0 and groupID != '' and jediTaskID is not null and jediTaskID != ''" % pdbProxy.tablename
+    # execute
+    status,out = pdbProxy.execute(sql1)
+    if not status:
+        raise RuntimeError,"failed to get list of JobIDs"
+    allMap = {}
+    for item in out:
+        # JobsetID
+        tmpJobsetID = long(item.split('|')[0])
+        # JobID
+        jediTaskID = long(item.split('|')[-1])
+        # append
+        allMap[jediTaskID] = tmpJobsetID
+    # return 
+    return allMap

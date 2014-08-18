@@ -119,6 +119,9 @@ class PBookCore:
         PdbUtils.initialzieDB(self.verbose,self.restoreDB)
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy('',enforceEnter,self.verbose,useCache=True)
+	# map between jobset and jediTaskID
+	self.jobsetTaskMap = {}
+ 
 
 
     # synchronize database
@@ -240,6 +243,7 @@ class PBookCore:
         bookConf = BookConfig.getConfig()
         bookConf.last_synctime = syncTime
         BookConfig.updateConfig(bookConf)
+	self.jobsetTaskMap = PdbUtils.getJobsetTaskMap()
         tmpLog.info("Synchronization Completed")
         
 
@@ -272,6 +276,8 @@ class PBookCore:
     def getJobInfo(self,JobID):
         # get logger
         tmpLog = PLogger.getPandaLogger()
+        # convert taskID to jobsetID
+        JobID = self.convertTaskToJobID(JobID)
         # get job info from local repository
         job = PdbUtils.readJobDB(JobID,self.verbose)
         # not found
@@ -309,6 +315,8 @@ class PBookCore:
 
     # get JobIDs with JobsetID
     def getJobIDsWithSetID(self,jobsetID):
+        # convert taskID to jobsetID
+        jobsetID = self.convertTaskToJobID(jobsetID)
         idMap = PdbUtils.getMapJobsetIDJobIDs(self.verbose)
         if idMap.has_key(jobsetID):
             return idMap[jobsetID]
@@ -333,12 +341,12 @@ class PBookCore:
             return None
         # update if needed
         if job.dbStatus != 'frozen' or forceUpdate:
-            tmpLog.info("Getting status for JobID=%s ..." % JobID)            
             if not job.isJEDI():
+		tmpLog.info("Getting status for JobID=%s ..." % JobID)
                 # get status from Panda server
                 status,pandaIDstatus = Client.getPandIDsWithJobID(JobID,verbose=self.verbose)
                 if status != 0:
-                    tmpLog.error("Failed to get status for JobID=%s" % JobID)
+                    tmpLog.error("Failed to get status for ID=%s" % JobID)
                     return None
                 # get one job to set computingSite which may have changed due to rebrokerage
                 pandaJob = None
@@ -357,6 +365,7 @@ class PBookCore:
                 if not status:
                     return None
             else:
+                tmpLog.info("Getting status for TaskID=%s ..." % job.jediTaskID)
                 # get JEDI task
                 status,jediTaskDict = Client.getJediTaskDetails({'jediTaskID':job.jediTaskID},False,True,verbose=self.verbose)
                 if status != 0:
@@ -370,7 +379,10 @@ class PBookCore:
             except:
                 tmpLog.error("Failed to update local repository for JobID=%s" % JobID)
                 return None
-            tmpLog.info("Updated JobID=%s" % JobID)                        
+            if not job.isJEDI():
+                tmpLog.info("Updated JobID=%s" % JobID)                        
+            else:
+                tmpLog.info("Updated TaskID=%s ..." % job.jediTaskID)
         # return
         return job
 
@@ -429,7 +441,7 @@ class PBookCore:
             # works with jobID
             jobList = [JobID]
         else:
-            tmpMsg = "JobsetID=%s is composed of JobID=" % JobID
+            tmpMsg = "ID=%s is composed of JobID=" % JobID
             for tmpJobID in jobList:
                 tmpMsg += '%s,' % tmpJobID
             tmpMsg = tmpMsg[:-1]
@@ -478,7 +490,10 @@ class PBookCore:
                     return False
                 tmpLog.info(tmpDiag)
             # done
-            tmpLog.info('Done. JobID=%s will be killed in 30min' % tmpJobID)
+            if job.isJEDI():
+                tmpLog.info('Done. TaskID=%s will be killed in 30min' % job.jediTaskID)
+            else:
+                tmpLog.info('Done. JobID=%s will be killed in 30min' % tmpJobID)
         return True
 
 
@@ -607,7 +622,7 @@ class PBookCore:
             jobList = [JobsetID]
         else:
             isJobset = True
-            tmpMsg = "JobsetID=%s is composed of JobID=" % JobsetID
+            tmpMsg = "ID=%s is composed of JobID=" % JobsetID
             for tmpJobID in jobList:
                 tmpMsg += '%s,' % tmpJobID
             tmpMsg = tmpMsg[:-1]
@@ -624,12 +639,12 @@ class PBookCore:
                 if status != 0:
                     tmpLog.error(status)
                     tmpLog.error(out)
-                    tmpLog.error("Failed to retry JobID=%s" % JobID)
+                    tmpLog.error("Failed to retry TaskID=%s" % localJob.jediTaskID)
                     return False
                 tmpStat,tmpDiag = out
                 if not tmpStat:
                     tmpLog.error(tmpDiag)
-                    tmpLog.error("Failed to retry JobID=%s" % JobID)
+                    tmpLog.error("Failed to retry TaskID=%s" % localJob.jediTaskID)
                     return False
                 tmpLog.info(tmpDiag)
                 continue
@@ -1090,7 +1105,14 @@ class PBookCore:
             if not newJobsetID in [None,-1,'NULL']:
                 tmpMsg += " JobsetID=%s" % newJobsetID
             tmpLog.info(tmpMsg)
-            
+
+
+    # convert taskID to jobsetID
+    def convertTaskToJobID(self,taskID):
+        if taskID in self.jobsetTaskMap:
+            return self.jobsetTaskMap[taskID]
+        return taskID
+
 
 
 # keep original help

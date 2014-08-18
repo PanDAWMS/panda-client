@@ -62,10 +62,10 @@ class LocalJobsetSpec(object):
                 if not job.cacheVar in ['','NULL','None',None]:
                     cacheStr = job.cacheVar
                 # common string representation
-                strOut1 += strFormat % ("JobsetID",     self.JobsetID)                
                 if self.isJEDI():
                     strOut1 += strFormat % ("jediTaskID", self.jediTaskID)
                     strOut1 += strFormat % ("taskStatus", self.taskStatus)
+                strOut1 += strFormat % ("JobsetID",     self.JobsetID)                
                 strOut1 += strFormat % ("type",         job.jobType)
                 strOut1 += strFormat % ("release",      relStr)
                 strOut1 += strFormat % ("cache",        cacheStr)
