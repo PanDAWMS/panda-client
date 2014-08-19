@@ -2368,12 +2368,15 @@ def getListPFN(pfnFile):
 
 
 # check task parameters
-def checkTaskParam(taskParamMap):
+def checkTaskParam(taskParamMap,unlimitNumOutputs):
     # check output dataset names
     maxLengthCont = 132
+    maxNumOutputs = 10
+    nOutputs = 0
     if 'jobParameters' in taskParamMap:
         for tmpDict in taskParamMap['jobParameters']:
             if tmpDict['type'] == 'template' and tmpDict['param_type'] == 'output':
+                nOutputs += 1
                 if len(tmpDict['dataset']) > maxLengthCont:
                     tmpErrStr  = "The name of an output dataset container (%s)is too long (%s). " % (tmpDict['dataset'],len(tmpDict['dataset']))
                     tmpErrStr += "The length must be less than %s. " % maxLengthCont
@@ -2383,7 +2386,16 @@ def checkTaskParam(taskParamMap):
                     tmpLog = PLogger.getPandaLogger()
                     tmpLog.error(tmpErrStr)
                     sys.exit(EC_Config)
-            
+    if not unlimitNumOutputs and nOutputs > maxNumOutputs:
+        errStr  ='Too many output files (=%s) per job. The default limit is %s. ' % (nOutputs,maxNumOutputs)
+        errStr += 'You can remove the constraint by using the --unlimitNumOutputs option. '
+        errStr += 'But please note that having too many outputs per job causes a severe load on the system. '
+        errStr += 'You may be banned if you carelessly use the option'
+        tmpLog = PLogger.getPandaLogger()
+        tmpLog.error(errStr)
+        sys.exit(EC_Config)
+        
+    
 
 if os.environ.has_key('PANDA_DEBUG'):
     print "DEBUG : imported %s" % __name__    
