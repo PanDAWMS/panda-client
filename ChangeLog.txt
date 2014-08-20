@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.5.14 (8/19/2014)
+  * fixed typo in pbook
+  * changed pathena/prun to allow users to set/unset some parameters when re-submitting
+
 0.5.13 (8/18/2014)
   * changed pbook functions to work both with jobsetID and jediTaskID
   * fixed pathena to take --nEventsPerJob into account when noInput

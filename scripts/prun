@@ -1271,12 +1271,14 @@ if options.eventPickEvtList != '':
 taskParamMap['prodSourceLabel'] = 'user'
 if options.site != 'AUTO':
     taskParamMap['site'] = options.site
-if options.cloud != None:
-    taskParamMap['cloud'] = options.cloud
-if options.excludedSite != []:
-    taskParamMap['excludedSite'] = options.excludedSite
+else:
+    taskParamMap['site'] = None
+taskParamMap['cloud'] = options.cloud
+taskParamMap['excludedSite'] = options.excludedSite
 if includedSite != None and includedSite != []:
     taskParamMap['includedSite'] = includedSite
+else:
+    taskParamMap['includedSite'] = None
 if options.nFiles != 0:
     taskParamMap['nFiles'] = options.nFiles
 if options.nFilesPerJob != None:    

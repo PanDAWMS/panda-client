@@ -485,7 +485,7 @@ class PBookCore:
                     return False
                 tmpStat,tmpDiag = output
                 if not tmpStat:
-                    tmpLog.error(outout)
+                    tmpLog.error(tmpDiag)
                     tmpLog.error("Failed to kill JobID=%s" % tmpJobID)
                     return False
                 tmpLog.info(tmpDiag)
