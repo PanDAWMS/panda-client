@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.5.15 (8/20/2014)
+  * added XML verification to prun
+  * fixed pathena for --cavDS
+
 0.5.14 (8/19/2014)
   * fixed typo in pbook
   * changed pathena/prun to allow users to set/unset some parameters when re-submitting

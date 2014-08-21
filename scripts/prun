@@ -395,12 +395,21 @@ xconfig = None
 if options.loadXML != None:
     from pandatools import ParseJobXML
     xconfig = ParseJobXML.dom_parser(options.loadXML)
+    tmpLog.info('dump XML config')
     xconfig.dump(options.verbose)
     if options.outDS=='':
         options.outDS=xconfig.outDS()
     options.outputs='all'
     options.jobParams='${XML_EXESTR}'
     options.inDS=xconfig.inDS()
+    # check XML
+    try:
+        xconfig.files_in_DS(options.inDS)
+    except:
+        errtype,errvalue = sys.exc_info()[:2]
+        print errvalue
+        tmpLog.error('verification of XML failed')
+        sys.exit(EC_Config)
     # inDS match and secondaryDS filter will be determined later from xconfig
     options.match=''
     options.secondaryDSs = xconfig.secondaryDSs_config(filter=False)

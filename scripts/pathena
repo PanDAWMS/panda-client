@@ -1831,7 +1831,7 @@ if minBiasStream != '':
     
 # cavern
 if options.cavDS != '':
-    dictItem = MiscUtils.makeJediJobParam('-c "${CAVIN/T}"',options.cavDS,'input',
+    dictItem = MiscUtils.makeJediJobParam('-n "${CAVIN/T}"',options.cavDS,'input',
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nCav)
     taskParamMap['jobParameters'] += dictItem

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys,re
+import urllib
 import xml.dom.minidom
 
 class dom_job:
@@ -97,6 +98,21 @@ class dom_job:
         This way, all options will be set inside run.sh
         """
         return '%s %s'%(s.forward_opts(),s.command)
+    def exec_string_enc(s):
+        """ exec string for prun.
+        If user requested to run script run.sh (via <command>run.sh</command>), it will return
+        opt1=value1 opt2=value2 opt3=value3 run.sh
+        This way, all options will be set inside run.sh
+        """
+        comStr = '%s %s'%(s.forward_opts(),s.command)
+        return urllib.quote(comStr)
+    def get_outmap_str(s,outMap):
+        """ return mapping of original and new filenames 
+        """
+        newMap = {}
+        for oldLFN,fileSpec in outMap.iteritems():
+            newMap[oldLFN] = str(fileSpec.lfn)
+        return str(newMap)
     def outputs_list(s,prepend=False):
         """ python list with finalized output file names """
         if prepend and s.prepend_string():
@@ -108,7 +124,7 @@ class dom_job:
         return ','.join(s.outputs_list(prepend))
 
 class dom_parser:
-    def __init__(s,fname=None):
+    def __init__(s,fname=None,xmlStr=None):
         """ creates a dom object out of a text file (if provided) """
         s.fname = fname
         s.dom = None
@@ -124,6 +140,11 @@ class dom_parser:
             s.dom = xml.dom.minidom.parse(fname)
             s.parse()
             s.check()
+        if xmlStr != None:
+            s.dom = xml.dom.minidom.parseString(xmlStr)
+            s.parse()
+            s.check()
+
     @staticmethod
     def break_regex(v,N=100):
         """ breaks up a very long regex into a comma-separeted list of filters """
