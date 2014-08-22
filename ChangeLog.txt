@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.16 (8/22/2014)
+  * fixed protection against duplicated dataset name suffixes
+
 0.5.15 (8/20/2014)
   * added XML verification to prun
   * fixed pathena for --cavDS
