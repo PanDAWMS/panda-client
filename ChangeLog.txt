@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.17 (8/27/2014)
+  * changed pbook to refresh database before kill/retry
+
 0.5.16 (8/22/2014)
   * fixed protection against duplicated dataset name suffixes
 

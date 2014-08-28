@@ -432,6 +432,8 @@ class PBookCore:
         tmpLog = PLogger.getPandaLogger()
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose,useCache=True)
+	# force update just in case
+	self.status(JobID,True)
         # get jobset
         jobList = self.getJobIDsWithSetID(JobID)
         if jobList == None:
@@ -607,6 +609,8 @@ class PBookCore:
         tmpLog = PLogger.getPandaLogger()
         # check proxy
         self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose,useCache=True)
+	# force update just in case
+        self.status(JobsetID,True)
         # set an empty map since mutable default value is used
         if newOpts == {}:
             newOpts = {}
