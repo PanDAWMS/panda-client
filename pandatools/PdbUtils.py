@@ -354,15 +354,19 @@ def convertJTtoD(jediTaskDict,localJob=None):
     else:
         # create new spec
         ddata = LocalJobSpec()
+    # max IDs
+    maxIDs = 20
     # task status
     ddata.taskStatus = jediTaskDict['status']
     # statistic
     ddata.jobStatus = jediTaskDict['statistics']
     # PandaID
     ddata.PandaID = ''
-    for tmpPandaID in jediTaskDict['PandaID']:
+    for tmpPandaID in jediTaskDict['PandaID'][:maxIDs]:
         ddata.PandaID += '%s,' % tmpPandaID
     ddata.PandaID = ddata.PandaID[:-1]
+    if len(jediTaskDict['PandaID']) > maxIDs:
+        ddata.PandaID += ',+%sIDs' % (len(jediTaskDict['PandaID'])-maxIDs) 
     # merge status
     if not 'mergeStatus' in jediTaskDict or jediTaskDict['mergeStatus'] == None:
         ddata.mergeJobStatus = 'NA'
@@ -370,9 +374,11 @@ def convertJTtoD(jediTaskDict,localJob=None):
         ddata.mergeJobStatus = jediTaskDict['mergeStatus']
     # merge PandaID
     ddata.mergeJobID = ''
-    for tmpPandaID in jediTaskDict['mergePandaID']:
+    for tmpPandaID in jediTaskDict['mergePandaID'][:maxIDs]:
         ddata.mergeJobID += '%s,' % tmpPandaID
     ddata.mergeJobID = ddata.mergeJobID[:-1]
+    if len(jediTaskDict['mergePandaID']) > maxIDs:
+        ddata.mergeJobID += ',+%sIDs' % (len(jediTaskDict['mergePandaID'])-maxIDs)
     # return if update status only
     if statusOnly:
         return ddata

@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.18 (8/28/2014)
+  * added protection to pbook against too many PandaIDs
+
 0.5.17 (8/27/2014)
   * changed pbook to refresh database before kill/retry
 

@@ -65,16 +65,16 @@ class LocalJobsetSpec(object):
                 if self.isJEDI():
                     strOut1 += strFormat % ("jediTaskID", self.jediTaskID)
                     strOut1 += strFormat % ("taskStatus", self.taskStatus)
-                strOut1 += strFormat % ("JobsetID",     self.JobsetID)                
+                strOut1 += strFormat % ("JobsetID",     self.JobsetID)
                 strOut1 += strFormat % ("type",         job.jobType)
                 strOut1 += strFormat % ("release",      relStr)
                 strOut1 += strFormat % ("cache",        cacheStr)
                 #strOut2 += strFormat % ("JobID"  ,      strJobID)
-                strOut2 += strFormat % ("PandaID",      self.PandaID)
+                #strOut2 += strFormat % ("PandaID",      self.PandaID)
                 strOut2 += strFormat % ("inDS",         self.inDS)
                 strOut2 += strFormat % ("outDS",        self.outDS)
                 if not self.isJEDI():
-                    strOut2 += strFormat % ("parentSetID",  self.parentSetID)                                
+                    strOut2 += strFormat % ("parentSetID",  self.parentSetID)
                     strOut2 += strFormat % ("retrySetID",   self.retrySetID)
                 strOut2 += strFormat % ("creationTime", job.creationTime.strftime('%Y-%m-%d %H:%M:%S'))
                 strOut2 += strFormat % ("lastUpdate",   job.lastUpdate.strftime('%Y-%m-%d %H:%M:%S'))
@@ -155,7 +155,7 @@ class LocalJobsetSpec(object):
             if self.flag_longFormat:
                 strOutJob += '\n'
                 strOutJob += strFormat % ("JobID",        job.JobID)
-                strOutJob += strFormat % ("nJobs",        nJobsStr)
+                #strOutJob += strFormat % ("nJobs",        nJobsStr)
                 strOutJob += strFormat % ("site",         job.site)
                 strOutJob += strFormat % ("libDS",        str(job.libDS))
                 strOutJob += strFormat % ("retryID",      job.retryID)        
@@ -167,7 +167,7 @@ class LocalJobsetSpec(object):
             nJobsStr += " + %s(merge)" % totalMerge
         if totalBuild != 0:
             nJobsStr += " + %s(build)" % totalBuild
-        strOut1 += strFormat % ("nJobs",        nJobsStr)
+        #strOut1 += strFormat % ("nJobs",        nJobsStr)
         strOut = strOut1 + strOut2
         # not long format
         if not self.flag_longFormat:

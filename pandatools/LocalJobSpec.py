@@ -259,7 +259,7 @@ class LocalJobSpec(object):
     def encodeCompact(self,includeMerge=False):
         ret = {}
         if self.isJEDI():
-            if self.taskStatus in ['finished','failed','partial','broken','aborted']:
+            if self.taskStatus in ['finished','failed','done','broken','aborted']:
                 self.dbStatus = 'frozen'
             else:
                 self.dbStatus = 'running'
@@ -276,7 +276,12 @@ class LocalJobSpec(object):
             if item in ['','None']:
                 continue
             # convert to long
-            tmpID = long(item)
+            try:
+                tmpID = long(item)
+            except:
+                sID = item
+                eID = item
+                break
             # set start/end ID
             if sID == None:
                 sID = tmpID
