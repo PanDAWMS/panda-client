@@ -1357,7 +1357,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
     tmpMatch = re.search('^([^\.]+)\.([^\.]+)\.',original_outDS)
     if tmpMatch != None and original_outDS.endswith('/'):
         outDSwoSlash = '%s.%s.' % (tmpMatch.group(1),tmpMatch.group(2))
-        outDSwoSlash += '$JOBSETID'
+        outDSwoSlash += '$JEDITASKID'
     # start conversion
     if runConfig.output.outNtuple:
         for sName in runConfig.output.outNtuple:

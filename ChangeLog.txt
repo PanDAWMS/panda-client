@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.5.19 (8/29/2014)
+  * using JEDITASKID instead of JOBSETID to gurantee uniquness of file names
+  * add --useNewCode to pathena and prun
+
 0.5.18 (8/28/2014)
   * added protection to pbook against too many PandaIDs
 
