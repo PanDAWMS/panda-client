@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.20 (9/2/2014)
+  * fixed prun for --loadXML with secondary datasets
+
 0.5.19 (8/29/2014)
   * using JEDITASKID instead of JOBSETID to gurantee uniquness of file names
   * add --useNewCode to pathena and prun

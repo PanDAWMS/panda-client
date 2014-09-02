@@ -133,7 +133,7 @@ def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=Fals
             dictItem['exclude'] = exclude
         if expand:
             dictItem['expand'] = expand
-        if nFilesPerJob != None:
+        if not nFilesPerJob in [None,0]:
             dictItem['nFilesPerJob'] = nFilesPerJob
     if hidden:
         dictItem['hidden'] = hidden
