@@ -2373,19 +2373,19 @@ def checkTaskParam(taskParamMap,unlimitNumOutputs):
     maxLengthCont = 132
     maxNumOutputs = 10
     nOutputs = 0
-    if 'jobParameters' in taskParamMap:
-        for tmpDict in taskParamMap['jobParameters']:
-            if tmpDict['type'] == 'template' and tmpDict['param_type'] == 'output':
+    for tmpDict in taskParamMap['jobParameters']+[taskParamMap['log']]:
+        if tmpDict['type'] == 'template' and tmpDict['param_type'] in ['output','log']:
+            if tmpDict['param_type'] == 'output':
                 nOutputs += 1
-                if len(tmpDict['dataset']) > maxLengthCont:
-                    tmpErrStr  = "The name of an output dataset container (%s)is too long (%s). " % (tmpDict['dataset'],len(tmpDict['dataset']))
-                    tmpErrStr += "The length must be less than %s. " % maxLengthCont
-                    tmpErrStr += "Please note that one dataset container is creted per output type and "
-                    tmpErrStr += "each name is <outDS>_<extension made from the output filename>. "
-                    # get logger
-                    tmpLog = PLogger.getPandaLogger()
-                    tmpLog.error(tmpErrStr)
-                    sys.exit(EC_Config)
+            if len(tmpDict['dataset']) > maxLengthCont:
+                tmpErrStr  = "The name of an output or log dataset container (%s) is too long (%s). " % (tmpDict['dataset'],len(tmpDict['dataset']))
+                tmpErrStr += "The length must be less than %s following DDM definition. " % maxLengthCont
+                tmpErrStr += "Please note that one dataset container is creted per output/log type and "
+                tmpErrStr += "each name is <outDS>_<extension made from the output filename>/ or <outDS>.log/. "
+                # get logger
+                tmpLog = PLogger.getPandaLogger()
+                tmpLog.error(tmpErrStr)
+                sys.exit(EC_Config)
     if not unlimitNumOutputs and nOutputs > maxNumOutputs:
         errStr  ='Too many output files (=%s) per job. The default limit is %s. ' % (nOutputs,maxNumOutputs)
         errStr += 'You can remove the constraint by using the --unlimitNumOutputs option. '

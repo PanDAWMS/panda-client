@@ -1629,7 +1629,7 @@ if options.mergeOutput:
         jobParameters += "--rootVer %s " % options.rootVer
     if options.useRootCore:
         jobParameters += "--useRootCore "
-    if not options.nobuild:
+    if not (options.nobuild and not options.noCompile):
         jobParameters += '-l ${LIB} '
     else:
         jobParameters += '-a {0} '.format(archiveName)
