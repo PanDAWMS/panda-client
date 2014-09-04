@@ -663,6 +663,13 @@ if options.useAMIEventLevelSplit == None:
     else:
         options.useAMIEventLevelSplit = False
 
+# check for nEventsPerJob
+if options.inDS != '' and options.nEventsPerJob > 0 and options.nEventsPerFile == 0 and not options.useAMIEventLevelSplit:
+    tmpErrMsg  = "--nEventsPerJob requires --nEventsPerFile until Rucio is fully deployed. "
+    tmpErrMsg += "Or --useAMIEventLevelSplit may work if AMI knows the number events for each input file." 
+    tmpLog.error(tmpErrMsg)
+    sys.exit(EC_Config)
+
 # check DBRelease
 if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
     tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")  
@@ -786,10 +793,33 @@ except:
 # set nFilesPerJob for MC data
 if options.mcData != '':
     options.nFilesPerJob = 1
-    
-# set nfiles
-if options.nFilesPerJob > 0 and options.nfiles == 0 and options.split > 0:
-    options.nfiles = options.nFilesPerJob * options.split
+
+
+# split related
+if options.split > 0:
+    # set nFiles when nEventsPerJob and nEventsPerFile are set
+    if options.nEventsPerJob > 0 and options.nEventsPerFile > 0:
+        if options.nEventsPerJob >= options.nEventsPerFile:
+            options.nfiles = options.nEventsPerJob / options.nEventsPerFile * options.split
+        else:
+            options.nfiles =  options.split / (options.nEventsPerFile / options.nEventsPerJob)
+            if options.nfiles == 0:
+                options.nfiles = 1
+
+    # set nFiles when nFilesPerJob is set
+    if options.nFilesPerJob > 0 and options.nfiles == 0:
+        options.nfiles = options.nFilesPerJob * options.split
+
+    # set nFiles per job when nFiles is set
+    if options.nFilesPerJob < 0 and options.nfiles > 0:
+        options.nFilesPerJob = options.nfiles / options.split
+        if options.nFilesPerJob == 0:
+            options.nFilesPerJob = 1
+
+# check
+if options.inDS != '' and options.split > 0 and options.nFilesPerJob < 0 and options.nfiles == 0:
+    tmpLog.error("--split requires --nFilesPerJob or --nFiles when --inDS is specified")
+    sys.exit(EC_Config)
 
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
