@@ -1677,7 +1677,6 @@ if pStr1 != '' or pStr2 != '':
         preStr = pStr1+pStr2
     else:
         preStr = "%s;%s" % (pStr1,pStr2)
-        param += '-f "%s" ' % ()
     taskParamMap['jobParameters'] += [
         {'type':'constant',
          'value': '-f "',

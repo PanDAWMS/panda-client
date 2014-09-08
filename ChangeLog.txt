@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.23 (9/8/2014)
+  * fixed typo in pathena
+
 0.5.22 (9/5/2014)
   * added protection for --nEventsPerJob in pathena
   * added protection for --split in pathena
