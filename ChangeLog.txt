@@ -1,6 +1,6 @@
 ** Release Notes
 
-current
+0.5.24 (9/9/2014)
   * added --allowTaskDuplication to pathena/prun 
   * added a capability to retry failed jobs while the task is still running
 
