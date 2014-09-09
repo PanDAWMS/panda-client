@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * added --allowTaskDuplication to pathena/prun 
+
 0.5.23 (9/8/2014)
   * fixed typo in pathena
 

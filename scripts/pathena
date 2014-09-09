@@ -353,6 +353,8 @@ optP.add_option('--configJEM', action='store', dest='configJEM', default='',
                 type='string', help='configration parameters for JEM')
 optP.add_option('--cmtConfig', action='store', dest='cmtConfig', default=None,
                 type='string', help='CMTCONFIG=i686-slc5-gcc43-opt is used on remote worker-node by default even if you use another CMTCONFIG locally. This option allows you to use another CMTCONFIG remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt. If you use --libDS together with this option, make sure that the libDS was compiled with the same CMTCONFIG, in order to avoid failures due to inconsistency in binary files')
+optP.add_option('--allowTaskDuplication',action='store_const',const=True,dest='allowTaskDuplication',default=False,
+                help="As a general rule each task has a unique outDS and history of file usage is recorded per task. This option allows multiple tasks to contribute to the same outDS. Typically useful to submit a new task with the outDS which was used by another broken task. Use this option very carefully at your own risk, since file duplication happens when the second task runs on the same input which the first task successfully processed")
 # athena options
 optP.add_option('-c',action='store',dest='singleLine',type='string',default='',metavar='COMMAND',
                 help='One-liner, runs before any jobOs')
@@ -1566,7 +1568,8 @@ jobName = MiscUtils.wrappedUuidGen()
 # make task
 taskParamMap = {}
 taskParamMap['taskName'] = options.outDS
-taskParamMap['uniqueTaskName'] = True
+if not options.allowTaskDuplication:
+    taskParamMap['uniqueTaskName'] = True
 taskParamMap['vo'] = 'atlas'
 taskParamMap['architecture'] = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
 taskParamMap['transUses'] = 'Atlas-%s' % athenaVer
