@@ -2,6 +2,7 @@
 
 current
   * added --allowTaskDuplication to pathena/prun 
+  * added a capability to retry failed jobs while the task is still running
 
 0.5.23 (9/8/2014)
   * fixed typo in pathena

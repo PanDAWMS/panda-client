@@ -577,7 +577,7 @@ def killTask(jediTaskID,verbose=False):
 
 
 # retry task
-def retryTask(jediTaskID,verbose=False):
+def retryTask(jediTaskID,verbose=False,properErrorCode=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -585,7 +585,8 @@ def retryTask(jediTaskID,verbose=False):
     curl.verbose = verbose    
     # execute
     url = baseURLSSL + '/retryTask'
-    data = {'jediTaskID':jediTaskID}
+    data = {'jediTaskID':jediTaskID,
+            'properErrorCode':properErrorCode}
     status,output = curl.post(url,data)
     try:
         return status,pickle.loads(output)

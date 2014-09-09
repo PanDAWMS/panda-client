@@ -639,14 +639,15 @@ class PBookCore:
                 return None
             # for JEDI
             if localJob.isJEDI():
-                status,out = Client.retryTask(localJob.jediTaskID,verbose=self.verbose)
+                status,out = Client.retryTask(localJob.jediTaskID,verbose=self.verbose,
+                                              properErrorCode=True)
                 if status != 0:
                     tmpLog.error(status)
                     tmpLog.error(out)
                     tmpLog.error("Failed to retry TaskID=%s" % localJob.jediTaskID)
                     return False
                 tmpStat,tmpDiag = out
-                if not tmpStat:
+                if not tmpStat in [0,True]:
                     tmpLog.error(tmpDiag)
                     tmpLog.error("Failed to retry TaskID=%s" % localJob.jediTaskID)
                     return False
