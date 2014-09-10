@@ -2759,15 +2759,15 @@ def getJediTaskDetails(taskDict,fullFlag,withTaskInfo,verbose=False):
         print output
         return status,None
     try:
-        newDict = pickle.loads(output)
+        tmpDict = pickle.loads(output)
         # server error
-        if newDict == {}:
+        if tmpDict == {}:
             print "ERROR getJediTaskDetails got empty"
             return EC_Failed,None
         # copy 
-        for tmpKey,tmpVal in taskDict.iteritems():
-            newDict[tmpKey] = tmpVal
-        return 0,newDict
+        for tmpKey,tmpVal in tmpDict.iteritems():
+            taskDict[tmpKey] = tmpVal
+        return 0,taskDict
     except:
         errType,errValue = sys.exc_info()[:2]
         print "ERROR getJediTaskDetails : %s %s" % (errType,errValue)
