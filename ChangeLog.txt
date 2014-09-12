@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.26 (9/12/2014)
+  * fixed GUID duplication caused by --allowTaskDuplication
+
 0.5.25 (9/10/2014)
   * added --addNthFieldOfInDSToLFN to pathena/prun
   * fixed getJediTaskDetails

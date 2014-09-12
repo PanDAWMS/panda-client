@@ -1631,7 +1631,7 @@ taskParamMap['log'] = {'dataset': logDatasetName,
                        'container': logDatasetName,
                        'type':'template',
                        'param_type':'log',
-                       'value':'{0}.${{SN}}.log.tgz'.format(logDatasetName[:-1])
+                       'value':'{0}.$JEDITASKID.${{SN}}.log.tgz'.format(logDatasetName[:-1])
                        }
 
 # make job parameters
