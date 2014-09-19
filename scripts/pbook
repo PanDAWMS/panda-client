@@ -243,9 +243,14 @@ class PBookCore:
         bookConf = BookConfig.getConfig()
         bookConf.last_synctime = syncTime
         BookConfig.updateConfig(bookConf)
-	self.jobsetTaskMap = PdbUtils.getJobsetTaskMap()
+	self.updateTaskJobsetMap()
         tmpLog.info("Synchronization Completed")
         
+
+    # update task and jobset map
+    def updateTaskJobsetMap(self):
+        self.jobsetTaskMap = PdbUtils.getJobsetTaskMap()
+
 
     # set merge job status
     def setMergeJobStatus(self,job,forceUpdate=False):
@@ -1393,6 +1398,8 @@ For more info, do help(show) for example."""
                 else:    
                     comArg.append(eval(item))
         comArg = tuple(comArg)            
+        # update map
+        pbookCore.updateTaskJobsetMap()
         # exec : exec cannot be used due to unqualified exec with nested functions
         apply(locals()[comName],comArg,comMap)
         # exit

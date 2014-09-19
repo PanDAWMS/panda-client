@@ -3220,7 +3220,7 @@ def checkQueuedAnalJobs(site,verbose=False):
 # request EventPicking
 def requestEventPicking(eventPickEvtList,eventPickDataType,eventPickStreamName,
                         eventPickDS,eventPickAmiTag,fileList,fileListName,outDS,
-                        lockedBy,params,verbose=False):
+                        lockedBy,params,eventPickNumSites,verbose=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # list of input files
@@ -3255,6 +3255,8 @@ def requestEventPicking(eventPickEvtList,eventPickDataType,eventPickStreamName,
             'params'              : params,
             'inputFileList'       : strInput,
             }
+    if eventPickNumSites > 1:
+        data['eventPickNumSites'] = eventPickNumSites
     evpFile.close()
     status,output = curl.post(url,data)
     # failed
@@ -3300,7 +3302,7 @@ def checkEnoughSitesHaveDBR(dq2IDs):
                 if tmpPandaSite in PandaTier1Sites and tmpPandaSite in sitesWithDBR:
                     nOnlineT1WithDBR += 1
     # enough replicas
-    if nOnlineWithDBR < 40:
+    if nOnlineWithDBR < 10:
         return False
     # threshold 90%
     if float(nOnlineWithDBR) < 0.9 * float(nOnline):

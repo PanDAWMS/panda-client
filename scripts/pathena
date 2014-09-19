@@ -117,6 +117,8 @@ optP.add_option('--eventPickStagedDS',action='store',dest='eventPickStagedDS',de
                 type='string', help='--eventPick options create a temporary dataset to stage-in interesting files when those files are available only on TAPE, and then a stage-in request is automatically sent to DaTRI. Once DaTRI transfers the dataset to DISK you can use the dataset as an input using this option')
 optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
                 type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
+optP.add_option('--eventPickNumSites',action='store',dest='eventPickNumSites',default=1,
+                type='int', help='The event picking service makes a temprary dataset container to stage files to DISK. The consistuent datasets are distibued to N sites (N=1 by default)')
 optP.add_option('--useNewTRF', action='store_const',const=True,dest='useNewTRF',default=True,
                 help="Use the original filename with the attempt number for input in --trf when there is only one input, which follows the globbing scheme of new transformation framework")
 optP.add_option('--useOldTRF', action='store_const',const=True,dest='useOldTRF',default=False,
@@ -1040,6 +1042,7 @@ if options.eventPickEvtList != '':
                                                      options.outDS,
                                                      epLockedBy,
                                                      fullExecString,
+                                                     options.eventPickNumSites,
                                                      options.verbose)
         # set input dataset 
         options.inDS = epOutput

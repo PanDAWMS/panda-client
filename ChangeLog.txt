@@ -1,5 +1,10 @@
 ** Release Notes
 
+0.5.27 (9/19/2014)
+  * fixed DBR lookup for HC
+  * fixed pbook -c
+  * added --eventPickNumSites
+
 0.5.26 (9/12/2014)
   * fixed GUID duplication caused by --allowTaskDuplication
 
