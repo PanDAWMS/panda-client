@@ -410,9 +410,10 @@ class PBookCore:
                 tmpJobs.append(tmpJob)
                 if tmpJob.isJEDI():
                     isJEDI = True
-                if tmpJob.mergeJobID != '':
-                    for tmpMergeID in tmpJob.mergeJobID.split(','):
-                        tmpMergeIdList.append(long(tmpMergeID))
+                else:
+                    if tmpJob.mergeJobID != '':
+                        for tmpMergeID in tmpJob.mergeJobID.split(','):
+                            tmpMergeIdList.append(long(tmpMergeID))
             if not isJEDI:
                 # check merge jobs are already got
                 tmpIDtoBeChecked = []  
