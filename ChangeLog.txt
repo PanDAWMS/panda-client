@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.29 (9/29/2014)
+  * added --forceDirectIO to pathena
+
 0.5.28 (9/22/2014)
   * fixed pbook for many merging jobs
 
