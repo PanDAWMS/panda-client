@@ -1847,21 +1847,21 @@ minBiasStream = ''
 if options.minDS != '':
     dictItem = MiscUtils.makeJediJobParam('${MININ}',options.minDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nMin)
+                                          nFilesPerJob=options.nMin,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['MININ'] = options.minDS
     minBiasStream += 'MININ,'
 if options.lowMinDS != '':
     dictItem = MiscUtils.makeJediJobParam('${LOMBIN}',options.lowMinDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nLowMin)
+                                          nFilesPerJob=options.nLowMin,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['LOMBIN'] = options.lowMinDS
     minBiasStream += 'LOMBIN,'
 if options.highMinDS != '':
     dictItem = MiscUtils.makeJediJobParam('${HIMBIN}',options.highMinDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nHighMin)
+                                          nFilesPerJob=options.nHighMin,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['HIMBIN'] = options.highMinDS
     minBiasStream += 'HIMBIN,'
@@ -1877,7 +1877,7 @@ if minBiasStream != '':
 if options.cavDS != '':
     dictItem = MiscUtils.makeJediJobParam('-n "${CAVIN/T}"',options.cavDS,'input',
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nCav)
+                                          nFilesPerJob=options.nCav,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['CAVIN'] = options.cavDS
 
@@ -1887,21 +1887,21 @@ beamHaloStream = ''
 if options.beamHaloDS != '':
     dictItem = MiscUtils.makeJediJobParam('${BHIN}',options.beamHaloDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamHalo)
+                                          nFilesPerJob=options.nBeamHalo,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BHIN'] = options.beamHaloDS
     beamHaloStream += 'BHIN,'    
 if options.beamHaloADS != '':
     dictItem = MiscUtils.makeJediJobParam('${BHAIN}',options.beamHaloADS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamHaloA)
+                                          nFilesPerJob=options.nBeamHaloA,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BHAIN'] = options.beamHaloADS
     beamHaloStream += 'BHAIN,'
 if options.beamHaloCDS != '':
     dictItem = MiscUtils.makeJediJobParam('${BHCIN}',options.beamHaloCDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamHaloC)
+                                          nFilesPerJob=options.nBeamHaloC,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BHCIN'] = options.beamHaloCDS
     beamHaloStream += 'BHCIN,'    
@@ -1918,28 +1918,28 @@ beamGasStream = ''
 if options.beamGasDS != '':
     dictItem = MiscUtils.makeJediJobParam('${BGIN}',options.beamGasDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamGas)
+                                          nFilesPerJob=options.nBeamGas,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BGIN'] = options.beamGasDS
     beamGasStream += 'BGIN,'    
 if options.beamGasHDS != '':
     dictItem = MiscUtils.makeJediJobParam('${BGHIN}',options.beamGasHDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamGasH)
+                                          nFilesPerJob=options.nBeamGasH,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BGHIN'] = options.beamGasHDS
     beamGasStream += 'BGHIN,'    
 if options.beamGasCDS != '':
     dictItem = MiscUtils.makeJediJobParam('${BGCIN}',options.beamGasCDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamGasC)
+                                          nFilesPerJob=options.nBeamGasC,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BGCIN'] = options.beamGasHDS
     beamGasStream += 'BGCIN,'    
 if options.beamGasODS != '':
     dictItem = MiscUtils.makeJediJobParam('${BGOIN}',options.beamGasODS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamGasO)
+                                          nFilesPerJob=options.nBeamGasO,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BGOIN'] = options.beamGasODS
     beamGasStream += 'BGOIN,'    

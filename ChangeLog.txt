@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.30 (10/2/2014)
+  * fixed pathena for --minXYZ and --cavXYZ 
+
 0.5.29 (9/29/2014)
   * added --forceDirectIO to pathena
 
