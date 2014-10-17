@@ -392,7 +392,13 @@ def convertJTtoD(jediTaskDict,localJob=None):
         tmpCache = re.sub('_','-',tmpCache)
     ddata.cacheVar = tmpCache
     # job parameters
-    ddata.jobParams = jediTaskDict['cliParams']
+    try:
+        if isinstance(jediTaskDict['cliParams'],unicode):
+            ddata.jobParams = jediTaskDict['cliParams'].encode('utf_8')
+        else:
+            ddata.jobParams = jediTaskDict['cliParams']
+    except:
+        pass
     # datasets
     ddata.inDS = jediTaskDict['inDS']
     ddata.outDS = jediTaskDict['outDS']

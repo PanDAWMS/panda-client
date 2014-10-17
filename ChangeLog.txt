@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.5.31 (10/17/2014)
+  * fixed prun for GRL
+  * added a protection against unicode to pbook
+
 0.5.30 (10/2/2014)
   * fixed pathena for --minXYZ and --cavXYZ 
 
