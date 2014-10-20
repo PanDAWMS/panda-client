@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.32 (10/20/2014)
+  * added --eventPickSkipDaTRI to pathena/prun
+ 
 0.5.31 (10/17/2014)
   * fixed prun for GRL
   * added a protection against unicode to pbook
