@@ -729,6 +729,10 @@ elif options.athenaTag != '':
         if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) != None:
             # use AtlasProduction
             cacheVer = '-AtlasProduction'+cacheVer
+        elif 'AthAnalysisBase' in cacheVer:
+            # AthAnalysis
+            cacheVer  = cacheVer + '_%s' % athenaVer
+            athenaVer = ''
         else:
             # unknown
             cacheVer = ''
@@ -1664,7 +1668,11 @@ PsubUtils.checkTaskParam(taskParamMap,options.unlimitNumOutputs)
 
 if options.verbose:
     tmpLog.debug("==== taskParams ====")
-    tmpLog.debug(taskParamMap)
+    tmpKeys = taskParamMap.keys()
+    tmpKeys.sort()
+    for tmpKey in tmpKeys:
+        print '%s : %s' % (tmpKey,taskParamMap[tmpKey])
+
 
 
 #####################################################################

@@ -248,7 +248,7 @@ def getAthenaVer():
                     athenaVer = tmpMatch.group(1)
                 break
             # cache or analysis projects
-            elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT'] or \
+            elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT','AthAnalysisBase'] or \
                  items[1].count('.') >= 4:  
                 # tailside cache is used
                 if cacheVer != '':
@@ -264,10 +264,15 @@ def getAthenaVer():
                     cacheVer  = '-AtlasOffline_%s' % cacheTag
                     athenaVer = tmpMatch.group(1)
                     break
+                elif items[0] in ['AthAnalysisBase']:
+                    cacheVer  = '-%s_%s' % (items[0],cacheTag)
                 else:
                     # doesn't use when it is a base release since it is not installed in EGEE
                     if re.search('^\d+\.\d+\.\d+$',cacheTag) == None:
                         cacheVer = '-%s_%s' % (items[0],cacheTag)
+                # no more check for AthAnalysis
+                if items[0] in ['AthAnalysisBase']:
+                    break
             else:
                 # group area
                 groupArea = os.path.realpath(res.group(1))
@@ -284,7 +289,7 @@ def getAthenaVer():
         'cmtConfig': cmtConfig,
            }
     # check error
-    if athenaVer == '':
+    if athenaVer == '' and not cacheVer.startswith('-AthAnalysisBase'):
         tmpStr = ''
         for line in lines:
             tmpStr += (line+'\n')
@@ -2147,6 +2152,15 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbo
                 return 'x86_64-slc5-gcc43-opt'
             # use i686-slc5-gcc43-opt by default
             return 'i686-slc5-gcc43-opt'
+    # AthAnalysis
+    if cacheVer != None and 'AthAnalysisBase' in cacheVer:
+        if os.environ.has_key('CMTCONFIG'):
+            return os.environ['CMTCONFIG']
+        else:
+            # get logger
+            tmpLog = PLogger.getPandaLogger()
+            tmpLog.error('environment variable CMTCONFIG is undefined')
+            sys.exit(EC_Config)
     # get default cmtconfig according to Atlas release
     if athenaVer != None:
         # remove prefix

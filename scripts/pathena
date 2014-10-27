@@ -993,6 +993,10 @@ if options.athenaTag != '':
         if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) != None:
             # use AtlasProduction
             cacheVer = '-AtlasProduction'+cacheVer
+        elif 'AthAnalysisBase' in cacheVer:
+            # AthAnalysis
+            cacheVer  = cacheVer + '_%s' % athenaVer
+            athenaVer = ''
         else:
             # unknown
             cacheVer = ''
@@ -1579,7 +1583,10 @@ if not options.allowTaskDuplication:
     taskParamMap['uniqueTaskName'] = True
 taskParamMap['vo'] = 'atlas'
 taskParamMap['architecture'] = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
-taskParamMap['transUses'] = 'Atlas-%s' % athenaVer
+if athenaVer != '':
+    taskParamMap['transUses'] = 'Atlas-%s' % athenaVer
+else:
+    taskParamMap['transUses'] = athenaVer
 taskParamMap['transHome'] = 'AnalysisTransforms'+cacheVer+nightVer
 taskParamMap['processingType'] = 'panda-client-{0}-jedi-athena'.format(PandaToolsPkgInfo.release_version)
 if options.trf:
@@ -2079,7 +2086,10 @@ PsubUtils.checkTaskParam(taskParamMap,options.unlimitNumOutputs)
 
 if options.verbose:
     tmpLog.debug("==== taskParams ====")
-    tmpLog.debug(taskParamMap)
+    tmpKeys = taskParamMap.keys()
+    tmpKeys.sort()
+    for tmpKey in tmpKeys:
+        print '%s : %s' % (tmpKey,taskParamMap[tmpKey])
 
 
 

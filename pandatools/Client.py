@@ -3050,7 +3050,9 @@ def getCachePrefixes(verbose):
         sys.exit(EC_Failed)
     # return
     try:
-        return pickle.loads(output)
+        tmpList = pickle.loads(output)
+        tmpList.append('AthAnalysisBase')
+        return tmpList
     except:
         print output
         errType,errValue = sys.exc_info()[:2]
