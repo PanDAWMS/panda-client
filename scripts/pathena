@@ -1788,6 +1788,8 @@ if options.inDS != '':
                }
     if options.inputType != '':
         tmpDict['include'] = options.inputType
+    if options.filelist != []:
+        tmpDict['files'] = options.filelist
     taskParamMap['jobParameters'].append(tmpDict)
     taskParamMap['dsForIN'] = options.inDS
     inputMap['IN'] = options.inDS

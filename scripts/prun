@@ -567,6 +567,17 @@ if options.writeInputToTxt != '':
         if len(tmpItems) != 2:
             tmpLog.error("invalid StreamName:FileName in --writeInputToTxt : %s" % tmpItem)
             sys.exit(EC_Config)
+
+# read list of files to be used                                                                                                                           
+filesToBeUsed = []
+if options.inputFileListName != '':
+    rFile = open(options.inputFileListName)
+    for line in rFile:
+        line = re.sub('\n','',line)
+        line = line.strip()
+        if line != '':
+            filesToBeUsed.append(line)
+    rFile.close()
     
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
@@ -1450,7 +1461,9 @@ if options.inDS != '':
     if options.match != '':
         tmpDict['include'] = options.match
     if options.antiMatch != '':
-        tmpDict['exclude'] += ','+options.antiMatch 
+        tmpDict['exclude'] += ','+options.antiMatch
+    if filesToBeUsed != []:
+        tmpDict['files'] = filesToBeUsed
     taskParamMap['jobParameters'].append(tmpDict)
     taskParamMap['dsForIN'] = options.inDS
 elif options.pfnList != '':

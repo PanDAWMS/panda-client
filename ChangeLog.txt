@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.34 (10/29/2014)
+  * fixed --inputFileList in pathena/prun
+
 0.5.33 (10/27/2014)
   * added support for AthAnalysis
   * added --nJobs to pathena
