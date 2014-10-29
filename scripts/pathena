@@ -60,7 +60,9 @@ optP = optparse.OptionParser(usage=usage,conflict_handler="resolve")
 optP.add_option('--version',action='store_const',const=True,dest='version',default=False,
                 help='Displays version')
 optP.add_option('--split', action='store', dest='split',  default=-1,
-                type='int',    help='Number of sub-jobs to which a job is split')
+                type='int',    help='Number of sub-jobs to be generated. This option is the same as --nJobs')
+optP.add_option('--nJobs', action='store', dest='nJobs',  default=-1,
+                type='int',    help='Number of sub-jobs to be generated. This option is the same as --split')
 optP.add_option('--nFilesPerJob', action='store', dest='nFilesPerJob',  default=-1, type='int', help='Number of files on which each sub-job runs')
 optP.add_option('--nEventsPerJob', action='store', dest='nEventsPerJob',  default=-1,
                 type='int',    help='Number of events per subjob. This info is used mainly for job splitting. If you run on MC datasets, the total number of subjobs is nEventsPerFile*nFiles/nEventsPerJob. For data, the number of events for each file is retrieved from AMI and subjobs are created accordingly. Note that if you run transformations you need to explicitly specify maxEvents or something in --trf to set the number of events processed in each subjob. If you run normal jobOption files, evtMax and skipEvents in appMgr are automatically set on WN.')
@@ -510,6 +512,10 @@ if options.noCompile:
         tmpLog.error("--noBuild and --noCompile cannot be used simultaneously")
         sys.exit(EC_Config)
     options.nobuild = True
+
+# syntax sugar
+if options.nJobs > 0:
+    options.split = options.nJobs
 
 # files to be deleted
 delFilesOnExit = []

@@ -2,6 +2,7 @@
 
 0.5.33 (10/27/2014)
   * added support for AthAnalysis
+  * added --nJobs to pathena
 
 0.5.32 (10/20/2014)
   * added --eventPickSkipDaTRI to pathena/prun
