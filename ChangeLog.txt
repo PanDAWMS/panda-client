@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.35 (10/29/2014)
+  * fixed jobO picking for G4sim
+
 0.5.34 (10/29/2014)
   * fixed --inputFileList in pathena/prun
 
