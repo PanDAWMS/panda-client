@@ -106,7 +106,7 @@ def checkManaVersion(verStr,cmtConfig):
 # make JEDI job parameter
 def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=False,
                      include='',exclude='',nFilesPerJob=None,offset=0,destination='',
-                     token='',useNumFilesAsRatio=False):
+                     token='',useNumFilesAsRatio=False,randomAtt=False,reusableAtt=False):
     dictItem = {}
     if paramType == 'output':
         dictItem['type']       = 'template'
@@ -139,6 +139,10 @@ def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=Fals
             dictItem['ratio'] = nFilesPerJob
     if hidden:
         dictItem['hidden'] = hidden
+    if randomAtt:
+        dictItem['random'] = True
+    if reusableAtt:
+        dictItem['reusable'] = True
     return [dictItem]
         
 

@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.36 (11/13/2014)
+  * fixed pathena so that files in minDS/cavDS are reusable
+
 0.5.35 (10/29/2014)
   * fixed jobO picking for G4sim
 
