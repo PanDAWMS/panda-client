@@ -270,6 +270,8 @@ optP.add_option('--useNewCode',action='store_const',const=True,dest='useNewCode'
                 help='When task are resubmitted with the same outDS, the original souce code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries') 
 optP.add_option('--allowTaskDuplication',action='store_const',const=True,dest='allowTaskDuplication',default=False,
                 help="As a general rule each task has a unique outDS and history of file usage is recorded per task. This option allows multiple tasks to contribute to the same outDS. Typically useful to submit a new task with the outDS which was used by another broken task. Use this option very carefully at your own risk, since file duplication happens when the second task runs on the same input which the first task successfully processed")
+optP.add_option('--useRucio',action='store_const',const=True,dest='useRucio',default=False,
+                help="Use Rucio as DDM backend")
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -1304,7 +1306,10 @@ if options.eventPickEvtList != '':
     taskParamMap['waitInput'] = 1
 if options.goodRunListXML != '':
     taskParamMap['processingType'] += '-grl'
-taskParamMap['prodSourceLabel'] = 'user'
+if options.prodSourceLabel == '':    
+    taskParamMap['prodSourceLabel'] = 'user'
+else:
+    taskParamMap['prodSourceLabel'] = options.prodSourceLabel
 if options.site != 'AUTO':
     taskParamMap['site'] = options.site
 else:
@@ -1336,6 +1341,8 @@ if options.official:
 taskParamMap['nMaxFilesPerJob'] = options.maxNFilesPerJob
 if options.useNewCode:
     taskParamMap['fixedSandbox'] = archiveName
+if options.useRucio:
+    taskParamMap['ddmBackEnd'] = 'rucio'
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:
@@ -1637,6 +1644,8 @@ else:
         'archiveName':archiveName,
         'jobParameters':jobParameters,
         }
+    if options.prodSourceLabel != '':
+         taskParamMap['buildSpec']['prodSourceLabel'] = options.prodSourceLabel
 
 # preprocessing step
 
@@ -1655,6 +1664,9 @@ if options.goodRunListXML != '':
         'prodSourceLabel':'panda',
         'jobParameters':jobParameters,
         }
+    if options.prodSourceLabel != '':
+         taskParamMap['preproSpec']['prodSourceLabel'] = options.prodSourceLabel
+
 
 # merging
 if options.mergeOutput:

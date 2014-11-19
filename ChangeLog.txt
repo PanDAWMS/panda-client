@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.5.37 (11/19/2014)
+  * fixed mergeOutpu pathena to currectly setup Athena on WN
+  * added --useRucio
+
 0.5.36 (11/13/2014)
   * fixed pathena so that files in minDS/cavDS are reusable
 

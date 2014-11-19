@@ -374,6 +374,8 @@ optP.add_option('--queueData', action='store', dest='queueData', default='',
                 type='string', help="Please don't use this option. Only for developers")
 optP.add_option('--useNewCode',action='store_const',const=True,dest='useNewCode',default=False,
                 help='When task are resubmitted with the same outDS, the original souce code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries') 
+optP.add_option('--useRucio',action='store_const',const=True,dest='useRucio',default=False,
+                help="Use Rucio as DDM backend")
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help='internal parameter')
@@ -1602,7 +1604,10 @@ if options.eventPickEvtList != '':
     taskParamMap['waitInput'] = 1
 if options.goodRunListXML != '':
     taskParamMap['processingType'] += '-grl'
-taskParamMap['prodSourceLabel'] = 'user'
+if options.prodSourceLabel == '':
+    taskParamMap['prodSourceLabel'] = 'user'
+else:
+    taskParamMap['prodSourceLabel'] = options.prodSourceLabel
 if options.site != 'AUTO':
     taskParamMap['site'] = options.site
 else:
@@ -1637,6 +1642,8 @@ if options.official:
     taskParamMap['official'] = True
 if options.useNewCode:
     taskParamMap['fixedSandbox'] = archiveName
+if options.useRucio:
+    taskParamMap['ddmBackEnd'] = 'rucio'
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:
@@ -2065,6 +2072,8 @@ else:
         'archiveName':archiveName,
         'jobParameters':jobParameters,
         }
+    if options.prodSourceLabel != '':
+         taskParamMap['buildSpec']['prodSourceLabel'] = options.prodSourceLabel
 
 # preprocessing step
 
@@ -2083,6 +2092,8 @@ if options.goodRunListXML != '':
         'prodSourceLabel':'panda',
         'jobParameters':jobParameters,
         }
+    if options.prodSourceLabel != '':
+         taskParamMap['preproSpec']['prodSourceLabel'] = options.prodSourceLabel
 
 # merging
 if options.mergeOutput:
@@ -2094,6 +2105,7 @@ if options.mergeOutput:
     else:
         jobParameters += '-a {0} '.format(archiveName)
         jobParameters += "--sourceURL ${SURL} "
+    jobParameters += "--useAthenaPackages "
     jobParameters += '${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}'
     taskParamMap['mergeSpec'] = {}
     taskParamMap['mergeSpec']['useLocalIO'] = 1
