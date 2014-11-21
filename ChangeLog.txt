@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.38 (11/21/2014)
+  * fixed --destSE to transfer log as well
+
 0.5.37 (11/19/2014)
   * fixed mergeOutpu pathena to currectly setup Athena on WN
   * added --useRucio

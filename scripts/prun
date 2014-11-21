@@ -1363,6 +1363,11 @@ taskParamMap['log'] = {'dataset': logDatasetName,
                        'param_type':'log',
                        'value':'{0}.$JEDITASKID.${{SN}}.log.tgz'.format(logDatasetName[:-1])
                        }
+if options.destSE != '':
+    taskParamMap['log']['destination'] = options.destSE
+if options.spaceToken != '':
+    taskParamMap['log']['token'] = options.spaceToken
+
 # job parametes
 taskParamMap['jobParameters'] = [
     {'type':'constant',
