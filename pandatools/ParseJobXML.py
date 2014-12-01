@@ -290,6 +290,8 @@ class dom_parser:
                 stream=s.inds[DS]
             else:
                 stream='IN%d'%(i+1,)
+            # remove scope: since it conflicts with delimiter (:)
+            DS = DS.split(':')[-1]
             if filter:
                 out.append('%s:0:%s:%s'%(stream,DS,s.files_in_DS(DS,regex=True)))
             else:

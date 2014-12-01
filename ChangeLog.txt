@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.39 (12/1/2014)
+  * changed --loadXML to remove scopes for secondary datasets
+
 0.5.38 (11/21/2014)
   * fixed --destSE to transfer log as well
 
