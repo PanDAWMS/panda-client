@@ -248,8 +248,9 @@ def getAthenaVer():
                     athenaVer = tmpMatch.group(1)
                 break
             # cache or analysis projects
-            elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT','AthAnalysisBase'] or \
-                 items[1].count('.') >= 4:  
+            elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT',
+                              'AthAnalysisBase','AtlasDerivation'] or \
+                              items[1].count('.') >= 4:  
                 # tailside cache is used
                 if cacheVer != '':
                     continue

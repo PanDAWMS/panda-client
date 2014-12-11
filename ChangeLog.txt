@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.40 (12/11/2014)
+  * added support for AtlasDerivation
+
 0.5.39 (12/1/2014)
   * changed --loadXML to remove scopes for secondary datasets
 
