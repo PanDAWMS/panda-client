@@ -2062,7 +2062,7 @@ if options.useAMIEventLevelSplit == True:
     taskParamMap['getNumEventsInMetadata'] = True
     
 # force stage-in
-if options.forceStaged or options.forceStagedSecondary:
+if options.forceStaged:
     taskParamMap['useLocalIO'] = 1
 
 # build step

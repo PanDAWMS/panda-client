@@ -1,6 +1,6 @@
 ** Release Notes
 
-0.5.41 (12/19/2014)
+0.5.42 (12/19/2014)
   * added forceStaged to pathena
 
 0.5.40 (12/11/2014)
