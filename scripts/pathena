@@ -229,6 +229,8 @@ optP.add_option('--useAMIAutoConf',action='store_const',const=True,dest='useAMIA
                 help='Use AMI for AutoConfiguration')
 optP.add_option('--memory', action='store', dest='memory',  default=-1,
                 type='int',    help='Required memory size in MB. e.g., for 1GB --memory 1024')
+optP.add_option('--forceStaged', action='store_const', const=True, dest='forceStaged', default=False,
+                help='Force files from primary DS to be staged to local disk, even if direct-access is possible')
 # FIXME
 #optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=defaultMaxCpuCount, type='int',
 optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=-1, type='int',
@@ -2059,6 +2061,10 @@ if (options.trf or runConfig.input.inBS) and not options.forceDirectIO:
 if options.useAMIEventLevelSplit == True:
     taskParamMap['getNumEventsInMetadata'] = True
     
+# force stage-in
+if options.forceStaged or options.forceStagedSecondary:
+    taskParamMap['useLocalIO'] = 1
+
 # build step
 if options.nobuild and not options.noCompile:
     pass
