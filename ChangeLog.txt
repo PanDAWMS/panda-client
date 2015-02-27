@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.5.43 (2/27/2014)
+  * removed usage of local python from pbook
+  * added finishTask to pbook
+
 0.5.42 (12/19/2014)
   * added forceStaged to pathena
 

@@ -576,6 +576,27 @@ def killTask(jediTaskID,verbose=False):
         return EC_Failed,None
 
 
+# finish task
+def finishTask(jediTaskID,soft=False,verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose    
+    # execute
+    url = baseURLSSL + '/finishTask'
+    data = {'jediTaskID':jediTaskID}
+    if soft:
+        data['soft'] = True
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        print "ERROR finishTask : %s %s" % (type,value)
+        return EC_Failed,None
+
+
 # retry task
 def retryTask(jediTaskID,verbose=False,properErrorCode=False):
     # instantiate curl
