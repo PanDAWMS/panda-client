@@ -770,11 +770,6 @@ if options.useMana and options.manaVer != '':
 if not AthenaUtils.checkCmtConfig(cmtConfig,options.cmtConfig,options.nobuild):
     sys.exit(EC_Config)
     
-# good run list
-if options.goodRunListXML != '':
-    options.goodRunListXML = PsubUtils.uploadGzippedFile(options.goodRunListXML,curDir,tmpLog,delFilesOnExit,
-                                                         options.nosubmit,options.verbose)
-
 # event picking
 if options.eventPickEvtList != '':
     epLockedBy = 'prun'
@@ -1242,6 +1237,10 @@ else:
             print out
             tmpLog.error("failed to upload source files with %s" % status)
             sys.exit(EC_Post)
+        # good run list
+        if options.goodRunListXML != '':
+            options.goodRunListXML = PsubUtils.uploadGzippedFile(options.goodRunListXML,curDir,tmpLog,delFilesOnExit,
+                                                                 options.nosubmit,options.verbose)
 
 
 # look for pandatools package

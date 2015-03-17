@@ -1,6 +1,9 @@
 ** Release Notes
 
-0.5.43 (2/27/2014)
+0.5.44 (3/17/2015)
+  * fixed --goodRunListXML to upload XML to correct node when sandbox is reused
+
+0.5.43 (2/27/2015)
   * removed usage of local python from pbook
   * added finishTask to pbook
 
