@@ -279,7 +279,7 @@ optP.add_option('--fileList', action='store', dest='filelist', default='',
                 type='string', help='List of files in the input dataset to be run')
 optP.add_option('--myproxy', action='store', dest='myproxy', default='myproxy.cern.ch',
                 type='string', help='Name of the myproxy server')
-optP.add_option('--dbRelease', action='store', dest='dbRelease', default='LATEST',
+optP.add_option('--dbRelease', action='store', dest='dbRelease', default='',
                 type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used')
 optP.add_option('--dbRunNumber', action='store', dest='dbRunNumber', default='',
                 type='string', help='RunNumber for DBRelease or CDRelease. If this option is used some redundant files are removed to save disk usage when unpacking DBRelease tarball. e.g., 0091890')
