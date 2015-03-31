@@ -399,8 +399,23 @@ def convertJTtoD(jediTaskDict,localJob=None):
             ddata.jobParams = jediTaskDict['cliParams']
     except:
         pass
-    # datasets
-    ddata.inDS = jediTaskDict['inDS']
+    # input datasets
+    try:
+        # max number of datasets to show
+        maxDS = 20
+        inDSs = jediTaskDict['inDS'].split(',')
+        strInDS = ''
+        # concatenate
+        for tmpInDS in inDSs[:maxDS]:
+            strInDS += "%s," % tmpInDS
+        strInDS = strInDS[:-1]
+        # truncate
+        if len(inDSs) > maxDS:
+            strInDS += ',+{0}DSs'.format(len(inDSs)-maxDS)
+        ddata.inDS = strInDS
+    except:
+        ddata.inDS = jediTaskDict['inDS']
+    # output datasets
     ddata.outDS = jediTaskDict['outDS']
     # job name
     ddata.jobName = jediTaskDict['taskName']

@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.46 (3/30/2015)
+  * added a protection to pbook against too many input datasets
+
 0.5.45 (3/24/2015)
   * changed pathena not to use DBR by default
 
