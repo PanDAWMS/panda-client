@@ -44,9 +44,6 @@ defaultCloud = None
 # max lookup for cross site option
 maxCrossSite = 50
 
-# default maxCpuCount
-defaultMaxCpuCount = 12*60*60
-
 usage = """%prog [options] <jobOption1.py> [<jobOption2.py> [...]]
 
 '%prog --help' prints a summary of the options
@@ -231,10 +228,8 @@ optP.add_option('--memory', action='store', dest='memory',  default=-1,
                 type='int',    help='Required memory size in MB. e.g., for 1GB --memory 1024')
 optP.add_option('--forceStaged', action='store_const', const=True, dest='forceStaged', default=False,
                 help='Force files from primary DS to be staged to local disk, even if direct-access is possible')
-# FIXME
-#optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=defaultMaxCpuCount, type='int',
-optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=-1, type='int',
-                help='Required CPU count in seconds. Mainly to extend time limit for looping detection')
+optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=0, type='int',
+                help='Required CPU count in seconds. Mainly to extend time limit for looping job detection')
 optP.add_option('--official', action='store_const', const=True, dest='official',  default=False,
                 help='Produce official dataset')
 optP.add_option('--unlimitNumOutputs', action='store_const', const=True, dest='unlimitNumOutputs',  default=False,
@@ -924,10 +919,6 @@ if options.outRunConfig != '':
 if options.maxCpuCount > Client.maxCpuCountLimit:
     tmpLog.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
     sys.exit(EC_Config)
-    
-# give warning for maxCpuCount
-# FIXME
-#PsubUtils.giveWarningForMaxCpuCount(defaultMaxCpuCount,options.maxCpuCount,tmpLog)
 
 # create tmp dir
 if options.tmpDir == '':
@@ -1647,6 +1638,8 @@ if options.useNewCode:
     taskParamMap['fixedSandbox'] = archiveName
 if options.useRucio:
     taskParamMap['ddmBackEnd'] = 'rucio'
+if options.maxCpuCount > 0:
+    taskParamMap['walltime'] = -options.maxCpuCount
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:
