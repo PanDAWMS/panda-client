@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.48 (5/23/2015)
+  * added --useLogAsInput to prun
+
 0.5.47 (4/2/2015)
   * fixed --maxCpuCount in pathena/prun
 
