@@ -111,7 +111,7 @@ optP.add_option('--match',action='store',dest='match',default='',type='string',
 optP.add_option('--antiMatch',action='store',dest='antiMatch',default='',type='string',
                 help='Skip files matching with given pattern')
 optP.add_option('--notSkipLog',action='store_const',const=True,dest='notSkipLog',default=False,
-                help="Don't skip log files in input datasets")
+                help="Don't skip log files in input datasets (obsolete. use --useLogAsInput instead)")
 optP.add_option('--skipScan',action='store_const',const=True,dest='skipScan',default=False,
                 help='Skip LFC lookup at job submission')
 optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
@@ -391,6 +391,10 @@ if options.useOldStyleOutput:
 # noCompile uses noBuild stuff
 if options.noCompile:
     options.nobuild = True
+
+# not skip log files in inDS
+if options.notSkipLog:
+    options.useLogAsInput = True
     
 # files to be deleted
 delFilesOnExit = []
