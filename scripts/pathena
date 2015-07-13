@@ -327,7 +327,7 @@ optP.add_option('--intrSrv', action='store_const', const=True, dest='intrSrv',  
 optP.add_option('--useAIDA', action='store_const', const=True, dest='useAIDA',  default=False,
                 help="use AIDA")
 optP.add_option('--inputType', action='store', dest='inputType', default='',
-                type='string', help='File type in input dataset which contains multiple file types')
+                type='string', help='A regular expression pattern. Only files matching with the pattern in input dataset are used')
 optP.add_option('--outTarBall', action='store', dest='outTarBall', default='',
                 type='string', help='Save a gzipped tarball of local files which is the input to buildXYZ')
 optP.add_option('--inTarBall', action='store', dest='inTarBall', default='',

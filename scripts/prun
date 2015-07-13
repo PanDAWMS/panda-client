@@ -102,6 +102,8 @@ optP.add_option('--transferredDS',action='store', dest='transferredDS',default='
                 help='Specify a comma-separated list of patterns so that only datasets which match the given patterns are transferred when --destSE is set. Either \ or "" is required when a wildcard is used. If omitted, all datasets are transferred')
 optP.add_option('--secondaryDSs',action='store',dest='secondaryDSs',default='',type='string',
                 help='List of secondary datasets when the job requires multiple inputs. See PandaRun wiki page for detail')
+optP.add_option('--reusableSecondary',action='store',dest='reusableSecondary',default='',type='string',
+                help='A comma-separated list of secondary streams which reuse files when all files are used')
 optP.add_option('--site',action='store',dest='site',default=defaultSite,type='string',
                 help='Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites')
 optP.add_option('--cloud',action='store',dest='cloud',default=None,type='string',
@@ -894,6 +896,12 @@ if options.secondaryDSs != '':
 else:
     options.secondaryDSs = {}
 
+# reusable secondary streams
+if options.reusableSecondary == '':
+    options.reusableSecondary = []
+else:
+    options.reusableSecondary = options.reusableSecondary.split(',')
+
 # correct site
 if options.site != 'AUTO':
     origSite = options.site
@@ -1558,9 +1566,13 @@ if options.secondaryDSs != {}:
             expandFlag = True
         else:
             expandFlag = False
+        # re-usability
+        reusableAtt = False
+        if streamName in options.reusableSecondary:
+            reusableAtt = True
         dictItem = MiscUtils.makeJediJobParam('${'+streamName+'}',tmpDsName,'input',hidden=True,
                                               expand=expandFlag,include=tmpMap['pattern'],offset=tmpMap['nSkip'],
-                                              nFilesPerJob=tmpMap['nFiles'])
+                                              nFilesPerJob=tmpMap['nFiles'],reusableAtt=reusableAtt)
         taskParamMap['jobParameters'] += dictItem
         inMap[streamName] = 'tmp_'+streamName 
         streamNames.append(streamName)
