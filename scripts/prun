@@ -1351,6 +1351,8 @@ if options.useRucio:
     taskParamMap['ddmBackEnd'] = 'rucio'
 if options.maxCpuCount > 0:
     taskParamMap['walltime'] = -options.maxCpuCount
+if options.memory > 0:
+    taskParamMap['ramCount'] = options.memory
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:
