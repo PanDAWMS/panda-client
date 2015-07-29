@@ -898,11 +898,6 @@ if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
 
-# check destSE
-if options.destSE != '':
-    if not PsubUtils.checkDestSE(options.destSE,options.outDS,options.verbose):
-        sys.exit(EC_Config)
-
 # convert in/outTarBall to full path
 if options.inTarBall != '':
     options.inTarBall = os.path.abspath(os.path.expanduser(options.inTarBall))

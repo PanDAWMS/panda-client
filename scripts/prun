@@ -946,11 +946,6 @@ if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official
     tmpLog.error("invalid output datasetname:%s" % options.outDS)
     sys.exit(EC_Config)
 
-# check destSE
-if options.destSE != '':
-    if not PsubUtils.checkDestSE(options.destSE,options.outDS,options.verbose):
-        sys.exit(EC_Config)
-
 # check nGBPerJob
 if not options.nGBPerJob in [-1,'MAX']:
     # convert to int
