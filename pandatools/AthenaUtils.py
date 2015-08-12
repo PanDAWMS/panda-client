@@ -249,7 +249,7 @@ def getAthenaVer():
                 break
             # cache or analysis projects
             elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT',
-                              'AthAnalysisBase','AtlasDerivation'] or \
+                              'AthAnalysisBase','AtlasDerivation','TrigMC'] or \
                               items[1].count('.') >= 4:  
                 # tailside cache is used
                 if cacheVer != '':
@@ -263,6 +263,15 @@ def getAthenaVer():
                         tmpLog.error("unsupported nightly %s" % line)
                         return False,{}
                     cacheVer  = '-AtlasOffline_%s' % cacheTag
+                    athenaVer = tmpMatch.group(1)
+                    break
+                elif items[0] == 'TrigMC' and cacheTag.startswith('rel'):
+                    # nightlies for cache
+                    tmpMatch = re.search('/([^/]+)(/rel_\d+)*/[^/]+/rel_\d+',line)
+                    if tmpMatch == None:
+                        tmpLog.error("unsupported nightly %s" % line)
+                        return False,{}
+                    cacheVer  = '-%s_%s' % (items[0],cacheTag)
                     athenaVer = tmpMatch.group(1)
                     break
                 elif items[0] in ['AthAnalysisBase']:

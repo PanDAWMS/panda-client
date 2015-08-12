@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.53 (8/12/2015)
+  * added TrigMC to getAthenaVer
+
 0.5.52 (7/27/2015)
   * removed datri stuff
 
