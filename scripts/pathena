@@ -1616,6 +1616,8 @@ if not options.nGBPerJob in [-1,'MAX']:
     taskParamMap['nGBPerJob'] = options.nGBPerJob
 if options.nEventsPerJob > 0:
     taskParamMap['nEventsPerJob'] = options.nEventsPerJob
+    if options.nEventsPerFile <= 0:
+        taskParamMap['useRealNumEvents'] = True
 if options.nEventsPerFile > 0:
     taskParamMap['nEventsPerFile'] = options.nEventsPerFile
 taskParamMap['cliParams'] = fullExecString

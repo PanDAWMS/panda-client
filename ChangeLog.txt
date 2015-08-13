@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.54 (8/13/2015)
+  * fixed nEventsPerJob in pathena for real data
+
 0.5.53 (8/12/2015)
   * added TrigMC to getAthenaVer
 
