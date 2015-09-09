@@ -676,13 +676,6 @@ if options.useAMIEventLevelSplit == None:
     else:
         options.useAMIEventLevelSplit = False
 
-# check for nEventsPerJob
-if options.inDS != '' and options.nEventsPerJob > 0 and options.nEventsPerFile == 0 and not options.useAMIEventLevelSplit:
-    tmpErrMsg  = "--nEventsPerJob requires --nEventsPerFile until Rucio is fully deployed. "
-    tmpErrMsg += "Or --useAMIEventLevelSplit may work if AMI knows the number events for each input file." 
-    tmpLog.error(tmpErrMsg)
-    sys.exit(EC_Config)
-
 # check DBRelease
 if options.dbRelease != '' and (options.dbRelease.find(':') == -1 and options.dbRelease !='LATEST'):
     tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")  
@@ -830,8 +823,8 @@ if options.split > 0:
             options.nFilesPerJob = 1
 
 # check
-if options.inDS != '' and options.split > 0 and options.nFilesPerJob < 0 and options.nfiles == 0:
-    tmpLog.error("--split requires --nFilesPerJob or --nFiles when --inDS is specified")
+if options.inDS != '' and options.split > 0 and options.nFilesPerJob < 0 and options.nfiles == 0 and options.nEventsPerJob < 0:
+    tmpLog.error("--split requires --nFilesPerJob or --nFiles or --nEventsPerJob when --inDS is specified")
     sys.exit(EC_Config)
 
 # check grid-proxy
@@ -1620,6 +1613,8 @@ if options.nEventsPerJob > 0:
         taskParamMap['useRealNumEvents'] = True
 if options.nEventsPerFile > 0:
     taskParamMap['nEventsPerFile'] = options.nEventsPerFile
+if options.split > 0 and options.nEventsPerJob > 0:
+    taskParamMap['nEvents'] = options.split*options.nEventsPerJob
 taskParamMap['cliParams'] = fullExecString
 if options.noEmail:
     taskParamMap['noEmail'] = True
