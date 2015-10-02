@@ -3243,7 +3243,8 @@ def checkQueuedAnalJobs(site,verbose=False):
 # request EventPicking
 def requestEventPicking(eventPickEvtList,eventPickDataType,eventPickStreamName,
                         eventPickDS,eventPickAmiTag,fileList,fileListName,outDS,
-                        lockedBy,params,eventPickNumSites,verbose=False):
+                        lockedBy,params,eventPickNumSites,eventPickWithGUID,
+                        verbose=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # list of input files
@@ -3275,6 +3276,7 @@ def requestEventPicking(eventPickEvtList,eventPickDataType,eventPickStreamName,
             'eventPickAmiTag'     : eventPickAmiTag,
             'userDatasetName'     : userDatasetName,
             'lockedBy'            : lockedBy,
+            'giveGUID'            : eventPickWithGUID,
             'params'              : params,
             'inputFileList'       : strInput,
             }

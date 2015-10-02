@@ -120,6 +120,8 @@ optP.add_option('--eventPickNumSites',action='store',dest='eventPickNumSites',de
                 type='int', help='The event picking service makes a temprary dataset container to stage files to DISK. The consistuent datasets are distibued to N sites (N=1 by default)')
 optP.add_option('--eventPickSkipDaTRI',action='store_const',const=True,dest='eventPickSkipDaTRI',default=False,
                 help='Skip sending a staging request to DaTRI for event picking')
+optP.add_option('--eventPickWithGUID',action='store_const',const=True,dest='eventPickWithGUID',default=False,
+                help='Using GUIDs together with run and event numbers in eventPickEvtList to skip event lookup')
 optP.add_option('--useNewTRF', action='store_const',const=True,dest='useNewTRF',default=True,
                 help="Use the original filename with the attempt number for input in --trf when there is only one input, which follows the globbing scheme of new transformation framework")
 optP.add_option('--useOldTRF', action='store_const',const=True,dest='useOldTRF',default=False,
@@ -1035,6 +1037,7 @@ if options.eventPickEvtList != '':
                                                      epLockedBy,
                                                      fullExecString,
                                                      options.eventPickNumSites,
+						     options.eventPickWithGUID,
                                                      options.verbose)
         # set input dataset 
         options.inDS = epOutput

@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.56 (10/2/2015)
+  * added --eventPickWithGUID
+
 0.5.55 (9/9/2015)
   * fixed pathena for --nEventsPerJob + --split
 
