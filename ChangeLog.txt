@@ -1,6 +1,7 @@
 ** Release Notes
 
-0.5.56 (10/2/2015)
+0.5.56 (10/12/2015)
+  * fixed pathena/prun to ignore local jobReport.*
   * added --eventPickWithGUID
 
 0.5.55 (9/9/2015)

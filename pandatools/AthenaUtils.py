@@ -636,7 +636,9 @@ excludeFile = []
 def setExcludeFile(strExcludeFile):
     # empty
     if strExcludeFile == '':
-        return
+        strExcludeFile = 'jobReport.json,jobReport.txt,jobReportExtract.pickle'
+    else:
+        strExcludeFile += 'jobReport.json,jobReport.txt,jobReportExtract.pickle'
     # convert to list
     global excludeFile
     for tmpItem in strExcludeFile.split(','):

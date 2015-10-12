@@ -738,8 +738,7 @@ except:
     pass
 
 # set excludeFile
-if options.excludeFile != '':
-    AthenaUtils.setExcludeFile(options.excludeFile)
+AthenaUtils.setExcludeFile(options.excludeFile)
 
 # mapping for extra stream names
 if options.appendStrToExtStream:

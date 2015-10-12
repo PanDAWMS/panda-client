@@ -823,8 +823,7 @@ except:
     pass
 
 # set excludeFile
-if options.excludeFile != '':
-    AthenaUtils.setExcludeFile(options.excludeFile)
+AthenaUtils.setExcludeFile(options.excludeFile)
 
 # LFN matching
 if options.match != '':
