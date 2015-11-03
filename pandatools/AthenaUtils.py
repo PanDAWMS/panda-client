@@ -2179,6 +2179,8 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbo
         verStr = re.sub('^[^-]+-','',athenaVer)
         # get cmtconfig list
         cmtConfigList = Client.getCmtConfigList(athenaVer,verbose)
+        if cmtConfigList == [] and not verStr in ['',athenaVer]:
+            cmtConfigList = Client.getCmtConfigList(verStr,verbose)
         if len(cmtConfigList) == 1:
             # no choice
             return cmtConfigList[0]

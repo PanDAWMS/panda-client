@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * fixed cmtConfig lookup in prun with --athenaTag
+
 0.5.56 (10/12/2015)
   * fixed pathena/prun to ignore local jobReport.*
   * added --eventPickWithGUID
