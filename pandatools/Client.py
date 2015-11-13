@@ -2108,7 +2108,7 @@ def _getGridSrc():
             gridSrc = '/afs/in2p3.fr/grid/profiles/lcg_env.sh'
         elif athenaStatus == 0 and re.search('^/afs/\.*cern.ch',athenaPath) != None:
             # for CERN, VDT is already installed
-            gridSrc = '/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh'
+            gridSrc = '/dev/null'
     else:
         # set Grid setup.sh
         if os.environ.has_key('PATHENA_GRID_SETUP_SH'):
@@ -2119,7 +2119,7 @@ def _getGridSrc():
                 return False
             if os.environ['CMTSITE'] == 'CERN' or (athenaStatus == 0 and \
                                                    re.search('^/afs/\.*cern.ch',athenaPath) != None):
-		gridSrc = '/afs/cern.ch/project/gd/LCG-share/current_3.2/etc/profile.d/grid_env.sh'
+		gridSrc = '/dev/null'
             elif os.environ['CMTSITE'] == 'BNL':
                 gridSrc = '/afs/usatlas.bnl.gov/osg/client/@sys/current/setup.sh'
             else:

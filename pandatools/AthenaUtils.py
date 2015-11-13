@@ -250,6 +250,7 @@ def getAthenaVer():
             # cache or analysis projects
             elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT',
                               'AthAnalysisBase','AtlasDerivation','TrigMC'] or \
+                              items[0].startswith('AthAnalysis') or \
                               items[1].count('.') >= 4:  
                 # tailside cache is used
                 if cacheVer != '':
@@ -274,14 +275,14 @@ def getAthenaVer():
                     cacheVer  = '-%s_%s' % (items[0],cacheTag)
                     athenaVer = tmpMatch.group(1)
                     break
-                elif items[0] in ['AthAnalysisBase']:
+                elif items[0] in ['AthAnalysisBase'] or items[0].startswith('AthAnalysis'):
                     cacheVer  = '-%s_%s' % (items[0],cacheTag)
                 else:
                     # doesn't use when it is a base release since it is not installed in EGEE
                     if re.search('^\d+\.\d+\.\d+$',cacheTag) == None:
                         cacheVer = '-%s_%s' % (items[0],cacheTag)
                 # no more check for AthAnalysis
-                if items[0] in ['AthAnalysisBase']:
+                if items[0] in ['AthAnalysisBase'] or items[0].startswith('AthAnalysis'):
                     break
             else:
                 # group area
@@ -299,7 +300,7 @@ def getAthenaVer():
         'cmtConfig': cmtConfig,
            }
     # check error
-    if athenaVer == '' and not cacheVer.startswith('-AthAnalysisBase'):
+    if athenaVer == '' and not cacheVer.startswith('-AthAnalysis'):
         tmpStr = ''
         for line in lines:
             tmpStr += (line+'\n')

@@ -745,7 +745,7 @@ elif options.athenaTag != '':
         if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) != None:
             # use AtlasProduction
             cacheVer = '-AtlasProduction'+cacheVer
-        elif 'AthAnalysisBase' in cacheVer:
+        elif 'AthAnalysisBase' in cacheVer or 'AthAnalysis' in cacheVer:
             # AthAnalysis
             cacheVer  = cacheVer + '_%s' % athenaVer
             athenaVer = ''

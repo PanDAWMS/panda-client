@@ -2,6 +2,7 @@
 
 current
   * fixed cmtConfig lookup in prun with --athenaTag
+  * added support for AthAnalysis*
 
 0.5.56 (10/12/2015)
   * fixed pathena/prun to ignore local jobReport.*
