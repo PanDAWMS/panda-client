@@ -1,6 +1,6 @@
 ** Release Notes
 
-current
+0.5.57 (11/20/2015)
   * fixed cmtConfig lookup in prun with --athenaTag
   * added support for AthAnalysis*
 
