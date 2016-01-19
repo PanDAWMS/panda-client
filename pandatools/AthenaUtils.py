@@ -2223,7 +2223,7 @@ def checkCmtConfig(localCmtConfig,userCmtConfig,noBuild):
     tmpLog = PLogger.getPandaLogger()
     # check if valid cmtconfig
     validCmtCofnigList = ['i686-slc4-gcc34-opt','i686-slc5-gcc43-opt','x86_64-slc5-gcc43-opt','x86_64-slc6-gcc46-opt',
-                          'x86_64-slc6-gcc47-opt','x86_64-slc6-gcc48-opt']
+                          'x86_64-slc6-gcc47-opt','x86_64-slc6-gcc48-opt','x86_64-slc6-gcc49-opt']
     if not userCmtConfig in validCmtCofnigList:
         errStr = '%s is not a valid CMTCONFIG distributed on the grid. The following CMTCONFIGs are allowed:\n' % userCmtConfig
         for tmpC in validCmtCofnigList:
