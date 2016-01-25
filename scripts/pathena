@@ -140,8 +140,8 @@ optP.add_option('--notUseTagLookup',action='store_const',const=True,dest='notUse
                 help="don't use Event Lookup service to retrieve relation between TAG and parent datasets")
 optP.add_option('--useContElementBoundary',action='store_const',const=True,dest='useContElementBoundary',default=False,
                 help="Split job in such a way that sub jobs do not mix files of different datasets in the input container. See --useNthFieldForLFN too")
-optP.add_option('--addNthFieldOfInDSToLFN',action='store',dest='addNthFieldOfInDSToLFN',default=-1,type='int',
-                help="A middle name is added to LFNs of output files when they are produced from one dataset in the input container or input dataset list. The middle name is extracted from the dataset name. E.g., if --addNthFieldOfInDSToLFN=2 and the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is extracted and LFN is something like user.hoge.TASKID.00160387.blah")
+optP.add_option('--addNthFieldOfInDSToLFN',action='store',dest='addNthFieldOfInDSToLFN',default='',type='string',
+                help="A middle name is added to LFNs of output files when they are produced from one dataset in the input container or input dataset list. The middle name is extracted from the dataset name. E.g., if --addNthFieldOfInDSToLFN=2 and the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is extracted and LFN is something like user.hoge.TASKID.00160387.blah. Concatenate multiple field numbers with commas if necessary, e.g., --addNthFieldOfInDSToLFN=2,6.")
 optP.add_option('--splitWithNthFiledOfLFN',action='store',dest='splitWithNthFiledOfLFN',default=-1,type='int',
                 help="Split job in such a way that each sub job uses input files which have the same value in the Nth field of file names. This option would be useful to process a dataset which was produced with --useContElementBoundary, and in this case most likely that --splitWithNthFiledOfLFN=4")
 optP.add_option('--buildInLastChunk',action='store_const',const=True,dest='buildInLastChunk',default=False,
@@ -1641,7 +1641,7 @@ matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:
     taskParamMap['sourceURL'] = matchURL.group(1)
 # middle name
-if options.addNthFieldOfInDSToLFN > 0:
+if options.addNthFieldOfInDSToLFN != '':
     taskParamMap['addNthFieldToLFN'] = options.addNthFieldOfInDSToLFN
 # dataset name
 logDatasetName = re.sub('/$','.log/',options.outDS)
@@ -1983,7 +1983,7 @@ if beamGasStream != '':
 
 
 # output 
-if options.addNthFieldOfInDSToLFN > 0:
+if options.addNthFieldOfInDSToLFN != '':
     descriptionInLFN = '${MIDDLENAME}'
 else:
     descriptionInLFN = ''
