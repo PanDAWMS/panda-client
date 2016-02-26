@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.61 (2/26/2016)
+  * added --allowNoOutput to pathena/prun
+
 0.5.60 (2/9/2016)
   * added --skipFilesUsedBy
 

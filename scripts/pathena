@@ -248,6 +248,8 @@ optP.add_option('--supStream', action='store', dest='supStream',  default='',
                 help='suppress some output streams. Either \ or "" is required when a wildcard is used. e.g., ESD,TAG,GLOBAL,StreamDESD\* ')
 optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
                 help='list of glue packages which pathena cannot find due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf')
+optP.add_option('--allowNoOutput',action='store',dest='allowNoOutput',default='',type='string',
+                help='A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. Jobs go to finished even if they are not produced on WN')
 optP.add_option('--excludedSite', action='append', dest='excludedSite',  default=[],
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
 optP.add_option('--noSubmit', action='store_const', const=True, dest='nosubmit',  default=False,
@@ -551,6 +553,9 @@ if options.site == 'AUTO':
 if options.cloud != defaultCloud:
     # add logging info
     userBrokerLogs = PsubUtils.getUserBrokerageInfo(options.cloud,'cloud',userBrokerLogs)
+
+# list of output files which can be skipped
+options.allowNoOutput = options.allowNoOutput.split(',')
 
 # use outputPath as outDS
 if Client.isDQ2free(options.site):
@@ -1993,7 +1998,8 @@ else:
     descriptionInLFN = ''
 outMap,tmpParamList = AthenaUtils.convertConfToOutput(runConfig,options.extOutFile,options.outDS,
                                                       destination=options.destSE,spaceToken=options.spaceToken,
-                                                      descriptionInLFN=descriptionInLFN)
+                                                      descriptionInLFN=descriptionInLFN,
+                                                      allowNoOutput=options.allowNoOutput)
 taskParamMap['jobParameters'] += [
     {'type':'constant',
      'value': '-o "%s" ' % outMap

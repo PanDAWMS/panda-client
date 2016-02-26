@@ -176,6 +176,8 @@ optP.add_option('--crossSite',action='store',dest='crossSite',default=maxCrossSi
                 type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=%s by default)' % maxCrossSite)
 optP.add_option('--outputs',action='store',dest='outputs',default='',type='string',
                 help='Names of output files. Comma separated. e.g., --outputs out1.dat,out2.txt. You can specify a suffix for each output container like <datasetNameSuffix>:<outputFileName>. e.g., --outputs AAA:out1.dat,BBB:out2.txt. In this case output container names are outDS_AAA/ and outDS_BBB/ instead of outDS_out1.dat/ and outDS_out2.txt/')
+optP.add_option('--allowNoOutput',action='store',dest='allowNoOutput',default='',type='string',
+                help='A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. Jobs go to finished even if they are not produced on WN')
 optP.add_option('--excludedSite', action='append', dest='excludedSite',  default=[],
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
 optP.add_option('--useLogAsInput',action='store_const',const=True,dest='useLogAsInput',default=False,
@@ -468,6 +470,9 @@ if options.site == 'AUTO':
 if options.cloud != defaultCloud:
     # add logging info
     userBrokerLogs = PsubUtils.getUserBrokerageInfo(options.cloud,'cloud',userBrokerLogs)
+
+# list of output files which can be skipped
+options.allowNoOutput = options.allowNoOutput.split(',')
 
 # use outputPath as outDS
 if Client.isDQ2free(options.site):
@@ -1455,7 +1460,8 @@ if options.outputs != '':
         dataset = '{0}_{1}/'.format(outDatasetName[:-1],tmpDsSuffix)
         taskParamMap['jobParameters'] += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,
                                                                     destination=options.destSE,
-                                                                    token=options.spaceToken)
+                                                                    token=options.spaceToken,
+                                                                    allowNoOutput=options.allowNoOutput)
         outMap[tmpLFN] = lfn
     if options.loadXML:
         taskParamMap['jobParameters'] += [ 

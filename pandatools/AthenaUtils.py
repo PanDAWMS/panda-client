@@ -1363,7 +1363,8 @@ def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSli
 
 
 # convert runConfig to outMap
-def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',spaceToken='',descriptionInLFN=''):
+def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',spaceToken='',descriptionInLFN='',
+                        allowNoOutput=None):
     outMap = {}
     paramList = []
     # add IROOT
@@ -1387,37 +1388,37 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             if not outMap.has_key('ntuple'):
                 outMap['ntuple'] = []
             outMap['ntuple'].append((sName,lfn))
-            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outHist:
         lfn  = '%s.hist._${SN/P}.root' % outDSwoSlash
         tmpSuffix = '_HIST'
         dataset = outDsNameBase + tmpSuffix + '/'
         outMap['hist'] = lfn
-        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outRDO:
         lfn  = '%s.RDO._${SN/P}.pool.root' % outDSwoSlash
         tmpSuffix = '_RDO'
         dataset = outDsNameBase + tmpSuffix + '/'
         outMap['IROOT'].append((runConfig.output.outRDO,lfn))
-        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)        
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)        
     if runConfig.output.outESD:
         lfn  = '%s.ESD._${SN/P}.pool.root' % outDSwoSlash
         tmpSuffix = '_ESD'
         dataset = outDsNameBase + tmpSuffix + '/'
         outMap['IROOT'].append((runConfig.output.outESD,lfn))
-        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outAOD:
         lfn  = '%s.AOD._${SN/P}.pool.root' % outDSwoSlash
         tmpSuffix = '_AOD'
         dataset = outDsNameBase + tmpSuffix + '/'
         outMap['IROOT'].append((runConfig.output.outAOD,lfn))
-        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outTAG:
         lfn  = '%s.TAG._${SN/P}.coll.root' % outDSwoSlash
         tmpSuffix = '_TAG'
         dataset = outDsNameBase + tmpSuffix + '/'
         outMap['TAG'] = lfn
-        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outAANT:
         sNameList = []
         fsNameMap = {}
@@ -1436,7 +1437,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             if not outMap.has_key('AANT'):
                 outMap['AANT'] = []
             outMap['AANT'].append((aName,realStreamName,lfn))
-            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outTHIST:
         for sName in runConfig.output.outTHIST:
             lfn  = '%s.%s._${SN/P}.root' % (outDSwoSlash,sName)
@@ -1445,7 +1446,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             if not outMap.has_key('THIST'):
                 outMap['THIST'] = []
             outMap['THIST'].append((sName,lfn))
-            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outIROOT:
         for sIndex,sName in enumerate(runConfig.output.outIROOT):
             lfn  = '%s.iROOT%s._${SN/P}.%s' % (outDSwoSlash,sIndex,sName)
@@ -1454,7 +1455,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             if not outMap.has_key('IROOT'):
                 outMap['IROOT'] = []
             outMap['IROOT'].append((sName,lfn))
-            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if extOutFile:
         for sIndex,sName in enumerate(extOutFile):
             # change * to X and add .tgz
@@ -1469,7 +1470,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             if not outMap.has_key('IROOT'):
                 outMap['IROOT'] = []
             outMap['IROOT'].append((origSName,lfn))
-            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outTAGX:
         for sName,oName in runConfig.output.outTAGX:
             lfn  = '%s.%s._${SN/P}.%s' % (outDSwoSlash,sName,oName)
@@ -1478,25 +1479,25 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             if not outMap.has_key('IROOT'):
                 outMap['IROOT'] = []
             outMap['IROOT'].append((oName,lfn))
-            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outStream1:
         lfn  = '%s.Stream1._${SN/P}.pool.root' % outDSwoSlash
         tmpSuffix = '_Stream1'
         dataset = outDsNameBase + tmpSuffix + '/'
         outMap['IROOT'].append((runConfig.output.outStream1,lfn))
-        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)                
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)                
     if runConfig.output.outStream2:
         lfn  = '%s.Stream2._${SN/P}.pool.root' % outDSwoSlash
         tmpSuffix = '_Stream2'
         dataset = outDsNameBase + tmpSuffix + '/'
         outMap['IROOT'].append((runConfig.output.outStream2,lfn))
-        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outBS:
         lfn  = '%s.BS._${SN/P}.data' % outDSwoSlash
         tmpSuffix = '_BS'
         dataset = outDsNameBase + tmpSuffix + '/'
         outMap['BS'] = lfn
-        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outSelBS:
         lfn  = '%s.%s._${SN/P}.data' % (outDSwoSlash,runConfig.output.outSelBS)
         tmpSuffix = '_SelBS'
@@ -1504,14 +1505,14 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
         if not outMap.has_key('IROOT'):
             outMap['IROOT'] = []
         outMap['IROOT'].append(('%s.*.data' % runConfig.output.outSelBS,lfn))
-        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+        paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outStreamG:
         for sName,sOrigFileName in runConfig.output.outStreamG:
             lfn  = '%s.%s._${SN/P}.pool.root' % (outDSwoSlash,sName)
             tmpSuffix = '_%s' % sName
             dataset = outDsNameBase + tmpSuffix + '/'
             outMap['IROOT'].append((sOrigFileName,lfn))
-            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)                
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)                
     if runConfig.output.outMeta:
         iMeta = 0
         for sName,sAsso in runConfig.output.outMeta:
@@ -1521,7 +1522,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
                 lfn  = '%s.META%s._${SN/P}.root' % (outDSwoSlash,iMeta)
                 tmpSuffix = '_META%s' % iMeta
                 dataset = outDsNameBase + tmpSuffix + '/'
-                paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+                paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
                 iMeta += 1
                 foundLFN = lfn
             elif outMap.has_key(sAsso):
@@ -1561,7 +1562,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             if not outMap.has_key('IROOT'):
                 outMap['IROOT'] = []
             outMap['IROOT'].append((sAsso,lfn))
-            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True)
+            paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
     if runConfig.output.outUserData:
         for sAsso in runConfig.output.outUserData:
             # look for associated LFN
