@@ -598,7 +598,9 @@ def finishTask(jediTaskID,soft=False,verbose=False):
 
 
 # retry task
-def retryTask(jediTaskID,verbose=False,properErrorCode=False):
+def retryTask(jediTaskID,verbose=False,properErrorCode=False,newParams=None):
+    if newParams == None:
+        newParams = {}
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -608,6 +610,8 @@ def retryTask(jediTaskID,verbose=False,properErrorCode=False):
     url = baseURLSSL + '/retryTask'
     data = {'jediTaskID':jediTaskID,
             'properErrorCode':properErrorCode}
+    if newParams != {}:
+        data['newParams'] = json.dumps(newParams)
     status,output = curl.post(url,data)
     try:
         return status,pickle.loads(output)

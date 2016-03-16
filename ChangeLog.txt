@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.62 (3/16/2016)
+  * fixed newOpts in pbook
+
 0.5.61 (2/26/2016)
   * added --allowNoOutput to pathena/prun
 

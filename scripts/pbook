@@ -695,14 +695,14 @@ class PBookCore:
             # for JEDI
             if localJob.isJEDI():
                 status,out = Client.retryTask(localJob.jediTaskID,verbose=self.verbose,
-                                              properErrorCode=True)
+                                              properErrorCode=True,newParams=newOpts)
                 if status != 0:
                     tmpLog.error(status)
                     tmpLog.error(out)
                     tmpLog.error("Failed to retry TaskID=%s" % localJob.jediTaskID)
                     return False
                 tmpStat,tmpDiag = out
-                if not tmpStat in [0,True]:
+                if (not tmpStat in [0,True] and newOpts == {}) or (newOpts != {} and tmpStat != 3):
                     tmpLog.error(tmpDiag)
                     tmpLog.error("Failed to retry TaskID=%s" % localJob.jediTaskID)
                     return False
@@ -1384,14 +1384,13 @@ For more info, do help(show) for example."""
 
         
     # retry
-    def retry(JobID,upperJobID=None,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=True,retryBuild=False):
-        """Retry failed/cancelled subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be retried if upperJobID is given. Set useJobsetID=False if you want to retry JobIDs between JobID and UpperJobID. Set newSite=True when you want to retry at new site, which essentially runs pathena/prun again because new sub jobs need to be created for the new site. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. One can use newOpts which is a map of options and new arguments like {'nGBperJob':10,'excludedSite':'ABC,XYZ'} and is passed to pathena/prun as new parameters. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True. Set retryBuild=True if you want to retry jobs which have a failed buildJob
+    def retry(JobID,upperJobID=None,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=True,retryBuild=False):
+        """Retry failed/cancelled subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be retried if upperJobID is given. Set useJobsetID=False if you want to retry JobIDs between JobID and UpperJobID. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. One can use newOpts which is a map of options and new arguments like {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'} to overwrite task parameters. The list of changeable parameters is site,excludedSite,includedSite,nFilesPerJob,nGBPerJob,nFiles,nEvents. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True. Set retryBuild=True if you want to retry jobs which have a failed buildJob
 
          example:
            >>> retry(15)
            >>> retry(15,20)
-           >>> retry(15,newSite=True)
-           >>> retry(15,newSite=True,newOpts={'nGBperJob':10})
+           >>> retry(15,newOpts={'excludedSite':'siteA,siteB'})
            >>> retry(15,ignoreDuplication=True)
         """
         # use range or not    
@@ -1403,11 +1402,11 @@ For more info, do help(show) for example."""
             else:
                 # retry jobs between the range
                 for tmpJobID in range(JobID,upperJobID+1):
-                    pbookCore.retry(tmpJobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,
+                    pbookCore.retry(tmpJobID,newOpts=newOpts,noSubmit=noSubmit,
                                     ignoreDuplication=ignoreDuplication,
                                     useJobsetID=useJobsetID,retryBuild=retryBuild)
         else:            
-            pbookCore.retry(JobID,newSite=newSite,newOpts=newOpts,noSubmit=noSubmit,
+            pbookCore.retry(JobID,newOpts=newOpts,noSubmit=noSubmit,
                             ignoreDuplication=ignoreDuplication,retryBuild=retryBuild)
 
 
