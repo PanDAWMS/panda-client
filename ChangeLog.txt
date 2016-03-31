@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.63 (3/31/2016)
+  * fixed getAthenaVer for ath releases
+
 0.5.62 (3/16/2016)
   * fixed newOpts in pbook
 

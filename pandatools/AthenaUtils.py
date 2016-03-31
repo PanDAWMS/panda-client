@@ -196,6 +196,16 @@ def getCmtProjects(dir='.'):
     # return
     return lines,out         
     
+
+# check if ath release
+def isAthRelease(cacheVer):
+    try:
+        if 'AthAnalysis' in cacheVer or re.search('Ath[a-zA-Z]+Base',cacheVer) != None:
+            return True
+    except:
+        pass
+    return False
+
     
 # get Athena version
 def getAthenaVer():
@@ -232,6 +242,7 @@ def getAthenaVer():
         res = re.search('\(in ([^\)]+)\)',line)
         if res != None:
             items = line.split()
+            # base release
             if items[0] in ('dist','AtlasRelease','AtlasOffline','AtlasAnalysis','AtlasTrigger',
                             'AtlasReconstruction'):
                 # Atlas release
@@ -249,8 +260,8 @@ def getAthenaVer():
                 break
             # cache or analysis projects
             elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT',
-                              'AthAnalysisBase','AtlasDerivation','TrigMC'] or \
-                              items[0].startswith('AthAnalysis') or \
+                              'AtlasDerivation','TrigMC'] or \
+                              isAthRelease(items[0]) or \
                               items[1].count('.') >= 4:  
                 # tailside cache is used
                 if cacheVer != '':
@@ -275,14 +286,14 @@ def getAthenaVer():
                     cacheVer  = '-%s_%s' % (items[0],cacheTag)
                     athenaVer = tmpMatch.group(1)
                     break
-                elif items[0] in ['AthAnalysisBase'] or items[0].startswith('AthAnalysis'):
+                elif isAthRelease(items[0]):
                     cacheVer  = '-%s_%s' % (items[0],cacheTag)
                 else:
                     # doesn't use when it is a base release since it is not installed in EGEE
                     if re.search('^\d+\.\d+\.\d+$',cacheTag) == None:
                         cacheVer = '-%s_%s' % (items[0],cacheTag)
                 # no more check for AthAnalysis
-                if items[0] in ['AthAnalysisBase'] or items[0].startswith('AthAnalysis'):
+                if isAthRelease(items[0]):
                     break
             else:
                 # group area
@@ -300,7 +311,7 @@ def getAthenaVer():
         'cmtConfig': cmtConfig,
            }
     # check error
-    if athenaVer == '' and not cacheVer.startswith('-AthAnalysis'):
+    if athenaVer == '' and not isAthRelease(cacheVer):
         tmpStr = ''
         for line in lines:
             tmpStr += (line+'\n')
@@ -2167,7 +2178,7 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbo
             # use i686-slc5-gcc43-opt by default
             return 'i686-slc5-gcc43-opt'
     # AthAnalysis
-    if cacheVer != None and 'AthAnalysisBase' in cacheVer:
+    if cacheVer != None and isAthRelease(cacheVer):
         if os.environ.has_key('CMTCONFIG'):
             return os.environ['CMTCONFIG']
         else:
