@@ -78,8 +78,8 @@ optP.add_option('--useContElementBoundary',action='store_const',const=True,dest=
                 help="Split job in such a way that sub jobs do not mix files of different datasets in the input container. See --useNthFieldForLFN too")
 optP.add_option('--addNthFieldOfInDSToLFN',action='store',dest='addNthFieldOfInDSToLFN',default='',type='string',
                 help="A middle name is added to LFNs of output files when they are produced from one dataset in the input container or input dataset list. The middle name is extracted from the dataset name. E.g., if --addNthFieldOfInDSToLFN=2 and the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is extracted and LFN is something like user.hoge.TASKID.00160387.blah. Concatenate multiple field numbers with commas if necessary, e.g., --addNthFieldOfInDSToLFN=2,6.")
-optP.add_option('--splitWithNthFiledOfLFN',action='store',dest='splitWithNthFiledOfLFN',default=-1,type='int',
-                help="Split job in such a way that each sub job uses input files which have the same value in the Nth field of file names. This option would be useful to process a dataset which was produced with --useContElementBoundary, and in this case most likely that --splitWithNthFiledOfLFN=4")
+optP.add_option('--addNthFieldOfInFileToLFN',action='store',dest='addNthFieldOfInFileToLFN',default='',type='string',
+                help="A middle name is added to LFNs of output files similarly as --addNthFieldOfInDSToLFN, but strings are extracted from input file names")
 optP.add_option('--buildInLastChunk',action='store_const',const=True,dest='buildInLastChunk',default=False,
                 help="Produce lib.tgz in the last chunk when jobs are split to multiple chunks due to the limit on the number of files in each chunk or due to --useContElementBoundary/--loadXML")
 optP.add_option('--followLinks',action='store_const',const=True,dest='followLinks',default=False,
@@ -1367,7 +1367,10 @@ if matchURL != None:
 if options.loadXML != None:
     taskParamMap['loadXML'] = options.loadXML
 # middle name
-if options.addNthFieldOfInDSToLFN != '':
+if options.addNthFieldOfInFileToLFN != '':
+    taskParamMap['addNthFieldToLFN'] = options.addNthFieldOfInFileToLFN
+    taskParamMap['useFileAsSourceLFN'] = True
+elif options.addNthFieldOfInDSToLFN != '':
     taskParamMap['addNthFieldToLFN'] = options.addNthFieldOfInDSToLFN
 # dataset names
 outDatasetName = options.outDS
@@ -1452,7 +1455,7 @@ if options.outputs != '':
             lfn = '{0}.{1}'.format(*outDatasetName.split('.')[:2])
         else:
             lfn = outDatasetName[:-1]
-        if options.addNthFieldOfInDSToLFN != '':
+        if options.addNthFieldOfInDSToLFN != '' or options.addNthFieldOfInFileToLFN != '':
             lfn += '${MIDDLENAME}'
         lfn += '.$JEDITASKID._${{SN/P}}.{0}'.format(tmpNewLFN)
         if tmpDsSuffix == '':

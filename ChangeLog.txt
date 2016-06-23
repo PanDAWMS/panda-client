@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.64 (6/23/2016)
+  * added addNthFieldOfInFileToLFN
+
 0.5.63 (3/31/2016)
   * fixed getAthenaVer for ath releases
 
