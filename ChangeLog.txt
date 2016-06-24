@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.65 (6/24/2016)
+  * fixed addNthFieldOfInFileToLFN for pmerge
+
 0.5.64 (6/23/2016)
   * added addNthFieldOfInFileToLFN
 
