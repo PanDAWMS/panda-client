@@ -1668,8 +1668,6 @@ if options.addNthFieldOfInFileToLFN != '':
     loglfn  = '{0}.{1}'.format(*logDatasetName.split('.')[:2])
     loglfn += '${MIDDLENAME}.$JEDITASKID._${SN}.log.tgz'
     taskParamMap['log']['value'] = loglfn
-if options.destSE != '':
-    taskParamMap['log']['destination'] = options.destSE
 if options.spaceToken != '':
     taskParamMap['log']['token'] = options.spaceToken
 

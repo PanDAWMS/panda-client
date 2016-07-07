@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.66 (7/7/2016)
+  * disabled log file transfers with --destSE
+
 0.5.65 (6/24/2016)
   * fixed addNthFieldOfInFileToLFN for pmerge
 
