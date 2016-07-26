@@ -1220,6 +1220,9 @@ else:
         outputDAODFile = re.sub('%OUT\.','',outputDAODFile)
         match = re.search('--reductionConf[ =\"\']+([^ \"\']+)',tmpString)
         if match != None:
+            # remove %OUT from outputDAODFile
+            jobO = jobO.replace('%OUT.'+outputDAODFile,outputDAODFile)
+            # loop over all configs
             reductionConf = match.group(1)
             for reductionItem in reductionConf.split(','):
                 reductionItem = reductionItem.strip()
