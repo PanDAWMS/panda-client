@@ -447,6 +447,9 @@ if hasattr(THistSvc.Output,'__len__') and len(THistSvc.Output):
             if sName in ['userdataoutputstream'] or sName.startswith('userdataoutputstream'):
                 userDataSvcStream[sName] = fName
                 continue
+            # skip if defined in StreamG
+            if strGenFName != '' and fName == strGenFName:
+                continue
             _printConfig('Output=THIST %s' % sName)
             if fmatch != None:
                 _printConfig(' Name: %s'% fName)

@@ -1211,12 +1211,34 @@ else:
     oneOut = False
     # replace ; for job sequence
     tmpString = re.sub(';',' ',jobO)
+    # look for --outputDAODFile and --reductionConf 
+    match = re.search('--outputDAODFile[ =\"\']+([^ \"\',]+)',tmpString)
+    outputDAODFile = None
+    if match != None:
+        outputDAODFile = match.group(1)
+        # remove %OUT
+        outputDAODFile = re.sub('%OUT\.','',outputDAODFile)
+        match = re.search('--reductionConf[ =\"\']+([^ \"\']+)',tmpString)
+        if match != None:
+            reductionConf = match.group(1)
+            for reductionItem in reductionConf.split(','):
+                reductionItem = reductionItem.strip()
+                if reductionItem == '':
+                    continue
+                # make actual output names for derivation
+                tmpOutName = 'DAOD_{0}.{1}'.format(reductionItem,outputDAODFile)
+                if not tmpOutName in options.extOutFile:
+                    options.extOutFile.append(tmpOutName)
+                    oneOut = True
     # look for %OUT
     for tmpItem in tmpString.split():
         match = re.search('\%OUT\.([^ \"\',]+)',tmpItem)
         if match:
             # append basenames to extOutFile
             tmpOutName = match.group(1)
+            # skip basename of derivation
+            if outputDAODFile != None and outputDAODFile == tmpOutName:
+                continue
             if not tmpOutName in options.extOutFile:
                 options.extOutFile.append(tmpOutName)
                 oneOut = True
