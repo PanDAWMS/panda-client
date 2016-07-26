@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.68 (7/26/2016)
+  * CMake compatible version
+
 0.5.67 (7/26/2016)
   * improved pathena to automatically deduce actual output names for derivation trf
   * fixed pathena for SHARE in THistSvc

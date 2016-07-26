@@ -2119,8 +2119,7 @@ def _getGridSrc():
             gridSrc = os.environ['PATHENA_GRID_SETUP_SH']
         else:
             if not os.environ.has_key('CMTSITE'):
-                print "INFO : CMTSITE is not defined in envvars"
-                return False
+                os.environ['CMTSITE'] = ''
             if os.environ['CMTSITE'] == 'CERN' or (athenaStatus == 0 and \
                                                    re.search('^/afs/\.*cern.ch',athenaPath) != None):
 		gridSrc = '/dev/null'

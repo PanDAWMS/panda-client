@@ -1033,17 +1033,23 @@ else:
                 shutil.copy(rootCoreCompileNbSh,rootCoreDestWorkDir)
         # gather Athena packages
 	if options.useAthenaPackages:
+	    archiveName = ""
+	    if AthenaUtils.useCMake():
+		# archive with cpack
+		archiveName,archiveFullName = AthenaUtils.archiveWithCpack(True,tmpDir,options.verbose)
 	    # set extFile
 	    AthenaUtils.setExtFile(options.extFile)
 	    if options.libDS == '' and not options.nobuild:
 		# archive sources
 		archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,curDir,tmpDir,
                                                                              options.verbose,options.gluePackages,
-                                                                             dereferenceSymLinks=options.followLinks)
+                                                                             dereferenceSymLinks=options.followLinks,
+                                                                             archiveName=archiveName)
 	    else:
 		# archive jobO
 		archiveName,archiveFullName = AthenaUtils.archiveJobOFiles(workArea,runDir,curDir,
-									   tmpDir,options.verbose)
+									   tmpDir,options.verbose,
+                                                                           archiveName=archiveName)
 	    # archive InstallArea
 	    if options.libDS == '':
 		AthenaUtils.archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
@@ -1608,6 +1614,9 @@ if options.pfnList != '':
 # use Athena packages
 if options.useAthenaPackages:
     jobParameters += "--useAthenaPackages "
+# use CMake
+if AthenaUtils.useCMake():
+    jobParameters += "--useCMake "
 # use RootCore
 if options.useRootCore:
     jobParameters += "--useRootCore "
@@ -1660,6 +1669,9 @@ else:
     # no compile
     if options.noCompile:
         jobParameters += "--noCompile "
+    # use CMake
+    if AthenaUtils.useCMake():
+        jobParameters += "--useCMake "
     # use mana
     if options.useMana:
         jobParameters += "--useMana "

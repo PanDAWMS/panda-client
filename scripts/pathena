@@ -1014,7 +1014,7 @@ tmpLog.info('using CMTCONFIG=%s' % options.cmtConfig)
 # remove special characters                    
 sString=re.sub('[\+]','.',workArea)
 runDir = re.sub('^%s' % sString, '', currentDir)
-if runDir == currentDir:
+if runDir == currentDir and not AthenaUtils.useCMake():
     errMsg  = "You need to run pathena in a directory under %s. " % workArea
     errMsg += "If '%s' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup." % workArea
     tmpLog.error(errMsg)
@@ -1453,31 +1453,35 @@ else:
 
         archiveName = ""
         if options.libDS == '' and not (options.nobuild and not options.noCompile):
+                # archive with cpack
+            if AthenaUtils.useCMake():
+                archiveName,archiveFullName = AthenaUtils.archiveWithCpack(True,tmpDir,options.verbose)
             # archive sources
             archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,currentDir,tmpDir,
-                                                                         options.verbose,options.gluePackages) 
+                                                                         options.verbose,options.gluePackages,
+                                                                         archiveName=archiveName) 
         else:
+                # archive with cpack
+            if AthenaUtils.useCMake():
+                archiveName,archiveFullName = AthenaUtils.archiveWithCpack(False,tmpDir,options.verbose)
             # archive jobO
             archiveName,archiveFullName = AthenaUtils.archiveJobOFiles(workArea,runDir,currentDir,
-                                                                       tmpDir,options.verbose)
-
+                                                                       tmpDir,options.verbose,
+                                                                       archiveName=archiveName)
+            
         # archive InstallArea
         if options.libDS == '':
             AthenaUtils.archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
                                            tmpDir,options.nobuild,options.verbose)
-
         # back to tmp dir        
         os.chdir(tmpDir)
-
         # remove some athena specific files
         AthenaUtils.deleteAthenaStuff(currentDir)
-
         # compress
-        status,out = commands.getstatusoutput('gzip %s' % archiveName)
-        archiveName += '.gz'
+        status,out = commands.getstatusoutput('gzip -f %s' % archiveName)
         if status != 0 or options.verbose:
             print out
-
+        archiveName += '.gz'
         # check archive
         status,out = commands.getstatusoutput('ls -l %s' % archiveName)
         if status != 0:
@@ -1789,6 +1793,9 @@ if (options.trf or runConfig.input.inBS) and not options.forceDirectIO:
 # use theApp.nextEvent
 if options.useNextEvent:
     param += '--useNextEvent '
+# use CMake
+if AthenaUtils.useCMake():
+    param += "--useCMake "
 # use code tracer 
 if options.codeTrace:
     param += '--codeTrace '
@@ -2090,7 +2097,7 @@ if (options.trf or runConfig.input.inBS) and not options.forceDirectIO:
 # use AMI to get the number of events per file
 if options.useAMIEventLevelSplit == True:
     taskParamMap['getNumEventsInMetadata'] = True
-    
+
 # force stage-in
 if options.forceStaged:
     taskParamMap['useLocalIO'] = 1
@@ -2103,6 +2110,9 @@ else:
     # no compile
     if options.noCompile:
         jobParameters += "--noCompile "
+    # use CMake
+    if AthenaUtils.useCMake():
+        jobParameters += "--useCMake "
     # debug parameters
     if options.queueData != '':
         jobParameters += "--overwriteQueuedata=%s " % options.queueData

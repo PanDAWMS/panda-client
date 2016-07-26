@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import commands
+import subprocess
 
 import MiscUtils
 import PLogger
@@ -176,25 +177,38 @@ def convToCompact(fList):
 
 # get CMT projects
 def getCmtProjects(dir='.'):
-    # keep current dir
-    curdir = os.getcwd()
-    # change dir
-    os.chdir(dir)
-    # get projects
-    out = commands.getoutput('cmt show projects')
-    lines = out.split('\n')
-    # remove CMT warnings
-    tupLines = tuple(lines)
-    lines = []
-    for line in tupLines:
-        if 'CMTUSERCONTEXT' in line:
-            continue
-        if not line.startswith('#'):
-            lines.append(line)
-    # back to the current dir
-    os.chdir(curdir)
-    # return
-    return lines,out         
+    # cmt or cmake
+    if not useCMake():
+        # keep current dir
+        curdir = os.getcwd()
+        # change dir
+        os.chdir(dir)
+        # get projects
+        out = commands.getoutput('cmt show projects')
+        lines = out.split('\n')
+        # remove CMT warnings
+        tupLines = tuple(lines)
+        lines = []
+        for line in tupLines:
+            if 'CMTUSERCONTEXT' in line:
+                continue
+            if not line.startswith('#'):
+                lines.append(line)
+        # back to the current dir
+        os.chdir(curdir)
+        # return
+        return lines,out         
+    else:
+        lines = []
+        # use current dir as test area
+        tmpStr = '(in {0})'.format(os.getcwd())
+        lines.append(tmpStr)
+        # AtlasProject
+        if not 'AtlasProject' in os.environ:
+            return [],'AtlasProject is not defined in runtime environment'
+        tmpStr = '{0} (in {0}/{1})'.format(os.environ['AtlasProject'],os.environ['AtlasVersion'])
+        lines.append(tmpStr)
+        return lines,''
     
 
 # check if ath release
@@ -229,7 +243,7 @@ def getAthenaVer():
     res = re.search('\(in ([^\)]+)\)',lines[0])
     if res==None:
         print lines[0]
-        tmpLog.error("could not get path to private work area")
+        tmpLog.error("no TestArea. could not get path to private work area")
         return False,{}
     workArea = os.path.realpath(res.group(1))
     # get Athena version and group area
@@ -724,7 +738,8 @@ def getExtendedExtStreamName(sIndex,sName,enableExtension):
 specialFilesForAthena = ['dblookup.xml']
 
 # archive source files
-def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[],dereferenceSymLinks=False):
+def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[],dereferenceSymLinks=False,
+                       archiveName=''):
     # archive sources
     tmpLog = PLogger.getPandaLogger()
     tmpLog.info('archiving source files')
@@ -740,7 +755,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
             return
         for item in list:
             # skip if doc or .svn
-            if item in ['doc','.svn']:
+            if item in ['doc','.svn','_CPack_Packages']:
                 continue
             fullName=dir+'/'+item
             if os.path.isdir(fullName):
@@ -937,7 +952,8 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
         tmpLog.debug("== private files ==")
 
     # create archive
-    archiveName     = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
+    if archiveName == '':
+        archiveName = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
     archiveFullName = "%s/%s" % (tmpDir,archiveName)
     # archive private area
     archiveFiles(workArea,packages,archiveFullName)
@@ -990,7 +1006,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
     
 
 # archive jobO files
-def archiveJobOFiles(workArea,runDir,currentDir,tmpDir,verbose):
+def archiveJobOFiles(workArea,runDir,currentDir,tmpDir,verbose,archiveName=''):
     # archive jobO files    
     tmpLog = PLogger.getPandaLogger()
     tmpLog.info('archiving jobOs and modules')
@@ -999,6 +1015,8 @@ def archiveJobOFiles(workArea,runDir,currentDir,tmpDir,verbose):
     def getJobOs(dir,files):
         list = os.listdir(dir)
         for item in list:
+            if item in ['_CPack_Packages']:
+                continue
             fullName=dir+'/'+item
             if os.path.isdir(fullName):
                 # skip symlinks in include since they cause full scan on releases
@@ -1016,7 +1034,8 @@ def archiveJobOFiles(workArea,runDir,currentDir,tmpDir,verbose):
     os.chdir(workArea)
     getJobOs('%s' % workArea,files)
     # create archive
-    archiveName     = 'jobO.%s.tar' % MiscUtils.wrappedUuidGen()
+    if archiveName == '':
+        archiveName = 'jobO.%s.tar' % MiscUtils.wrappedUuidGen()
     archiveFullName = "%s/%s" % (tmpDir,archiveName)
     # archive
     if verbose:
@@ -1147,6 +1166,41 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
             if out != '':    
                 print out
             commands.getoutput('rm -rf %s' % groupFullName)    
+
+
+
+# archive with cpack
+def archiveWithCpack(withSource,tmpDir,verbose):
+    tmpLog = PLogger.getPandaLogger()
+    # define archive name
+    if withSource:
+        tmpLog.info('archiving source files')
+        archiveName = 'sources.%s' % MiscUtils.wrappedUuidGen()
+    else:
+        tmpLog.info('archiving jobOs and modules')
+        archiveName = 'jobO.%s' % MiscUtils.wrappedUuidGen()
+    archiveFullName = "%s/%s" % (tmpDir,archiveName)
+    # extract build dir
+    buildDir = os.environ['CMAKE_PREFIX_PATH']
+    buildDir = os.path.dirname(buildDir.split(':')[0])
+    _curdir = os.getcwd()
+    os.chdir(buildDir)
+    tmpLog.info('The build directory is {0}'.format(buildDir))
+    comStr = 'cpack -B {0} -D CPACK_PACKAGE_FILE_NAME={1} -G TGZ '.format(tmpDir,archiveName)
+    if verbose:
+        tmpLog.debug(comStr)
+        comStr += '-V '
+    tmpStat = subprocess.call(comStr,shell=True)
+    if tmpStat != 0:
+        tmpLog.error('cpack failed')
+        sys.exit(EC_Config)
+    archiveName += '.tar'
+    archiveFullName += '.tar'
+    os.chdir(tmpDir)
+    comStr = 'tar xfz {0}.gz; tar cf {0} usr; rm -rf usr {0}.gz'.format(archiveName)
+    subprocess.call(comStr,shell=True)
+    os.chdir(_curdir)
+    return archiveName,archiveFullName
 
 
 
@@ -2607,3 +2661,9 @@ def checkUseTagInTrf(jobO,useTagInTRF):
     if useTagInTRF:
         return True
     return False
+
+
+
+# use CMake
+def useCMake():
+    return 'CMAKE_PREFIX_PATH' in os.environ
