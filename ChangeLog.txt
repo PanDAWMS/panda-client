@@ -1,6 +1,6 @@
 ** Release Notes
 
-0.5.69 (7/26/2016)
+0.5.69 (8/1/2016)
   * fixed pathena merge for CMake
 
 0.5.68 (7/26/2016)
