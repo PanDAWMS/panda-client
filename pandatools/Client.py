@@ -172,6 +172,8 @@ class _Curl:
             com += ' --cacert %s' % self.sslCert
         if self.sslKey != '':
             com += ' --key %s' % self.sslKey
+        # max time of 10 min
+        com += ' -m 600'
         # add rucio account info
         if rucioAccount:
             if os.environ.has_key('RUCIO_ACCOUNT'):
@@ -229,6 +231,8 @@ class _Curl:
             com += ' --cacert %s' % self.sslCert
         if self.sslKey != '':
             com += ' --key %s' % self.sslKey
+        # max time of 10 min
+        com += ' -m 600'
         # add rucio account info
         if rucioAccount:
             if os.environ.has_key('RUCIO_ACCOUNT'):
@@ -286,7 +290,7 @@ class _Curl:
             com += ' --cacert %s' % self.sslCert
         if self.sslKey != '':
             com += ' --key %s' % self.sslKey
-        # emulate PUT 
+        # emulate PUT
         for key in data.keys():
             com += ' -F "%s=@%s"' % (key,data[key])
         com += ' %s' % url
