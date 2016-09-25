@@ -3476,13 +3476,13 @@ def getInconsistentDS(missList,newUsedDsList):
 
 # submit task
 def insertTaskParams(taskParams,verbose,properErrorCode=False):
-    """Insert task parameters 
+    """Insert task parameters
 
        args:
            taskParams: a dictionary of task parameters
        returns:
            status code
-                 0: communication succeeded to the panda server 
+                 0: communication succeeded to the panda server
                  255: communication failure
            tuple of return code and message from the server
                  0: request is processed
@@ -3490,7 +3490,7 @@ def insertTaskParams(taskParams,verbose,properErrorCode=False):
                  2: duplication in JEDI
                  3: accepted for incremental execution
                  4: server error
-    """     
+    """
     # serialize
     taskParamsStr = json.dumps(taskParams)
     # instantiate curl
@@ -3528,6 +3528,94 @@ def getRetryHistory(jediTaskID,verbose=False):
         type, value, traceBack = sys.exc_info()
         print "ERROR getRetryHistory : %s %s" % (type,value)
         return EC_Failed,None
+
+
+# get PanDA IDs with TaskID
+def getPandaIDsWithTaskID(jediTaskID,verbose=False):
+    """Get PanDA IDs with TaskID
+
+       args:
+           jediTaskID: jediTaskID of the task to get lit of PanDA IDs
+       returns:
+           status code
+                 0: communication succeeded to the panda server
+                 255: communication failure
+           the list of PanDA IDs
+    """
+    # instantiate curl
+    curl = _Curl()
+    curl.verbose = verbose
+    # execute
+    url = baseURL + '/getPandaIDsWithTaskID'
+    data = {'jediTaskID':jediTaskID}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        errStr = "ERROR getPandaIDsWithTaskID : %s %s" % (type,value)
+        print errStr
+        return EC_Failed,output+'\n'+errStr
+
+
+# reactivate task
+def reactivateTask(jediTaskID,verbose=False):
+    """Reactivate task
+
+       args:
+           jediTaskID: jediTaskID of the task to be reactivated
+       returns:
+           status code
+                 0: communication succeeded to the panda server
+                 255: communication failure
+           return: a tupple of return code and message
+                 0: unknown task
+                 1: succeeded
+                 None: database error
+    """
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/reactivateTask'
+    data = {'jediTaskID':jediTaskID}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        errtype,errvalue = sys.exc_info()[:2]
+        errStr = "ERROR reactivateTask : %s %s" % (errtype,errvalue)
+        return EC_Failed,output+'\n'+errStr
+
+
+# get task status TaskID
+def getTaskStatus(jediTaskID,verbose=False):
+    """Get task status
+
+       args:
+           jediTaskID: jediTaskID of the task to get lit of PanDA IDs
+       returns:
+           status code
+                 0: communication succeeded to the panda server
+                 255: communication failure
+           the status string
+    """
+    # instantiate curl
+    curl = _Curl()
+    curl.verbose = verbose
+    # execute
+    url = baseURL + '/getTaskStatus'
+    data = {'jediTaskID':jediTaskID}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        errStr = "ERROR getTaskStatus : %s %s" % (type,value)
+        print errStr
+        return EC_Failed,output+'\n'+errStr
 
 
 # get T1 sites
