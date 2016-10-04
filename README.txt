@@ -27,3 +27,8 @@ See ChangeLog.txt
 ** Acknowledge
 
    Icons from http://iconka.com
+
+** CVMFS deployment
+Leave the tar ball under: /afs/cern.ch/user/a/atlpan/www/panda-client
+Update the release notes: https://twiki.cern.ch/twiki/bin/view/PanDA/PandaTools
+Request atlas-adc-tier3sw-install to copy on CVMFS
