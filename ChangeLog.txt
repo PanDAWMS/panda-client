@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.71 (10/04/2016)
+  * added new methods for Hammercloud (getPandaIDsWithTaskID, reactivateTask, getTaskStatus)
+
 0.5.70 (8/31/2016)
   * added 10 min timeout to curl GET and POST requests
 
