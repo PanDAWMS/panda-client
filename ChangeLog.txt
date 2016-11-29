@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.72 (11/29/2016)
+  * fixed pathena to work witout a local build area for CMake
+
 0.5.71 (10/04/2016)
   * added new methods for Hammercloud (getPandaIDsWithTaskID, reactivateTask, getTaskStatus)
 
