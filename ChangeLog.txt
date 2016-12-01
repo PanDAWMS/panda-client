@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.73 (12/1/2016)
+  * added support for CMake based nightlies
+
 0.5.72 (11/29/2016)
   * fixed pathena to work witout a local build area for CMake
 

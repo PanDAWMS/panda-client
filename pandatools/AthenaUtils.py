@@ -260,17 +260,29 @@ def getAthenaVer():
             if items[0] in ('dist','AtlasRelease','AtlasOffline','AtlasAnalysis','AtlasTrigger',
                             'AtlasReconstruction'):
                 # Atlas release
-                athenaVer = os.path.basename(res.group(1))
+                if 'AtlasBuildStamp' in os.environ:
+                    athenaVer = os.environ['AtlasBuildStamp']
+                    useBuildStamp = True
+                else:
+                    athenaVer = os.path.basename(res.group(1))
+                    useBuildStamp = False
                 # nightly
-                if athenaVer.startswith('rel'):
+                if athenaVer.startswith('rel') or useBuildStamp:
                     # extract base release
-                    tmpMatch = re.search('/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+',line)
-                    if tmpMatch == None:
-                        tmpLog.error("unsupported nightly %s" % line)
-                        return False,{}
-                    # set athenaVer and cacheVer
-                    cacheVer  = '-AtlasOffline_%s' % athenaVer
-                    athenaVer = tmpMatch.group(1)
+                    if not useCMake():
+                        tmpMatch = re.search('/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+',line)
+                        if tmpMatch == None:
+                            tmpLog.error("unsupported nightly %s" % line)
+                            return False,{}
+                        # set athenaVer and cacheVer
+                        cacheVer  = '-AtlasOffline_%s' % athenaVer
+                        athenaVer = tmpMatch.group(1)
+                    else:
+                        if athenaVer.startswith('rel'):
+                            tmpLog.error("Nightlies with AFS setup are unsupported on the grid. Setup with CVMFS")
+                            return False,{}
+                        cacheVer  = '-AtlasOffline_%s' % athenaVer
+                        athenaVer = os.environ['AtlasBuildBranch']
                 break
             # cache or analysis projects
             elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT',
