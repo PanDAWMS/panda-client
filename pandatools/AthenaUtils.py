@@ -2225,7 +2225,7 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbo
     if cmtConfig != None:
         return cmtConfig
     # nightlies
-    if cacheVer != None and re.search('_rel_\d+$',cacheVer) != None:
+    if cacheVer != None and (re.search('_rel_\d+$',cacheVer) != None or 'AtlasBuildStamp' in os.environ):
         # use local cmtconfig if it is available
         if os.environ.has_key('CMTCONFIG'):
             return os.environ['CMTCONFIG']
