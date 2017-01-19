@@ -687,7 +687,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
     # size check for noBuild
     sizeLimit = 10*1024*1024
     fileSize = os.stat(file)[stat.ST_SIZE]
-    if not file.startswith('sources.'):
+    if not os.path.basename(file).startswith('sources.'):
         if fileSize > sizeLimit:
             errStr  = 'Exceeded size limit (%sB >%sB). ' % (fileSize,sizeLimit)
             errStr += 'Your working directory contains too large files which cannot be put on cache area. '
@@ -3614,6 +3614,36 @@ def getTaskStatus(jediTaskID,verbose=False):
     except:
         type, value, traceBack = sys.exc_info()
         errStr = "ERROR getTaskStatus : %s %s" % (type,value)
+        print errStr
+        return EC_Failed,output+'\n'+errStr
+
+
+# get taskParamsMap with TaskID
+def getTaskParamsMap(jediTaskID):
+    """Get task status
+
+       args:
+           jediTaskID: jediTaskID of the task to get taskParamsMap
+       returns:
+           status code
+                 0: communication succeeded to the panda server
+                 255: communication failure
+           return: a tuple of return code and taskParamsMap
+                 1: logical error
+                 0: success
+                 None: database error
+    """
+    # instantiate curl
+    curl = _Curl()
+    # execute
+    url = baseURL + '/getTaskParamsMap'
+    data = {'jediTaskID':jediTaskID}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        errStr = "ERROR getTaskParamsMap : %s %s" % (type,value)
         print errStr
         return EC_Failed,output+'\n'+errStr
 
