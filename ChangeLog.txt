@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.5.74 (01/19/2017)
+  * added new method for HC: getTaskParamsMap
+  * Replaced README.txt by README.md
+
 0.5.73 (12/7/2016)
   * added support for CMake based nightlies
   * fixed cmtConfig for nightlies
