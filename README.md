@@ -1,10 +1,15 @@
 # How to install
+
+Download the code
 ```
 git clone git://github.com/PanDAWMS/panda-client.git
 cd panda-client
+```
+and install it
+```
 python setup.py install --prefix=/path/to/install/dir
 ```
-or 
+or create the tar ball
 ```
 echo "%_unpackaged_files_terminate_build 0" >> ~/.rpmmacros
 QA_SKIP_BUILD_ROOT=1 python setup.py bdist_rpm
