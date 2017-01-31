@@ -208,6 +208,9 @@ def getCmtProjects(dir='.'):
             return [],'AtlasProject is not defined in runtime environment'
         tmpStr = '{0} (in {0}/{1})'.format(os.environ['AtlasProject'],os.environ['AtlasVersion'])
         lines.append(tmpStr)
+        if 'AtlasOffline_VERSION' in os.environ:
+            tmpStr = '{0} (in {0}/{1})'.format('AtlasOffline',os.environ['AtlasOffline_VERSION'])
+            lines.append(tmpStr)
         return lines,''
     
 

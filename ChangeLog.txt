@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.75 (01/31/2017)
+  * fixed getAthenaVer for CMake-based caches
+
 0.5.74 (01/19/2017)
   * added new method for HC: getTaskParamsMap
   * Replaced README.txt by README.md
