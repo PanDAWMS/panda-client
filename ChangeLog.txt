@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.76 (2/3/2017)
+  * removed tar error messages with empty run dir
+
 0.5.75 (01/31/2017)
   * fixed getAthenaVer for CMake-based caches
 
