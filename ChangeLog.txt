@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.77 (2/8/2017)
+  * removed cmtconfig check with a hardcoded list
+
 0.5.76 (2/3/2017)
   * removed tar error messages with empty run dir
 
