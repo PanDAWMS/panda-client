@@ -324,6 +324,8 @@ optP.add_option('--forceDirectIO', action='store_const', const=True, dest='force
                 help="Use directIO if directIO is available at the site ")
 optP.add_option('--skipScout', action='store_const',const=True,dest='skipScout',default=False,
                 help="skip scout jobs")
+optP.add_option('--respectSplitRule', action='store_const',const=True,dest='respectSplitRule',default=False,
+                help="force scout jobs to follow split rules like nGBPerJob")
 optP.add_option('--devSrv', action='store_const', const=True, dest='devSrv',  default=False,
                 help="Please don't use this option. Only for developers to use the dev panda server")
 optP.add_option('--intrSrv', action='store_const', const=True, dest='intrSrv',  default=False,
@@ -1658,6 +1660,8 @@ if options.noEmail:
     taskParamMap['noEmail'] = True
 if options.skipScout:
     taskParamMap['skipScout'] = True
+if options.respectSplitRule:
+    taskParamMap['respectSplitRule'] = True
 if options.disableAutoRetry:
     taskParamMap['disableAutoRetry'] = 1
 if options.workingGroup != None:
@@ -1914,7 +1918,7 @@ if options.minDS != '':
     dictItem = MiscUtils.makeJediJobParam('${MININ}',options.minDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nMin,useNumFilesAsRatio=True,
-                                          randomAtt=True,reusableAtt=True)
+                                          randomAtt=options.randomMin,reusableAtt=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['MININ'] = options.minDS
     minBiasStream += 'MININ,'
@@ -1922,7 +1926,7 @@ if options.lowMinDS != '':
     dictItem = MiscUtils.makeJediJobParam('${LOMBIN}',options.lowMinDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nLowMin,useNumFilesAsRatio=True,
-                                          randomAtt=True,reusableAtt=True)
+                                          randomAtt=options.randomMin,reusableAtt=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['LOMBIN'] = options.lowMinDS
     minBiasStream += 'LOMBIN,'
@@ -1930,7 +1934,7 @@ if options.highMinDS != '':
     dictItem = MiscUtils.makeJediJobParam('${HIMBIN}',options.highMinDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nHighMin,useNumFilesAsRatio=True,
-                                          randomAtt=True,reusableAtt=True)
+                                          randomAtt=options.randomMin,reusableAtt=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['HIMBIN'] = options.highMinDS
     minBiasStream += 'HIMBIN,'
@@ -1947,7 +1951,7 @@ if options.cavDS != '':
     dictItem = MiscUtils.makeJediJobParam('-n "${CAVIN/T}"',options.cavDS,'input',
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nCav,useNumFilesAsRatio=True,
-                                          randomAtt=True,reusableAtt=True)
+                                          randomAtt=options.randomCav,reusableAtt=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['CAVIN'] = options.cavDS
 
