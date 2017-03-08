@@ -211,6 +211,10 @@ def getCmtProjects(dir='.'):
         if 'AtlasOffline_VERSION' in os.environ:
             tmpStr = '{0} (in {0}/{1})'.format('AtlasOffline',os.environ['AtlasOffline_VERSION'])
             lines.append(tmpStr)
+        prodVerStr = '{0}_VERSION'.format(os.environ['AtlasProject'])
+        if prodVerStr in os.environ:
+            tmpStr = '{0} (in {0}/{1})'.format(os.environ['AtlasProject'],os.environ[prodVerStr])
+            lines.append(tmpStr)
         return lines,''
     
 
@@ -261,7 +265,7 @@ def getAthenaVer():
             items = line.split()
             # base release
             if items[0] in ('dist','AtlasRelease','AtlasOffline','AtlasAnalysis','AtlasTrigger',
-                            'AtlasReconstruction'):
+                            'AtlasReconstruction','Athena'):
                 # Atlas release
                 if 'AtlasBuildStamp' in os.environ:
                     athenaVer = os.environ['AtlasBuildStamp']
@@ -284,7 +288,10 @@ def getAthenaVer():
                         if athenaVer.startswith('rel'):
                             tmpLog.error("Nightlies with AFS setup are unsupported on the grid. Setup with CVMFS")
                             return False,{}
-                        cacheVer  = '-AtlasOffline_%s' % athenaVer
+                        if items[0] in ['Athena']:
+                            cacheVer  = '-{0}_{1}'.format(items[0],athenaVer)
+                        else:                            
+                            cacheVer  = '-AtlasOffline_%s' % athenaVer
                         athenaVer = os.environ['AtlasBuildBranch']
                 break
             # cache or analysis projects
