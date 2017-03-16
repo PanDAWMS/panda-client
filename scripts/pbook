@@ -610,7 +610,7 @@ class PBookCore:
 
 
     # clean
-    def clean(self,nDays=90):
+    def clean(self,nDays=180):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # delete

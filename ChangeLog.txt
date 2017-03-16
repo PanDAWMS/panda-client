@@ -1,7 +1,8 @@
 ** Release Notes
 
-0.5.79 (3/8/2017)
+0.5.79 (3/16/2017)
   * following the change to the project name in rel 22
+  * increased record lifetime in pbook to 180 days
 
 0.5.78 (3/6/2017)
   * fixed pathena to respect --randomMIN
