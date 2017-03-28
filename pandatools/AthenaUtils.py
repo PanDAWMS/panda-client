@@ -265,7 +265,7 @@ def getAthenaVer():
             items = line.split()
             # base release
             if items[0] in ('dist','AtlasRelease','AtlasOffline','AtlasAnalysis','AtlasTrigger',
-                            'AtlasReconstruction','Athena'):
+                            'AtlasReconstruction') or items[0].startswith('Athena'):
                 # Atlas release
                 if 'AtlasBuildStamp' in os.environ:
                     athenaVer = os.environ['AtlasBuildStamp']
@@ -274,7 +274,7 @@ def getAthenaVer():
                     athenaVer = os.path.basename(res.group(1))
                     useBuildStamp = False
                 # nightly
-                if athenaVer.startswith('rel') or useBuildStamp:
+                if athenaVer.startswith('rel') or useBuildStamp or items[0].startswith('Athena'):
                     # extract base release
                     if not useCMake():
                         tmpMatch = re.search('/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+',line)
@@ -288,11 +288,12 @@ def getAthenaVer():
                         if athenaVer.startswith('rel'):
                             tmpLog.error("Nightlies with AFS setup are unsupported on the grid. Setup with CVMFS")
                             return False,{}
-                        if items[0] in ['Athena']:
+                        if items[0].startswith('Athena'):
                             cacheVer  = '-{0}_{1}'.format(items[0],athenaVer)
                         else:                            
                             cacheVer  = '-AtlasOffline_%s' % athenaVer
-                        athenaVer = os.environ['AtlasBuildBranch']
+                        if useBuildStamp:
+                            athenaVer = os.environ['AtlasBuildBranch']
                 break
             # cache or analysis projects
             elif items[0] in ['AtlasProduction','AtlasPoint1','AtlasTier0','AtlasP1HLT',

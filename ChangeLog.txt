@@ -1,5 +1,8 @@
 ** Release Notes
 
+curent
+  * changed AthenaUtils for Athena 21.0
+
 0.5.79 (3/16/2017)
   * following the change to the project name in rel 22
   * increased record lifetime in pbook to 180 days
