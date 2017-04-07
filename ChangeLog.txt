@@ -1,6 +1,6 @@
 ** Release Notes
 
-curent
+0.5.80 (4/7/2017)
   * changed AthenaUtils for Athena 21.0
 
 0.5.79 (3/16/2017)
