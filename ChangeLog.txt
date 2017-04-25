@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.81 (4/25/2017)
+  * added nGBPerMergeJob to pathena/prun
+
 0.5.80 (4/7/2017)
   * changed AthenaUtils for Athena 21.0
 

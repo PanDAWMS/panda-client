@@ -66,6 +66,7 @@ optP.add_option('--nEventsPerJob', action='store', dest='nEventsPerJob',  defaul
 optP.add_option('--nEventsPerFile', action='store', dest='nEventsPerFile',  default=0,
                 type='int',    help='Number of events per file')
 optP.add_option('--nGBPerJob',action='store',dest='nGBPerJob',default=-1, help='Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value')
+optP.add_option('--nGBPerMergeJob',action='store',dest='nGBPerMergeJob',default=-1, help='Instantiate one merge job per NGBPERMERGEJOB GB of pre-merged files')
 optP.add_option('--site', action='store', dest='site',  default="AUTO",
                 type='string',    help='Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites')
 optP.add_option('--athenaTag',action='store',dest='athenaTag',default='',type='string',
@@ -2167,6 +2168,8 @@ if options.mergeOutput:
     taskParamMap['mergeSpec']['useLocalIO'] = 1
     taskParamMap['mergeSpec']['jobParameters'] = jobParameters
     taskParamMap['mergeOutput'] = True
+    if options.nGBPerMergeJob > 0:
+        taskParamMap['nGBPerMergeJob'] = options.nGBPerMergeJob
 
 # check task parameters
 PsubUtils.checkTaskParam(taskParamMap,options.unlimitNumOutputs)

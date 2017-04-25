@@ -206,6 +206,8 @@ optP.add_option('--skipScout', action='store_const',const=True,dest='skipScout',
                 help="skip scout jobs")
 optP.add_option('--respectSplitRule', action='store_const',const=True,dest='respectSplitRule',default=False,
                 help="force scout jobs to follow split rules like nGBPerJob")
+optP.add_option('--nGBPerMergeJob',action='store',dest='nGBPerMergeJob',default=-1,
+                help='Instantiate one merge job per NGBPERMERGEJOB GB of pre-merged files')
 optP.add_option('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
                 help="Please don't use this option. Only for developers to use the dev panda server")
 optP.add_option('--intrSrv', action='store_const', const=True, dest='intrSrv',  default=False,
@@ -1739,6 +1741,8 @@ if options.mergeOutput:
     taskParamMap['mergeSpec']['useLocalIO'] = 1
     taskParamMap['mergeSpec']['jobParameters'] = jobParameters
     taskParamMap['mergeOutput'] = True
+    if options.nGBPerMergeJob > 0:
+        taskParamMap['nGBPerMergeJob'] = options.nGBPerMergeJob
 
 # check task parameters
 PsubUtils.checkTaskParam(taskParamMap,options.unlimitNumOutputs)
