@@ -343,6 +343,15 @@ def getAthenaVer():
     # cmtconfig
     if os.environ.has_key('CMTCONFIG'):
         cmtConfig = os.environ['CMTCONFIG']
+    # last resort
+    if athenaVer == '':
+        if 'AtlasProject' in os.environ and 'AtlasBuildBranch' in os.environ:
+            prodVerStr = '{0}_VERSION'.format(os.environ['AtlasProject'])
+            if prodVerStr in os.environ:
+                athenaVer = os.environ['AtlasBuildBranch']
+                cacheVer = '-{0}_{1}'.format(os.environ['AtlasProject'],
+                                             os.environ[prodVerStr])
+                groupArea = ''
     # pack return values
     retVal = {
         'workArea' : workArea,

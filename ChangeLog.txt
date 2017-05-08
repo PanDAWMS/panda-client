@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.82 (5/8/2017)
+  * fixed getAthenaVer
+
 0.5.81 (4/25/2017)
   * added nGBPerMergeJob to pathena/prun
 
