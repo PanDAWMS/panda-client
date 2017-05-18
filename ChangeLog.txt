@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.83 (5/18/2017)
+  * fixed mergeOutput+useAthenaPackages
+
 0.5.82 (5/8/2017)
   * fixed getAthenaVer
 

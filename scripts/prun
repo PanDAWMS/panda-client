@@ -1729,6 +1729,10 @@ if options.mergeOutput:
         jobParameters += '-j "{0}" '.format(options.mergeScript)
     if options.rootVer != '':
         jobParameters += "--rootVer %s " % options.rootVer
+    if options.useAthenaPackages:
+        jobParameters += "--useAthenaPackages "
+    if AthenaUtils.useCMake():
+        jobParameters += "--useCMake "
     if options.useRootCore:
         jobParameters += "--useRootCore "
     if not (options.nobuild and not options.noCompile):
