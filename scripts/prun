@@ -729,13 +729,16 @@ elif options.athenaTag != '':
 	    cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
 	    if cmatch != None:
 		cacheVer += '_%s' % cmatch.group(1)
+            else:
+                cacheVer += '_%s' % match.group(1)
         else:
             # nightlies
             match = re.search('^(\d+\.\d+\.X|\d+\.X\.\d+)$',item)
             if match != None:
                 athenaVer = 'Atlas-%s' % match.group(1)
         # project
-        if item.startswith('Atlas') or item in listProjects:
+        if item.startswith('Atlas') or item in listProjects + ['Athena', 'AthAthDerivation'] \
+                or item.startswith('Athena'):
             # ignore AtlasOffline
             if item in ['AtlasOffline']:
                 continue

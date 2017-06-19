@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.84 (6/19/2017)
+  * fixed athenaTag
+
 0.5.83 (5/18/2017)
   * fixed mergeOutput+useAthenaPackages
 
