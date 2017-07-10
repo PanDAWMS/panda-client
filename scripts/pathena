@@ -325,8 +325,6 @@ optP.add_option('--useDirectIOSites', action='store_const', const=True, dest='us
                 help="Use only sites which use directIO to read input files")
 optP.add_option('--forceDirectIO', action='store_const', const=True, dest='forceDirectIO', default=False,
                 help="Use directIO if directIO is available at the site ")
-optP.add_option('--skipScout', action='store_const',const=True,dest='skipScout',default=False,
-                help="skip scout jobs")
 optP.add_option('--respectSplitRule', action='store_const',const=True,dest='respectSplitRule',default=False,
                 help="force scout jobs to follow split rules like nGBPerJob")
 optP.add_option('--devSrv', action='store_const', const=True, dest='devSrv',  default=False,
@@ -1661,8 +1659,6 @@ if options.split > 0 and options.nEventsPerJob > 0:
 taskParamMap['cliParams'] = fullExecString
 if options.noEmail:
     taskParamMap['noEmail'] = True
-if options.skipScout:
-    taskParamMap['skipScout'] = True
 if options.respectSplitRule:
     taskParamMap['respectSplitRule'] = True
 if options.disableAutoRetry:

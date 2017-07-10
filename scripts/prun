@@ -202,8 +202,6 @@ optP.add_option('--update', action='store_const', const=True, dest='update',  de
                 help='Update panda-client to the latest version')
 optP.add_option('--spaceToken',action='store',dest='spaceToken',default='',type='string',
                 help='spacetoken for outputs. e.g., ATLASLOCALGROUPDISK')
-optP.add_option('--skipScout', action='store_const',const=True,dest='skipScout',default=False,
-                help="skip scout jobs")
 optP.add_option('--respectSplitRule', action='store_const',const=True,dest='respectSplitRule',default=False,
                 help="force scout jobs to follow split rules like nGBPerJob")
 optP.add_option('--nGBPerMergeJob',action='store',dest='nGBPerMergeJob',default=-1,
@@ -1353,8 +1351,6 @@ if not options.nGBPerJob in [-1,'MAX']:
 taskParamMap['cliParams'] = fullExecString
 if options.noEmail:
     taskParamMap['noEmail'] = True
-if options.skipScout:
-    taskParamMap['skipScout'] = True
 if options.respectSplitRule:
     taskParamMap['respectSplitRule'] = True
 if options.disableAutoRetry:

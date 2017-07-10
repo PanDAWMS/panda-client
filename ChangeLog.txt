@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * removed --skipScout https://its.cern.ch/jira/browse/ATLASPANDA-385
+
 0.5.85 (6/30/2017)
   * added --sameSecRetry to pathena
 
