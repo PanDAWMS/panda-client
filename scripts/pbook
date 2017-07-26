@@ -1198,8 +1198,7 @@ def intmain(pbookCore,comString):
    kill
    retry
    clean
-   reassign
-   reproduce
+   finish
    killAndRetry
          
 For more info, do help(show) for example."""

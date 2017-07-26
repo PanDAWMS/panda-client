@@ -1,7 +1,8 @@
 ** Release Notes
 
-current
+0.5.86 (7/26/2017)
   * removed --skipScout https://its.cern.ch/jira/browse/ATLASPANDA-385
+  * fixed for AthAnalysis nightlies
 
 0.5.85 (6/30/2017)
   * added --sameSecRetry to pathena

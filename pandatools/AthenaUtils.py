@@ -264,7 +264,7 @@ def getAthenaVer():
         if res != None:
             items = line.split()
             if items[0].startswith('Athena') or \
-                    items[0] in ['AthDerivations','AnalysisBase','AthSimulation','AthDerivation']:
+                    items[0] in ['AthDerivations','AnalysisBase','AthSimulation','AthDerivation', 'AthAnalysis']:
                 isGitBase = True
             else:
                 isGitBase = False
