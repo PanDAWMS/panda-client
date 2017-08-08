@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * removing whitespaces from --inDS
+
 0.5.86 (7/26/2017)
   * removed --skipScout https://its.cern.ch/jira/browse/ATLASPANDA-385
   * fixed for AthAnalysis nightlies

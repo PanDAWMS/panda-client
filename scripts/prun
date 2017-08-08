@@ -598,6 +598,10 @@ if options.inputFileListName != '':
             filesToBeUsed.append(line)
     rFile.close()
     
+# remove whitespaces
+if options.inDS != '':
+    options.inDS = options.inDS.replace(' ', '')
+
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
 

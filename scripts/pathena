@@ -840,6 +840,10 @@ if options.inDS != '' and options.split > 0 and options.nFilesPerJob < 0 and opt
     tmpLog.error("--split requires --nFilesPerJob or --nFiles or --nEventsPerJob when --inDS is specified")
     sys.exit(EC_Config)
 
+# remove whitespaces
+if options.inDS != '':
+    options.inDS = options.inDS.replace(' ', '')
+
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
 
