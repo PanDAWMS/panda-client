@@ -202,7 +202,7 @@ optP.add_option('--update', action='store_const', const=True, dest='update',  de
                 help='Update panda-client to the latest version')
 optP.add_option('--spaceToken',action='store',dest='spaceToken',default='',type='string',
                 help='spacetoken for outputs. e.g., ATLASLOCALGROUPDISK')
-optP.add_option('--skipScoutExpertOnly', action='store_const',const=True,dest='skipScout',default=False,
+optP.add_option('--expertOnly_skipScout', action='store_const',const=True,dest='skipScout',default=False,
                 help=optparse.SUPPRESS_HELP)
 optP.add_option('--respectSplitRule', action='store_const',const=True,dest='respectSplitRule',default=False,
                 help="force scout jobs to follow split rules like nGBPerJob")
@@ -284,29 +284,29 @@ optP.add_option('--skipFilesUsedBy', action='store',dest='skipFilesUsedBy',defau
                 type='string', help='A comma-separated list of TaskIDs. Files used by those tasks are skipped when running a new task')
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_cacheSrvURL', action='store', dest='panda_cacheSrvURL', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_srcName', action='store', dest='panda_srcName', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_inDS', action='store', dest='panda_inDS', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_inDSForEP', action='store', dest='panda_inDSForEP', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_jobsetID',action='store',dest='panda_jobsetID',default=-1,
-                type='int', help='internal parameter for jobsetID')
+                type='int', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_parentJobsetID',action='store',dest='panda_parentJobsetID',default=-1,
-                type='int', help='internal parameter for jobsetID')
+                type='int', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_dbRelease', action='store', dest='panda_dbRelease', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_exec', action='store', dest='panda_exec', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_bexec', action='store', dest='panda_bexec', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_suppressMsg',action='store_const',const=True,dest='panda_suppressMsg',default=False,
-                help='internal parameter')
+                help=optparse.SUPPRESS_HELP)
 
 # parse options
 options,args = optP.parse_args()

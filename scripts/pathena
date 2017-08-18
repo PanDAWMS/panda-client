@@ -325,7 +325,7 @@ optP.add_option('--useDirectIOSites', action='store_const', const=True, dest='us
                 help="Use only sites which use directIO to read input files")
 optP.add_option('--forceDirectIO', action='store_const', const=True, dest='forceDirectIO', default=False,
                 help="Use directIO if directIO is available at the site ")
-optP.add_option('--skipScoutExpertOnly', action='store_const',const=True,dest='skipScout',default=False,
+optP.add_option('--expertOnly_skipScout', action='store_const',const=True,dest='skipScout',default=False,
                 help=optparse.SUPPRESS_HELP)
 optP.add_option('--respectSplitRule', action='store_const',const=True,dest='respectSplitRule',default=False,
                 help="force scout jobs to follow split rules like nGBPerJob")
@@ -386,39 +386,39 @@ optP.add_option('--useRucio',action='store_const',const=True,dest='useRucio',def
                 help="Use Rucio as DDM backend")
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_cacheSrvURL', action='store', dest='panda_cacheSrvURL', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_runConfig', action='store', dest='panda_runConfig', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_srcName', action='store', dest='panda_srcName', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_inDS', action='store', dest='panda_inDS', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_inDSForEP', action='store', dest='panda_inDSForEP', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_jobsetID',action='store',dest='panda_jobsetID',default=-1,
-                type='int', help='internal parameter for jobsetID')
+                type='int', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_parentJobsetID',action='store',dest='panda_parentJobsetID',default=-1,
-                type='int', help='internal parameter for jobsetID')
+                type='int', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_dbRelease', action='store', dest='panda_dbRelease', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_singleLine', action='store', dest='panda_singleLine', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_trf', action='store', dest='panda_trf', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_eventPickRunEvtDat', action='store', dest='panda_eventPickRunEvtDat', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_devidedByGUID',action='store_const',const=True,dest='panda_devidedByGUID',default=False,
-                help='internal parameter')
+                help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_suppressMsg',action='store_const',const=True,dest='panda_suppressMsg',default=False,
-                help='internal parameter')
+                help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_fullPathJobOs',action='store', dest='panda_fullPathJobOs', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 optP.add_option('--panda_tagParentFile',action='store', dest='panda_tagParentFile', default='',
-                type='string', help='internal parameter')
+                type='string', help=optparse.SUPPRESS_HELP)
 
 # parse options
 options,args = optP.parse_args()
