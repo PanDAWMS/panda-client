@@ -263,7 +263,7 @@ def getAthenaVer():
         res = re.search('\(in ([^\)]+)\)',line)
         if res != None:
             items = line.split()
-            if items[0].startswith('Athena') or \
+            if items[0].startswith('Athena') or items[0].startswith('Analysis') or \
                     items[0] in ['AthDerivations','AnalysisBase','AthSimulation','AthDerivation', 'AthAnalysis']:
                 isGitBase = True
             else:

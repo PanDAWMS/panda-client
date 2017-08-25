@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.88 (8/25/2017)
+  * fixed for AnalysisXYZ nightlies
+
 0.5.87 (7/26/2017)
   * removing whitespaces from --inDS
   * renamed an option
