@@ -369,6 +369,12 @@ def refreshSpecs():
     if tmpStat != 0:
         print "ERROR : cannot get Panda Sites"
         sys.exit(EC_Failed)
+    for id, val in PandaSites.iteritems():
+        if 'setokens' not in val:
+            if 'setokens_output' in val:
+                val['setokens'] = val['setokens_output']
+            else:
+                val['setokens'] = {}
     # get cloud info
     tmpStat,PandaClouds = getCloudSpecs()
     if tmpStat != 0:
