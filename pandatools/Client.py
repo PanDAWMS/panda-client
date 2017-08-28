@@ -3663,8 +3663,6 @@ def getTier1sites():
             for tmpPandaSite in tmpPandaSites:
                 if not tmpPandaSite in PandaTier1Sites:
                     PandaTier1Sites.append(tmpPandaSite)
-getTier1sites()
-
 
 # set X509_CERT_DIR
 if os.environ.has_key('PANDA_DEBUG'):
