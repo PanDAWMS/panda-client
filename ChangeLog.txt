@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.91 (9/9/2017)
+  * using respectSplitRule by default
+
 0.5.90 (8/28/2017)
   * more fixed to remove setokens
 

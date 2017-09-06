@@ -1685,6 +1685,7 @@ if options.memory > 0:
     taskParamMap['ramCount'] = options.memory
 if options.skipFilesUsedBy != '':
     taskParamMap['skipFilesUsedBy'] = options.skipFilesUsedBy
+taskParamMap['respectSplitRule'] = True
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:
