@@ -397,6 +397,8 @@ def convertJTtoD(jediTaskDict,localJob=None):
             ddata.jobParams = jediTaskDict['cliParams'].encode('utf_8')
         else:
             ddata.jobParams = jediTaskDict['cliParams']
+        # truncate
+        ddata.jobParams = ddata.jobParams[:1024]
     except:
         pass
     # input datasets

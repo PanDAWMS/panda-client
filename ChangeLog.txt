@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.92 (9/27/2017)
+  * added a protection in pbook against too long cliParams
+
 0.5.91 (9/9/2017)
   * using respectSplitRule by default
 
