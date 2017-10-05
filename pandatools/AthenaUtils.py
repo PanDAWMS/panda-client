@@ -272,7 +272,8 @@ def getAthenaVer():
             if items[0] in ('dist','AtlasRelease','AtlasOffline','AtlasAnalysis','AtlasTrigger',
                             'AtlasReconstruction') or isGitBase:
                 # Atlas release
-                if 'AtlasBuildStamp' in os.environ:
+                if 'AtlasBuildStamp' in os.environ and ('AtlasReleaseType' not in os.environ or \
+                                                            os.environ['AtlasReleaseType'] != 'stable'):
                     athenaVer = os.environ['AtlasBuildStamp']
                     useBuildStamp = True
                 else:

@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.5.93 (10/5/2017)
+  * fixed for AtlasBuildStamp of stable releases
+
 0.5.92 (9/27/2017)
   * added a protection in pbook against too long cliParams
 
