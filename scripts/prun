@@ -120,6 +120,8 @@ optP.add_option('--skipScan',action='store_const',const=True,dest='skipScan',def
                 help='Skip LFC lookup at job submission')
 optP.add_option('--memory',action='store',dest='memory',default=-1,type='int',
                 help='Required memory size in MB. e.g., for 1GB --memory 1024')
+optP.add_option('--nCore', action='store', dest='nCore', default=-1, type='int',
+                help='the number of CPU cores')
 optP.add_option('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type='int',
                 help='Required CPU count in seconds. Mainly to extend time limit for looping job detection')
 optP.add_option('--safetySize',action='store',dest='safetySize',default=500,type='int',
@@ -1376,6 +1378,8 @@ if options.maxCpuCount > 0:
     taskParamMap['walltime'] = -options.maxCpuCount
 if options.memory > 0:
     taskParamMap['ramCount'] = options.memory
+if options.nCore > 1:
+    taskParamMap['coreCount'] = options.nCore
 if options.skipFilesUsedBy != '':
     taskParamMap['skipFilesUsedBy'] = options.skipFilesUsedBy
 taskParamMap['respectSplitRule'] = True

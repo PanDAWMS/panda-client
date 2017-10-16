@@ -734,7 +734,7 @@ def matchExtFile(fileName):
             if patt == baseName:
                 return True
             # patt may contain / for sub dir
-            if patt != '' and re.search(patt+'$',fileName) != None:
+            if patt != '' and re.search(patt,fileName) != None:
                 return True
         else:
             # use regex for *
@@ -742,7 +742,7 @@ def matchExtFile(fileName):
             if re.search(tmpPatt,baseName) != None:
                 return True
             # patt may contain / for sub dir
-            if patt != '' and re.search(tmpPatt+'$',fileName) != None:
+            if patt != '' and re.search(tmpPatt,fileName) != None:
                 return True
     # not matched
     return False
