@@ -109,6 +109,8 @@ optP.add_option('--eventPickEvtList',action='store',dest='eventPickEvtList',defa
                 type='string', help='a file name which contains a list of runs/events for event picking')
 optP.add_option('--eventPickDataType',action='store',dest='eventPickDataType',default='',
                 type='string', help='type of data for event picking. one of AOD,ESD,RAW')
+optP.add_option('--api',action='store',dest='api',default='',
+                type='string', help='flag to signalise mc in event picking')
 optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName',default='',
                 type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
 optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
