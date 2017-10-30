@@ -812,6 +812,7 @@ if options.eventPickEvtList != '':
                                                      fullExecString,
                                                      options.eventPickNumSites,
                                                      options.eventPickWithGUID,
+                                                     options.api,
                                                      options.verbose)
         # set input dataset 
         options.inDS = epOutput
