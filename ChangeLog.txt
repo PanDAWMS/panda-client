@@ -1,7 +1,7 @@
 ** Release Notes
 
-0.5.95 (10/30/2017)
-  * added --api
+0.5.95 (11/01/2017)
+  * added --ei_api
 
 0.5.94 (10/5/2017)
   * added --nCore
