@@ -71,19 +71,6 @@ try:
     socket.setdefaulttimeout(60)
 except:
     pass
-# get panda server's name
-if os.environ.has_key('PANDA_DEBUG'):
-    print "DEBUG : getting panda server's name"
-try:
-    getServerURL = baseURL + '/getServer'
-    res = urllib.urlopen(getServerURL)
-    # overwrite URL
-    baseURLSSL = "https://%s/server/panda" % res.read()
-except:
-    type, value, traceBack = sys.exc_info()
-    print type,value
-    print "ERROR : could not getServer from %s" % getServerURL
-    sys.exit(EC_Failed)
 if os.environ.has_key('PANDA_DEBUG'):
     print "DEBUG : getting panda cache server's name"
 # get panda cache server's name

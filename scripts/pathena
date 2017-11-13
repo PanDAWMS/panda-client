@@ -846,6 +846,11 @@ if options.inDS != '' and options.split > 0 and options.nFilesPerJob < 0 and opt
 if options.inDS != '':
     options.inDS = options.inDS.replace(' ', '')
 
+# warning
+if options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
+    tmpLog.warning("Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
+                   "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option.")
+
 # check grid-proxy
 gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
 
