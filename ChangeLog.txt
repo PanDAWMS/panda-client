@@ -1,7 +1,10 @@
 ** Release Notes
 
-0.5.95 (11/13/2017)
+0.5.96 (11/13/2017)
   * added a warning message for --nFilesPerJob
+
+0.5.95 (11/01/2017)
+  * added --ei_api to enable "api" parameter in event index for MC data
 
 0.5.94 (10/5/2017)
   * added --nCore

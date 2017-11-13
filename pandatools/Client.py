@@ -3243,7 +3243,7 @@ def checkQueuedAnalJobs(site,verbose=False):
 # request EventPicking
 def requestEventPicking(eventPickEvtList,eventPickDataType,eventPickStreamName,
                         eventPickDS,eventPickAmiTag,fileList,fileListName,outDS,
-                        lockedBy,params,eventPickNumSites,eventPickWithGUID,
+                        lockedBy,params,eventPickNumSites,eventPickWithGUID,ei_api,
                         verbose=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -3282,6 +3282,8 @@ def requestEventPicking(eventPickEvtList,eventPickDataType,eventPickStreamName,
             }
     if eventPickNumSites > 1:
         data['eventPickNumSites'] = eventPickNumSites
+    if ei_api:
+        data['ei_api'] = ei_api
     evpFile.close()
     status,output = curl.post(url,data)
     # failed
