@@ -702,10 +702,13 @@ def setExcludeFile(strExcludeFile):
     if strExcludeFile == '':
         strExcludeFile = 'jobReport.json,jobReport.txt,jobReportExtract.pickle'
     else:
-        strExcludeFile += 'jobReport.json,jobReport.txt,jobReportExtract.pickle'
+        strExcludeFile += ',jobReport.json,jobReport.txt,jobReportExtract.pickle'
     # convert to list
     global excludeFile
     for tmpItem in strExcludeFile.split(','):
+        tmpItem = tmpItem.strip()
+        if tmpItem == '':
+            continue
         # change . to \. for regexp
         tmpItem = tmpItem.replace('.','\.')        
         # change * to .* for regexp

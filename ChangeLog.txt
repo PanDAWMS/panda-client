@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * fixed --excludeFile
+
 0.5.96 (11/13/2017)
   * added a warning message for --nFilesPerJob
 
