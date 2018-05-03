@@ -286,6 +286,8 @@ optP.add_option('--useRucio',action='store_const',const=True,dest='useRucio',def
                 help="Use Rucio as DDM backend")
 optP.add_option('--skipFilesUsedBy', action='store',dest='skipFilesUsedBy',default='',
                 type='string', help='A comma-separated list of TaskIDs. Files used by those tasks are skipped when running a new task')
+optP.add_option('--maxAttempt', action='store', dest='maxAttempt', default=-1,
+                type='int', help='Maximum number of reattempts for each job (3 by default and not larger than 50)')
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help=optparse.SUPPRESS_HELP)
@@ -1395,6 +1397,8 @@ if options.nCore > 1:
 if options.skipFilesUsedBy != '':
     taskParamMap['skipFilesUsedBy'] = options.skipFilesUsedBy
 taskParamMap['respectSplitRule'] = True
+if options.maxAttempt >0 and options.maxAttempt <= 50:
+    taskParamMap['maxAttempt'] = options.maxAttempt
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:
@@ -1607,8 +1611,11 @@ if options.dbRelease != '':
 
 # secondary
 if options.secondaryDSs != {}:
-    inMap = {'IN':'tmp_IN'}
-    streamNames = ['IN']
+    inMap = {}
+    streamNames = []
+    if options.inDS != '':
+	inMap['IN'] = 'tmp_IN'
+	streamNames.append('IN')
     for tmpDsName,tmpMap in options.secondaryDSs.iteritems():
         # make template item
         streamName = tmpMap['streamName']
