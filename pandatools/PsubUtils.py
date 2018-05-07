@@ -318,18 +318,15 @@ def getNickname():
             if match != None:
                 nickName = match.group(1)
                 break
-    # check        
+    # check
     if nickName == '':
         # get logger
         tmpLog = PLogger.getPandaLogger()
-        wMessage =  'Could not get nickname from voms proxy\n'
-        wMessage += 'Please register nickname to ATLAS VO via\n\n'
+        wMessage =  'Could not get nickname by using voms-proxy-info which gave\n\n'
+        wMessage += output
+        wMessage += '\nPlease register nickname to ATLAS VO via\n\n'
         wMessage += '   https://lcg-voms.cern.ch:8443/vo/atlas/vomrs\n'
-        wMessage += '      [Member Info] -> [Edit Personal Info]\n\n'
-        wMessage += 'Then you can use new naming convention "user.nickname" for --outDS. '
-        wMessage += 'Note that as of Aug 2nd 2010 old convention '
-        wMessage += '"userXY.FirstLastname" will be terminated.\n'
-        wMessage += 'See the announcement : https://savannah.cern.ch/forum/forum.php?forum_id=1259\n'
+        wMessage += '      [Member Info] -> [Edit Personal Info]'
         print
         tmpLog.warning(wMessage)
         print
