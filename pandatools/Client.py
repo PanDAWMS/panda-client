@@ -2100,9 +2100,8 @@ def getMissLFNsFromLFC(fileMap,site,explicitSE,verbose=False,nFiles=0,shadowList
 def _getGridSrc():
     # set Grid setup.sh if needed
     status,out = commands.getstatusoutput('voms-proxy-info --version')
-    stLFC,outLFC = commands.getstatusoutput('python -c "import lfc"')
     athenaStatus,athenaPath = commands.getstatusoutput('which athena.py')
-    if status == 0 and stLFC == 0:
+    if status == 0:
         gridSrc = ''
         if athenaStatus == 0 and athenaPath.startswith('/afs/in2p3.fr'):
             # for LYON, to avoid missing LD_LIBRARY_PATH

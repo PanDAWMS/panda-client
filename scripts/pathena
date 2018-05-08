@@ -377,6 +377,8 @@ optP.add_option('--skipFilesUsedBy', action='store', dest='skipFilesUsedBy', def
                 type='string', help='A comma-separated list of TaskIDs. Files used by those tasks are skipped when running a new task')
 optP.add_option('--maxAttempt', action='store', dest='maxAttempt', default=-1,
                 type='int', help='Maximum number of reattempts for each job (3 by default and not larger than 50)')
+optP.add_option('--containerImage', action='store', dest='containerImage', default='',
+                type='string', help="Name of a container image")
 # athena options
 optP.add_option('-c',action='store',dest='singleLine',type='string',default='',metavar='COMMAND',
                 help='One-liner, runs before any jobOs')
@@ -1845,6 +1847,9 @@ if options.shipinput:
 # event picking
 if options.eventPickEvtList != '':
     param += '--eventPickTxt=%s ' % eventPickRunEvtDat.split('/')[-1]
+# container
+if options.containerImage != '':
+    param += "--containerImage {0} ".format(options.containerImage)
 # assign
 if param != '':
     taskParamMap['jobParameters'] += [
@@ -2144,6 +2149,9 @@ else:
     # debug parameters
     if options.queueData != '':
         jobParameters += "--overwriteQueuedata=%s " % options.queueData
+    # container
+    if options.containerImage != '':
+        jobParameters += "--containerImage {0} ".format(options.containerImage)
     # set task param
     taskParamMap['buildSpec'] = {
         'prodSourceLabel':'panda',
@@ -2186,6 +2194,8 @@ if options.mergeOutput:
     jobParameters += "--useAthenaPackages "
     if AthenaUtils.useCMake():
         jobParameters += "--useCMake "
+    if options.containerImage != '':
+        jobParameters += "--containerImage {0} ".format(options.containerImage)
     jobParameters += '${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}'
     taskParamMap['mergeSpec'] = {}
     taskParamMap['mergeSpec']['useLocalIO'] = 1

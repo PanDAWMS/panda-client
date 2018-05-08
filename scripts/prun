@@ -288,6 +288,8 @@ optP.add_option('--skipFilesUsedBy', action='store',dest='skipFilesUsedBy',defau
                 type='string', help='A comma-separated list of TaskIDs. Files used by those tasks are skipped when running a new task')
 optP.add_option('--maxAttempt', action='store', dest='maxAttempt', default=-1,
                 type='int', help='Maximum number of reattempts for each job (3 by default and not larger than 50)')
+optP.add_option('--containerImage', action='store', dest='containerImage', default='',
+                type='string', help="Name of a container image")
 # internal parameters
 optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
                 type='string', help=optparse.SUPPRESS_HELP)
@@ -1676,6 +1678,9 @@ if options.enableJEM:
     jobParameters += "--enable-jem "
     if options.configJEM != '':
         jobParameters += "--jem-config %s " % options.configJEM
+# container
+if options.containerImage != '':
+    jobParameters += "--containerImage {0} ".format(options.containerImage)
 # set task param
 if jobParameters != '':
     taskParamMap['jobParameters'] += [ 
@@ -1723,6 +1728,9 @@ else:
     # debug parameters
     if options.queueData != '':
         jobParameters += "--overwriteQueuedata=%s " % options.queueData
+    # container
+    if options.containerImage != '':
+        jobParameters += "--containerImage {0} ".format(options.containerImage)
     # set task param
     taskParamMap['buildSpec'] = {
         'prodSourceLabel':'panda',
@@ -1766,6 +1774,8 @@ if options.mergeOutput:
         jobParameters += "--useCMake "
     if options.useRootCore:
         jobParameters += "--useRootCore "
+    if options.containerImage != '':
+        jobParameters += "--containerImage {0} ".format(options.containerImage)
     if not (options.nobuild and not options.noCompile):
         jobParameters += '-l ${LIB} '
     else:

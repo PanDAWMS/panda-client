@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * added --containerImage
+
 0.5.98 (5/7/2018)
   * added more messages when failed to extract nickname
 
