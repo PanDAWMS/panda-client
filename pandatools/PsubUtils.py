@@ -262,8 +262,8 @@ def getCloudUsingFQAN(defaultCloud,verbose=False,randomCloud=[]):
 
 
 # convert DQ2 ID to Panda siteid 
-def convertDQ2toPandaID(site):
-    return Client.convertDQ2toPandaID(site)
+def convertDQ2toPandaID(site, getAll=False):
+    return Client.convertDQ2toPandaID(site, getAll=getAll)
 
 # get DN
 def getDN():

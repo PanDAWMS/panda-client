@@ -429,8 +429,9 @@ def getSE(site):
 
 
 # convert DQ2 ID to Panda siteid 
-def convertDQ2toPandaID(site):
+def convertDQ2toPandaID(site, getAll=False):
     keptSite = ''
+    siteList = []
     for tmpID,tmpSpec in PandaSites.iteritems():
         # # exclude long,xrootd,local queues
         if isExcudedSite(tmpID):
@@ -444,7 +445,11 @@ def convertDQ2toPandaID(site):
             keptSite = tmpID
             # keep non-online site just in case
             if tmpSpec['status']=='online':
-                return keptSite
+                if not getAll:
+                    return keptSite
+                siteList.append(keptSite)
+    if getAll:
+        return ','.join(siteList)
     return keptSite
 
 

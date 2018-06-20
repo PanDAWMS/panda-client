@@ -1,6 +1,7 @@
 ** Release Notes
 
-current
+0.5.99 (6/20/2018)
+  * fixed --site=RSE
   * added --containerImage
 
 0.5.98 (5/7/2018)

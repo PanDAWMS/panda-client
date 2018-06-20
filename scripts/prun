@@ -946,25 +946,25 @@ if options.site != 'AUTO':
     # patch for BNL
     if options.site in ['BNL',"ANALY_BNL"]:
         options.site = "ANALY_BNL_SHORT"
-    # patch for CERN
-    if options.site in ['CERN']:
-        options.site = "ANALY_CERN_XROOTD"        
     # try to convert DQ2ID to PandaID
-    pID = PsubUtils.convertDQ2toPandaID(options.site)
+    pID = PsubUtils.convertDQ2toPandaID(options.site, getAll=True)
     if pID != '':
+	if ',' in pID:
+	    includedSite = pID.split(',')
+	    pID = 'AUTO'
         options.site = pID
     # add ANALY
-    if not options.site.startswith('ANALY_'):
-        options.site = 'ANALY_%s' % options.site
-    # check
-    if not Client.PandaSites.has_key(options.site):
-        tmpLog.error("unknown siteID:%s" % origSite)
-        sys.exit(EC_Config)
+    if options.site != 'AUTO':
+	if not options.site.startswith('ANALY_'):
+	    options.site = 'ANALY_%s' % options.site
+        # check
+        if not Client.PandaSites.has_key(options.site):
+            tmpLog.error("unknown siteID:%s" % origSite)
+            sys.exit(EC_Config)
+        # set cloud
+        options.cloud = Client.PandaSites[options.site]['cloud']
     # add logging info
     userBrokerLogs = PsubUtils.getUserBrokerageInfo(options.site,'site',userBrokerLogs)
-    # set cloud
-    options.cloud = Client.PandaSites[options.site]['cloud']
-
         
 # get DN
 distinguishedName = PsubUtils.getDN()
@@ -1228,7 +1228,7 @@ else:
 	    print out
 
 	# check archive
-	status,out = commands.getstatusoutput('ls -l %s' % archiveName)
+	status,out = commands.getstatusoutput('ls -l {0}'.format(archiveName))
 	if options.verbose:
 	    print out
 	if status != 0:

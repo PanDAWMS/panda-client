@@ -1241,7 +1241,7 @@ def archiveWithCpack(withSource,tmpDir,verbose):
     archiveName += '.tar'
     archiveFullName += '.tar'
     os.chdir(tmpDir)
-    comStr = 'tar xfz {0}.gz; tar cf {0} usr > /dev/null 2>&1; rm -rf usr {0}.gz'.format(archiveName)
+    comStr = 'tar xfz {0}.gz; tar cf {0} usr > /dev/null 2>&1; rm -rf usr _CPack_Packages {0}.gz'.format(archiveName)
     subprocess.call(comStr,shell=True)
     os.chdir(_curdir)
     return archiveName,archiveFullName
