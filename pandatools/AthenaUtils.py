@@ -410,8 +410,12 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
         if useAMI:
             amiJobO = getJobOtoUseAmiForAutoConf(inDS,tmpDir)
         baseName = os.environ['PANDA_SYS'] + "/etc/panda/share"
-        com = 'athena.py %s %s/FakeAppMgr.py %s %s/ConfigExtractor.py' % \
-              (amiJobO,baseName,jobO,baseName)
+        if ' - ' in jobO:
+            jobO = re.sub(' - ', ' %s/ConfigExtractor.py - ' % baseName, jobO)
+        else:
+            jobO = jobO + ' %s/ConfigExtractor.py ' % baseName
+        com = 'athena.py %s %s/FakeAppMgr.py %s' % \
+              (amiJobO,baseName,jobO)
         if verbose:
             tmpLog.debug(com)
         # run ConfigExtractor for normal jobO

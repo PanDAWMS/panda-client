@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.6.0 (7/10/2018)
+  * support for - user_args in pathena
+  * using argparse in pathena
+
 0.5.99 (6/20/2018)
   * fixed --site=RSE
   * added --containerImage

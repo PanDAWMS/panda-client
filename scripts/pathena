@@ -10,7 +10,7 @@ import copy
 import shutil
 import atexit
 import commands
-import optparse
+import argparse
 import shelve
 import datetime
 import urllib
@@ -44,394 +44,360 @@ defaultCloud = None
 # max lookup for cross site option
 maxCrossSite = 50
 
-usage = """%prog [options] <jobOption1.py> [<jobOption2.py> [...]]
+usage = """pathena [options] <jobOption1.py> [<jobOption2.py> [...]]
 
-'%prog --help' prints a summary of the options
+pathena --help' prints a summary of the options
 
   HowTo is available at https://twiki.cern.ch/twiki/bin/view/PanDA/PandaAthena"""
 
 
 # command-line parameters
-optP = optparse.OptionParser(usage=usage,conflict_handler="resolve")
+optP = argparse.ArgumentParser(usage=usage,conflict_handler="resolve")
 # special options
-optP.add_option('--version',action='store_const',const=True,dest='version',default=False,
+optP.add_argument('--version',action='store_const',const=True,dest='version',default=False,
                 help='Displays version')
-optP.add_option('--split', action='store', dest='split',  default=-1,
-                type='int',    help='Number of sub-jobs to be generated. This option is the same as --nJobs')
-optP.add_option('--nJobs', action='store', dest='nJobs',  default=-1,
-                type='int',    help='Number of sub-jobs to be generated. This option is the same as --split')
-optP.add_option('--nFilesPerJob', action='store', dest='nFilesPerJob',  default=-1, type='int', help='Number of files on which each sub-job runs')
-optP.add_option('--nEventsPerJob', action='store', dest='nEventsPerJob',  default=-1,
-                type='int',    help='Number of events per subjob. This info is used mainly for job splitting. If you run on MC datasets, the total number of subjobs is nEventsPerFile*nFiles/nEventsPerJob. For data, the number of events for each file is retrieved from AMI and subjobs are created accordingly. Note that if you run transformations you need to explicitly specify maxEvents or something in --trf to set the number of events processed in each subjob. If you run normal jobOption files, evtMax and skipEvents in appMgr are automatically set on WN.')
-optP.add_option('--nEventsPerFile', action='store', dest='nEventsPerFile',  default=0,
-                type='int',    help='Number of events per file')
-optP.add_option('--nGBPerJob',action='store',dest='nGBPerJob',default=-1, help='Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value')
-optP.add_option('--nGBPerMergeJob',action='store',dest='nGBPerMergeJob',default=-1, help='Instantiate one merge job per NGBPERMERGEJOB GB of pre-merged files')
-optP.add_option('--site', action='store', dest='site',  default="AUTO",
-                type='string',    help='Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites')
-optP.add_option('--athenaTag',action='store',dest='athenaTag',default='',type='string',
+optP.add_argument('--split', action='store', dest='split',  default=-1,
+                type=int,    help='Number of sub-jobs to be generated. This option is the same as --nJobs')
+optP.add_argument('--nJobs', action='store', dest='nJobs',  default=-1,
+                type=int,    help='Number of sub-jobs to be generated. This option is the same as --split')
+optP.add_argument('--nFilesPerJob', action='store', dest='nFilesPerJob',  default=-1, type=int, help='Number of files on which each sub-job runs')
+optP.add_argument('--nEventsPerJob', action='store', dest='nEventsPerJob',  default=-1,
+                type=int,    help='Number of events per subjob. This info is used mainly for job splitting. If you run on MC datasets, the total number of subjobs is nEventsPerFile*nFiles/nEventsPerJob. For data, the number of events for each file is retrieved from AMI and subjobs are created accordingly. Note that if you run transformations you need to explicitly specify maxEvents or something in --trf to set the number of events processed in each subjob. If you run normal jobOption files, evtMax and skipEvents in appMgr are automatically set on WN.')
+optP.add_argument('--nEventsPerFile', action='store', dest='nEventsPerFile',  default=0,
+                type=int,    help='Number of events per file')
+optP.add_argument('--nGBPerJob',action='store',dest='nGBPerJob',default=-1, help='Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value')
+optP.add_argument('--nGBPerMergeJob',action='store',dest='nGBPerMergeJob',default=-1, help='Instantiate one merge job per NGBPERMERGEJOB GB of pre-merged files')
+optP.add_argument('--site', action='store', dest='site',  default="AUTO",
+                type=str,    help='Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites')
+optP.add_argument('--athenaTag',action='store',dest='athenaTag',default='',type=str,
                 help='Use differnet version of Athena on remote WN. By defualt the same version which you are locally using is set up on WN. e.g., --athenaTag=AtlasProduction,14.2.24.3')
-optP.add_option('--inDS',  action='store', dest='inDS',  default='',
-                type='string', help='Input dataset names. wildcard and/or comma can be used to concatenate multiple datasets')
-optP.add_option('--inDsTxt',action='store',dest='inDsTxt',default='',
-                type='string', help='a text file which contains the list of datasets to run over. newlines are replaced by commas and the result is set to --inDS. lines starting with # are ignored')
-optP.add_option('--minDS',  action='store', dest='minDS',  default='',
-                type='string', help='Dataset name for minimum bias stream')
-optP.add_option('--nMin',  action='store', dest='nMin',  default=-1,
-                type='int', help='Number of minimum bias files per sub job')
-optP.add_option('--lowMinDS',  action='store', dest='lowMinDS',  default='',
-                type='string', help='Dataset name for low pT minimum bias stream')
-optP.add_option('--nLowMin',  action='store', dest='nLowMin',  default=-1,
-                type='int', help='Number of low pT minimum bias files per job')
-optP.add_option('--highMinDS',  action='store', dest='highMinDS',  default='',
-                type='string', help='Dataset name for high pT minimum bias stream')
-optP.add_option('--nHighMin',  action='store', dest='nHighMin',  default=-1,
-                type='int', help='Number of high pT minimum bias files per job')
-optP.add_option('--randomMin',action='store_const',const=True,dest='randomMin',default=False,
+optP.add_argument('--inDS',  action='store', dest='inDS',  default='',
+                type=str, help='Input dataset names. wildcard and/or comma can be used to concatenate multiple datasets')
+optP.add_argument('--inDsTxt',action='store',dest='inDsTxt',default='',
+                type=str, help='a text file which contains the list of datasets to run over. newlines are replaced by commas and the result is set to --inDS. lines starting with # are ignored')
+optP.add_argument('--minDS',  action='store', dest='minDS',  default='',
+                type=str, help='Dataset name for minimum bias stream')
+optP.add_argument('--nMin',  action='store', dest='nMin',  default=-1,
+                type=int, help='Number of minimum bias files per sub job')
+optP.add_argument('--lowMinDS',  action='store', dest='lowMinDS',  default='',
+                type=str, help='Dataset name for low pT minimum bias stream')
+optP.add_argument('--nLowMin',  action='store', dest='nLowMin',  default=-1,
+                type=int, help='Number of low pT minimum bias files per job')
+optP.add_argument('--highMinDS',  action='store', dest='highMinDS',  default='',
+                type=str, help='Dataset name for high pT minimum bias stream')
+optP.add_argument('--nHighMin',  action='store', dest='nHighMin',  default=-1,
+                type=int, help='Number of high pT minimum bias files per job')
+optP.add_argument('--randomMin',action='store_const',const=True,dest='randomMin',default=False,
                 help='randomize files in minimum bias dataset')
-optP.add_option('--cavDS',  action='store', dest='cavDS',  default='',
-                type='string', help='Dataset name for cavern stream')
-optP.add_option('--nCav',  action='store', dest='nCav',  default=-1,
-                type='int', help='Number of cavern files per job')
-optP.add_option('--randomCav',action='store_const',const=True,dest='randomCav',default=False,
+optP.add_argument('--cavDS',  action='store', dest='cavDS',  default='',
+                type=str, help='Dataset name for cavern stream')
+optP.add_argument('--nCav',  action='store', dest='nCav',  default=-1,
+                type=int, help='Number of cavern files per job')
+optP.add_argument('--randomCav',action='store_const',const=True,dest='randomCav',default=False,
                 help='randomize files in cavern dataset')
-optP.add_option('--libDS', action='store', dest='libDS', default='',
-                type='string', help='Name of a library dataset')
-optP.add_option('--goodRunListXML', action='store', dest='goodRunListXML', default='',
-                type='string', help='Good Run List XML which will be converted to datasets by AMI')
-optP.add_option('--goodRunListDataType', action='store', dest='goodRunDataType', default='',
-                type='string', help='specify data type when converting Good Run List XML to datasets, e.g, AOD (default)')
-optP.add_option('--goodRunListProdStep', action='store', dest='goodRunProdStep', default='',
-                type='string', help='specify production step when converting Good Run List to datasets, e.g, merge (default)')
-optP.add_option('--goodRunListDS', action='store', dest='goodRunListDS', default='',
-                type='string', help='A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used')
-optP.add_option('--eventPickEvtList',action='store',dest='eventPickEvtList',default='',
-                type='string', help='a file name which contains a list of runs/events for event picking')
-optP.add_option('--eventPickDataType',action='store',dest='eventPickDataType',default='',
-                type='string', help='type of data for event picking. one of AOD,ESD,RAW')
-optP.add_option('--ei_api',action='store',dest='ei_api',default='',
-                type='string', help='flag to signalise mc in event picking')
-optP.add_option('--eventPickStreamName',action='store',dest='eventPickStreamName',default='',
-                type='string', help='stream name for event picking. e.g., physics_CosmicCaloEM')
-optP.add_option('--eventPickDS',action='store',dest='eventPickDS',default='',
-                type='string', help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
-optP.add_option('--eventPickStagedDS',action='store',dest='eventPickStagedDS',default='',
-                type='string', help='--eventPick options create a temporary dataset to stage-in interesting files when those files are available only on TAPE, and then a stage-in request is automatically sent to DaTRI. Once DaTRI transfers the dataset to DISK you can use the dataset as an input using this option')
-optP.add_option('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
-                type='string', help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
-optP.add_option('--eventPickNumSites',action='store',dest='eventPickNumSites',default=1,
-                type='int', help='The event picking service makes a temprary dataset container to stage files to DISK. The consistuent datasets are distibued to N sites (N=1 by default)')
-optP.add_option('--eventPickSkipDaTRI',action='store_const',const=True,dest='eventPickSkipDaTRI',default=False,
+optP.add_argument('--libDS', action='store', dest='libDS', default='',
+                type=str, help='Name of a library dataset')
+optP.add_argument('--goodRunListXML', action='store', dest='goodRunListXML', default='',
+                type=str, help='Good Run List XML which will be converted to datasets by AMI')
+optP.add_argument('--goodRunListDataType', action='store', dest='goodRunDataType', default='',
+                type=str, help='specify data type when converting Good Run List XML to datasets, e.g, AOD (default)')
+optP.add_argument('--goodRunListProdStep', action='store', dest='goodRunProdStep', default='',
+                type=str, help='specify production step when converting Good Run List to datasets, e.g, merge (default)')
+optP.add_argument('--goodRunListDS', action='store', dest='goodRunListDS', default='',
+                type=str, help='A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used')
+optP.add_argument('--eventPickEvtList',action='store',dest='eventPickEvtList',default='',
+                type=str, help='a file name which contains a list of runs/events for event picking')
+optP.add_argument('--eventPickDataType',action='store',dest='eventPickDataType',default='',
+                type=str, help='type of data for event picking. one of AOD,ESD,RAW')
+optP.add_argument('--ei_api',action='store',dest='ei_api',default='',
+                type=str, help='flag to signalise mc in event picking')
+optP.add_argument('--eventPickStreamName',action='store',dest='eventPickStreamName',default='',
+                type=str, help='stream name for event picking. e.g., physics_CosmicCaloEM')
+optP.add_argument('--eventPickDS',action='store',dest='eventPickDS',default='',
+                type=str, help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
+optP.add_argument('--eventPickStagedDS',action='store',dest='eventPickStagedDS',default='',
+                type=str, help='--eventPick options create a temporary dataset to stage-in interesting files when those files are available only on TAPE, and then a stage-in request is automatically sent to DaTRI. Once DaTRI transfers the dataset to DISK you can use the dataset as an input using this option')
+optP.add_argument('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
+                type=str, help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
+optP.add_argument('--eventPickNumSites',action='store',dest='eventPickNumSites',default=1,
+                type=int, help='The event picking service makes a temprary dataset container to stage files to DISK. The consistuent datasets are distibued to N sites (N=1 by default)')
+optP.add_argument('--eventPickSkipDaTRI',action='store_const',const=True,dest='eventPickSkipDaTRI',default=False,
                 help='Skip sending a staging request to DaTRI for event picking')
-optP.add_option('--eventPickWithGUID',action='store_const',const=True,dest='eventPickWithGUID',default=False,
+optP.add_argument('--eventPickWithGUID',action='store_const',const=True,dest='eventPickWithGUID',default=False,
                 help='Using GUIDs together with run and event numbers in eventPickEvtList to skip event lookup')
-optP.add_option('--useNewTRF', action='store_const',const=True,dest='useNewTRF',default=True,
+optP.add_argument('--useNewTRF', action='store_const',const=True,dest='useNewTRF',default=True,
                 help="Use the original filename with the attempt number for input in --trf when there is only one input, which follows the globbing scheme of new transformation framework")
-optP.add_option('--useOldTRF', action='store_const',const=True,dest='useOldTRF',default=False,
+optP.add_argument('--useOldTRF', action='store_const',const=True,dest='useOldTRF',default=False,
                 help="Remove the attempt number from the original filename for input in --trf when there is only one input")
-optP.add_option('--useTagInTRF', action='store_const',const=True,dest='useTagInTRF',default=False,
+optP.add_argument('--useTagInTRF', action='store_const',const=True,dest='useTagInTRF',default=False,
                 help="Set this option if you use TAG in --trf. If you run normal jobO this option is not required")
-optP.add_option('--sameSecRetry', action='store_const',const=False,dest='sameSecRetry',default=True,
+optP.add_argument('--sameSecRetry', action='store_const',const=False,dest='sameSecRetry',default=True,
                 help="Use the same secondary input files when jobs are retried")
-optP.add_option('--tagStreamRef',action='store',dest='tagStreamRef',default='',
-                type='string', help='specify StreamRef of parent files when you use TAG in --trf. It must be one of StreamRAW,StreamESD,StreamAOD. E.g., if you want to read RAW files via TAGs, use --tagStreamRef=StreamRAW. If you run normal jobO, this option is ignored and EventSelector.RefName in your jobO is used')
-optP.add_option('--tagQuery',action='store',dest='tagQuery',default='',
-                type='string', help='specify Query for TAG preselection when you use TAG in --trf. If you run normal jobO, this option is ignored and EventSelector.Query in your jobO is used')
-optP.add_option('--express', action='store_const',const=True,dest='express',default=False,
+optP.add_argument('--tagStreamRef',action='store',dest='tagStreamRef',default='',
+                type=str, help='specify StreamRef of parent files when you use TAG in --trf. It must be one of StreamRAW,StreamESD,StreamAOD. E.g., if you want to read RAW files via TAGs, use --tagStreamRef=StreamRAW. If you run normal jobO, this option is ignored and EventSelector.RefName in your jobO is used')
+optP.add_argument('--tagQuery',action='store',dest='tagQuery',default='',
+                type=str, help='specify Query for TAG preselection when you use TAG in --trf. If you run normal jobO, this option is ignored and EventSelector.Query in your jobO is used')
+optP.add_argument('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
-optP.add_option('--debugMode', action='store_const',const=True,dest='debugMode',default=False,
+optP.add_argument('--debugMode', action='store_const',const=True,dest='debugMode',default=False,
                 help="Send the job with the debug mode on. If this option is specified the subjob will send stdout to the panda monitor every 5 min. The number of debug subjobs per user is limited. When this option is used and the quota has already exceeded, the panda server supresses the option so that subjobs will run without the debug mode. If you submit multiple subjobs in a single job, only the first subjob will set the debug mode on. Note that you can turn the debug mode on/off by using pbook after jobs are submitted" )
-optP.add_option('--notUseTagLookup',action='store_const',const=True,dest='notUseTagLookup',default=False,
+optP.add_argument('--notUseTagLookup',action='store_const',const=True,dest='notUseTagLookup',default=False,
                 help="don't use Event Lookup service to retrieve relation between TAG and parent datasets")
-optP.add_option('--useContElementBoundary',action='store_const',const=True,dest='useContElementBoundary',default=False,
+optP.add_argument('--useContElementBoundary',action='store_const',const=True,dest='useContElementBoundary',default=False,
                 help="Split job in such a way that sub jobs do not mix files of different datasets in the input container. See --useNthFieldForLFN too")
-optP.add_option('--addNthFieldOfInDSToLFN',action='store',dest='addNthFieldOfInDSToLFN',default='',type='string',
+optP.add_argument('--addNthFieldOfInDSToLFN',action='store',dest='addNthFieldOfInDSToLFN',default='',type=str,
                 help="A middle name is added to LFNs of output files when they are produced from one dataset in the input container or input dataset list. The middle name is extracted from the dataset name. E.g., if --addNthFieldOfInDSToLFN=2 and the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is extracted and LFN is something like user.hoge.TASKID.00160387.blah. Concatenate multiple field numbers with commas if necessary, e.g., --addNthFieldOfInDSToLFN=2,6.")
-optP.add_option('--addNthFieldOfInFileToLFN',action='store',dest='addNthFieldOfInFileToLFN',default='',type='string',
+optP.add_argument('--addNthFieldOfInFileToLFN',action='store',dest='addNthFieldOfInFileToLFN',default='',type=str,
                 help="A middle name is added to LFNs of output files similarly as --addNthFieldOfInDSToLFN, but strings are extracted from input file names")
-optP.add_option('--buildInLastChunk',action='store_const',const=True,dest='buildInLastChunk',default=False,
+optP.add_argument('--buildInLastChunk',action='store_const',const=True,dest='buildInLastChunk',default=False,
                 help="Produce lib.tgz in the last chunk when jobs are split to multiple chunks due to the limit on the number of files in each chunk or due to --useContElementBoundary/--loadXML")
-optP.add_option('--useAMIEventLevelSplit',action='store_const',const=True,dest='useAMIEventLevelSplit',default=None,
+optP.add_argument('--useAMIEventLevelSplit',action='store_const',const=True,dest='useAMIEventLevelSplit',default=None,
                 help="retrive the number of events per file from AMI to split the job using --nEventsPerJob")
-optP.add_option('--appendStrToExtStream',action='store_const',const=True,dest='appendStrToExtStream',default=False,
-                help='append the first part of filenames to extra stream names for --individualOutDS. E.g., if this option is used together with --individualOutDS, %OUT.AOD.pool.root will be contained in an EXT0_AOD dataset instead of an EXT0 dataset')
-optP.add_option('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
+optP.add_argument('--appendStrToExtStream',action='store_const',const=True,dest='appendStrToExtStream',default=False,
+                help='append the first part of filenames to extra stream names for --individualOutDS. E.g., if this option is used together with --individualOutDS, %%OUT.AOD.pool.root will be contained in an EXT0_AOD dataset instead of an EXT0 dataset')
+optP.add_argument('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
                 help="merge output files")
-optP.add_option('--mergeScript',action='store',dest='mergeScript',default='',type='string',
+optP.add_argument('--mergeScript',action='store',dest='mergeScript',default='',type=str,
                 help='Specify user-defied script or execution string for output merging')
-optP.add_option('--useCommonHalo', action='store_const', const=False, dest='useCommonHalo',  default=True,
+optP.add_argument('--useCommonHalo', action='store_const', const=False, dest='useCommonHalo',  default=True,
                 help="use an integrated DS for BeamHalo")
-optP.add_option('--beamHaloDS',  action='store', dest='beamHaloDS',  default='',
-                type='string', help='Dataset name for beam halo')
-optP.add_option('--beamHaloADS',  action='store', dest='beamHaloADS',  default='',
-                type='string', help='Dataset name for beam halo A-side')
-optP.add_option('--beamHaloCDS',  action='store', dest='beamHaloCDS',  default='',
-                type='string', help='Dataset name for beam halo C-side')
-optP.add_option('--nBeamHalo',  action='store', dest='nBeamHalo',  default=-1,
-                type='int', help='Number of beam halo files per sub job')
-optP.add_option('--nBeamHaloA',  action='store', dest='nBeamHaloA',  default=-1,
-                type='int', help='Number of beam halo files for A-side per sub job')
-optP.add_option('--nBeamHaloC',  action='store', dest='nBeamHaloC',  default=-1,
-                type='int', help='Number of beam halo files for C-side per sub job')
-optP.add_option('--useCommonGas', action='store_const', const=False, dest='useCommonGas',  default=True,
+optP.add_argument('--beamHaloDS',  action='store', dest='beamHaloDS',  default='',
+                type=str, help='Dataset name for beam halo')
+optP.add_argument('--beamHaloADS',  action='store', dest='beamHaloADS',  default='',
+                type=str, help='Dataset name for beam halo A-side')
+optP.add_argument('--beamHaloCDS',  action='store', dest='beamHaloCDS',  default='',
+                type=str, help='Dataset name for beam halo C-side')
+optP.add_argument('--nBeamHalo',  action='store', dest='nBeamHalo',  default=-1,
+                type=int, help='Number of beam halo files per sub job')
+optP.add_argument('--nBeamHaloA',  action='store', dest='nBeamHaloA',  default=-1,
+                type=int, help='Number of beam halo files for A-side per sub job')
+optP.add_argument('--nBeamHaloC',  action='store', dest='nBeamHaloC',  default=-1,
+                type=int, help='Number of beam halo files for C-side per sub job')
+optP.add_argument('--useCommonGas', action='store_const', const=False, dest='useCommonGas',  default=True,
                 help="use an integrated DS for BeamGas")
-optP.add_option('--beamGasDS',  action='store', dest='beamGasDS',  default='',
-                type='string', help='Dataset name for beam gas')
-optP.add_option('--beamGasHDS',  action='store', dest='beamGasHDS',  default='',
-                type='string', help='Dataset name for beam gas Hydrogen')
-optP.add_option('--beamGasCDS',  action='store', dest='beamGasCDS',  default='',
-                type='string', help='Dataset name for beam gas Carbon')
-optP.add_option('--beamGasODS',  action='store', dest='beamGasODS',  default='',
-                type='string', help='Dataset name for beam gas Oxygen')
-optP.add_option('--nBeamGas',  action='store', dest='nBeamGas',  default=-1,
-                type='int', help='Number of beam gas files per sub job')
-optP.add_option('--nBeamGasH',  action='store', dest='nBeamGasH',  default=-1,
-                type='int', help='Number of beam gas files for Hydrogen per sub job')
-optP.add_option('--nBeamGasC',  action='store', dest='nBeamGasC',  default=-1,
-                type='int', help='Number of beam gas files for Carbon per sub job')
-optP.add_option('--nBeamGasO',  action='store', dest='nBeamGasO',  default=-1,
-                type='int', help='Number of beam gas files for Oxygen per sub job')
-optP.add_option('--parentDS', action='store', dest='parentDS', default='',
-                type='string', help='Parent dataset names. The brokerage takes their locations into account for TAG-based analysis')
-optP.add_option('--outDS', action='store', dest='outDS', default='',
-                type='string', help='Name of an output dataset. OUTDS will contain all output files')
-optP.add_option('--destSE',action='store', dest='destSE',default='',
-                type='string', help='Destination strorage element')
-optP.add_option('--nFiles', '--nfiles', action='store', dest='nfiles',  default=0,
-                type='int',    help='Use an limited number of files in the input dataset')
-optP.add_option('--nSkipFiles', action='store', dest='nSkipFiles',  default=0,
-                type='int',    help='Skip N files in the input dataset')
-optP.add_option('--provenanceID',action='store',dest='provenanceID',default=-1,type='int',
+optP.add_argument('--beamGasDS',  action='store', dest='beamGasDS',  default='',
+                type=str, help='Dataset name for beam gas')
+optP.add_argument('--beamGasHDS',  action='store', dest='beamGasHDS',  default='',
+                type=str, help='Dataset name for beam gas Hydrogen')
+optP.add_argument('--beamGasCDS',  action='store', dest='beamGasCDS',  default='',
+                type=str, help='Dataset name for beam gas Carbon')
+optP.add_argument('--beamGasODS',  action='store', dest='beamGasODS',  default='',
+                type=str, help='Dataset name for beam gas Oxygen')
+optP.add_argument('--nBeamGas',  action='store', dest='nBeamGas',  default=-1,
+                type=int, help='Number of beam gas files per sub job')
+optP.add_argument('--nBeamGasH',  action='store', dest='nBeamGasH',  default=-1,
+                type=int, help='Number of beam gas files for Hydrogen per sub job')
+optP.add_argument('--nBeamGasC',  action='store', dest='nBeamGasC',  default=-1,
+                type=int, help='Number of beam gas files for Carbon per sub job')
+optP.add_argument('--nBeamGasO',  action='store', dest='nBeamGasO',  default=-1,
+                type=int, help='Number of beam gas files for Oxygen per sub job')
+optP.add_argument('--parentDS', action='store', dest='parentDS', default='',
+                type=str, help='Parent dataset names. The brokerage takes their locations into account for TAG-based analysis')
+optP.add_argument('--outDS', action='store', dest='outDS', default='',
+                type=str, help='Name of an output dataset. OUTDS will contain all output files')
+optP.add_argument('--destSE',action='store', dest='destSE',default='',
+                type=str, help='Destination strorage element')
+optP.add_argument('--nFiles', '--nfiles', action='store', dest='nfiles',  default=0,
+                type=int,    help='Use an limited number of files in the input dataset')
+optP.add_argument('--nSkipFiles', action='store', dest='nSkipFiles',  default=0,
+                type=int,    help='Skip N files in the input dataset')
+optP.add_argument('--provenanceID',action='store',dest='provenanceID',default=-1,type=int,
                 help='provenanceID')
-optP.add_option('--useSiteGroup',action='store',dest='useSiteGroup',default=-1,type='int',
+optP.add_argument('--useSiteGroup',action='store',dest='useSiteGroup',default=-1,type=int,
                 help='Use only site groups which have group numbers not higher than --siteGroup. Group 0: T1 or undefined, 1,2,3,4: alpha,bravo,charlie,delta which are defined based on site reliability')
-optP.add_option('-v', action='store_const', const=True, dest='verbose',  default=False,
+optP.add_argument('-v', action='store_const', const=True, dest='verbose',  default=False,
                 help='Verbose')
-optP.add_option('-l', '--long', action='store_const', const=True, dest='long',  default=False,
+optP.add_argument('-l', '--long', action='store_const', const=True, dest='long',  default=False,
                 help='Send job to a long queue')
-optP.add_option('--blong', action='store_const', const=True, dest='blong',  default=False,
+optP.add_argument('--blong', action='store_const', const=True, dest='blong',  default=False,
                 help='Send build job to a long queue')
-optP.add_option('--noEmail', action='store_const', const=True, dest='noEmail',  default=False,
+optP.add_argument('--noEmail', action='store_const', const=True, dest='noEmail',  default=False,
                 help='Suppress email notification')
-optP.add_option('--update', action='store_const', const=True, dest='update',  default=False,
+optP.add_argument('--update', action='store_const', const=True, dest='update',  default=False,
                 help='Update panda-client to the latest version')
-optP.add_option('--cloud',action='store', dest='cloud',default=None,
-                type='string', help='cloud where jobs are submitted. default is set according to your VOMS country group')
-optP.add_option('--noBuild', action='store_const', const=True, dest='nobuild',  default=False,
+optP.add_argument('--cloud',action='store', dest='cloud',default=None,
+                type=str, help='cloud where jobs are submitted. default is set according to your VOMS country group')
+optP.add_argument('--noBuild', action='store_const', const=True, dest='nobuild',  default=False,
                 help='Skip buildJob')
-optP.add_option('--noCompile', action='store_const',const=True,dest='noCompile',default=False,
+optP.add_argument('--noCompile', action='store_const',const=True,dest='noCompile',default=False,
                 help='Just upload a tarball in the build step to avoid the tighter size limit imposed by --noBuild. The tarball contains binaries compiled on your local computer, so that compilation is skipped in the build step on remote WN')
-optP.add_option('--noOutput', action='store_const', const=True, dest='noOutput',  default=False,
+optP.add_argument('--noOutput', action='store_const', const=True, dest='noOutput',  default=False,
                 help='Send job even if there is no output file')
-optP.add_option('--individualOutDS', action='store_const', const=True, dest='individualOutDS',  default=False,
+optP.add_argument('--individualOutDS', action='store_const', const=True, dest='individualOutDS',  default=False,
                 help='Create individual output dataset for each data-type. By default, all output files are added to one output dataset')
-optP.add_option('--transferredDS',action='store', dest='transferredDS',default='',type='string',
+optP.add_argument('--transferredDS',action='store', dest='transferredDS',default='',type=str,
                 help='Specify a comma-separated list of patterns so that only datasets which match the given patterns are transferred when --destSE is set. Either \ or "" is required when a wildcard is used. If omitted, all datasets are transferred')
-optP.add_option('--noRandom', action='store_const', const=True, dest='norandom',  default=False,
+optP.add_argument('--noRandom', action='store_const', const=True, dest='norandom',  default=False,
                 help='Enter random seeds manually')
-optP.add_option('--useAMIAutoConf',action='store_const',const=True,dest='useAMIAutoConf',default=False,
+optP.add_argument('--useAMIAutoConf',action='store_const',const=True,dest='useAMIAutoConf',default=False,
                 help='Use AMI for AutoConfiguration')
-optP.add_option('--memory', action='store', dest='memory',  default=-1,
-                type='int',    help='Required memory size in MB. e.g., for 1GB --memory 1024')
-optP.add_option('--nCore', action='store', dest='nCore', default=-1,
-                type='int',    help='the number of CPU cores')
-optP.add_option('--forceStaged', action='store_const', const=True, dest='forceStaged', default=False,
+optP.add_argument('--memory', action='store', dest='memory',  default=-1,
+                type=int,    help='Required memory size in MB. e.g., for 1GB --memory 1024')
+optP.add_argument('--nCore', action='store', dest='nCore', default=-1,
+                type=int,    help='the number of CPU cores')
+optP.add_argument('--forceStaged', action='store_const', const=True, dest='forceStaged', default=False,
                 help='Force files from primary DS to be staged to local disk, even if direct-access is possible')
-optP.add_option('--maxCpuCount', action='store', dest='maxCpuCount', default=0, type='int',
+optP.add_argument('--maxCpuCount', action='store', dest='maxCpuCount', default=0, type=int,
                 help='Required CPU count in seconds. Mainly to extend time limit for looping job detection')
-optP.add_option('--official', action='store_const', const=True, dest='official',  default=False,
+optP.add_argument('--official', action='store_const', const=True, dest='official',  default=False,
                 help='Produce official dataset')
-optP.add_option('--unlimitNumOutputs', action='store_const', const=True, dest='unlimitNumOutputs',  default=False,
+optP.add_argument('--unlimitNumOutputs', action='store_const', const=True, dest='unlimitNumOutputs',  default=False,
                 help='Remove the limit on the number of outputs. Note that having too many outputs per job causes a severe load on the system. You may be banned if you carelessly use this option') 
-optP.add_option('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
+optP.add_argument('--descriptionInLFN',action='store',dest='descriptionInLFN',default='',
                 help='LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something')
-optP.add_option('--extFile', action='store', dest='extFile',  default='',
+optP.add_argument('--extFile', action='store', dest='extFile',  default='',
                 help='pathena exports files with some special extensions (.C, .dat, .py .xml) in the current directory. If you want to add other files, specify their names, e.g., data1.root,data2.doc')
-optP.add_option('--excludeFile',action='store',dest='excludeFile',default='',
+optP.add_argument('--excludeFile',action='store',dest='excludeFile',default='',
                 help='specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C')
-optP.add_option('--extOutFile', action='store', dest='extOutFile',  default='',
+optP.add_argument('--extOutFile', action='store', dest='extOutFile',  default='',
                 help='A comma-separated list of extra output files which cannot be extracted automatically. Either \ or "" is required when a wildcard is used. e.g., output1.txt,output2.dat,JiveXML_\*.xml')
-optP.add_option('--supStream', action='store', dest='supStream',  default='',
+optP.add_argument('--supStream', action='store', dest='supStream',  default='',
                 help='suppress some output streams. Either \ or "" is required when a wildcard is used. e.g., ESD,TAG,GLOBAL,StreamDESD\* ')
-optP.add_option('--gluePackages', action='store', dest='gluePackages',  default='',
+optP.add_argument('--gluePackages', action='store', dest='gluePackages',  default='',
                 help='list of glue packages which pathena cannot find due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf')
-optP.add_option('--allowNoOutput',action='store',dest='allowNoOutput',default='',type='string',
+optP.add_argument('--allowNoOutput',action='store',dest='allowNoOutput',default='',type=str,
                 help='A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. Jobs go to finished even if they are not produced on WN')
-optP.add_option('--excludedSite', action='append', dest='excludedSite',  default=[],
+optP.add_argument('--excludedSite', action='append', dest='excludedSite',  default=[],
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
-optP.add_option('--noSubmit', action='store_const', const=True, dest='nosubmit',  default=False,
+optP.add_argument('--noSubmit', action='store_const', const=True, dest='nosubmit',  default=False,
                 help="Don't submit jobs")
-optP.add_option('--prodSourceLabel', action='store', dest='prodSourceLabel',  default='',
+optP.add_argument('--prodSourceLabel', action='store', dest='prodSourceLabel',  default='',
                 help="set prodSourceLabel")
-optP.add_option('--processingType', action='store', dest='processingType',  default='pathena',
+optP.add_argument('--processingType', action='store', dest='processingType',  default='pathena',
                 help="set processingType")
-optP.add_option('--seriesLabel', action='store', dest='seriesLabel',  default='',
+optP.add_argument('--seriesLabel', action='store', dest='seriesLabel',  default='',
                 help="set seriesLabel")
-optP.add_option('--workingGroup', action='store', dest='workingGroup',  default=None,
+optP.add_argument('--workingGroup', action='store', dest='workingGroup',  default=None,
                 help="set workingGroup")
-optP.add_option('--generalInput', action='store_const', const=True, dest='generalInput',  default=False,
+optP.add_argument('--generalInput', action='store_const', const=True, dest='generalInput',  default=False,
                 help='Read input files with general format except POOL,ROOT,ByteStream')
-optP.add_option('--crossSite',action='store',dest='crossSite',default=maxCrossSite,
-                type='int',help='submit jobs to N sites at most when datasets in container split over many sites (N=%s by default)' % maxCrossSite)
-optP.add_option('--tmpDir', action='store', dest='tmpDir', default='',
-                type='string', help='Temporary directory in which an archive file is created')
-optP.add_option('--shipInput', action='store_const', const=True, dest='shipinput',  default=False,
+optP.add_argument('--crossSite',action='store',dest='crossSite',default=maxCrossSite,
+                type=int,help='submit jobs to N sites at most when datasets in container split over many sites (N=%s by default)' % maxCrossSite)
+optP.add_argument('--tmpDir', action='store', dest='tmpDir', default='',
+                type=str, help='Temporary directory in which an archive file is created')
+optP.add_argument('--shipInput', action='store_const', const=True, dest='shipinput',  default=False,
                 help='Ship input files to remote WNs')
-optP.add_option('--noLock', action='store_const', const=True, dest='nolock',  default=False,
+optP.add_argument('--noLock', action='store_const', const=True, dest='nolock',  default=False,
                 help="Don't create a lock for local database access")
-optP.add_option('--disableAutoRetry',action='store_const',const=True,dest='disableAutoRetry',default=False,
+optP.add_argument('--disableAutoRetry',action='store_const',const=True,dest='disableAutoRetry',default=False,
                 help='disable automatic job retry on the server side')
-optP.add_option('--fileList', action='store', dest='filelist', default='',
-                type='string', help='List of files in the input dataset to be run')
-optP.add_option('--myproxy', action='store', dest='myproxy', default='myproxy.cern.ch',
-                type='string', help='Name of the myproxy server')
-optP.add_option('--dbRelease', action='store', dest='dbRelease', default='',
-                type='string', help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used')
-optP.add_option('--dbRunNumber', action='store', dest='dbRunNumber', default='',
-                type='string', help='RunNumber for DBRelease or CDRelease. If this option is used some redundant files are removed to save disk usage when unpacking DBRelease tarball. e.g., 0091890')
-optP.add_option('--addPoolFC', action='store', dest='addPoolFC',  default='',
+optP.add_argument('--fileList', action='store', dest='filelist', default='',
+                type=str, help='List of files in the input dataset to be run')
+optP.add_argument('--myproxy', action='store', dest='myproxy', default='myproxy.cern.ch',
+                type=str, help='Name of the myproxy server')
+optP.add_argument('--dbRelease', action='store', dest='dbRelease', default='',
+                type=str, help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used')
+optP.add_argument('--dbRunNumber', action='store', dest='dbRunNumber', default='',
+                type=str, help='RunNumber for DBRelease or CDRelease. If this option is used some redundant files are removed to save disk usage when unpacking DBRelease tarball. e.g., 0091890')
+optP.add_argument('--addPoolFC', action='store', dest='addPoolFC',  default='',
                 help="file names to be inserted into PoolFileCatalog.xml except input files. e.g., MyCalib1.root,MyGeom2.root") 
-optP.add_option('--skipScan', action='store_const', const=True, dest='skipScan', default=False,
+optP.add_argument('--skipScan', action='store_const', const=True, dest='skipScan', default=False,
                 help='Skip LFC lookup at job submission')
-optP.add_option('--inputFileList', action='store', dest='inputFileList', default='',
-                type='string', help='name of file which contains a list of files to be run in the input dataset')
-optP.add_option('--removeFileList', action='store', dest='removeFileList', default='',
-                type='string', help='name of file which contains a list of files to be removed from the input dataset')
-optP.add_option('--removedDS', action='store', dest='removedDS', default='',
-                type='string', help="don't use datasets in the input dataset container")
-optP.add_option('--corCheck', action='store_const', const=True, dest='corCheck',  default=False,
+optP.add_argument('--inputFileList', action='store', dest='inputFileList', default='',
+                type=str, help='name of file which contains a list of files to be run in the input dataset')
+optP.add_argument('--removeFileList', action='store', dest='removeFileList', default='',
+                type=str, help='name of file which contains a list of files to be removed from the input dataset')
+optP.add_argument('--removedDS', action='store', dest='removedDS', default='',
+                type=str, help="don't use datasets in the input dataset container")
+optP.add_argument('--corCheck', action='store_const', const=True, dest='corCheck',  default=False,
                 help='Enable a checker to skip corrupted files')
-optP.add_option('--prestage', action='store_const', const=True, dest='prestage',  default=False,
+optP.add_argument('--prestage', action='store_const', const=True, dest='prestage',  default=False,
                 help='EXPERIMENTAL : Enable prestager. Make sure that you are authorized')
-optP.add_option('--voms', action='store', dest='vomsRoles',  default=None, type='string',
+optP.add_argument('--voms', action='store', dest='vomsRoles',  default=None, type=str,
                 help="generate proxy with paticular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot")
-optP.add_option('--useNextEvent', action='store_const', const=True, dest='useNextEvent',  default=False,
+optP.add_argument('--useNextEvent', action='store_const', const=True, dest='useNextEvent',  default=False,
                 help="Set this option if your jobO uses theApp.nextEvent(), e.g. for G4. Note that this option is not required when you run transformations using --trf")
-optP.add_option('--ara', action='store_const', const=True, dest='ara',  default=False,
+optP.add_argument('--ara', action='store_const', const=True, dest='ara',  default=False,
                 help='obsolete. Please use prun instead')
-optP.add_option('--ares', action='store_const', const=True, dest='ares',  default=False,
+optP.add_argument('--ares', action='store_const', const=True, dest='ares',  default=False,
                 help='obsolete. Please use prun instead')
-optP.add_option('--araOutFile', action='store', dest='araOutFile',  default='',
+optP.add_argument('--araOutFile', action='store', dest='araOutFile',  default='',
                 help='define output files for ARA, e.g., output1.root,output2.root')
-optP.add_option('--trf', action='store', dest='trf',  default=False,
-                help='run transformation, e.g. --trf "csc_atlfast_trf.py %IN %OUT.AOD.root %OUT.ntuple.root -1 0"')
-optP.add_option('--spaceToken', action='store', dest='spaceToken', default='',
-                type='string', help='spacetoken for outputs. e.g., ATLASLOCALGROUPDISK')
-optP.add_option('--notSkipMissing', action='store_const', const=True, dest='notSkipMissing',  default=False,
+optP.add_argument('--trf', action='store', dest='trf',  default=False,
+                help='run transformation, e.g. --trf "csc_atlfast_trf.py %%IN %%OUT.AOD.root %%OUT.ntuple.root -1 0"')
+optP.add_argument('--spaceToken', action='store', dest='spaceToken', default='',
+                type=str, help='spacetoken for outputs. e.g., ATLASLOCALGROUPDISK')
+optP.add_argument('--notSkipMissing', action='store_const', const=True, dest='notSkipMissing',  default=False,
                 help='If input files are not read from SE, they will be skipped by default. This option disables the functionality')
-optP.add_option('--burstSubmit', action='store', dest='burstSubmit', default='',
-                type='string', help="Please don't use this option. Only for site validation by experts")
-optP.add_option('--removeBurstLimit', action='store_const', const=True, dest='removeBurstLimit', default=False,
+optP.add_argument('--burstSubmit', action='store', dest='burstSubmit', default='',
+                type=str, help="Please don't use this option. Only for site validation by experts")
+optP.add_argument('--removeBurstLimit', action='store_const', const=True, dest='removeBurstLimit', default=False,
                 help="Please don't use this option. Only for site validation by experts")
-optP.add_option('--useShortLivedReplicas', action='store_const', const=True, dest='useShortLivedReplicas', default=False,
+optP.add_argument('--useShortLivedReplicas', action='store_const', const=True, dest='useShortLivedReplicas', default=False,
                 help="Use replicas even if they have very sort lifetime")
-optP.add_option('--useDirectIOSites', action='store_const', const=True, dest='useDirectIOSites', default=False,
+optP.add_argument('--useDirectIOSites', action='store_const', const=True, dest='useDirectIOSites', default=False,
                 help="Use only sites which use directIO to read input files")
-optP.add_option('--forceDirectIO', action='store_const', const=True, dest='forceDirectIO', default=False,
+optP.add_argument('--forceDirectIO', action='store_const', const=True, dest='forceDirectIO', default=False,
                 help="Use directIO if directIO is available at the site ")
-optP.add_option('--expertOnly_skipScout', action='store_const',const=True,dest='skipScout',default=False,
-                help=optparse.SUPPRESS_HELP)
-optP.add_option('--respectSplitRule', action='store_const',const=True,dest='respectSplitRule',default=False,
+optP.add_argument('--expertOnly_skipScout', action='store_const',const=True,dest='skipScout',default=False,
+                help=argparse.SUPPRESS)
+optP.add_argument('--respectSplitRule', action='store_const',const=True,dest='respectSplitRule',default=False,
                 help="force scout jobs to follow split rules like nGBPerJob")
-optP.add_option('--devSrv', action='store_const', const=True, dest='devSrv',  default=False,
+optP.add_argument('--devSrv', action='store_const', const=True, dest='devSrv',  default=False,
                 help="Please don't use this option. Only for developers to use the dev panda server")
-optP.add_option('--intrSrv', action='store_const', const=True, dest='intrSrv',  default=False,
+optP.add_argument('--intrSrv', action='store_const', const=True, dest='intrSrv',  default=False,
                 help="Please don't use this option. Only for developers to use the intr panda server")
-optP.add_option('--useAIDA', action='store_const', const=True, dest='useAIDA',  default=False,
+optP.add_argument('--useAIDA', action='store_const', const=True, dest='useAIDA',  default=False,
                 help="use AIDA")
-optP.add_option('--inputType', action='store', dest='inputType', default='',
-                type='string', help='A regular expression pattern. Only files matching with the pattern in input dataset are used')
-optP.add_option('--outTarBall', action='store', dest='outTarBall', default='',
-                type='string', help='Save a gzipped tarball of local files which is the input to buildXYZ')
-optP.add_option('--inTarBall', action='store', dest='inTarBall', default='',
-                type='string', help='Use a gzipped tarball of local files as input to buildXYZ. Generall the tarball is created by using --outTarBall')
-optP.add_option('--outRunConfig', action='store', dest='outRunConfig', default='',
-                type='string', help='Save extracted config information to a local file')
-optP.add_option('--inRunConfig', action='store', dest='inRunConfig', default='',
-                type='string', help='Use a saved config information to skip config extraction')
-optP.add_option('--mcData', action='store', dest='mcData', default='',
-                type='string', help='Create a symlink with linkName to .dat which is contained in input file')
-optP.add_option('--pfnList', action='store', dest='pfnList', default='',
-                type='string', help='Name of file which contains a list of input PFNs. Those files can be un-registered in DDM')
-optP.add_option('--outputPath',action='store',dest='outputPath', default='./',
-                type='string', help='Physical path of output directory relative to a root path')
-optP.add_option('--useExperimental', action='store_const', const=True, dest='useExperimental',  default=False,
+optP.add_argument('--inputType', action='store', dest='inputType', default='',
+                type=str, help='A regular expression pattern. Only files matching with the pattern in input dataset are used')
+optP.add_argument('--outTarBall', action='store', dest='outTarBall', default='',
+                type=str, help='Save a gzipped tarball of local files which is the input to buildXYZ')
+optP.add_argument('--inTarBall', action='store', dest='inTarBall', default='',
+                type=str, help='Use a gzipped tarball of local files as input to buildXYZ. Generall the tarball is created by using --outTarBall')
+optP.add_argument('--outRunConfig', action='store', dest='outRunConfig', default='',
+                type=str, help='Save extracted config information to a local file')
+optP.add_argument('--inRunConfig', action='store', dest='inRunConfig', default='',
+                type=str, help='Use a saved config information to skip config extraction')
+optP.add_argument('--mcData', action='store', dest='mcData', default='',
+                type=str, help='Create a symlink with linkName to .dat which is contained in input file')
+optP.add_argument('--pfnList', action='store', dest='pfnList', default='',
+                type=str, help='Name of file which contains a list of input PFNs. Those files can be un-registered in DDM')
+optP.add_argument('--outputPath',action='store',dest='outputPath', default='./',
+                type=str, help='Physical path of output directory relative to a root path')
+optP.add_argument('--useExperimental', action='store_const', const=True, dest='useExperimental',  default=False,
                 help='use experimental features')
-optP.add_option('--useOldStyleOutput',action='store_const',const=True,dest='useOldStyleOutput',default=False,
+optP.add_argument('--useOldStyleOutput',action='store_const',const=True,dest='useOldStyleOutput',default=False,
                 help="use output dataset and long LFN instead of output dataset container and short LFN (obsolete)")
-optP.add_option('--disableRebrokerage',action='store_const',const=True,dest='disableRebrokerage',default=False,
+optP.add_argument('--disableRebrokerage',action='store_const',const=True,dest='disableRebrokerage',default=False,
                 help="disable auto-rebrokerage")
-optP.add_option('--useChirpServer',action='store',dest='useChirpServer', default='',
-                type='string', help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
-optP.add_option('--useGOForOutput',action='store',dest='useGOForOutput',default='',metavar='GOENDPOINT',
-                type='string', help='The Globus Online server where output files are written to. e.g., --useGOForOutput voatlas92.cern.ch')
-optP.add_option('--enableJEM',action='store_const',const=True,dest='enableJEM',default=False,
+optP.add_argument('--useChirpServer',action='store',dest='useChirpServer', default='',
+                type=str, help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
+optP.add_argument('--useGOForOutput',action='store',dest='useGOForOutput',default='',metavar='GOENDPOINT',
+                type=str, help='The Globus Online server where output files are written to. e.g., --useGOForOutput voatlas92.cern.ch')
+optP.add_argument('--enableJEM',action='store_const',const=True,dest='enableJEM',default=False,
                 help="enable JEM")
-optP.add_option('--configJEM', action='store', dest='configJEM', default='',
-                type='string', help='configration parameters for JEM')
-optP.add_option('--cmtConfig', action='store', dest='cmtConfig', default=None,
-                type='string', help='CMTCONFIG=i686-slc5-gcc43-opt is used on remote worker-node by default even if you use another CMTCONFIG locally. This option allows you to use another CMTCONFIG remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt. If you use --libDS together with this option, make sure that the libDS was compiled with the same CMTCONFIG, in order to avoid failures due to inconsistency in binary files')
-optP.add_option('--allowTaskDuplication',action='store_const',const=True,dest='allowTaskDuplication',default=False,
+optP.add_argument('--configJEM', action='store', dest='configJEM', default='',
+                type=str, help='configration parameters for JEM')
+optP.add_argument('--cmtConfig', action='store', dest='cmtConfig', default=None,
+                type=str, help='CMTCONFIG=i686-slc5-gcc43-opt is used on remote worker-node by default even if you use another CMTCONFIG locally. This option allows you to use another CMTCONFIG remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt. If you use --libDS together with this option, make sure that the libDS was compiled with the same CMTCONFIG, in order to avoid failures due to inconsistency in binary files')
+optP.add_argument('--allowTaskDuplication',action='store_const',const=True,dest='allowTaskDuplication',default=False,
                 help="As a general rule each task has a unique outDS and history of file usage is recorded per task. This option allows multiple tasks to contribute to the same outDS. Typically useful to submit a new task with the outDS which was used by another broken task. Use this option very carefully at your own risk, since file duplication happens when the second task runs on the same input which the first task successfully processed")
-optP.add_option('--skipFilesUsedBy', action='store', dest='skipFilesUsedBy', default='',
-                type='string', help='A comma-separated list of TaskIDs. Files used by those tasks are skipped when running a new task')
-optP.add_option('--maxAttempt', action='store', dest='maxAttempt', default=-1,
-                type='int', help='Maximum number of reattempts for each job (3 by default and not larger than 50)')
-optP.add_option('--containerImage', action='store', dest='containerImage', default='',
-                type='string', help="Name of a container image")
+optP.add_argument('--skipFilesUsedBy', action='store', dest='skipFilesUsedBy', default='',
+                type=str, help='A comma-separated list of TaskIDs. Files used by those tasks are skipped when running a new task')
+optP.add_argument('--maxAttempt', action='store', dest='maxAttempt', default=-1,
+                type=int, help='Maximum number of reattempts for each job (3 by default and not larger than 50)')
+optP.add_argument('--containerImage', action='store', dest='containerImage', default='',
+                type=str, help="Name of a container image")
 # athena options
-optP.add_option('-c',action='store',dest='singleLine',type='string',default='',metavar='COMMAND',
+optP.add_argument('-c',action='store',dest='singleLine',type=str,default='',metavar='COMMAND',
                 help='One-liner, runs before any jobOs')
-optP.add_option('-p',action='store',dest='preConfig',type='string',default='',metavar='BOOTSTRAP',
+optP.add_argument('-p',action='store',dest='preConfig',type=str,default='',metavar='BOOTSTRAP',
                 help='location of bootstrap file')
-optP.add_option('-s',action='store_const',const=True,dest='codeTrace',default=False,
+optP.add_argument('-s',action='store_const',const=True,dest='codeTrace',default=False,
                 help='show printout of included files')
-optP.add_option('--queueData', action='store', dest='queueData', default='',
-                type='string', help="Please don't use this option. Only for developers")
-optP.add_option('--useNewCode',action='store_const',const=True,dest='useNewCode',default=False,
+optP.add_argument('--queueData', action='store', dest='queueData', default='',
+                type=str, help="Please don't use this option. Only for developers")
+optP.add_argument('--useNewCode',action='store_const',const=True,dest='useNewCode',default=False,
                 help='When task are resubmitted with the same outDS, the original souce code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries') 
-optP.add_option('--useRucio',action='store_const',const=True,dest='useRucio',default=False,
+optP.add_argument('--useRucio',action='store_const',const=True,dest='useRucio',default=False,
                 help="Use Rucio as DDM backend")
-# internal parameters
-optP.add_option('--panda_srvURL', action='store', dest='panda_srvURL', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_cacheSrvURL', action='store', dest='panda_cacheSrvURL', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_runConfig', action='store', dest='panda_runConfig', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_srcName', action='store', dest='panda_srcName', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_inDS', action='store', dest='panda_inDS', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_inDSForEP', action='store', dest='panda_inDSForEP', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_origFullExecString', action='store', dest='panda_origFullExecString', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_jobsetID',action='store',dest='panda_jobsetID',default=-1,
-                type='int', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_parentJobsetID',action='store',dest='panda_parentJobsetID',default=-1,
-                type='int', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_dbRelease', action='store', dest='panda_dbRelease', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_singleLine', action='store', dest='panda_singleLine', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_trf', action='store', dest='panda_trf', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_eventPickRunEvtDat', action='store', dest='panda_eventPickRunEvtDat', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_devidedByGUID',action='store_const',const=True,dest='panda_devidedByGUID',default=False,
-                help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_suppressMsg',action='store_const',const=True,dest='panda_suppressMsg',default=False,
-                help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_fullPathJobOs',action='store', dest='panda_fullPathJobOs', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
-optP.add_option('--panda_tagParentFile',action='store', dest='panda_tagParentFile', default='',
-                type='string', help=optparse.SUPPRESS_HELP)
 
 # parse options
-options,args = optP.parse_args()
+options,args = optP.parse_known_args()
 if options.verbose:
     print options
+    print args
     print
 
 # display version
@@ -506,12 +472,6 @@ if options.devSrv:
 if options.intrSrv:
     Client.useIntrServer()
     
-# set server
-if options.panda_srvURL != '':
-    Client.setServer(options.panda_srvURL)
-if options.panda_cacheSrvURL != '':
-    Client.setCacheServer(options.panda_cacheSrvURL)
-
 # version check
 PsubUtils.checkPandaClientVer(options.verbose)
 
@@ -588,7 +548,6 @@ original_outDS_Name = options.outDS
 # reset crossSite unless container is used for output 
 if not original_outDS_Name.endswith('/'):
     options.crossSite = 0
-    options.panda_jobsetID = None
 
 usingContainerForOut = original_outDS_Name.endswith('/')
 
@@ -679,16 +638,10 @@ if not options.nGBPerJob in [-1,'MAX']:
         sys.exit(EC_Config)
     
 # trf parameter
-if options.panda_trf != '':
-    options.trf = urllib.unquote(options.panda_trf)
 if options.trf == False:
     orig_trfStr = ''
 else:
     orig_trfStr = options.trf
-
-# one liner
-if options.panda_singleLine != '':
-    options.singleLine = urllib.unquote(options.panda_singleLine)
 
 # AMI event-level split
 if options.useAMIEventLevelSplit == None:
@@ -1048,9 +1001,6 @@ elif runDir.startswith('/'):
     runDir = runDir[1:]
 runDir = runDir+'/'
 
-# check unmerge dataset
-PsubUtils.checkUnmergedDataset(options.inDS,options.parentDS)
-
 # event picking
 if options.eventPickEvtList != '':
     epLockedBy = 'pathena'
@@ -1117,7 +1067,7 @@ if options.ara:
     options.trf = jobO
 
 
-if options.panda_runConfig == '' and options.inRunConfig == '':
+if options.inRunConfig == '':
     # extract run configuration    
     tmpLog.info('extracting run configuration')
     # run ConfigExtractor for normal jobO 
@@ -1130,15 +1080,6 @@ if options.panda_runConfig == '' and options.inRunConfig == '':
         cFile = open(options.outRunConfig,'w')
         pickle.dump(runConfig,cFile)
         cFile.close()
-else:
-    # use a saved file
-    if options.panda_runConfig == '':
-        options.panda_runConfig = options.inRunConfig
-    # load from file
-    ret = True
-    tmpRunConfFile = open(options.panda_runConfig)
-    runConfig = pickle.load(tmpRunConfFile)
-    tmpRunConfFile.close()
 if not options.trf:
     # extractor failed
     if not ret:
@@ -1183,9 +1124,6 @@ if not options.trf:
             tmpLog.debug("output files : %s" % str(runConfig.output.alloutputs)) 
         for tmpExtOutFile in tuple(options.extOutFile):
             if tmpExtOutFile in runConfig.output.alloutputs:
-                if not options.panda_suppressMsg:
-                    tmpLog.warning("removed %s from extOutFile since it is automatically extracted from Athena. You don't need to specify it in extOutFile"
-                                   % tmpExtOutFile)
                 options.extOutFile.remove(tmpExtOutFile)
 else:
     # parse parameters for trf
@@ -1448,17 +1386,7 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
 #####################################################################
 # archive sources and send it to HTTP-reachable location
 
-if options.panda_srcName != '':
-    # reuse src
-    if options.verbose:
-        tmpLog.debug('reuse source files')
-    archiveName = options.panda_srcName
-    # go to tmp dir
-    os.chdir(tmpDir)
-    # set jobOs with fullpath
-    if options.panda_fullPathJobOs != '':
-        AthenaUtils.fullPathJobOs = AthenaUtils.convStrToFullPathJobOs(options.panda_fullPathJobOs)
-else:
+if True:
     if options.inTarBall == '':
         # extract jobOs with full pathnames
         for tmpItem in jobO.split():
