@@ -1080,6 +1080,12 @@ if options.inRunConfig == '':
         cFile = open(options.outRunConfig,'w')
         pickle.dump(runConfig,cFile)
         cFile.close()
+else:
+    # load from file
+    ret = True
+    tmpRunConfFile = open(options.inRunConfig)
+    runConfig = pickle.load(tmpRunConfFile)
+    tmpRunConfFile.close()
 if not options.trf:
     # extractor failed
     if not ret:
