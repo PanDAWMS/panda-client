@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.6.2 (7/14/2018)
+  * using voms-proxy-info instead of grid-proxy-info
+
 0.6.1 (7/13/2018)
   * fixed a bug in 0.6.0
 

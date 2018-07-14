@@ -72,7 +72,7 @@ def checkGridProxy(gridPassPhrase='',enforceEnter=False,verbose=False,vomsRoles=
     if useCache and cacheProxyStatus == 0:
         status,out = 0,''
     else:
-        com = '%s grid-proxy-info -e' % gridSrc
+        com = '%s voms-proxy-info -e' % gridSrc
         if verbose:
             tmpLog.debug(com)
         status,out = commands.getstatusoutput(com)
@@ -272,7 +272,7 @@ def getDN():
     gridSrc = Client._getGridSrc()
     if gridSrc == False:
         return ''
-    output = commands.getoutput('%s grid-proxy-info -identity' % gridSrc)
+    output = commands.getoutput('%s voms-proxy-info -identity' % gridSrc)
     for line in output.split('/'):
         if line.startswith('CN='):
             distinguishedName = re.sub('^CN=','',line)
