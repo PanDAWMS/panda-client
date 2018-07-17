@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.6.3 (7/17/2018)
+  * using setuptools for wheel
+
 0.6.2 (7/14/2018)
   * using voms-proxy-info instead of grid-proxy-info
 

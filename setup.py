@@ -8,7 +8,7 @@ release_version = PandaToolsPkgInfo.release_version
 
 import os
 import re
-from distutils.core import setup
+from setuptools import setup
 from distutils.command.install import install as install_org
 from distutils.command.install_data import install_data as install_data_org
 
