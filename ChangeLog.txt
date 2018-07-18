@@ -1,7 +1,8 @@
 ** Release Notes
 
-0.6.4 (7/18/2018)
+0.6.5 (7/18/2018)
   * fixed setup for pip
+  * removed single-version-externally-managed from cfg
 
 0.6.3 (7/17/2018)
   * using setuptools for wheel

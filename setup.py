@@ -10,7 +10,15 @@ from pandatools import PandaToolsPkgInfo
 release_version = PandaToolsPkgInfo.release_version
 
 from setuptools import setup
+from setuptools.command.install import install as install_org
 from distutils.command.install_data import install_data as install_data_org
+
+
+# custom install to disable egg
+class install_panda (install_org):
+    def finalize_options (self):
+        install_org.finalize_options(self)
+        self.single_version_externally_managed = True
 
 
 # generates files using templates and install them
@@ -163,6 +171,7 @@ setup(
                                      
                    ],
     cmdclass={
+        'install': install_panda,
         'install_data': install_data_panda
     }
 )
