@@ -1,23 +1,18 @@
 # set PYTHONPATH to use the current directory first
 import sys
+import os
+import re
+import site
 sys.path.insert(0,'.')
 
 # get release version
 from pandatools import PandaToolsPkgInfo
 release_version = PandaToolsPkgInfo.release_version
 
-import os
-import re
 from setuptools import setup
-from distutils.command.install import install as install_org
 from distutils.command.install_data import install_data as install_data_org
 
-# set overall prefix for bdist_rpm
-class install_panda(install_org):
-    def initialize_options (self):
-        install_org.initialize_options(self)
-        self.prefix = '/opt/panda'
-                        
+
 # generates files using templates and install them
 class install_data_panda (install_data_org):
     def initialize_options (self):
@@ -39,16 +34,27 @@ class install_data_panda (install_data_org):
                                    ('install_scripts','install_scripts'))
                                             
     def run (self):
+        # not to use wheel to correctly generate setup.sh 
+        if 'bdist_wheel' in self.distribution.get_cmdline_options():
+            # wheel is disabled
+            sys.exit('\n\033[32m'+'WARNING : Wheel is disabled. Please try installation from source'+'\033[0m')
         rpmInstall = False
         # set install_dir
-        if self.install_dir == None:
-            if self.root != None:
+        if not self.install_dir:
+            if self.root:
                 # rpm
                 self.install_dir = self.root
                 rpmInstall = True
             else:
                 # sdist
-                self.install_dir = self.prefix
+                if not self.prefix:
+                    if '--user' in self.distribution.script_args:
+                        self.install_dir = site.USER_BASE
+                    else:
+                        self.install_dir = site.PREFIXES[0]
+                else:
+                    self.install_dir = self.prefix
+        #raise Exception, (self.install_dir, self.prefix, self.install_purelib)
         self.install_dir = os.path.expanduser(self.install_dir)
         self.install_dir = os.path.abspath(self.install_dir)
         # remove /usr for bdist/bdist_rpm
@@ -63,13 +69,17 @@ class install_data_panda (install_data_org):
         tmpDir = 'build/tmp'
         self.mkpath(tmpDir)
         new_data_files = []
+        autoGenFiles = []
         for destDir,dataFiles in self.data_files:
             newFilesList = []
             for srcFile in dataFiles:
                 # dest filename
                 destFile = re.sub('\.template$','',srcFile)
-                destFile = destFile.split('/')[-1]
-                destFile = '%s/%s' % (tmpDir,destFile)
+                # append
+                newFilesList.append(destFile)
+                if destFile == srcFile:
+                    continue
+                autoGenFiles.append(destFile)
                 # open src
                 inFile = open(srcFile)
                 # read
@@ -95,13 +105,17 @@ class install_data_panda (install_data_org):
                 oFile = open(destFile,'w')
                 oFile.write(filedata)
                 oFile.close()
-                # append
-                newFilesList.append(destFile)
             # replace dataFiles to install generated file
             new_data_files.append((destDir,newFilesList))
         # install
         self.data_files = new_data_files
         install_data_org.run(self)
+        # delete
+        for autoGenFile in autoGenFiles:
+            try:
+                os.remove(autoGenFile)
+            except Exception:
+                pass
 
 
 setup(
@@ -116,7 +130,6 @@ setup(
     packages = [ 'pandatools',
                  ],
     scripts = [ 'scripts/prun', 
-                #'scripts/proot',
                 'scripts/psequencer',
                 'scripts/pbook',
                 'scripts/pathena',
@@ -149,6 +162,7 @@ setup(
                     ),
                                      
                    ],
-    cmdclass={'install': install_panda,
-              'install_data': install_data_panda}
+    cmdclass={
+        'install_data': install_data_panda
+    }
 )
