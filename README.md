@@ -11,9 +11,8 @@ python setup.py install --prefix=/path/to/install/dir
 ```
 or create the tar ball
 ```
-echo "%_unpackaged_files_terminate_build 0" >> ~/.rpmmacros
-QA_SKIP_BUILD_ROOT=1 python setup.py bdist_rpm
-rm ~/.rpmmacros
+python setup.py sdist
+pip install dist/panda-client-*.tar.gz
 ```
 
 # How to use
