@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.6.6 (9/8/2018)
+  * fixed for AthGeneration nightly
+
 0.6.5 (7/18/2018)
   * fixed setup for pip
   * removed single-version-externally-managed from cfg
