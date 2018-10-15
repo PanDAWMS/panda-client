@@ -158,6 +158,10 @@ optP.add_option('--nJobs',action='store',dest='nJobs',default=-1,type='int',
                 help='Maximum number of sub-jobs. If the number of input files (N_in) is less than nJobs*nFilesPerJob, only N_in/nFilesPerJob sub-jobs will be instantiated')
 optP.add_option('--nEvents',action='store',dest='nEvents',default=-1,type='int',
                 help='The total number of events to be processed. This option is considered only when either --inDS or --pfnList is not used')
+optP.add_option('--nEventsPerJob', action='store', dest='nEventsPerJob',  default=-1, type=int,
+                help='Number of events per subjob. This is used mainly for job splitting. If you set nEventsPerFile, the total number of subjobs is nEventsPerFile*nFiles/nEventsPerJob. Otherwise, it gets from rucio the number of events in each input file and subjobs are created accordingly. Note that you need to explicitly specify in --exec some parameters like %MAXEVENTS, %SKIPEVENTS and %FIRSTEVENT and your application needs to process only an event chunk accordingly, to avoid subjobs processing the same events. All parameters descibed in https://twiki.cern.ch/twiki/bin/view/PanDA/PandaAthena#example_8_How_to_run_production are available')
+optP.add_option('--nEventsPerFile', action='store', dest='nEventsPerFile',  default=0, type=int,
+                help='Number of events per file')
 optP.add_option('--nEventsPerChunk',action='store',dest='nEventsPerChunk',default=-1,type='int',
                 help='Set granuarity to split events. The number of events per job is multiples of nEventsPerChunk. This option is considered only when --nEvents is used but --nJobs is not used. If this option is not set, nEvents/20 is used as nEventsPerChunk')
 optP.add_option('--nGBPerJob',action='store',dest='nGBPerJob',default=-1,
@@ -998,6 +1002,15 @@ if not options.nGBPerJob in [-1,'MAX']:
         tmpLog.error("nGBPerJob must be positive")
         sys.exit(EC_Config)
 
+# split options are mutually exclusive
+if options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob != -1:
+    tmpLog.error("split by files, split by events and split by file size can not be used simultaneously")
+    sys.exit(EC_Config)
+
+# split options are mutually exclusive
+if options.nEventsPerJob > 0 and options.nGBPerJob != -1:
+    tmpLog.error("split by events and split by file size can not be used simultaneously")
+    sys.exit(EC_Config)
 
 
 
@@ -1372,6 +1385,12 @@ if options.nFilesPerJob != None:
 if not options.nGBPerJob in [-1,'MAX']:
     # don't set MAX since it is the defalt on the server side
     taskParamMap['nGBPerJob'] = options.nGBPerJob
+if options.nEventsPerJob > 0:
+    taskParamMap['nEventsPerJob'] = options.nEventsPerJob
+    if options.nEventsPerFile <= 0:
+        taskParamMap['useRealNumEvents'] = True
+    if options.nJobs > 0 and options.nEvents < 0:
+        taskParamMap['nEvents'] = options.nJobs * options.nEventsPerJob
 taskParamMap['cliParams'] = fullExecString
 if options.noEmail:
     taskParamMap['noEmail'] = True

@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.6.8 (10/15/2018)
+  * added --nEventsPerJob to prun
+
 0.6.7 (10/15/2018)
   * fixed for GRL+trf
 
