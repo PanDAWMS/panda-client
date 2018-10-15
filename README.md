@@ -31,6 +31,8 @@ See ChangeLog.txt
 1. Update the release notes: https://twiki.cern.ch/twiki/bin/view/PanDA/PandaTools
 1. Request atlas-adc-tier3sw-install to copy on CVMFS
 
+# Uploading to pip
+python setup.py sdist upload
 
 # Acknowledge
 Icons from http://iconka.com

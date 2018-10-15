@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.6.7 (10/15/2018)
+  * fixed for GRL+trf
+
 0.6.6 (9/8/2018)
   * fixed for AthGeneration nightly
 
