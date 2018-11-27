@@ -1496,7 +1496,13 @@ For more info, do help(show) for example."""
 
 # main for GUI session
 def guimain(pbookCore):
-    import gtk
+    try:
+        import gtk
+    except Exception:
+        tmpOut = commands.getoutput('unset LD_LIBRARY_PATH; unset PYTHONPATH; /usr/bin/python -c "import sys;print sys.path"')
+        exec "tmpSysPath = %s" % tmpOut.split('\n')[-1]
+        sys.path = tmpSysPath + sys.path
+        import gtk
     from pandatools import BookGUI
     pbookGuiMain = BookGUI.PBookGuiMain(pbookCore)
     # get logger
@@ -1528,8 +1534,10 @@ if __name__ == "__main__":
                       help='execute a command in the batch mode')
     parser.add_option("--restoreDB",action="store_true",dest="restoreDB",default=False,
                       help="restore local database")
-    parser.add_option("--noPass",action="store_true",dest="noPass",default=False,
-                      help="disable to enter pass phrase for GUI")
+    parser.add_option("--noPass",action="store_true",dest="noPass",default=True,
+                      help=optparse.SUPPRESS_HELP)
+    parser.add_option("--inputPass",action="store_true",dest="inputPass",default=False,
+                      help="enter pass phrase so that pbook periodically renews the grid proxy in GUI mode")
     parser.add_option("--unReadOld",action="store_false",dest="readOld",default=True,
                       help="not read old jobs which were directly submitted to Panda")
     parser.add_option('--version',action='store_const',const=True,dest='version',default=False,
@@ -1563,7 +1571,7 @@ if __name__ == "__main__":
         # main
         if options.gui:
             # instantiate core with pass phrase
-            if options.noPass:
+            if options.noPass or not options.inputPass:
                 pbookCore = PBookCore(False,options.verbose)
             else:
                 pbookCore = PBookCore(True,options.verbose)                

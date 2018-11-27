@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.6.10 (11/27/2018)
+  * fixed missing gtk due to asetup
+  * to allow # as separator in --secondaryDSs 
+
 0.6.9 (11/6/2018)
   * added --nThreads to pathena
 

@@ -912,7 +912,10 @@ if options.secondaryDSs != '':
     # parse
     tmpMap = {}
     for tmpItem in options.secondaryDSs.split(','):
-        tmpItems = tmpItem.split(':')
+        if "#" in tmpItem:
+            tmpItems = tmpItem.split('#')
+        else:
+            tmpItems = tmpItem.split(':')
         if len(tmpItems) in [3,4,5]:
             tmpDsName = tmpItems[2]
             # change ^ to ,
