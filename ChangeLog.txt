@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.6.11 (11/28/2018)
+  * fixed pbook --gui for AnalysisBase
+
 0.6.10 (11/27/2018)
   * fixed missing gtk due to asetup
   * to allow # as separator in --secondaryDSs 

@@ -1499,7 +1499,7 @@ def guimain(pbookCore):
     try:
         import gtk
     except Exception:
-        tmpOut = commands.getoutput('unset LD_LIBRARY_PATH; unset PYTHONPATH; /usr/bin/python -c "import sys;print sys.path"')
+        tmpOut = commands.getoutput('unset LD_LIBRARY_PATH; unset PYTHONPATH; unset PYTHONHOME; /usr/bin/python -c "import sys;print sys.path"')
         exec "tmpSysPath = %s" % tmpOut.split('\n')[-1]
         sys.path = tmpSysPath + sys.path
         import gtk
