@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.6.12 (12/2/2018)
+  * added --loadJson
+
 0.6.11 (11/28/2018)
   * fixed pbook --gui for AnalysisBase
 

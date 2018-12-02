@@ -19,6 +19,7 @@ import fcntl
 import types
 import traceback
 import pickle
+import json
 
 ####################################################################
 
@@ -217,7 +218,7 @@ optP.add_argument('--update', action='store_const', const=True, dest='update',  
                 help='Update panda-client to the latest version')
 optP.add_argument('--cloud',action='store', dest='cloud',default=None,
                 type=str, help='cloud where jobs are submitted. default is set according to your VOMS country group')
-optP.add_argument('--noBuild', action='store_const', const=True, dest='nobuild',  default=False,
+optP.add_argument('--noBuild', action='store_const', const=True, dest='noBuild',  default=False,
                 help='Skip buildJob')
 optP.add_argument('--noCompile', action='store_const',const=True,dest='noCompile',default=False,
                 help='Just upload a tarball in the build step to avoid the tighter size limit imposed by --noBuild. The tarball contains binaries compiled on your local computer, so that compilation is skipped in the build step on remote WN')
@@ -261,7 +262,7 @@ optP.add_argument('--allowNoOutput',action='store',dest='allowNoOutput',default=
                 help='A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. Jobs go to finished even if they are not produced on WN')
 optP.add_argument('--excludedSite', action='append', dest='excludedSite',  default=[],
                 help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
-optP.add_argument('--noSubmit', action='store_const', const=True, dest='nosubmit',  default=False,
+optP.add_argument('--noSubmit', action='store_const', const=True, dest='noSubmit',  default=False,
                 help="Don't submit jobs")
 optP.add_argument('--prodSourceLabel', action='store', dest='prodSourceLabel',  default='',
                 help="set prodSourceLabel")
@@ -394,6 +395,8 @@ optP.add_argument('--useNewCode',action='store_const',const=True,dest='useNewCod
                 help='When task are resubmitted with the same outDS, the original souce code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries') 
 optP.add_argument('--useRucio',action='store_const',const=True,dest='useRucio',default=False,
                 help="Use Rucio as DDM backend")
+optP.add_argument('--loadJson', action='store', dest='loadJson',default=None,
+                  help="Read command-line parameters from a json file which contains a dict of {parameter: value}. Arguemnts for Athena can be specified as {'atehna_args': [...,]}")
 
 # parse options
 options,args = optP.parse_known_args()
@@ -401,6 +404,22 @@ if options.verbose:
     print options
     print args
     print
+# load json
+if options.loadJson is not None:
+    loadOpts = json.load(open(options.loadJson))
+    for k, v in loadOpts.iteritems():
+        if k == 'athena_args':
+            args = v
+            continue
+        if not hasattr(options, k):
+            print "ERROR: unknown parameter {0} in {1}".format(k, options.loadJson) 
+            sys.exit(1)
+        else:
+            setattr(options,k, v)
+    if options.verbose:
+        print "options after loading json"
+        print options
+        print
 
 # display version
 from pandatools import PandaToolsPkgInfo
@@ -488,10 +507,10 @@ if options.useOldTRF:
 
 # noCompile uses noBuild stuff
 if options.noCompile:
-    if options.nobuild:
+    if options.noBuild:
         tmpLog.error("--noBuild and --noCompile cannot be used simultaneously")
         sys.exit(EC_Config)
-    options.nobuild = True
+    options.noBuild = True
 
 # syntax sugar
 if options.nJobs > 0:
@@ -610,8 +629,8 @@ if options.burstSubmit != '':
     # disable individual output
     options.individualOutDS = False
     # check libDS stuff
-    if options.libDS != '' or (options.nobuild and not options.noCompile):
-        tmpLog.error("--libDS or --nobuild cannot be used together with --burstSubmit")
+    if options.libDS != '' or (options.noBuild and not options.noCompile):
+        tmpLog.error("--libDS or --noBuild cannot be used together with --burstSubmit")
         sys.exit(EC_Config)
         
 
@@ -983,7 +1002,7 @@ if options.athenaTag != '':
 options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig,verbose=options.verbose)
 
 # check CMTCONFIG
-if not AthenaUtils.checkCmtConfig(retA['cmtConfig'],options.cmtConfig,options.nobuild):
+if not AthenaUtils.checkCmtConfig(retA['cmtConfig'],options.cmtConfig,options.noBuild):
     sys.exit(EC_CMT)
 
 tmpLog.info('using CMTCONFIG=%s' % options.cmtConfig)
@@ -1006,7 +1025,7 @@ runDir = runDir+'/'
 # event picking
 if options.eventPickEvtList != '':
     epLockedBy = 'pathena'
-    if not options.nosubmit:
+    if not options.noSubmit:
         epStat,epOutput = Client.requestEventPicking(options.eventPickEvtList,
                                                      options.eventPickDataType,
                                                      options.eventPickStreamName,
@@ -1412,7 +1431,7 @@ if True:
         AthenaUtils.setExtFile(options.extFile)
 
         archiveName = ""
-        if options.libDS == '' and not (options.nobuild and not options.noCompile):
+        if options.libDS == '' and not (options.noBuild and not options.noCompile):
                 # archive with cpack
             if AthenaUtils.useCMake():
                 archiveName,archiveFullName = AthenaUtils.archiveWithCpack(True,tmpDir,options.verbose)
@@ -1432,7 +1451,7 @@ if True:
         # archive InstallArea
         if options.libDS == '':
             AthenaUtils.archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
-                                           tmpDir,options.nobuild,options.verbose)
+                                           tmpDir,options.noBuild,options.verbose)
         # back to tmp dir        
         os.chdir(tmpDir)
         # remove some athena specific files
@@ -1471,7 +1490,7 @@ if True:
         # go to tmp dir
         os.chdir(tmpDir)
         # use a saved copy
-        if options.libDS == '' and not (options.nobuild and not options.noCompile):
+        if options.libDS == '' and not (options.noBuild and not options.noCompile):
             archiveName     = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
             archiveFullName = "%s/%s" % (tmpDir,archiveName)
         else:
@@ -1485,7 +1504,7 @@ if True:
         shutil.copy(archiveName,options.outTarBall)
 
     # put sources/jobO via HTTP POST
-    if not options.nosubmit:
+    if not options.noSubmit:
         tmpLog.info("uploading source/jobO files")
         status,out = Client.putFile(archiveName,options.verbose,useCacheSrv=True,reuseSandbox=True)
 	if out.startswith('NewFileName:'):
@@ -1499,7 +1518,7 @@ if True:
         # good run list
         if options.goodRunListXML != '':
             options.goodRunListXML = PsubUtils.uploadGzippedFile(options.goodRunListXML,currentDir,tmpLog,delFilesOnExit,
-                                                                 options.nosubmit,options.verbose)
+                                                                 options.noSubmit,options.verbose)
 
 
 
@@ -1673,7 +1692,7 @@ if options.spaceToken != '':
 taskParamMap['jobParameters'] = []
 
 # build
-if options.nobuild and not options.noCompile:
+if options.noBuild and not options.noCompile:
     taskParamMap['jobParameters'] += [
         {'type':'constant',
          'value': '-a {0}'.format(archiveName),
@@ -2079,7 +2098,7 @@ if options.forceStaged:
     taskParamMap['useLocalIO'] = 1
 
 # build step
-if options.nobuild and not options.noCompile:
+if options.noBuild and not options.noCompile:
     pass
 else:
     jobParameters = '-i ${IN} -o ${OUT} --sourceURL ${SURL} '
@@ -2129,7 +2148,7 @@ if options.mergeOutput:
     jobParameters = '-r {0} '.format(runDir)
     if options.mergeScript != '':
         jobParameters += '-j "{0}" '.format(options.mergeScript)
-    if not options.nobuild:
+    if not options.noBuild:
         jobParameters += '-l ${LIB} '
     else:
         jobParameters += '-a {0} '.format(archiveName)
@@ -2162,7 +2181,7 @@ if options.verbose:
 #####################################################################
 # submission
 
-if options.nosubmit:
+if options.noSubmit:
     # no submit
     pass
 else:
