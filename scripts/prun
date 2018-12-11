@@ -16,6 +16,7 @@ import shelve
 import copy
 import types
 import json
+import copy
 
 # default cloud/site
 defaultCloud = None
@@ -44,7 +45,9 @@ optP.add_argument('--version',action='store_const',const=True,dest='version',def
 optP.add_argument('--inDS',action='store',dest='inDS',default='',
                   help='Name of an input dataset or dataset container')
 optP.add_argument('--inDsTxt',action='store',dest='inDsTxt',default='',
-                  help='a text file which contains the list of datasets to run over. newlines are replaced by commas and the result is set to --inDS. lines starting with # are ignored')
+                  help='A text file which contains the list of datasets to run over. Newlines are replaced by commas and the result is set to --inDS. Lines starting with # are ignored')
+optP.add_argument('--inOutDsJson', action='store', dest='inOutDsJson', default='',
+                  help="A json file to specify input and output datasets for bulk submission. It contains a json dump of [{'inDS': a comma-concatenated input dataset names, 'outDS': output dataset name}, ...]")
 optP.add_argument('--goodRunListXML', action='store', dest='goodRunListXML', default='',
                   help='Good Run List XML which will be converted to datasets by AMI')
 optP.add_argument('--goodRunListDataType', action='store', dest='goodRunDataType', default='',
@@ -74,7 +77,7 @@ optP.add_argument('--eventPickSkipDaTRI',action='store_const',const=True,dest='e
 optP.add_argument('--eventPickWithGUID',action='store_const',const=True,dest='eventPickWithGUID',default=False,
                 help='Using GUIDs together with run and event numbers in eventPickEvtList to skip event lookup')
 optP.add_argument('--express', action='store_const',const=True,dest='express',default=False,
-                help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
+                help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before large submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
 optP.add_argument('--debugMode', action='store_const',const=True,dest='debugMode',default=False,
                 help="Send the job with the debug mode on. If this option is specified the subjob will send stdout to the panda monitor every 5 min. The number of debug subjobs per user is limited. When this option is used and the quota has already exceeded, the panda server supresses the option so that subjobs will run without the debug mode. If you submit multiple subjobs in a single job, only the first subjob will set the debug mode on. Note that you can turn the debug mode on/off by using pbook after jobs are submitted" )
 optP.add_argument('--useContElementBoundary',action='store_const',const=True,dest='useContElementBoundary',default=False,
@@ -99,6 +102,8 @@ optP.add_argument('--useHomeDir', action='store_const',const=True,dest='useHomeD
                 help='execute prun just under the HOME dir')
 optP.add_argument('--noBuild', action='store_const',const=True,dest='noBuild',default=False,
                 help='Skip buildGen')
+optP.add_argument('--bulkSubmission', action='store_const', const=True, dest='bulkSubmission', default=False,
+                help='Bulk submit tasks. When this option is used, --inOutDsJson is required while --inDS and --outDS are ignored. It is possible to use %DATASET_IN and %DATASET_OUT in --exec which are replaced with actual dataset names when tasks are submitted, and %BULKSEQNUMBER which is replaced with a sequential number of tasks in the bulk submission')
 optP.add_argument('--noCompile', action='store_const',const=True,dest='noCompile',default=False,
                 help='Just upload a tarball in the build step to avoid the tighter size limit imposed by --noBuild. The tarball contains binaries compiled on your local computer, so that compilation is skipped in the build step on remote WN')
 optP.add_argument('--individualOutDS',action='store_const',const=True,dest='individualOutDS',default=False,
@@ -279,6 +284,8 @@ optP.add_argument('--loadXML',action='store',dest='loadXML',default=None,
                 help='Expert mode: load complete submission configuration from an XML file ')
 optP.add_argument('--loadJson', action='store', dest='loadJson',default=None,
                   help='Read command-line parameters from a json file which contains a dict of {parameter: value}')
+optP.add_argument('--dumpJson', action='store', dest='dumpJson', default=None,
+                  help='Dump all command-line parameters and submission result such as returnCode, returnOut, jediTaskID, and bulkSeqNumber if --bulkSubmission is used, to a json file')
 optP.add_argument('--forceStaged',action='store_const',const=True,dest='forceStaged',default=False,
                 help='Force files from primary DS to be staged to local disk, even if direct-access is possible')
 optP.add_argument('--forceStagedSecondary',action='store_const',const=True,dest='forceStagedSecondary',default=False,
@@ -477,6 +484,27 @@ if options.cloud != defaultCloud:
 # list of output files which can be skipped
 options.allowNoOutput = options.allowNoOutput.split(',')
 
+# read datasets from file
+if options.inDsTxt != '':
+    options.inDS = PsubUtils.readDsFromFile(options.inDsTxt)
+
+# bulk submission
+ioList = []
+if options.inOutDsJson != '':
+    options.bulkSubmission = True
+if options.bulkSubmission:
+    if options.inOutDsJson == '':
+        tmpLog.error("--inOutDsJson is missing")
+        sys.exit(EC_Config)
+    if options.eventPickEvtList != '':
+        tmpLog.error("cannnot use --eventPickEvtList and --inOutDsJson at the same time")
+        sys.exit(EC_Config)
+    ioList = json.load(open(options.inOutDsJson))
+    options.inDS = ioList[0]['inDS']
+    options.outDS = ioList[0]['outDS']
+else:
+    ioList = [{'inDS': options.inDS, 'outDS': options.outDS}]
+
 # use outputPath as outDS
 if Client.isDQ2free(options.site):
     if options.outDS != '':
@@ -497,10 +525,6 @@ if not original_outDS_Name.endswith('/'):
     options.crossSite = 0
 
 usingContainerForOut = original_outDS_Name.endswith('/')
-
-# read datasets from file
-if options.inDsTxt != '':
-    options.inDS = PsubUtils.readDsFromFile(options.inDsTxt)
 
 # disable expiring file check
 if options.useShortLivedReplicas:
@@ -960,12 +984,6 @@ if nickName == '':
 # set Rucio accounting
 PsubUtils.setRucioAccount(nickName,'prun',True)
 
-# check outDS format
-if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,
-                                options.site,vomsFQAN,options.mergeOutput):
-    tmpLog.error("invalid output datasetname:%s" % options.outDS)
-    sys.exit(EC_Config)
-
 # check nGBPerJob
 if not options.nGBPerJob in [-1,'MAX']:
     # convert to int
@@ -1295,20 +1313,6 @@ if options.debugMode:
     specialHandling += 'debug,'
 specialHandling = specialHandling[:-1]
     
-if options.verbose:
-    print "== parameters =="
-    print "Site       : %s" % options.site
-    print "Athena     : %s" % athenaVer
-    if groupArea != '':
-        print "Group Area : %s" % groupArea
-    if cacheVer != '':
-        print "Cache      : %s" % cacheVer[1:]
-    if nightVer != '':
-        print "Nightly    : %s" % nightVer[1:]
-    print "RunDir     : %s" % runDir
-    print "exec       : %s" % options.jobParams
-
-
 
 
 #####################################################################
@@ -1779,25 +1783,13 @@ if options.mergeOutput:
     if options.nGBPerMergeJob > 0:
         taskParamMap['nGBPerMergeJob'] = options.nGBPerMergeJob
 
-# check task parameters
-PsubUtils.checkTaskParam(taskParamMap,options.unlimitNumOutputs)
-
-if options.verbose:
-    tmpLog.debug("==== taskParams ====")
-    tmpKeys = taskParamMap.keys()
-    tmpKeys.sort()
-    for tmpKey in tmpKeys:
-        print '%s : %s' % (tmpKey,taskParamMap[tmpKey])
-
-
 
 #####################################################################
 # submission
 
-if options.noSubmit:
-    # no submit 
-    pass
-else:
+exitCode = 0
+dumpList = []
+if not options.noSubmit:
     # upload proxy for glexec
     if Client.PandaSites.has_key(options.site):
         # delegation
@@ -1807,20 +1799,84 @@ else:
         if not delResult:
             tmpLog.error("failed to upload proxy")
             sys.exit(EC_MyProxy)
-    # submit task
-    tmpLog.info("submit")
-    status,tmpOut = Client.insertTaskParams(taskParamMap,options.verbose,True)
-    # result
-    if status != 0:
-        tmpLog.error("task submission failed with {0}".format(status))
-        sys.exit(EC_Submit)
-    if tmpOut[0] in [0,3]:
-        tmpLog.info(format(tmpOut[1]))
+
+# submit task
+for iSubmission, ioItem in enumerate(ioList):
+    if options.verbose:
+        print "== parameters =="
+        print "Site       : %s" % options.site
+        print "Athena     : %s" % athenaVer
+        if groupArea != '':
+            print "Group Area : %s" % groupArea
+        if cacheVer != '':
+            print "Cache      : %s" % cacheVer[1:]
+        if nightVer != '':
+            print "Nightly    : %s" % nightVer[1:]
+        print "RunDir     : %s" % runDir
+        print "exec       : %s" % options.jobParams
+
+    if len(ioList) == 1:
+        newTaskParamMap = taskParamMap
     else:
-        tmpLog.error("task submission failed. {0}".format(tmpOut[1]))
-        sys.exit(EC_Submit)
+        # replace input and output
+        options.inDS = ioItem['inDS']
+        options.outDS = ioItem['outDS']
+        newTaskParamMap = PsubUtils.replaceInputOutput(taskParamMap, ioItem['inDS'],
+                                                       ioItem['outDS'], iSubmission)
+    exitCode = 0
+    tmpStr = ''
+    taskID = None
+    # check outDS format
+    if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,
+                                    options.site,vomsFQAN,options.mergeOutput):
+        tmpStr = "invalid output datasetname:%s" % options.outDS
+        tmpLog.error(tmpStr)
+        exitCode = EC_Config
+    # check task parameters
+    if exitCode == 0:
+        exitCode, tmpStr = PsubUtils.checkTaskParam(newTaskParamMap, options.unlimitNumOutputs)
+    if exitCode != 0 and len(ioList) == 1:
+        sys.exit(exitCode)
+    if options.noSubmit:
+        if options.verbose:
+            tmpLog.debug("==== taskParams ====")
+            tmpKeys = newTaskParamMap.keys()
+            tmpKeys.sort() 
+           for tmpKey in tmpKeys:
+                print '%s : %s' % (tmpKey, newTaskParamMap[tmpKey])
+    if not options.noSubmit and exitCode == 0:
+        tmpLog.info("submit {0}".format(options.outDS))
+        status,tmpOut = Client.insertTaskParams(newTaskParamMap, options.verbose, True)
+        # result
+        if status != 0:
+            tmpStr = "task submission failed with {0}".format(status)
+            tmpLog.error(tmpStr)
+            exitCode = EC_Submit
+        if tmpOut[0] in [0,3]:
+            tmpStr = tmpOut[1]
+            tmpLog.info(tmpStr)
+            try:
+                m = re.search('jediTaskID=(\d+)', tmpStr)
+                taskID = int(m.group(1))
+            except Exception:
+                pass
+        else:
+            tmpStr = "task submission failed. {0}".format(tmpOut[1])
+            tmpLog.error(tmpStr)
+            exitCode = EC_Submit 
+    dumpItem = copy.deepcopy(vars(options))
+    dumpItem['returnCode'] = exitCode
+    dumpItem['returnOut'] = tmpStr
+    dumpItem['jediTaskID'] = taskID
+    if len(ioList) > 1:
+        dumpItem['bulkSeqNumber'] = iSubmission
+    dumpList.append(dumpItem)
 
 # go back to current dir
 os.chdir(curDir)
+# dump
+if options.dumpJson is not None:
+    with open(options.dumpJson, 'w') as f:
+        json.dump(dumpList, f)
 # succeeded
-sys.exit(0)
+sys.exit(exitCode)

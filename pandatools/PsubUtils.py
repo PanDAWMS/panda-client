@@ -13,6 +13,7 @@ import pickle
 import datetime
 import tempfile
 import gzip
+import copy
 
 import Client
 import MyproxyUtils
@@ -2382,7 +2383,7 @@ def checkTaskParam(taskParamMap,unlimitNumOutputs):
                 # get logger
                 tmpLog = PLogger.getPandaLogger()
                 tmpLog.error(tmpErrStr)
-                sys.exit(EC_Config)
+                return (EC_Config, tmpErrStr)
     if not unlimitNumOutputs and nOutputs > maxNumOutputs:
         errStr  ='Too many output files (=%s) per job. The default limit is %s. ' % (nOutputs,maxNumOutputs)
         errStr += 'You can remove the constraint by using the --unlimitNumOutputs option. '
@@ -2390,9 +2391,47 @@ def checkTaskParam(taskParamMap,unlimitNumOutputs):
         errStr += 'You may be banned if you carelessly use the option'
         tmpLog = PLogger.getPandaLogger()
         tmpLog.error(errStr)
-        sys.exit(EC_Config)
-        
-    
+        return(EC_Config, errStr)
+    return (0, None)
+
+
+# replace input and output
+def replaceInputOutput(taskParamMap, inDS, outDS, seqNum):
+    newTaskParamMap = copy.deepcopy(taskParamMap)
+    if inDS != '':
+        oldInDS = taskParamMap['dsForIN']
+        subInDSbefore = urllib.quote('%DATASET_IN')
+        subInDSafter = urllib.quote(inDS)
+        newTaskParamMap['dsForIN'] = inDS
+        for tmpDict in newTaskParamMap['jobParameters']:
+            if 'dataset' in tmpDict:
+                if tmpDict['dataset'] == oldInDS:
+                    tmpDict['dataset'] = inDS
+            elif tmpDict['type'] == 'constant':
+                tmpDict['value'] = re.sub(subInDSbefore, subInDSafter, tmpDict['value'])
+    outDS = re.sub('/$', '', outDS)
+    oldOutDS = taskParamMap['taskName']
+    oldOutDS = re.sub('/$', '', oldOutDS)
+    subOutDSbefore = urllib.quote('%DATASET_OUT')
+    subOutDSafter = urllib.quote(outDS)
+    subSeqBefore = urllib.quote('%BULKSEQNUMBER')
+    subSeqAfter = str(seqNum)
+    newTaskParamMap['taskName'] = outDS
+    newTaskParamMap['log']['dataset'] = re.sub(oldOutDS, outDS, taskParamMap['log']['dataset'])
+    newTaskParamMap['log']['container'] = re.sub(oldOutDS, outDS, taskParamMap['log']['container'])
+    newTaskParamMap['log']['value'] = re.sub(oldOutDS, outDS, taskParamMap['log']['value'])
+    for tmpDict in newTaskParamMap['jobParameters']:
+        if 'dataset' in tmpDict:
+            if tmpDict['dataset'].startswith(oldOutDS):
+                tmpDict['dataset'] = re.sub(oldOutDS, outDS, tmpDict['dataset'])
+                tmpDict['container'] = re.sub(oldOutDS, outDS, tmpDict['container'])
+                tmpDict['value'] = re.sub(oldOutDS, outDS, tmpDict['value'])
+        elif tmpDict['type'] == 'constant':
+            tmpDict['value'] = re.sub(subOutDSbefore, subOutDSafter, tmpDict['value'])
+            tmpDict['value'] = re.sub(subSeqBefore, subSeqAfter, tmpDict['value'])
+            tmpDict['value'] = re.sub(oldOutDS, outDS, tmpDict['value'])
+    return newTaskParamMap
+
 
 if os.environ.has_key('PANDA_DEBUG'):
     print "DEBUG : imported %s" % __name__    

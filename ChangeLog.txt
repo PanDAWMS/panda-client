@@ -1,5 +1,9 @@
 ** Release Notes
 
+0.6.13 (12/11/2018)
+  * added --dumpJson
+  * added --bulkSubmission
+
 0.6.12 (12/2/2018)
   * added --loadJson
 
