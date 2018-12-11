@@ -1842,7 +1842,7 @@ for iSubmission, ioItem in enumerate(ioList):
             tmpLog.debug("==== taskParams ====")
             tmpKeys = newTaskParamMap.keys()
             tmpKeys.sort() 
-           for tmpKey in tmpKeys:
+            for tmpKey in tmpKeys:
                 print '%s : %s' % (tmpKey, newTaskParamMap[tmpKey])
     if not options.noSubmit and exitCode == 0:
         tmpLog.info("submit {0}".format(options.outDS))
