@@ -223,7 +223,7 @@ optP.add_argument('--cloud',action='store', dest='cloud',default=None,
 optP.add_argument('--noBuild', action='store_const', const=True, dest='noBuild',  default=False,
                 help='Skip buildJob')
 optP.add_argument('--bulkSubmission', action='store_const', const=True, dest='bulkSubmission', default=False,
-                help='Bulk submit tasks. When this option is used, --inOutDsJson is required while --inDS and --outDS are ignored. It is possible to use %DATASET_IN and %DATASET_OUT in --trf which are replaced with actual dataset names when tasks are submitted, and %BULKSEQNUMBER which is replaced with a sequential number of tasks in the bulk submission')
+                help='Bulk submit tasks. When this option is used, --inOutDsJson is required while --inDS and --outDS are ignored. It is possible to use %%DATASET_IN and %%DATASET_OUT in --trf which are replaced with actual dataset names when tasks are submitted, and %%BULKSEQNUMBER which is replaced with a sequential number of tasks in the bulk submission')
 optP.add_argument('--noCompile', action='store_const',const=True,dest='noCompile',default=False,
                 help='Just upload a tarball in the build step to avoid the tighter size limit imposed by --noBuild. The tarball contains binaries compiled on your local computer, so that compilation is skipped in the build step on remote WN')
 optP.add_argument('--noOutput', action='store_const', const=True, dest='noOutput',  default=False,
