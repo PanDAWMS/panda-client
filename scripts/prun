@@ -305,15 +305,19 @@ optP.add_argument('--maxAttempt', action='store', dest='maxAttempt', default=-1,
 optP.add_argument('--containerImage', action='store', dest='containerImage', default='',
                   help="Name of a container image")
 
+from pandatools import MiscUtils
+
 # parse options
 options = optP.parse_args()
 if options.verbose:
     print options
     print
 # load json
+jsonExecStr = ''
 if options.loadJson is not None:
-    loadOpts = json.load(open(options.loadJson))
+    loadOpts = MiscUtils.decodeJSON(options.loadJson)
     for k, v in loadOpts.iteritems():
+        origK = k
         if k == 'exec':
             k = 'jobParams'
         if not hasattr(options, k):
@@ -321,6 +325,13 @@ if options.loadJson is not None:
 	    sys.exit(0)
         else:
             setattr(options,k, v)
+        if v is True:
+            jsonExecStr += ' --{0}'.format(origK)
+        else:
+            if isinstance(v, types.StringType):
+                jsonExecStr += " --{0}='{1}'".format(origK, v)
+            else:
+                jsonExecStr += " --{0}={1}".format(origK, v)
     if options.verbose:
         print "options after loading json"
         print options
@@ -337,7 +348,6 @@ from pandatools import PsubUtils
 from pandatools import AthenaUtils
 from pandatools import GlobalConfig
 from pandatools import AppConfig
-from pandatools import MiscUtils
 from pandatools import PLogger
 
 # update panda-client
@@ -350,6 +360,7 @@ if options.update:
 
 # full execution string
 fullExecString = PsubUtils.convSysArgv()
+fullExecString += jsonExecStr
 
 # set dummy CMTSITE
 if not os.environ.has_key('CMTSITE'):
@@ -499,7 +510,10 @@ if options.bulkSubmission:
     if options.eventPickEvtList != '':
         tmpLog.error("cannnot use --eventPickEvtList and --inOutDsJson at the same time")
         sys.exit(EC_Config)
-    ioList = json.load(open(options.inOutDsJson))
+    ioList = MiscUtils.decodeJSON(options.inOutDsJson)
+    for ioItem in ioList:
+        if not ioItem['outDS'].endswith('/'):
+            ioItem['outDS'] += '/'
     options.inDS = ioList[0]['inDS']
     options.outDS = ioList[0]['outDS']
 else:

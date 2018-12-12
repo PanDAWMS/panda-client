@@ -1,4 +1,5 @@
 import re
+import json
 import commands
 
 SWLISTURL='https://atlpan.web.cern.ch/atlpan/swlist/'
@@ -178,3 +179,27 @@ def getDatasetNameAndNumFiles(streamDS,nFilesPerJob,streamName):
                 pass
     # return
     return streamDS,nFilesPerJob
+
+
+
+# convert UTF-8 to ASCII in json dumps
+def unicodeConvert(input):
+    if isinstance(input, dict):
+        retMap = {}
+        for tmpKey,tmpVal in input.iteritems():
+            retMap[unicodeConvert(tmpKey)] = unicodeConvert(tmpVal)
+        return retMap
+    elif isinstance(input, list):
+        retList = []
+        for tmpItem in input:
+            retList.append(unicodeConvert(tmpItem))
+            return retList
+    elif isinstance(input, unicode):
+        return input.encode('ascii', 'ignore')
+    return input
+
+
+# decode json with ASCII
+def decodeJSON(input_file):
+    with open(input_file) as f:
+        return json.load(f, object_hook=unicodeConvert)

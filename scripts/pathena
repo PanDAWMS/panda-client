@@ -404,6 +404,8 @@ optP.add_argument('--loadJson', action='store', dest='loadJson',default=None,
 optP.add_argument('--dumpJson', action='store', dest='dumpJson', default=None,
                   help='Dump all command-line parameters and submission result such as returnCode, returnOut, jediTaskID, and bulkSeqNumber if --bulkSubmission is used, to a json file')
 
+from pandatools import MiscUtils 
+
 # parse options
 options,args = optP.parse_known_args()
 if options.verbose:
@@ -411,9 +413,11 @@ if options.verbose:
     print args
     print
 # load json
+jsonExecStr = ''
 if options.loadJson is not None:
-    loadOpts = json.load(open(options.loadJson))
+    loadOpts = MiscUtils.decodeJSON(options.loadJson)
     for k, v in loadOpts.iteritems():
+        origK = k
         if k == 'athena_args':
             args = v
             continue
@@ -422,6 +426,13 @@ if options.loadJson is not None:
             sys.exit(1)
         else:
             setattr(options,k, v)
+        if v is True:
+            jsonExecStr += ' --{0}'.format(origK)
+        else:
+            if isinstance(v, types.StringType):
+                jsonExecStr += " --{0}='{1}'".format(origK, v)
+            else:
+                jsonExecStr += " --{0}={1}".format(origK, v)
     if options.verbose:
         print "options after loading json"
         print options
@@ -438,7 +449,6 @@ from pandatools import PsubUtils
 from pandatools import AthenaUtils
 from pandatools import GlobalConfig
 from pandatools import AppConfig
-from pandatools import MiscUtils 
 from pandatools import PLogger
 
 # update panda-client
@@ -451,6 +461,7 @@ if options.update:
 
 # full execution string
 fullExecString = PsubUtils.convSysArgv()
+fullExecString += jsonExecStr
 
 # max size per job
 maxTotalSize = Client.maxTotalSize
@@ -593,7 +604,10 @@ if options.bulkSubmission:
     if options.eventPickEvtList != '':
         tmpLog.error("cannnot use --eventPickEvtList and --inOutDsJson at the same time")
         sys.exit(EC_Config)
-    ioList = json.load(open(options.inOutDsJson))
+    ioList = MiscUtils.decodeJSON(options.inOutDsJson)
+    for ioItem in ioList:
+        if not ioItem['outDS'].endswith('/'):
+            ioItem['outDS'] += '/'
     options.inDS = ioList[0]['inDS']
     options.outDS = ioList[0]['outDS']
 else:
