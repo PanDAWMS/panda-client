@@ -12,6 +12,7 @@ except:
         sys.path = tmpSysPath + sys.path
     except:
         pass
+import threading
 
 from pandatools import PdbUtils
 from pandatools import Client
@@ -22,7 +23,7 @@ from pandatools import PsubUtils
 from pandatools import PandaToolsPkgInfo
 
 # core class for book keeping
-class PBookCore(object):
+class PBookCore:
 
     # constructor
     def __init__(self,enforceEnter=False,verbose=False,restoreDB=False,readOld=False):
