@@ -1347,7 +1347,10 @@ if athenaVer != '':
     taskParamMap['transHome'] = 'AnalysisTransforms'+cacheVer+nightVer
 else:
     taskParamMap['transHome'] = None
-taskParamMap['processingType'] = 'panda-client-{0}-jedi-run'.format(PandaToolsPkgInfo.release_version)
+if options.containerImage != '':
+    taskParamMap['processingType'] = 'panda-client-{0}-jedi-cont'.format(PandaToolsPkgInfo.release_version)
+else:
+    taskParamMap['processingType'] = 'panda-client-{0}-jedi-run'.format(PandaToolsPkgInfo.release_version)
 if options.eventPickEvtList != '':
     taskParamMap['processingType'] += '-evp'
     taskParamMap['waitInput'] = 1
