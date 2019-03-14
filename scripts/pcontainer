@@ -1,0 +1,17 @@
+#!/bin/bash
+
+"exec" "python" "-u" "-Wignore" "$0" "$@"
+
+import os
+import sys
+
+from pandatools import pcontainer_core
+
+os.environ['PANDA_EXEC_STRING'] = os.path.basename(sys.argv[0])
+
+optP = pcontainer_core.make_arg_parse()
+
+options = optP.parse_args()
+
+status, output = pcontainer_core.submit(options)
+sys.exit(status)

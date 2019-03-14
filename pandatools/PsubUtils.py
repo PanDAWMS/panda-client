@@ -626,7 +626,10 @@ def uploadProxy(site,myproxy,gridPassPhrase,pilotownerDN,verbose=False):
 # convet sys.argv to string
 def convSysArgv():
     # job params
-    paramStr = sys.argv[0].split('/')[-1]
+    if 'PANDA_EXEC_STRING' in os.environ:
+        paramStr = os.environ['PANDA_EXEC_STRING']
+    else:
+        paramStr = sys.argv[0].split('/')[-1]
     for item in sys.argv[1:]:
         # remove option
         match = re.search('(^-[^=]+=)(.+)',item)

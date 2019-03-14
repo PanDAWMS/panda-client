@@ -256,7 +256,7 @@ optP.add_argument('--provenanceID',action='store',dest='provenanceID',default=-1
                 help='provenanceID')
 optP.add_argument('--useSiteGroup',action='store',dest='useSiteGroup',default=-1,type=int,
                 help='Use only site groups which have group numbers not higher than --siteGroup. Group 0: T1 or undefined, 1,2,3,4: alpha,bravo,charlie,delta which are defined based on site reliability')
-optP.add_argument('-v',action='store_const',const=True,dest='verbose',default=False,
+optP.add_argument('-v', '--verbose', action='store_const',const=True,dest='verbose',default=False,
                 help='Verbose')
 optP.add_argument('--long', action='store_const',const=True,dest='long',default=False,
                 help='Send job to a long queue')
