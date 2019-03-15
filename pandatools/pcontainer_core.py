@@ -54,6 +54,8 @@ def construct_cli_options(options):
     for key, val in options.iteritems():
         if key in ['loadJson']:
             continue
+        if key == 'architecture':
+            key = 'cmtConfig'
         if val is None:
             continue
         newOpts[key] = val
