@@ -42,6 +42,12 @@ def make_arg_parse():
                       help='execution string. e.g., --exec "./myscript arg1 arg2"')
     optP.add_argument('-v', '--verbose', action='store_const', const=True, dest='verbose', default=None,
                       help='Verbose')
+    optP.add_argument('--priority', action='store', dest='priority', default=None, type=int,
+                      help='Set priority of the task (1000 by default). The value must be between 900 and 1100. ' \
+                           'Note that priorities of tasks are relevant only in ' \
+                           "each user's share, i.e., your tasks cannot jump over other user's tasks " \
+                           'even if you give higher priorities.')
+
     return optP
 
 # construct command-line options from arg parse

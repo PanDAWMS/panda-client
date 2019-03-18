@@ -403,6 +403,11 @@ optP.add_argument('--loadJson', action='store', dest='loadJson',default=None,
                   help="Read command-line parameters from a json file which contains a dict of {parameter: value}. Arguemnts for Athena can be specified as {'atehna_args': [...,]}")
 optP.add_argument('--dumpJson', action='store', dest='dumpJson', default=None,
                   help='Dump all command-line parameters and submission result such as returnCode, returnOut, jediTaskID, and bulkSeqNumber if --bulkSubmission is used, to a json file')
+optP.add_argument('--priority', action='store', dest='priority',  default=None, type=int,
+                  help='Set priority of the task (1000 by default). The value must be between 900 and 1100. ' \
+                       'Note that priorities of tasks are relevant only in ' \
+                       "each user's share, i.e., your tasks cannot jump over other user's tasks " \
+                       'even if you give higher priorities.')
 
 from pandatools import MiscUtils 
 
@@ -1633,6 +1638,8 @@ if includedSite != None and includedSite != []:
     taskParamMap['includedSite'] = includedSite
 else:
     taskParamMap['includedSite'] = None
+if options.priority is not None:
+    taskParamMap['currentPriority'] = options.priority
 if options.nfiles > 0:
     taskParamMap['nFiles'] = options.nfiles
 if options.nFilesPerJob > 0:

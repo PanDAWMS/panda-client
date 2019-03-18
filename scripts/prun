@@ -304,6 +304,11 @@ optP.add_argument('--maxAttempt', action='store', dest='maxAttempt', default=-1,
                 type=int, help='Maximum number of reattempts for each job (3 by default and not larger than 50)')
 optP.add_argument('--containerImage', action='store', dest='containerImage', default='',
                   help="Name of a container image")
+optP.add_argument('--priority', action='store', dest='priority',  default=None, type=int,
+                  help='Set priority of the task (1000 by default). The value must be between 900 and 1100. ' \
+                       'Note that priorities of tasks are relevant only in ' \
+                       "each user's share, i.e., your tasks cannot jump over other user's tasks " \
+                       'even if you give higher priorities.')
 
 from pandatools import MiscUtils
 
@@ -1370,6 +1375,8 @@ if includedSite != None and includedSite != []:
     taskParamMap['includedSite'] = includedSite
 else:
     taskParamMap['includedSite'] = None
+if options.priority is not None:
+    taskParamMap['currentPriority'] = options.priority
 if options.nFiles != 0:
     taskParamMap['nFiles'] = options.nFiles
 if options.nFilesPerJob != None:    
