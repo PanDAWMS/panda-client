@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.6.18 (3/26/2019)
+  * for ALRB containers
+
 0.6.17 (3/18/2019)
   * added --priority
 

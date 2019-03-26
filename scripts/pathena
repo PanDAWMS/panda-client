@@ -1587,19 +1587,8 @@ if os.path.exists(jobid_file):
     except:
         pass
 
-# look for pandatools package
-for path in sys.path:
-    if path == '':
-        path = curDir
-    if os.path.exists(path) and os.path.isdir(path) and 'pandatools' in os.listdir(path):
-        # make symlink for module name.
-        os.symlink('%s/pandatools' % path,'taskbuffer')
-        break
-
 # append tmpdir to import taskbuffer module
 sys.path = [tmpDir]+sys.path
-from taskbuffer.JobSpec  import JobSpec
-from taskbuffer.FileSpec import FileSpec
 
 # job name
 jobName = MiscUtils.wrappedUuidGen()
@@ -1610,7 +1599,7 @@ taskParamMap['taskName'] = options.outDS
 if not options.allowTaskDuplication:
     taskParamMap['uniqueTaskName'] = True
 taskParamMap['vo'] = 'atlas'
-taskParamMap['architecture'] = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
+taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
 if athenaVer != '':
     taskParamMap['transUses'] = 'Atlas-%s' % athenaVer
 else:
@@ -2219,7 +2208,7 @@ for iSubmission, ioItem in enumerate(ioList):
             print "ProdCache  : %s" % cacheVer[1:]
         if nightVer != '':
             print "Nightly    : %s" % nightVer[1:]        
-        print "cmtConfig  : %s" % AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)	
+        print "cmtConfig  : %s" % AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
         print "RunDir     : %s" % runDir
         print "jobO       : %s" % jobO.lstrip()
 

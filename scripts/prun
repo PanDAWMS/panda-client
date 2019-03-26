@@ -1309,21 +1309,6 @@ if True:
             options.goodRunListXML = PsubUtils.uploadGzippedFile(options.goodRunListXML,curDir,tmpLog,delFilesOnExit,
                                                                  options.noSubmit,options.verbose)
 
-
-# look for pandatools package
-for path in sys.path:
-    if path == '':
-        path = curDir
-    if os.path.exists(path) and os.path.isdir(path) and 'pandatools' in os.listdir(path):
-        # make symlink for module name.
-        os.symlink('%s/pandatools' % path,'taskbuffer')
-        break
-
-# append tmpdir to import taskbuffer module
-sys.path = [tmpDir]+sys.path
-from taskbuffer.JobSpec  import JobSpec
-from taskbuffer.FileSpec import FileSpec
-
 # special handling
 specialHandling = ''
 if options.express:
@@ -1346,7 +1331,7 @@ taskParamMap['taskName'] = options.outDS
 if not options.allowTaskDuplication:
     taskParamMap['uniqueTaskName'] = True
 taskParamMap['vo'] = 'atlas'
-taskParamMap['architecture'] = options.cmtConfig
+taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
 taskParamMap['transUses'] = athenaVer
 if athenaVer != '':
     taskParamMap['transHome'] = 'AnalysisTransforms'+cacheVer+nightVer

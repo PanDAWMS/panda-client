@@ -2252,6 +2252,15 @@ def convertConfToOutputOld(runConfig,jobR,outMap,individualOutDS,extOutFile,orig
         del outMap['IROOT'] 
 
 
+# get CMTCONFIG + IMG
+def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None, verbose=False):
+    retVal = getCmtConfig(athenaVer, cacheVer, nightVer, cmtConfig, verbose)
+    if 'ALRB_USER_PLATFORM' in os.environ:
+        if retVal is None:
+            retVal = ''
+        retVal = retVal + '@' + os.environ['ALRB_USER_PLATFORM']
+    return retVal
+
 
 # get CMTCONFIG
 def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbose=False):
