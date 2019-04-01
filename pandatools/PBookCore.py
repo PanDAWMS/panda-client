@@ -185,7 +185,7 @@ class PBookCore:
         bookConf = BookConfig.getConfig()
         bookConf.last_synctime = syncTime
         BookConfig.updateConfig(bookConf)
-  self.updateTaskJobsetMap()
+        self.updateTaskJobsetMap()
         tmpLog.info("Synchronization Completed")
         
 
@@ -293,7 +293,7 @@ class PBookCore:
         # update if needed
         if job.dbStatus != 'frozen' or forceUpdate:
             if not job.isJEDI():
-    tmpLog.info("Getting status for JobID=%s ..." % JobID)
+                tmpLog.info("Getting status for JobID=%s ..." % JobID)
                 # get status from Panda server
                 status,pandaIDstatus = Client.getPandIDsWithJobID(JobID,verbose=self.verbose)
                 if status != 0:
@@ -692,13 +692,13 @@ class PBookCore:
             # skip running job
             if localJob.dbStatus != 'frozen':
                 tmpLog.info('Retry failed subjobs in running jobId=%s' % JobID)
-    status,out = Client.retryFailedJobsInActive(JobID,verbose=self.verbose)
+                status,out = Client.retryFailedJobsInActive(JobID,verbose=self.verbose)
                 if status != 0:
                     tmpLog.error(status)
                     tmpLog.error(out)
                     tmpLog.error("Failed to retry JobID=%s" % JobID)
-    else:
-        job = self.status(JobID)
+                else:
+                    job = self.status(JobID)
                 if isJobset:
                     continue
                 else:
@@ -1022,7 +1022,7 @@ class PBookCore:
                     if match != None:
                         vomsRoles = match.group(2)
                     else:
-                    vomsRoles = "atlas:/atlas/%s/Role=production" % retryJobs[0].workingGroup
+                        vomsRoles = "atlas:/atlas/%s/Role=production" % retryJobs[0].workingGroup
                 # regenerate proxy with VOMS roles
                 try:
                     tmpLog.info("Checking proxy role to resubmit %s jobs" % retryJobs[0].workingGroup)
@@ -1057,9 +1057,9 @@ class PBookCore:
                         errMsg += 'Please setup Athena correctly and restart pbook'                        
                         tmpLog.error(errMsg)
                         return
-      # test mode
-      if noSubmit:
-    continue
+            # test mode
+            if noSubmit:
+                continue
             # invoke pathena/prun to send job to new site
             if (newSite or newOpts != {}) and retryJobs[0].processingType != 'usermerge':
                 # set parent jobID and jobsetID
