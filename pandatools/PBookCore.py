@@ -36,9 +36,13 @@ class PBookCore:
         # initialize database
         PdbUtils.initialzieDB(self.verbose,self.restoreDB)
         # check proxy
-        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy('',enforceEnter,self.verbose,useCache=True)
-	# map between jobset and jediTaskID
-	self.jobsetTaskMap = {}
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(
+                '',
+                enforceEnter,
+                self.verbose,
+                useCache=True)
+        # map between jobset and jediTaskID
+        self.jobsetTaskMap = {}
  
 
 
@@ -48,7 +52,11 @@ class PBookCore:
         tmpLog = PLogger.getPandaLogger()
         tmpLog.info("Synchronizing local repository ...")
         # check proxy
-        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose,useCache=True)
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(
+                self.gridPassPhrase,
+                False,
+                self.verbose,
+                useCache=True)
         # get nickname
         nickName = PsubUtils.getNickname()
         # set Rucio accounting
@@ -63,15 +71,16 @@ class PBookCore:
         if self.restoreDB:
             # reset last_synctime to restore database 
             bookConf.last_synctime = ''
-	    # disable
-	    self.restoreDB = False
-	    tmpLog.info("It may take several minutes to restore local repository ...")
+        # disable
+        self.restoreDB = False
+        tmpLog.info("It may take several minutes to restore local repository ...")
         if bookConf.last_synctime == '':
             bookConf.last_synctime = datetime.datetime.utcnow()-datetime.timedelta(days=180)
             bookConf.last_synctime = bookConf.last_synctime.strftime('%Y-%m-%d %H:%M:%S')
-        status,remoteJobIDs,jediTaskDicts = Client.getJobIDsJediTasksInTimeRange(bookConf.last_synctime,
-                                                                                 readOld=self.readOld,
-                                                                                 verbose=self.verbose)
+        status,remoteJobIDs,jediTaskDicts = Client.getJobIDsJediTasksInTimeRange(
+                bookConf.last_synctime,
+                readOld=self.readOld,
+                verbose=self.verbose)
         if status != 0:
             tmpLog.error("Failed to get JobIDs from panda server")
             return
@@ -87,9 +96,11 @@ class PBookCore:
                 if job.dbStatus == 'frozen':
                     continue
             tmpLog.info("Updating JobID=%s ..." % remoteJobID)
-	    if not remoteJobID in jediTaskDicts:
+            if not remoteJobID in jediTaskDicts:
                 # get PandaIDs
-                status,pandaIDstatus = Client.getPandIDsWithJobID(remoteJobID,verbose=self.verbose)
+                status,pandaIDstatus = Client.getPandIDsWithJobID(
+                  remoteJobID,
+                  verbose=self.verbose)
                 if status != 0:
                     tmpLog.error("Failed to get PandaIDs for %s" % remoteJobID) 
                     return
@@ -106,19 +117,28 @@ class PBookCore:
                         tmpLog.error("Failed to get PandaJobs for %s" % remoteJobID) 
                         return
                     # get slimmed file info
-                    status,pandaFileInfo = Client.getSlimmedFileInfoPandaIDs(pandaIDs,verbose=self.verbose)
+                    status,pandaFileInfo = Client.getSlimmedFileInfoPandaIDs(
+                            pandaIDs,
+                            verbose=self.verbose)
                     if status != 0:
                         tmpLog.error("Failed to get file info  for %s" % remoteJobID)
                         return
                 else:
                     # get one job to set computingSite which may have changed due to rebrokerage
-                    status,tmpPandaJobs = Client.getFullJobStatus([pandaIDs[0]],verbose=self.verbose)
+                    status,tmpPandaJobs = Client.getFullJobStatus(
+                            [pandaIDs[0]],
+                            verbose=self.verbose)
                     if status != 0:
                         tmpLog.error("Failed to get PandaJobs for %s" % remoteJobID)
                         return
                     pandaJobForSiteID = tmpPandaJobs[0]
                 # convert to local job spec
-                localJob = PdbUtils.convertPtoD(pandaJobs,pandaIDstatus,job,pandaFileInfo,pandaJobForSiteID)
+                localJob = PdbUtils.convertPtoD(
+                        pandaJobs,
+                        pandaIDstatus,
+                        job,
+                        pandaFileInfo,
+                        pandaJobForSiteID)
                 # check merge job generation
                 status = self.setMergeJobStatus(localJob)
                 if not status:
@@ -129,7 +149,11 @@ class PBookCore:
                     fullFlag = True
                 else:
                     fullFlag = False
-                status,jediTaskDicts[remoteJobID] = Client.getJediTaskDetails(jediTaskDicts[remoteJobID],True,False,verbose=self.verbose)
+                status,jediTaskDicts[remoteJobID] = Client.getJediTaskDetails(
+                        jediTaskDicts[remoteJobID],
+                        True,
+                        False,
+                        verbose=self.verbose)
                 if status != 0:
                     tmpLog.error("Failed to get task details for %s" % remoteJobID)
                     return
@@ -161,7 +185,7 @@ class PBookCore:
         bookConf = BookConfig.getConfig()
         bookConf.last_synctime = syncTime
         BookConfig.updateConfig(bookConf)
-	self.updateTaskJobsetMap()
+  self.updateTaskJobsetMap()
         tmpLog.info("Synchronization Completed")
         
 
@@ -256,16 +280,20 @@ class PBookCore:
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
-        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose,useCache=True)
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(
+                self.gridPassPhrase,
+                False,
+                self.verbose,
+                useCache=True)
         # get job info from local repository
         job = self.getJobInfo(JobID)
         if job == None:
-	    # not found
+      # not found
             return None
         # update if needed
         if job.dbStatus != 'frozen' or forceUpdate:
             if not job.isJEDI():
-		tmpLog.info("Getting status for JobID=%s ..." % JobID)
+    tmpLog.info("Getting status for JobID=%s ..." % JobID)
                 # get status from Panda server
                 status,pandaIDstatus = Client.getPandIDsWithJobID(JobID,verbose=self.verbose)
                 if status != 0:
@@ -276,7 +304,9 @@ class PBookCore:
                 if pandaIDstatus != {}:
                     tmpPandaIDs = pandaIDstatus.keys()
                     tmpPandaIDs.sort()
-                    status,tmpPandaJobs = Client.getFullJobStatus(tmpPandaIDs[:1],verbose=self.verbose)
+                    status,tmpPandaJobs = Client.getFullJobStatus(
+                            tmpPandaIDs[:1],
+                            verbose=self.verbose)
                     if status != 0:
                         tmpLog.error("Failed to get PandaJobs for %s" % JobID)
                         return None
@@ -290,7 +320,11 @@ class PBookCore:
             else:
                 tmpLog.info("Getting status for TaskID=%s ..." % job.jediTaskID)
                 # get JEDI task
-                status,jediTaskDict = Client.getJediTaskDetails({'jediTaskID':job.jediTaskID},False,True,verbose=self.verbose)
+                status,jediTaskDict = Client.getJediTaskDetails(
+                        {'jediTaskID':job.jediTaskID},
+                        False,
+                        True,
+                        verbose=self.verbose)
                 if status != 0:
                     tmpLog.error("Failed to get task details for %s" % JobID)
                     return
@@ -323,8 +357,8 @@ class PBookCore:
             isJEDI = False
             for tmpJobID in tmpJobIDList:
                 tmpJob = self.status(tmpJobID,forceUpdate)
-		if tmpJob == None:
-		    return None
+                if tmpJob == None:
+                    return None
                 tmpJobs.append(tmpJob)
                 if tmpJob.isJEDI():
                     isJEDI = True
@@ -355,9 +389,13 @@ class PBookCore:
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
-        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose,useCache=True)
-	# force update just in case
-	self.status(JobID,True)
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(
+                self.gridPassPhrase,
+                False,
+                self.verbose,
+                useCache=True)
+        # force update just in case
+        self.status(JobID,True)
         # get jobset
         jobList = self.getJobIDsWithSetID(JobID)
         if jobList == None:
@@ -428,9 +466,13 @@ class PBookCore:
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
-        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose,useCache=True)
-	# force update just in case
-	self.status(JobID,True)
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(
+                self.gridPassPhrase,
+                False,
+                self.verbose,
+                useCache=True)
+        # force update just in case
+        self.status(JobID,True)
         # get jobset
         jobList = self.getJobIDsWithSetID(JobID)
         if jobList == None:
@@ -479,7 +521,11 @@ class PBookCore:
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
-        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose,useCache=True)
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(
+                self.gridPassPhrase,    
+                False,
+                self.verbose,
+                useCache=True)
         # get jobset
         jobList = self.getJobIDsWithSetID(JobsetID)
         if jobList == None:
@@ -491,24 +537,24 @@ class PBookCore:
             tmpMsg = tmpMsg[:-1]
             tmpLog.info(tmpMsg)
         for JobID in jobList:    
-	    # get job info using status
-	    job = self.status(JobID)
-	    if job == None:
-		# not found
-		continue
-	    # skip frozen job
-	    if job.dbStatus == 'frozen':
-		tmpLog.info('All subJobs in JobID=%s already finished/failed' % JobID)
-		continue
-	    # rebrokerage
-	    tmpLog.info('Sending rebrokerage request ...')
-	    status,output = Client.runReBrokerage(JobID,job.libDS,cloud,self.verbose)
-	    if status != 0:
-		tmpLog.error(output)
-		tmpLog.error("Failed to reassign JobID=%s" % JobID)
-		return
-            # done
-            tmpLog.info('Done for %s' % JobID)
+            # get job info using status
+            job = self.status(JobID)
+            if job == None:
+                # not found
+                continue
+            # skip frozen job
+            if job.dbStatus == 'frozen':
+                tmpLog.info('All subJobs in JobID=%s already finished/failed' % JobID)
+                continue
+        # rebrokerage
+        tmpLog.info('Sending rebrokerage request ...')
+        status,output = Client.runReBrokerage(JobID,job.libDS,cloud,self.verbose)
+        if status != 0:
+            tmpLog.error(output)
+            tmpLog.error("Failed to reassign JobID=%s" % JobID)
+            return
+        # done
+        tmpLog.info('Done for %s' % JobID)
         return
 
 
@@ -517,7 +563,11 @@ class PBookCore:
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
-        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose,useCache=True)
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(
+            self.gridPassPhrase,
+            False,
+            self.verbose,
+            useCache=True)
         # rebrokerage
         status,output = Client.setDebugMode(pandaID,modeOn,self.verbose)
         if status != 0:
@@ -573,24 +623,32 @@ class PBookCore:
                 tmpLog.info('Max attempts exceeded. Please try later')
                 return False
         # retry
-        self.retry(JobID,newSite=newSite,newOpts=newOpts,ignoreDuplication=ignoreDuplication,retryBuild=retryBuild)
+        self.retry(
+            JobID,
+            newSite=newSite,
+            newOpts=newOpts,
+            ignoreDuplication=ignoreDuplication,
+            retryBuild=retryBuild)
         return
                         
 
     # retry
-    def retry(self,JobsetID,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=False,
-              retryBuild=False,reproduceFiles=[],unsetRetryID=False):
+    def retry(self,JobsetID,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=False,retryBuild=False,reproduceFiles=[],unsetRetryID=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # check proxy
-        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,self.verbose,useCache=True)
-	# force update just in case
+        self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(
+            self.gridPassPhrase,
+            False,
+            self.verbose,
+            useCache=True)
+  # force update just in case
         self.status(JobsetID,True)
         # set an empty map since mutable default value is used
         if newOpts == {}:
             newOpts = {}
         # get jobset
-	newJobsetID = -1
+        newJobsetID = -1
         jobList = self.getJobIDsWithSetID(JobsetID)
         if jobList == None:
             # works only for jobsetID
@@ -614,8 +672,11 @@ class PBookCore:
                 return None
             # for JEDI
             if localJob.isJEDI():
-                status,out = Client.retryTask(localJob.jediTaskID,verbose=self.verbose,
-                                              properErrorCode=True,newParams=newOpts)
+                status,out = Client.retryTask(
+                        localJob.jediTaskID,
+                        verbose=self.verbose,
+                        properErrorCode=True,
+                        newParams=newOpts)
                 if status != 0:
                     tmpLog.error(status)
                     tmpLog.error(out)
@@ -631,13 +692,13 @@ class PBookCore:
             # skip running job
             if localJob.dbStatus != 'frozen':
                 tmpLog.info('Retry failed subjobs in running jobId=%s' % JobID)
-		status,out = Client.retryFailedJobsInActive(JobID,verbose=self.verbose)
+    status,out = Client.retryFailedJobsInActive(JobID,verbose=self.verbose)
                 if status != 0:
                     tmpLog.error(status)
                     tmpLog.error(out)
                     tmpLog.error("Failed to retry JobID=%s" % JobID)
-		else:
-		    job = self.status(JobID)
+    else:
+        job = self.status(JobID)
                 if isJobset:
                     continue
                 else:
@@ -695,8 +756,9 @@ class PBookCore:
             while idxJL < len(jobList):
                 # avoid burst query
                 tmpLog.info(" %5s/%s" % (idxJL,len(jobList)))                
-                status,oTmp = Client.getFullJobStatus(jobList[idxJL:idxJL+nQuery],
-                                                      verbose=self.verbose)
+                status,oTmp = Client.getFullJobStatus(
+                        jobList[idxJL:idxJL+nQuery],
+                        verbose=self.verbose)
                 if status != 0:
                     tmpLog.error(status)
                     tmpLog.error(oTmp)
@@ -751,11 +813,11 @@ class PBookCore:
             retrySite    = None
             retryElement = None
             retryDestSE  = None
-	    outDsName    = None
-	    shadowList   = []
+            outDsName    = None
+            shadowList   = []
             oldLibDS     = None
             newLibDS     = None
-	    newLibTgz    = None
+            newLibTgz    = None
             rebroMap     = {}
             for idx in range(len(jobList)):
                 job = pandaJobs[idx]
@@ -790,11 +852,14 @@ class PBookCore:
                         return
                     # get files in shadow
                     if outDsName.endswith('/'):
-                        shadowList = Client.getFilesInShadowDataset(outDsName,Client.suffixShadow,self.verbose)
+                        shadowList = Client.getFilesInShadowDataset(
+                                outDsName,
+                                Client.suffixShadow,
+                                self.verbose)
                     else:
                         # disable duplication check mainly for old overlay jobs since non-signal files are wrongly skipped
                         #shadowList = Client.getFilesInShadowDatasetOld(outDsName,Client.suffixShadow,self.verbose)
-			pass
+                        pass
                 # unify sitename
                 if retrySite == None:
                     retrySite    = job.computingSite
@@ -817,7 +882,7 @@ class PBookCore:
                 if not unsetRetryID:
                     job.jobExecutionID  = JobID
                 job.jobDefinitionID     = newJobdefID
-		job.parentID            = job.PandaID
+                job.parentID            = job.PandaID
                 if job.jobsetID != ['NULL',None,-1]:
                     if not unsetRetryID:
                         job.sourceSite  = job.jobsetID
@@ -851,7 +916,7 @@ class PBookCore:
                     elif file.type in ('output','log'):
                         file.destinationSE = retryDestSE
                         file.destinationDBlock = re.sub('_sub\d+$','',file.destinationDBlock)
-			# add retry num
+      # add retry num
                         if file.dataset.endswith('/') or job.prodSourceLabel == 'panda':
                             oldOutDsName = file.destinationDBlock
                             retryDsPatt = '_r'
@@ -866,7 +931,7 @@ class PBookCore:
                             if job.processingType == 'usermerge':
                                 job.jobParameters = job.jobParameters.replace(' %s ' % oldOutDsName,
                                                                               ' %s ' % file.destinationDBlock)
-			    # use new dataset name for buildXYZ
+          # use new dataset name for buildXYZ
                             if job.prodSourceLabel == 'panda':
                                 if file.lfn.endswith('.lib.tgz'):
                                     # get new libDS and lib.tgz names
@@ -880,7 +945,7 @@ class PBookCore:
                         # add attempt nr
                         oldName  = file.lfn
                         if job.prodSourceLabel == 'panda' and file.lfn.endswith('.lib.tgz'):
-			    continue
+                            continue
                         else:
                             # append attempt number at the tail 
                             file.lfn = re.sub("\.\d+$","",file.lfn)
@@ -948,25 +1013,27 @@ class PBookCore:
                     continue
                 else:
                     return
-	    # check voms role
-	    if not retryJobs[0].workingGroup in ['NULL',None,'']:
-		# VOMS role was used 
-		if not "--workingGroup" in job.metadata:
-		    # extract voms roles from metadata
-		    match =  re.search("--voms( |=)[ \"]*([^ \"]+)",job.metadata)
-		    if match != None:
-			vomsRoles = match.group(2)
-		    else:
-			vomsRoles = "atlas:/atlas/%s/Role=production" % retryJobs[0].workingGroup
-		    # regenerate proxy with VOMS roles
-		    try:
-			tmpLog.info("Checking proxy role to resubmit %s jobs" % retryJobs[0].workingGroup)
-			self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(self.gridPassPhrase,False,
-										     self.verbose,vomsRoles,
-                                                                                     useCache=True)
-		    except:
-			tmpLog.error("Failed to generate a proxy with %s" % vomsRoles)
-			return
+            # check voms role
+            if not retryJobs[0].workingGroup in ['NULL',None,'']:
+                # VOMS role was used 
+                if not "--workingGroup" in job.metadata:
+                    # extract voms roles from metadata
+                    match =  re.search("--voms( |=)[ \"]*([^ \"]+)",job.metadata)
+                    if match != None:
+                        vomsRoles = match.group(2)
+                    else:
+                    vomsRoles = "atlas:/atlas/%s/Role=production" % retryJobs[0].workingGroup
+                # regenerate proxy with VOMS roles
+                try:
+                    tmpLog.info("Checking proxy role to resubmit %s jobs" % retryJobs[0].workingGroup)
+                    self.gridPassPhrase,self.vomsFQAN = PsubUtils.checkGridProxy(
+                            self.gridPassPhrase,
+                            False,
+                            self.verbose,vomsRoles,
+                            useCache=True)
+                except:
+                    tmpLog.error("Failed to generate a proxy with %s" % vomsRoles)
+                    return
             # check runtime env for new site submission
             if (newSite or newOpts != {}):
                 if retryJobs[0].processingType == 'pathena' or '--useAthenaPackages' in retryJobs[0].metadata:
@@ -990,9 +1057,9 @@ class PBookCore:
                         errMsg += 'Please setup Athena correctly and restart pbook'                        
                         tmpLog.error(errMsg)
                         return
-	    # test mode
-	    if noSubmit:
-		continue
+      # test mode
+      if noSubmit:
+    continue
             # invoke pathena/prun to send job to new site
             if (newSite or newOpts != {}) and retryJobs[0].processingType != 'usermerge':
                 # set parent jobID and jobsetID
@@ -1014,7 +1081,7 @@ class PBookCore:
             for tmpFile in retryJobs[-1].Files:
                 if tmpFile.type in ['output','log'] and tmpFile.dataset.endswith('/'):
                     # add shadow
-		    """
+                    """
                     removed shadow
                     if shadowDSname == None and tmpFile.type == 'log':
                         shadowDSname = "%s%s" % (tmpFile.destinationDBlock,Client.suffixShadow)
@@ -1023,14 +1090,25 @@ class PBookCore:
                     # add datasets    
                     if not tmpFile.destinationDBlock in addedDataset:
                         # create dataset
-                        Client.addDataset(tmpFile.destinationDBlock,self.verbose,location=tmpOutDsLocation,dsCheck=False)
+                        Client.addDataset(
+                                tmpFile.destinationDBlock,
+                                self.verbose,
+                                location=tmpOutDsLocation,
+                                dsCheck=False)
                         # add to container
-                        Client.addDatasetsToContainer(tmpFile.dataset,[tmpFile.destinationDBlock],self.verbose)
+                        Client.addDatasetsToContainer(
+                                tmpFile.dataset,
+                                [tmpFile.destinationDBlock],
+                                self.verbose)
                         # append
                         addedDataset.append(tmpFile.destinationDBlock)
             # register libDS
             if retryBuild and newLibDS != None:
-                Client.addDataset(newLibDS,self.verbose,location=tmpOutDsLocation,dsCheck=False)
+                Client.addDataset(
+                        newLibDS,
+                        self.verbose,
+                        location=tmpOutDsLocation,
+                        dsCheck=False)
             # submit
             tmpLog.info("Submitting job ...")            
             status,out = Client.submitJobs(retryJobs,verbose=self.verbose)
