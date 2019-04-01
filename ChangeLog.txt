@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.6.19 (4/1/2019)
+  * moved the PBookCore class to a separate module https://github.com/PanDAWMS/panda-client/pull/7
+
 0.6.18 (3/26/2019)
   * for ALRB containers
 
