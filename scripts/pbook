@@ -32,6 +32,7 @@ import threading
 from pandatools import PLogger
 from pandatools import GlobalConfig
 from pandatools import Client
+from pandatools import PandaToolsPkgInfo
 if os.environ.has_key('PANDA_DEBUG'):
     print "DEBUG : importing pandatools"
 
@@ -495,15 +496,15 @@ if __name__ == "__main__":
         if options.gui:
             # instantiate core with pass phrase
             if options.noPass or not options.inputPass:
-                pbookCore = PBookCore(False,options.verbose)
+                pbookCore = PBookCore.PBookCore(False,options.verbose)
             else:
-                pbookCore = PBookCore(True,options.verbose)                
+                pbookCore = PBookCore.PBookCore(True,options.verbose)                
             # GUI
             guimain(pbookCore)
         else:
             # instantiate core
             print options
-            pbookCore = PBookCore(False,options.verbose,options.restoreDB,
+            pbookCore = PBookCore.PBookCore(False,options.verbose,options.restoreDB,
                                   options.readOld)
             
             # CUI
