@@ -4,6 +4,7 @@ local job specification
 """
 
 import re
+import types
 import urllib
 import datetime
 
@@ -239,7 +240,9 @@ class LocalJobSpec(object):
         self.jobParams = urllib.unquote(self.jobParams)
         # datetime
         for attr in self._attributes:
-            val = getattr(self,attr)
+            val = getattr(self, attr)
+            if not isinstance(val, types.StringTypes):
+                continue
             # convert str to datetime
             match = re.search('^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)$',val)
             if match != None:

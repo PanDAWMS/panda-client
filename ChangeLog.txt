@@ -1,5 +1,10 @@
 ** Release Notes
 
+
+0.6.20 (4/2/2019)
+  * to set maxFailure and maxAttempt
+  * pbook cleanup
+
 0.6.19 (4/1/2019)
   * moved the PBookCore class to a separate module https://github.com/PanDAWMS/panda-client/pull/7
 

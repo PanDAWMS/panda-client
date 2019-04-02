@@ -2736,14 +2736,7 @@ def getJobIDsInTimeRange(timeRange,dn=None,verbose=False):
 
 
 # get JobIDs and jediTasks in a time range
-def getJobIDsJediTasksInTimeRange(timeRange,dn=None,readOld=False,verbose=False):
-    # get jobIDs
-    if readOld:
-        status,remoteJobIDs = getJobIDsInTimeRange(timeRange,dn,verbose)
-        if status != 0:
-            return status,None,None
-    else:
-        remoteJobIDs = []
+def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -2751,20 +2744,23 @@ def getJobIDsJediTasksInTimeRange(timeRange,dn=None,readOld=False,verbose=False)
     curl.verbose = verbose
     # execute
     url = baseURLSSL + '/getJediTasksInTimeRange'
-    data = {'timeRange':timeRange}
+    data = {'timeRange': timeRange,
+            'fullFlag': True}
     if dn != None:
         data['dn'] = dn
+    if minTaskID is not None:
+        data['minTaskID'] = minTaskID
     status,output = curl.post(url,data)
     if status!=0:
         print output
-        return status,None,None
+        return status, None
     try:
         jediTaskDicts = pickle.loads(output)
-        return 0,remoteJobIDs+jediTaskDicts.keys(),jediTaskDicts
+        return 0, jediTaskDicts
     except:
         type, value, traceBack = sys.exc_info()
         print "ERROR getJediTasksInTimeRange : %s %s" % (type,value)
-        return EC_Failed,None,None
+        return EC_Failed, None
 
 
 # get details of jedi task

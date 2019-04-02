@@ -22,12 +22,16 @@ class PdbProxy:
         self.filename = 'pandajob.db'
         # database dir
         self.database_dir = os.path.expanduser(os.environ['PANDA_CONFIG_ROOT'])
-        # full apth of database file
+        # full path of database file
         self.database = '%s/%s' % (self.database_dir,self.filename)
         # table name
         self.tablename = 'jobtable_%s' % self.version
         # verbose
         self.verbose = verbose
+        # connection
+        self.con = None
+        # logger
+        self.log = PLogger.getPandaLogger()
                               
 
     # set verbose
@@ -40,7 +44,7 @@ class PdbProxy:
     def execute(self,sql,var={}):
         # logger  
         tmpLog = PLogger.getPandaLogger()
-        # expanda variables
+        # expand variables
         for tmpKey,tmpVal in var.iteritems():
             sql = sql.replqce(tmpKey,str(tmpVal))
         # construct command
@@ -89,6 +93,38 @@ class PdbProxy:
                     except:
                         pass
             return True,outList
+
+    # execute SQL
+    def execute_direct(self, sql, var=None, fetch=False):
+        if self.con is None:
+            import sqlite3
+            self.con = sqlite3.connect(self.database, check_same_thread=False)
+        if self.verbose:
+            self.log.debug("DB Req : {0} var={1}".format(sql, str(var)))
+        cur = self.con.cursor()
+        try:
+            if var is None:
+                var = {}
+            cur.execute(sql, var)
+            retVal = True
+        except Exception:
+            retVal = False
+            if not self.verbose:
+                self.log.error("DB Req : {0} var={1}".format(sql, str(var)))
+            err_type, err_value = sys.exc_info()[:2]
+            err_str = "{0} {1}".format(err_type.__name__, err_value)
+            self.log.error(err_str)
+        if self.verbose:
+            self.log.debug(retVal)
+        outList = []
+        if retVal:
+            if fetch:
+                outList = cur.fetchall()
+                if self.verbose:
+                    for item in outList:
+                        self.log.debug("   Ret : " + str(item))
+        self.con.commit()
+        return retVal, outList
 
 
     # remove old database
@@ -469,7 +505,7 @@ def insertJobDB(job,verbose=False):
     # make sql
     sql1 = "INSERT INTO %s (%s) " % (pdbProxy.tablename,LocalJobSpec.columnNames())
     sql1+= "VALUES " + job.values()
-    status,out = pdbProxy.execute(sql1)
+    status,out = pdbProxy.execute_direct(sql1)
     if not status:
         raise RuntimeError,"failed to insert job"
 
@@ -486,7 +522,7 @@ def updateJobDB(job,verbose=False,updateTime=None):
         sql1 += " AND lastUpdate<'%s' " % updateTime.strftime('%Y-%m-%d %H:%M:%S')
     else:
         job.lastUpdate = datetime.datetime.utcnow()
-    status,out = pdbProxy.execute(sql1)
+    status,out = pdbProxy.execute_direct(sql1)
     if not status:
         raise RuntimeError,"failed to update job"
 
@@ -509,7 +545,7 @@ def deleteOldJobs(days,verbose=False):
     # make sql
     sql1  = "DELETE FROM %s " % pdbProxy.tablename
     sql1 += " WHERE creationTime<'%s' " % limit.strftime('%Y-%m-%d %H:%M:%S')
-    status,out = pdbProxy.execute(sql1)
+    status,out = pdbProxy.execute_direct(sql1)
     if not status:
         raise RuntimeError,"failed to delete old jobs"
 
@@ -520,14 +556,13 @@ def readJobDB(JobID,verbose=False):
     sql1 = "SELECT %s FROM %s " % (LocalJobSpec.columnNames(),pdbProxy.tablename)
     sql1+= "WHERE JobID=%s" % JobID
     # execute
-    status,out = pdbProxy.execute(sql1)
+    status,out = pdbProxy.execute_direct(sql1, fetch=True)
     if not status:
         raise RuntimeError,"failed to get JobID=%s" % JobID
     if len(out) == 0:
         return None
     # instantiate LocalJobSpec
-    for tmpStr in out:
-        values = tmpStr.split('|')
+    for values in out:
         job = LocalJobSpec()
         job.pack(values)
         # return frozen job if exists
@@ -604,7 +639,7 @@ def bulkReadJobDB(verbose=False):
     # make sql
     sql1 = "SELECT %s FROM %s " % (LocalJobSpec.columnNames(),pdbProxy.tablename)
     # execute
-    status,out = pdbProxy.execute(sql1)
+    status,out = pdbProxy.execute_direct(sql1, fetch=True)
     if not status:
         raise RuntimeError,"failed to get jobs"
     if len(out) == 0:
@@ -612,8 +647,7 @@ def bulkReadJobDB(verbose=False):
     # instantiate LocalJobSpec
     retMap = {}
     jobsetMap = {}
-    for tmpStr in out:
-        values = tmpStr.split('|')
+    for values in out:
         job = LocalJobSpec()
         job.pack(values)
         # use frozen job if exists
@@ -647,16 +681,16 @@ def getListOfJobIDs(nonFrozen=False,verbose=False):
     # make sql
     sql1 = "SELECT JobID,dbStatus FROM %s " % pdbProxy.tablename
     # execute
-    status,out = pdbProxy.execute(sql1)
+    status,out = pdbProxy.execute_direct(sql1, fetch=True)
     if not status:
         raise RuntimeError,"failed to get list of JobIDs"
     allList = []
     frozenList = []
     for item in out:
         # extract JobID
-        tmpID = long(item.split('|')[0])
+        tmpID = long(item[0])
         # status in DB
-        tmpStatus = item.split('|')[-1]
+        tmpStatus = item[-1]
         # keep all jobs
         if not tmpID in allList:
             allList.append(tmpID)
@@ -713,15 +747,15 @@ def getJobsetTaskMap(verbose=False):
     # make sql
     sql1 = "SELECT groupID,jediTaskID FROM %s WHERE groupID is not NULL and groupID != 0 and groupID != '' and jediTaskID is not null and jediTaskID != ''" % pdbProxy.tablename
     # execute
-    status,out = pdbProxy.execute(sql1)
+    status,out = pdbProxy.execute_direct(sql1, fetch=True)
     if not status:
         raise RuntimeError,"failed to get list of JobIDs"
     allMap = {}
     for item in out:
         # JobsetID
-        tmpJobsetID = long(item.split('|')[0])
+        tmpJobsetID = long(item[0])
         # JobID
-        jediTaskID = long(item.split('|')[-1])
+        jediTaskID = long(item[-1])
         # append
         allMap[jediTaskID] = tmpJobsetID
     # return 

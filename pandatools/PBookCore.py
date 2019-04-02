@@ -26,13 +26,11 @@ from pandatools import PandaToolsPkgInfo
 class PBookCore:
 
     # constructor
-    def __init__(self,enforceEnter=False,verbose=False,restoreDB=False,readOld=False):
+    def __init__(self,enforceEnter=False,verbose=False,restoreDB=False):
         # verbose
         self.verbose = verbose
         # restore database
         self.restoreDB = restoreDB
-        # read old jobs
-        self.readOld = readOld
         # initialize database
         PdbUtils.initialzieDB(self.verbose,self.restoreDB)
         # check proxy
@@ -77,110 +75,49 @@ class PBookCore:
         if bookConf.last_synctime == '':
             bookConf.last_synctime = datetime.datetime.utcnow()-datetime.timedelta(days=180)
             bookConf.last_synctime = bookConf.last_synctime.strftime('%Y-%m-%d %H:%M:%S')
-        status,remoteJobIDs,jediTaskDicts = Client.getJobIDsJediTasksInTimeRange(
-                bookConf.last_synctime,
-                readOld=self.readOld,
-                verbose=self.verbose)
-        if status != 0:
-            tmpLog.error("Failed to get JobIDs from panda server")
-            return
-        tmpLog.info("Got %s jobs to be updated" % len(remoteJobIDs))
-        # insert if missing
-        for remoteJobID in remoteJobIDs:
-            # check local status
-            job = None
-            if remoteJobID in localJobIDs:
-                # get job info from local repository
-                job = PdbUtils.readJobDB(remoteJobID,self.verbose)
-                # skip if frozen
-                if job.dbStatus == 'frozen':
-                    continue
-            tmpLog.info("Updating JobID=%s ..." % remoteJobID)
-            if not remoteJobID in jediTaskDicts:
-                # get PandaIDs
-                status,pandaIDstatus = Client.getPandIDsWithJobID(
-                  remoteJobID,
-                  verbose=self.verbose)
-                if status != 0:
-                    tmpLog.error("Failed to get PandaIDs for %s" % remoteJobID) 
-                    return
-                pandaIDs = pandaIDstatus.keys()
-                pandaIDs.sort()
-                # get full JobSpec
-                pandaJobs = []            
-                pandaFileInfo = {}
-                pandaJobForSiteID = None
-                if job == None:
-                    tmpIDs = [pandaIDs[0],pandaIDs[-1]]
-                    status,pandaJobs = Client.getFullJobStatus(tmpIDs,verbose=self.verbose)
-                    if status != 0:
-                        tmpLog.error("Failed to get PandaJobs for %s" % remoteJobID) 
-                        return
-                    # get slimmed file info
-                    status,pandaFileInfo = Client.getSlimmedFileInfoPandaIDs(
-                            pandaIDs,
-                            verbose=self.verbose)
-                    if status != 0:
-                        tmpLog.error("Failed to get file info  for %s" % remoteJobID)
-                        return
-                else:
-                    # get one job to set computingSite which may have changed due to rebrokerage
-                    status,tmpPandaJobs = Client.getFullJobStatus(
-                            [pandaIDs[0]],
-                            verbose=self.verbose)
-                    if status != 0:
-                        tmpLog.error("Failed to get PandaJobs for %s" % remoteJobID)
-                        return
-                    pandaJobForSiteID = tmpPandaJobs[0]
-                # convert to local job spec
-                localJob = PdbUtils.convertPtoD(
-                        pandaJobs,
-                        pandaIDstatus,
-                        job,
-                        pandaFileInfo,
-                        pandaJobForSiteID)
-                # check merge job generation
-                status = self.setMergeJobStatus(localJob)
-                if not status:
-                    return
-            else:
-                # get details for new tasks
-                if job == None:
-                    fullFlag = True
-                else:
-                    fullFlag = False
-                status,jediTaskDicts[remoteJobID] = Client.getJediTaskDetails(
-                        jediTaskDicts[remoteJobID],
-                        True,
-                        False,
-                        verbose=self.verbose)
-                if status != 0:
-                    tmpLog.error("Failed to get task details for %s" % remoteJobID)
-                    return
+        maxTaskID = None
+        while True:
+            status, jediTaskDicts = Client.getJobIDsJediTasksInTimeRange(bookConf.last_synctime,
+                                                                         minTaskID=maxTaskID,
+                                                                         verbose=self.verbose)
+            if status != 0:
+                tmpLog.error("Failed to get tasks from panda server")
+                return
+            if len(jediTaskDicts) == 0:
+                break
+            tmpLog.info("Got %s tasks to be updated" % len(jediTaskDicts))
+            # insert if missing
+            for remoteJobID in jediTaskDicts.keys():
+                taskID = jediTaskDicts[remoteJobID]['jediTaskID']
+                # get max
+                if maxTaskID is None or taskID > maxTaskID:
+                    maxTaskID = taskID
+                # check local status
+                job = None
+                if remoteJobID in localJobIDs:
+                    # get job info from local repository
+                    job = PdbUtils.readJobDB(remoteJobID, self.verbose)
+                    # skip if frozen
+                    if job.dbStatus == 'frozen':
+                        continue
+                tmpLog.info("Updating taskID=%s ..." % taskID)
                 # convert JEDI task
                 localJob = PdbUtils.convertJTtoD(jediTaskDicts[remoteJobID],job)
-            # update database 
-            if not remoteJobID in localJobIDs:
-                # insert to DB
-                try:
-                    PdbUtils.insertJobDB(localJob,self.verbose)
-                except:
-                    tmpLog.error("Failed to insert JobID=%s to local repository" % remoteJobID)
-                    return
-                # set retryID
-                if not localJob.provenanceID in [0,'0']:
+                # update database
+                if not remoteJobID in localJobIDs:
+                    # insert to DB
                     try:
-                        PdbUtils.setRetryID(localJob,self.verbose)
+                        PdbUtils.insertJobDB(localJob,self.verbose)
                     except:
-                        tmpLog.error("Failed to set retryID for JobID=%s in local repository" % remoteJobID)
+                        tmpLog.error("Failed to insert taskID=%s to local repository" % taskID)
                         return
-            else:
-                # update
-                try:
-                    PdbUtils.updateJobDB(localJob,self.verbose,syncTimeRaw)
-                except:
-                    tmpLog.error("Failed to update local repository for JobID=%s" % remoteJobID)
-                    return
+                else:
+                    # update
+                    try:
+                        PdbUtils.updateJobDB(localJob,self.verbose,syncTimeRaw)
+                    except:
+                        tmpLog.error("Failed to update local repository for taskID=%s" % taskID)
+                        return
         # update sync time
         bookConf = BookConfig.getConfig()
         bookConf.last_synctime = syncTime

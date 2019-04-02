@@ -462,8 +462,6 @@ if __name__ == "__main__":
                       help=optparse.SUPPRESS_HELP)
     parser.add_option("--inputPass",action="store_true",dest="inputPass",default=False,
                       help="enter pass phrase so that pbook periodically renews the grid proxy in GUI mode")
-    parser.add_option("--unReadOld",action="store_false",dest="readOld",default=True,
-                      help="not read old jobs which were directly submitted to Panda")
     parser.add_option('--version',action='store_const',const=True,dest='version',default=False,
                       help='Displays version')
     parser.add_option('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
@@ -504,8 +502,7 @@ if __name__ == "__main__":
         else:
             # instantiate core
             print options
-            pbookCore = PBookCore.PBookCore(False,options.verbose,options.restoreDB,
-                                  options.readOld)
+            pbookCore = PBookCore.PBookCore(False, options.verbose, options.restoreDB)
             
             # CUI
             intmain(pbookCore,options.comString)
