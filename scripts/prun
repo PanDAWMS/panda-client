@@ -1033,7 +1033,7 @@ if options.nEventsPerJob > 0 and options.nGBPerJob != -1:
 # archive sources and send it to HTTP-reachable location
 
 # create archive
-if True:
+if options.containerImage == '':
     if options.inTarBall == '':
         # copy RootCore packages 
         if options.useRootCore:
@@ -1059,9 +1059,9 @@ if True:
                     tmpErrMsg  = "%s doesn't exist. Please use a newer version of RootCore" % tmpShFile
                     tmpLog.error(tmpErrMsg)
                     sys.exit(EC_Config)
-	    tmpLog.info("copy RootCore packages to current dir")
+            tmpLog.info("copy RootCore packages to current dir")
             # destination
-	    pandaRootCoreWorkDirName = '__panda_rootCoreWorkDir'
+            pandaRootCoreWorkDirName = '__panda_rootCoreWorkDir'
             rootCoreDestWorkDir = curDir + '/' + pandaRootCoreWorkDirName
             # add all files to extFile
             options.extFile.append(pandaRootCoreWorkDirName + '/.*')
@@ -1082,28 +1082,28 @@ if True:
             if options.noCompile:
                 shutil.copy(rootCoreCompileNbSh,rootCoreDestWorkDir)
         # gather Athena packages
-	if options.useAthenaPackages:
-	    archiveName = ""
-	    if AthenaUtils.useCMake():
-		# archive with cpack
-		archiveName,archiveFullName = AthenaUtils.archiveWithCpack(True,tmpDir,options.verbose)
-	    # set extFile
-	    AthenaUtils.setExtFile(options.extFile)
-	    if options.libDS == '' and not options.noBuild:
-		# archive sources
-		archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,curDir,tmpDir,
+        if options.useAthenaPackages:
+            archiveName = ""
+            if AthenaUtils.useCMake():
+                # archive with cpack
+                archiveName,archiveFullName = AthenaUtils.archiveWithCpack(True,tmpDir,options.verbose)
+            # set extFile
+            AthenaUtils.setExtFile(options.extFile)
+            if options.libDS == '' and not options.noBuild:
+                # archive sources
+                archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,curDir,tmpDir,
                                                                              options.verbose,options.gluePackages,
                                                                              dereferenceSymLinks=options.followLinks,
                                                                              archiveName=archiveName)
-	    else:
-		# archive jobO
-		archiveName,archiveFullName = AthenaUtils.archiveJobOFiles(workArea,runDir,curDir,
-									   tmpDir,options.verbose,
+            else:
+                # archive jobO
+                archiveName,archiveFullName = AthenaUtils.archiveJobOFiles(workArea,runDir,curDir,
+                                                                           tmpDir,options.verbose,
                                                                            archiveName=archiveName)
-	    # archive InstallArea
-	    if options.libDS == '':
-		AthenaUtils.archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
-					       tmpDir,options.noBuild,options.verbose)
+            # archive InstallArea
+            if options.libDS == '':
+                AthenaUtils.archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
+                                               tmpDir,options.noBuild,options.verbose)
         # gather normal files
         if True:
             if options.useAthenaPackages:
@@ -1114,106 +1114,106 @@ if True:
                 archStartDir = runDir
                 archStartDir = re.sub('/+$','',archStartDir)
             else:
-                # go to workdir
+                # go to work dir
                 os.chdir(options.workDir)
                 # gather files under work dir
                 tmpLog.info("gathering files under %s" % options.workDir)
                 archStartDir = '.'
-	    # get files in the working dir
+            # get files in the working dir
             if options.noCompile:
                 skippedExt = []
             else:
                 skippedExt   = ['.o','.a','.so']
-	    skippedFlag  = False
-	    workDirFiles = []
+            skippedFlag  = False
+            workDirFiles = []
             if options.followLinks:
                 osWalkList = os.walk(archStartDir,followlinks=True)
             else:
                 osWalkList = os.walk(archStartDir)                
-	    for tmpRoot,tmpDirs,tmpFiles in osWalkList:
-		emptyFlag    = True
-		for tmpFile in tmpFiles:
+            for tmpRoot,tmpDirs,tmpFiles in osWalkList:
+                emptyFlag    = True
+                for tmpFile in tmpFiles:
                     if options.useAthenaPackages:
                         if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
                             if options.verbose:
                                 print 'skip Athena archive %s' % tmpFile
                             continue
-		    tmpPath = '%s/%s' % (tmpRoot,tmpFile)
-		    # get size
-		    try:
-			size = os.path.getsize(tmpPath)
-		    except:
-			# skip dead symlink
-			if options.verbose:
-			    type,value,traceBack = sys.exc_info()
-			    print "  Ignore : %s:%s" % (type,value)
-			continue
-		    # check exclude files
-		    excludeFileFlag = False
-		    for tmpPatt in AthenaUtils.excludeFile:
-			if re.search(tmpPatt,tmpPath) != None:
-			    excludeFileFlag = True
-			    break
-		    if excludeFileFlag:
-			continue
-		    # skipped extension
-		    isSkippedExt = False
-		    for tmpExt in skippedExt:
-			if tmpPath.endswith(tmpExt):
-			    isSkippedExt = True
-			    break
-		    # check root
-		    isRoot = False
-		    if re.search('\.root(\.\d+)*$',tmpPath) != None:
-			isRoot = True
-		    # extra files
-		    isExtra = False
-		    for tmpExt in options.extFile:
-			if re.search(tmpExt+'$',tmpPath) != None:
-			    isExtra = True
-			    break
-		    # regular files
-		    if not isExtra:
-			# unset emptyFlag even if all files are skipped
-			emptyFlag = False
-			# skipped extensions
-			if isSkippedExt:
-			    print "  skip %s %s" % (str(skippedExt),tmpPath)
-			    skippedFlag = True
-			    continue
-			# skip root
-			if isRoot:
-			    print "  skip root file %s" % tmpPath
-			    skippedFlag = True
-			    continue
-			# check size
-			if size > options.maxFileSize:
-			    print "  skip large file %s:%sB>%sB" % (tmpPath,size,options.maxFileSize)
-			    skippedFlag = True
-			    continue
-		    # remove ./
-		    tmpPath = re.sub('^\./','',tmpPath)
-		    # append
-		    workDirFiles.append(tmpPath)
-		    emptyFlag = False
-		# add empty directory		
-		if emptyFlag and tmpDirs==[] and tmpFiles==[]:
-		    tmpPath = re.sub('^\./','',tmpRoot)
-		    # check exclude pattern
-		    excludePatFlag = False
-		    for tmpPatt in AthenaUtils.excludeFile:
-			if re.search(tmpPatt,tmpPath) != None:
-			    excludePatFlag = True
-			    break
-		    if excludePatFlag:
-			continue
-		    # skip tmpDir
-		    if tmpPath.split('/')[-1] == tmpDir.split('/')[-1]:
-			continue
-		    # append
-		    workDirFiles.append(tmpPath)
-	    if skippedFlag:
-		tmpLog.info("please use --maxFileSize or --extFile if you need to send the skipped files to WNs")
+                    tmpPath = '%s/%s' % (tmpRoot,tmpFile)
+                    # get size
+                    try:
+                        size = os.path.getsize(tmpPath)
+                    except:
+                        # skip dead symlink
+                        if options.verbose:
+                            type,value,traceBack = sys.exc_info()
+                            print "  Ignore : %s:%s" % (type,value)
+                        continue
+                    # check exclude files
+                    excludeFileFlag = False
+                    for tmpPatt in AthenaUtils.excludeFile:
+                        if re.search(tmpPatt,tmpPath) != None:
+                            excludeFileFlag = True
+                            break
+                    if excludeFileFlag:
+                        continue
+                    # skipped extension
+                    isSkippedExt = False
+                    for tmpExt in skippedExt:
+                        if tmpPath.endswith(tmpExt):
+                            isSkippedExt = True
+                            break
+                    # check root
+                    isRoot = False
+                    if re.search('\.root(\.\d+)*$',tmpPath) != None:
+                        isRoot = True
+                    # extra files
+                    isExtra = False
+                    for tmpExt in options.extFile:
+                        if re.search(tmpExt+'$',tmpPath) != None:
+                            isExtra = True
+                            break
+                    # regular files
+                    if not isExtra:
+                        # unset emptyFlag even if all files are skipped
+                        emptyFlag = False
+                        # skipped extensions
+                        if isSkippedExt:
+                            print "  skip %s %s" % (str(skippedExt),tmpPath)
+                            skippedFlag = True
+                            continue
+                        # skip root
+                        if isRoot:
+                            print "  skip root file %s" % tmpPath
+                            skippedFlag = True
+                            continue
+                        # check size
+                        if size > options.maxFileSize:
+                            print "  skip large file %s:%sB>%sB" % (tmpPath,size,options.maxFileSize)
+                            skippedFlag = True
+                            continue
+                    # remove ./
+                    tmpPath = re.sub('^\./','',tmpPath)
+                    # append
+                    workDirFiles.append(tmpPath)
+                    emptyFlag = False
+                # add empty directory
+                if emptyFlag and tmpDirs==[] and tmpFiles==[]:
+                    tmpPath = re.sub('^\./','',tmpRoot)
+                    # check exclude pattern
+                    excludePatFlag = False
+                    for tmpPatt in AthenaUtils.excludeFile:
+                        if re.search(tmpPatt,tmpPath) != None:
+                            excludePatFlag = True
+                            break
+                    if excludePatFlag:
+                        continue
+                    # skip tmpDir
+                    if tmpPath.split('/')[-1] == tmpDir.split('/')[-1]:
+                        continue
+                    # append
+                    workDirFiles.append(tmpPath)
+            if skippedFlag:
+                tmpLog.info("please use --maxFileSize or --extFile if you need to send the skipped files to WNs")
             # set archive name
             if not options.useAthenaPackages:    
                 # create archive
@@ -1224,57 +1224,61 @@ if True:
                     # use 'sources' for normal build
                     archiveName     = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
                 archiveFullName = "%s/%s" % (tmpDir,archiveName)
-	    # collect files
-	    for tmpFile in workDirFiles:
-                # avoid self-archiving 
+            # collect files
+            for tmpFile in workDirFiles:
+                # avoid self-archiving
                 if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
                     if options.verbose:
                         print 'skip self-archiving for %s' % tmpFile
                     continue
-		if os.path.islink(tmpFile):
-		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -uh '%s' -f '%s'" % (tmpFile,archiveFullName))
-		else:
-		    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -uf '%s' '%s'" % (archiveFullName,tmpFile))
-		if options.verbose:
-		    print tmpFile
-		if status != 0 or out != '':
-		    print out
-	# go to tmpdir
-	os.chdir(tmpDir)
+                if os.path.islink(tmpFile):
+                    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -uh '%s' -f '%s'" % (tmpFile,archiveFullName))
+                else:
+                    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -uf '%s' '%s'" % (archiveFullName,tmpFile))
+                if options.verbose:
+                    print tmpFile
+                if status != 0 or out != '':
+                    print out
+        # go to tmpdir
+        os.chdir(tmpDir)
 
-	# compress
-	status,out = commands.getstatusoutput('gzip %s' % archiveName)
-	archiveName += '.gz'
-	if status !=0 or options.verbose:
-	    print out
+        # make empty if archive doesn't exist
+        if not os.path.exists(archiveFullName):
+            commands.getstatusoutput('tar cvf %s --files-from /dev/null ' % archiveName)
 
-	# check archive
-	status,out = commands.getstatusoutput('ls -l {0}'.format(archiveName))
-	if options.verbose:
-	    print out
-	if status != 0:
-	    tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'") 
-	    sys.exit(EC_Archive)
+        # compress
+        status,out = commands.getstatusoutput('gzip %s' % archiveName)
+        archiveName += '.gz'
+        if status !=0 or options.verbose:
+            print out
 
-	# check symlinks
-	if options.useAthenaPackages:
-	    tmpLog.info("checking symbolic links")
-	    status,out = commands.getstatusoutput('tar tvfz %s' % archiveName)
-	    if status != 0:
-		tmpLog.error("Failed to expand archive")
-		sys.exit(EC_Archive)
-	    symlinks = []    
-	    for line in out.split('\n'):
-		items = line.split()
-		if items[0].startswith('l') and items[-1].startswith('/'):
-		    symlinks.append(line)
-	    if symlinks != []:
-		tmpStr  = "Found some unresolved symlinks which may cause a problem\n"
-		tmpStr += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
-		tmpStr += "   Please ignore if you believe they are harmless"
-		tmpLog.warning(tmpStr)
-		for symlink in symlinks:
-		    print "  %s" % symlink
+        # check archive
+        status,out = commands.getstatusoutput('ls -l {0}'.format(archiveName))
+        if options.verbose:
+            print out
+        if status != 0:
+            tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'")
+            sys.exit(EC_Archive)
+
+        # check symlinks
+        if options.useAthenaPackages:
+            tmpLog.info("checking symbolic links")
+            status,out = commands.getstatusoutput('tar tvfz %s' % archiveName)
+            if status != 0:
+                tmpLog.error("Failed to expand archive")
+                sys.exit(EC_Archive)
+            symlinks = []
+            for line in out.split('\n'):
+                items = line.split()
+                if items[0].startswith('l') and items[-1].startswith('/'):
+                    symlinks.append(line)
+            if symlinks != []:
+                tmpStr  = "Found some unresolved symlinks which may cause a problem\n"
+                tmpStr += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
+                tmpStr += "   Please ignore if you believe they are harmless"
+                tmpLog.warning(tmpStr)
+                for symlink in symlinks:
+                    print "  %s" % symlink
     else:
         # go to tmp dir
         os.chdir(tmpDir)
@@ -1467,18 +1471,19 @@ else:
 
 
 # build
-if options.noBuild and not options.noCompile:
-    taskParamMap['jobParameters'] += [
-        {'type':'constant',
-         'value': '-a {0}'.format(archiveName),
-         },
-        ]
-else:
-    taskParamMap['jobParameters'] += [
-        {'type':'constant',
-         'value': '-l ${LIB}',
-         },
-        ]
+if options.containerImage == '':
+    if options.noBuild and not options.noCompile:
+        taskParamMap['jobParameters'] += [
+            {'type':'constant',
+             'value': '-a {0}'.format(archiveName),
+             },
+            ]
+    else:
+        taskParamMap['jobParameters'] += [
+            {'type':'constant',
+             'value': '-l ${LIB}',
+             },
+            ]
 # output
 if options.outputs != '':
     outMap = {}
@@ -1779,11 +1784,12 @@ if options.mergeOutput:
         jobParameters += "--useRootCore "
     if options.containerImage != '':
         jobParameters += "--containerImage {0} ".format(options.containerImage)
-    if not (options.noBuild and not options.noCompile):
-        jobParameters += '-l ${LIB} '
     else:
-        jobParameters += '-a {0} '.format(archiveName)
-        jobParameters += "--sourceURL ${SURL} "
+        if not (options.noBuild and not options.noCompile):
+            jobParameters += '-l ${LIB} '
+        else:
+            jobParameters += '-a {0} '.format(archiveName)
+            jobParameters += "--sourceURL ${SURL} "
     jobParameters += '${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}'
     taskParamMap['mergeSpec'] = {}
     taskParamMap['mergeSpec']['useLocalIO'] = 1
