@@ -14,6 +14,7 @@ import datetime
 import tempfile
 import gzip
 import copy
+import platform
 
 import Client
 import MyproxyUtils
@@ -2435,6 +2436,9 @@ def replaceInputOutput(taskParamMap, inDS, outDS, seqNum):
             tmpDict['value'] = re.sub(oldOutDS, outDS, tmpDict['value'])
     return newTaskParamMap
 
+# get OS information
+def get_os_information():
+    return platform.platform()
 
 if os.environ.has_key('PANDA_DEBUG'):
     print "DEBUG : imported %s" % __name__    

@@ -408,8 +408,10 @@ optP.add_argument('--priority', action='store', dest='priority',  default=None, 
                        'Note that priorities of tasks are relevant only in ' \
                        "each user's share, i.e., your tasks cannot jump over other user's tasks " \
                        'even if you give higher priorities.')
+optP.add_argument('--osMatching', action='store_const', const=True, dest='osMatching', default=False,
+                  help='To let the brokerage choose sites which have the same OS as the local machine has.')
 
-from pandatools import MiscUtils 
+from pandatools import MiscUtils
 
 # parse options
 options,args = optP.parse_known_args()
@@ -1674,6 +1676,9 @@ if options.skipFilesUsedBy != '':
 taskParamMap['respectSplitRule'] = True
 if options.maxAttempt > 0 and options.maxAttempt <= 50:
     taskParamMap['maxAttempt'] = options.maxAttempt
+if options.osMatching:
+    taskParamMap['osMatching'] = True
+taskParamMap['osInfo'] = PsubUtils.get_os_information()
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 if matchURL != None:

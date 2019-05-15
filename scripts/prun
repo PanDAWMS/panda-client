@@ -309,6 +309,8 @@ optP.add_argument('--priority', action='store', dest='priority',  default=None, 
                        'Note that priorities of tasks are relevant only in ' \
                        "each user's share, i.e., your tasks cannot jump over other user's tasks " \
                        'even if you give higher priorities.')
+optP.add_argument('--osMatching', action='store_const', const=True, dest='osMatching', default=False,
+                  help='To let the brokerage choose sites which have the same OS as the local machine has.')
 
 from pandatools import MiscUtils
 
@@ -1386,6 +1388,9 @@ if options.skipScout:
     taskParamMap['skipScout'] = True
 if options.respectSplitRule:
     taskParamMap['respectSplitRule'] = True
+if options.osMatching:
+    taskParamMap['osMatching'] = True
+taskParamMap['osInfo'] = PsubUtils.get_os_information()
 if options.disableAutoRetry:
     taskParamMap['disableAutoRetry'] = 1
 if options.workingGroup != None:
