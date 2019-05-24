@@ -202,7 +202,7 @@ class _Curl:
 
 
     # POST method
-    def post(self,url,data,rucioAccount=False):
+    def post(self,url,data,rucioAccount=False, is_json=False):
         # make command
         com = '%s --silent' % self.path
         if not self.verifyHost or not url.startswith('https://'):
@@ -247,8 +247,11 @@ class _Curl:
         s,o = commands.getstatusoutput(com)
         if o != '\x00':
             try:
-                tmpout = urllib.unquote_plus(o)
-                o = eval(tmpout)
+                if is_json:
+                    o = json.loads(o)
+                else:
+                    tmpout = urllib.unquote_plus(o)
+                    o = eval(tmpout)
             except:
                 pass
         ret = (s,o)
@@ -3658,6 +3661,23 @@ def getTier1sites():
             for tmpPandaSite in tmpPandaSites:
                 if not tmpPandaSite in PandaTier1Sites:
                     PandaTier1Sites.append(tmpPandaSite)
+
+# get user job metadata
+def getUserJobMetadata(task_id, verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/getUserJobMetadata'
+    data = {'jediTaskID': task_id}
+    status,output = curl.post(url, data, is_json=True)
+    try:
+        return (0, output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        return EC_Failed, "ERROR getUserJobMetadata : %s %s" % (type,value)
 
 # set X509_CERT_DIR
 if os.environ.has_key('PANDA_DEBUG'):

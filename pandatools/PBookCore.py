@@ -1,4 +1,4 @@
-import os
+import json
 import datetime
 import time
 import commands
@@ -13,15 +13,12 @@ except:
         sys.path = tmpSysPath + sys.path
     except:
         pass
-import threading
 
 from pandatools import PdbUtils
 from pandatools import Client
 from pandatools import BookConfig
-from pandatools import GlobalConfig
 from pandatools import PLogger
 from pandatools import PsubUtils
-from pandatools import PandaToolsPkgInfo
 
 # core class for book keeping
 class PBookCore:
@@ -226,7 +223,7 @@ class PBookCore:
         # get job info from local repository
         job = self.getJobInfo(JobID)
         if job == None:
-      # not found
+            # not found
             return None
         # update if needed
         if job.dbStatus != 'frozen' or forceUpdate:
@@ -580,7 +577,7 @@ class PBookCore:
             False,
             self.verbose,
             useCache=True)
-  # force update just in case
+        # force update just in case
         self.status(JobsetID,True)
         # set an empty map since mutable default value is used
         if newOpts == {}:
@@ -854,7 +851,7 @@ class PBookCore:
                     elif file.type in ('output','log'):
                         file.destinationSE = retryDestSE
                         file.destinationDBlock = re.sub('_sub\d+$','',file.destinationDBlock)
-      # add retry num
+                        # add retry num
                         if file.dataset.endswith('/') or job.prodSourceLabel == 'panda':
                             oldOutDsName = file.destinationDBlock
                             retryDsPatt = '_r'
@@ -869,7 +866,7 @@ class PBookCore:
                             if job.processingType == 'usermerge':
                                 job.jobParameters = job.jobParameters.replace(' %s ' % oldOutDsName,
                                                                               ' %s ' % file.destinationDBlock)
-          # use new dataset name for buildXYZ
+                            # use new dataset name for buildXYZ
                             if job.prodSourceLabel == 'panda':
                                 if file.lfn.endswith('.lib.tgz'):
                                     # get new libDS and lib.tgz names
@@ -1102,9 +1099,30 @@ class PBookCore:
                 tmpMsg += " JobsetID=%s" % newJobsetID
             tmpLog.info(tmpMsg)
 
-
     # convert taskID to jobsetID
     def convertTaskToJobID(self,taskID):
         if taskID in self.jobsetTaskMap:
             return self.jobsetTaskMap[taskID]
         return taskID
+
+    # get job metadata
+    def getUserJobMetadata(self, jobID, output_filename):
+        job = self.getJobInfo(jobID)
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        if job is None:
+            tmpLog.error('cannot find a task with {0}. May need to sync first'.format(jobID))
+            return False
+        # get metadata
+        task_id = job.jediTaskID
+        tmpLog.info('getting metadata')
+        status, metadata = Client.getUserJobMetadata(task_id, verbose=self.verbose)
+        if status != 0:
+            tmpLog.error(metadata)
+            tmpLog.error("Failed to get metadata")
+            return False
+        with open(output_filename, 'w') as f:
+            json.dump(metadata, f)
+        tmpLog.info('dumped to {0}'.format(output_filename))
+        # return
+        return True

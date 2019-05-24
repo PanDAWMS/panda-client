@@ -6,10 +6,8 @@ import re
 import os
 import sys
 import code
-import time
 import atexit
 import signal
-import datetime
 import tempfile
 import commands
 
@@ -26,15 +24,12 @@ except:
 
 import optparse
 import readline
-import threading
 
 
 from pandatools import PLogger
 from pandatools import GlobalConfig
 from pandatools import Client
 from pandatools import PandaToolsPkgInfo
-if os.environ.has_key('PANDA_DEBUG'):
-    print "DEBUG : importing pandatools"
 
 # readline support
 readline.parse_and_bind('tab: complete')
@@ -124,11 +119,11 @@ def intmain(pbookCore,comString):
    clean
    finish
    killAndRetry
+   getUserJobMetadata
          
 For more info, do help(show) for example."""
         print str
-        
-                                        
+
     # show status
     def show(JobID=None,upperJobID=None,forceUpdate=False,showPandaIDinState='',longFormat=False):
         """Print job records. All jobs will be shown if JobID is omitted. Jobs between JobID and upperJobID are shown when upperJobID is specified. Only running jobs and last N jobs will be shown if show('running') and show(-N), respectively. If forceUpdate=True, it will try to retrieve job infomation from the panda server. This may be useful to fix the local DB when synchronization between the local DB and the panda DB is lost somehow. When longFormat=True, jobs in the job set will be individually shown. showPandaIDinState takes a list of states so that PandaIDs in one of those states will be shown.
@@ -142,7 +137,7 @@ For more info, do help(show) for example."""
            >>> show(15,showPandaIDinState='activated,running')
            >>> show(15,longFormat=True)
          """
-        if JobID == None or JobID < 0 or upperJobID != None:
+        if JobID is None or JobID < 0 or upperJobID is not None:
             # check range
             if upperJobID != None:
                 if JobID > upperJobID:
@@ -155,7 +150,7 @@ For more info, do help(show) for example."""
                     return
             # show all local info
             jobList = pbookCore.getLocalJobList()
-            if JobID < 0:
+            if JobID is not None and JobID < 0:
                 jobList = jobList[JobID:]
             # print
             for job in jobList:
@@ -164,7 +159,7 @@ For more info, do help(show) for example."""
                         if job.JobID < JobID or job.JobID > upperJobID:
                             continue
                     else:
-                        if long(job.JobsetID) < JobID or long(job.JobsetID) > upperJobID:
+                        if (JobID is not None and long(job.JobsetID) < JobID) or long(job.JobsetID) > upperJobID:
                             continue
                 print "======================================"
                 if showPandaIDinState != '':
@@ -172,10 +167,10 @@ For more info, do help(show) for example."""
                 if longFormat:
                     job.flag_longFormat = True
                 print job
-	elif JobID == 'running':
-            # show runnig jobs
+        elif JobID == 'running':
+            # show running jobs
             jobList = pbookCore.getLocalJobList()
-	    for job in jobList:
+            for job in jobList:
                 if job.dbStatus != 'frozen':
                     if hasattr(job,'JobID'):
                         # job
@@ -195,7 +190,6 @@ For more info, do help(show) for example."""
                 job.flag_longFormat = True
             print job
 
-
     # kill
     def kill(JobID,upperJobID=None,useJobsetID=True):
         """Kill all subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be killed if upperJobID is given. Set useJobsetID=False if you want to kill JobIDs between JobID and UpperJobID. If 'running' is used as JobID, all running jobs will be killed
@@ -205,10 +199,10 @@ For more info, do help(show) for example."""
            >>> kill(15,20)
            >>> kill('running')
         """
-	if JobID == 'running':
-            # show runnig jobs
+        if JobID == 'running':
+            # show running jobs
             jobList = pbookCore.getLocalJobList()
-	    for job in jobList:
+            for job in jobList:
                 if job.dbStatus != 'frozen':
                     if hasattr(job,'JobID'):
                         # job
@@ -228,7 +222,6 @@ For more info, do help(show) for example."""
         else:            
             retK = pbookCore.kill(JobID)
 
-
     # finish
     def finish(JobID,upperJobID=None,soft=False):
         """finish all subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be killed if upperJobID is given. If soft is False (default), all running jobs are killed and the task finishes immediately. If soft is True, new jobs are not generated and the task finishes once all running jobs finish. 
@@ -238,10 +231,10 @@ For more info, do help(show) for example."""
            >>> kill(15,20)
            >>> kill('running')
         """
-	if JobID == 'running':
+        if JobID == 'running':
             # show runnig jobs
             jobList = pbookCore.getLocalJobList()
-	    for job in jobList:
+            for job in jobList:
                 if job.dbStatus != 'frozen':
                     if hasattr(job,'JobID'):
                         # job
@@ -261,51 +254,6 @@ For more info, do help(show) for example."""
         else:            
             retK = pbookCore.finish(JobID,soft)
 
-
-    # reproduce
-    def reproduce(JobsetID=None,outDS=None,reproduceFiles=[],noSubmit=False):
-        """Reproduce lost files which were sucessfully produced by finished jobs. Either JobsetID or output container name needs to be specified. Give a list of file names which you want to reproduce
-
-         example:
-           >>> reproduce(JobsetID=15,reproduceFiles=['user.XYZ._00001.root','user.XYZ._0005*.root'])
-           >>> reproduce(outDS='user.ABC.hoge/',reproduceFiles=['user.XYZ._00001.root','user.XYZ._0005*.root'])
-        """
-	jobIdList = []
-	tmpLog = PLogger.getPandaLogger()
-        # look for JobID
-        if JobsetID == None:
-            # outDS is not given either
-            if outDS == None:
-                tmpLog.error("Either JobsetID or outDS must be given")
-                return
-            # get all jobs
-            jobList = pbookCore.getLocalJobList()
-            # reverse sort to find largest JobID
-            jobList.reverse()
-            # look for outDS
-	    jobIdListStr = ''
-            for tmpJob in jobList:
-                if tmpJob.outDS == outDS: 
-                    if hasattr(tmpJob,'JobID'):
-                        JobsetID = tmpJob.JobID
-                    else:
-                        JobsetID = long(tmpJob.JobsetID)
-                    jobIdList.append(JobsetID)
-		    jobIdListStr += '%s,' % JobsetID
-	    jobIdListStr = jobIdListStr[:-1]	    
-            # not found
-            if jobIdList == []:
-                tmpLog.error("Could not find corresponding JobsetID for outDS=%s" % outDS)
-                return
-            tmpLog.info("JobsetIDs=%s contribute to the outDS. Looking for jobs which produced the lost files" % jobIdListStr)
-        else:
-            jobIdList = [JobsetID]
-        # retry
-        for tmpJobsetID in jobIdList:
-            pbookCore.retry(tmpJobsetID,noSubmit=noSubmit,ignoreDuplication=True,reproduceFiles=reproduceFiles,
-                            unsetRetryID=True)
-
-        
     # retry
     def retry(JobID,upperJobID=None,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=True,retryBuild=False):
         """Retry failed/cancelled subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be retried if upperJobID is given. Set useJobsetID=False if you want to retry JobIDs between JobID and UpperJobID. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. One can use newOpts which is a map of options and new arguments like {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'} to overwrite task parameters. The list of changeable parameters is site,excludedSite,includedSite,nFilesPerJob,nGBPerJob,nFiles,nEvents. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True. Set retryBuild=True if you want to retry jobs which have a failed buildJob
@@ -332,18 +280,6 @@ For more info, do help(show) for example."""
             pbookCore.retry(JobID,newOpts=newOpts,noSubmit=noSubmit,
                             ignoreDuplication=ignoreDuplication,retryBuild=retryBuild)
 
-
-    # rebrokerage
-    def reassign(JobID,cloud=None):
-        """Reassign JobID to another optimal site. When cloud is specified one of sites in the cloud is chosen. One can not use this command more than once within one hour 
-
-         example:
-           >>> reassign(15)
-           >>> reassign(15,'CA')
-        """
-	pbookCore.rebrokerage(JobID,cloud)
-
-
     # debug mode
     def debug(PandaID,modeOn):
         """Turn the debug mode on/off for a subjob with PandaID. modeOn is True/False to enable/disable the debug mode. Note that the maxinum number of debug subjobs is limited. If you already hit the limit you need to disable the debug mode for a subjob before debugging another subjob
@@ -351,8 +287,7 @@ For more info, do help(show) for example."""
          example:
            >>> reassign(1234,True)
         """
-	pbookCore.debug(PandaID,modeOn)
-
+        pbookCore.debug(PandaID,modeOn)
 
     # delete jobs older than nDays
     def clean(nDays):
@@ -363,7 +298,6 @@ For more info, do help(show) for example."""
         """
         pbookCore.clean(nDays)
 
-
     # kill and retry
     def killAndRetry(JobID,newSite=False,newOpts={},ignoreDuplication=False,retryBuild=False):
         """Kill JobID and then retry failed/cancelled sub-jobs. Concerning newSite and newOpts, see help(retry)
@@ -371,9 +305,8 @@ For more info, do help(show) for example."""
          example:
            >>> killAndRetry(15)
         """
-	ret = pbookCore.killAndRetry(JobID,newSite=newSite,newOpts=newOpts,ignoreDuplication=ignoreDuplication,
+        ret = pbookCore.killAndRetry(JobID,newSite=newSite,newOpts=newOpts,ignoreDuplication=ignoreDuplication,
                                      retryBuild=retryBuild)
-
 
     # synchronize local repository
     def sync():
@@ -384,8 +317,16 @@ For more info, do help(show) for example."""
         """
         pbookCore.sync()
 
+    # get user job metadata
+    def getUserJobMetadata(taskID, outputFileName):
+        """Get user metadata of successful jobs in a task and write them in a json file
 
-    # execut command in the batch mode
+         example:
+           >>> getUserJobMetadata(123, 'meta.json')
+        """
+        pbookCore.getUserJobMetadata(taskID, outputFileName)
+
+    # execute command in the batch mode
     if comString != '':
         # decompose to function name and argument
         match = re.search('^([^\(]+)\(([^\)]*)\)$',comString)
