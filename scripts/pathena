@@ -327,9 +327,9 @@ optP.add_argument('--spaceToken', action='store', dest='spaceToken', default='',
 optP.add_argument('--notSkipMissing', action='store_const', const=True, dest='notSkipMissing',  default=False,
                 help='If input files are not read from SE, they will be skipped by default. This option disables the functionality')
 optP.add_argument('--burstSubmit', action='store', dest='burstSubmit', default='',
-                type=str, help="Please don't use this option. Only for site validation by experts")
+                type=str, help=argparse.SUPPRESS)
 optP.add_argument('--removeBurstLimit', action='store_const', const=True, dest='removeBurstLimit', default=False,
-                help="Please don't use this option. Only for site validation by experts")
+                help=argparse.SUPPRESS)
 optP.add_argument('--useShortLivedReplicas', action='store_const', const=True, dest='useShortLivedReplicas', default=False,
                 help="Use replicas even if they have very sort lifetime")
 optP.add_argument('--useDirectIOSites', action='store_const', const=True, dest='useDirectIOSites', default=False,
@@ -411,7 +411,7 @@ optP.add_argument('--priority', action='store', dest='priority',  default=None, 
 optP.add_argument('--osMatching', action='store_const', const=True, dest='osMatching', default=False,
                   help='To let the brokerage choose sites which have the same OS as the local machine has.')
 optP.add_argument('--cpuTimePerEvent', action='store', dest='cpuTimePerEvent', default=-1, type=int,
-                help='Expected HS06 seconds per event (~= 10 * the duration per event in seconds)')
+                help='Expected HS06 seconds per event (~= 10 * the expected duration per event in seconds)')
 optP.add_argument('--maxWalltime', action='store', dest='maxWalltime', default=0, type=int,
                 help='Max walltime for each job in hours. Note that this option works only ' \
                      'when the nevents metadata of each input file is available in rucio')
