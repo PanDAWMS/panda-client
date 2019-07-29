@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.6.24 (7/29/2019)
+  * added maxWalltime and cpuTimePerEvent
+
 0.6.23 (5/24/2019)
   * fixed killAndRetry in pbook
   * added getUserJobMetadata in pbook
