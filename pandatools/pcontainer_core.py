@@ -47,6 +47,9 @@ def make_arg_parse():
                            'Note that priorities of tasks are relevant only in ' \
                            "each user's share, i.e., your tasks cannot jump over other user's tasks " \
                            'even if you give higher priorities.')
+    optP.add_argument('--useSandbox', action='store_const', const=True, dest='useSandbox', default=False,
+                      help='To send files in the run directory to remote sites which are not sent out by default ' \
+                           'when --containerImage is used')
 
     return optP
 

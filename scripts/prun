@@ -304,6 +304,9 @@ optP.add_argument('--maxAttempt', action='store', dest='maxAttempt', default=-1,
                 type=int, help='Maximum number of reattempts for each job (3 by default and not larger than 50)')
 optP.add_argument('--containerImage', action='store', dest='containerImage', default='',
                   help="Name of a container image")
+optP.add_argument('--useSandbox', action='store_const', const=True, dest='useSandbox', default=False,
+                  help='To send files in the run directory to remote sites which are not sent out by default ' \
+                       'when --containerImage is used')
 optP.add_argument('--priority', action='store', dest='priority',  default=None, type=int,
                   help='Set priority of the task (1000 by default). The value must be between 900 and 1100. ' \
                        'Note that priorities of tasks are relevant only in ' \
@@ -436,6 +439,13 @@ if options.noCompile:
 # not skip log files in inDS
 if options.notSkipLog:
     options.useLogAsInput = True
+
+# container stuff
+if options.containerImage != '':
+    options.noBuild = True
+    if not options.useSandbox:
+        tmpLog.warning("Files in the run directory are not sent out by default when --containerImage is used. " \
+                       "Please use --useSandbox if you need those files on the grid.")
     
 # files to be deleted
 delFilesOnExit = []
@@ -1040,7 +1050,7 @@ if options.nEventsPerJob > 0 and options.nGBPerJob != -1:
 # archive sources and send it to HTTP-reachable location
 
 # create archive
-if options.containerImage == '':
+if options.containerImage == '' or options.useSandbox:
     if options.inTarBall == '':
         # copy RootCore packages 
         if options.useRootCore:
@@ -1486,7 +1496,7 @@ else:
 
 
 # build
-if options.containerImage == '':
+if options.containerImage == '' or options.useSandbox:
     if options.noBuild and not options.noCompile:
         taskParamMap['jobParameters'] += [
             {'type':'constant',

@@ -1,5 +1,8 @@
 ** Release Notes
 
+0.6.25 (8/7/2019)
+  * added --useSandbox to prun/pcontainer
+
 0.6.24 (7/29/2019)
   * added maxWalltime and cpuTimePerEvent
 
