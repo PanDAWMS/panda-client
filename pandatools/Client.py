@@ -3589,17 +3589,22 @@ def reactivateTask(jediTaskID,verbose=False):
 
 # resume task
 def resumeTask(jediTaskID,verbose=False):
-    """Reactivate task
+    """resume task
 
        args:
-           jediTaskID: jediTaskID of the task to be reactivated
+           jediTaskID: jediTaskID of the task to be resumed
        returns:
            status code
                  0: communication succeeded to the panda server
                  255: communication failure
            return: a tupple of return code and message
-                 0: unknown task
-                 1: succeeded
+                 0: request is registered
+                 1: server error
+                 2: task not found
+                 3: permission denied
+                 4: irrelevant task status
+                 100: non SSL connection
+                 101: irrelevant taskID
                  None: database error
     """
     # instantiate curl
