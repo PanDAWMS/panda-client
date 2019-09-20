@@ -304,6 +304,16 @@ optP.add_argument('--maxAttempt', action='store', dest='maxAttempt', default=-1,
                 type=int, help='Maximum number of reattempts for each job (3 by default and not larger than 50)')
 optP.add_argument('--containerImage', action='store', dest='containerImage', default='',
                   help="Name of a container image")
+optP.add_argument('--containerCvmfs', action='store_const', const=True, dest='containerCvmfs', default=False,
+                  help="Bind /cvmfs to the container, bool, default False")
+optP.add_argument('--containerX509', action='store_const', const=True, dest='containerX509', default=False,
+                  help="Sets up X509 in the container, bool, default False")
+optP.add_argument('--containerDataDir', action='store', dest='containerDataDir', default='',
+                  help="Binds the job directory to datadir for I/O operations, string, default /data")
+optP.add_argument('--containerWorkDir', action='store', dest='containerWorkDir', default='',
+                  help="chdir to workdir in the container, string, default /data")
+optP.add_argument('--containerDebug', action='store_const', const=True, dest='containerDebug', default=False,
+                  help="Enable more verbose output, bool, default False")
 optP.add_argument('--useSandbox', action='store_const', const=True, dest='useSandbox', default=False,
                   help='To send files in the run directory to remote sites which are not sent out by default ' \
                        'when --containerImage is used')
@@ -1714,6 +1724,18 @@ if options.enableJEM:
 # container
 if options.containerImage != '':
     jobParameters += "--containerImage {0} ".format(options.containerImage)
+    # Set these only if there is containerImage set
+    if options.containerCvmfs:
+	jobParameters += "--containerCvmfs {0} ".format(options.containerCvmfs)
+    if options.containerX509:
+	jobParameters += "--containerX509 {0} ".format(options.containerX509)
+    if options.containerDataDir != '':
+	jobParameters += "--containerDataDir {0} ".format(options.containerDataDir)
+    if options.containerWorkDir != '':
+	jobParameters += "--containerWorkDir {0} ".format(options.containerWorkDir)
+    if options.containerDebug:
+	jobParameters += "--debug {0} ".format(options.containerDebug)
+
 # set task param
 if jobParameters != '':
     taskParamMap['jobParameters'] += [ 
@@ -1764,6 +1786,18 @@ else:
     # container
     if options.containerImage != '':
         jobParameters += "--containerImage {0} ".format(options.containerImage)
+        # Set these only if there is containerImage set
+        if options.containerCvmfs:
+	    jobParameters += "--containerCvmfs {0} ".format(options.containerCvmfs)
+        if options.containerX509:
+            jobParameters += "--containerX509 {0} ".format(options.containerX509)
+        if options.containerDataDir != '':
+            jobParameters += "--containerDataDir {0} ".format(options.containerDataDir)
+        if options.containerWorkDir != '':
+            jobParameters += "--contsainerWorkDir {0} ".format(options.containerWorkDir)
+        if options.containerDebug:
+            jobParameters += "--debug {0} ".format(options.containerDebug)
+
     # set task param
     taskParamMap['buildSpec'] = {
         'prodSourceLabel':'panda',
@@ -1809,6 +1843,17 @@ if options.mergeOutput:
         jobParameters += "--useRootCore "
     if options.containerImage != '':
         jobParameters += "--containerImage {0} ".format(options.containerImage)
+	# Set these only if there is containerImage set
+        if options.containerCvmfs:
+            jobParameters += "--containerCvmfs {0} ".format(options.containerCvmfs)
+        if options.containerX509:
+            jobParameters += "--containerX509 {0} ".format(options.containerX509)
+        if options.containerDataDir != '':
+            jobParameters += "--containerDataDir {0} ".format(options.containerDataDir)
+        if options.containerWorkDir != '':
+            jobParameters += "--contsainerWorkDir {0} ".format(options.containerWorkDir)
+        if options.containerDebug:
+            jobParameters += "--debug {0} ".format(options.containerDebug)
     else:
         if not (options.noBuild and not options.noCompile):
             jobParameters += '-l ${LIB} '
