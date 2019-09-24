@@ -860,6 +860,41 @@ def reactivateTask(jediTaskID,verbose=False):
         errStr = dump_log("reactivateTask", e, output)
         return EC_Failed,output+'\n'+errStr
 
+# resume task
+def resumeTask(jediTaskID,verbose=False):
+    """resume task
+
+       args:
+           jediTaskID: jediTaskID of the task to be resumed
+       returns:
+           status code
+                 0: communication succeeded to the panda server
+                 255: communication failure
+           return: a tupple of return code and message
+                 0: request is registered
+                 1: server error
+                 2: task not found
+                 3: permission denied
+                 4: irrelevant task status
+                 100: non SSL connection
+                 101: irrelevant taskID
+                 None: database error
+    """
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/resumeTask'
+    data = {'jediTaskID': jediTaskID}
+    status,output = curl.post(url,data)
+    try:
+        return status, pickle.loads(output)
+    except:
+        errtype, errvalue = sys.exc_info()[:2]
+        errStr = "ERROR resumeTask : %s %s" % (errtype, errvalue)
+        return EC_Failed,output+'\n'+errStr
 
 # get task status TaskID
 def getTaskStatus(jediTaskID,verbose=False):
