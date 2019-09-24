@@ -1,178 +1,14 @@
 import os
 import re
 import sys
-import commands
-import subprocess
 
-import MiscUtils
-import PLogger
-import Client
+from . import MiscUtils
+from .MiscUtils import commands_get_output, commands_get_status_output_with_env, commands_get_output_with_env
+from . import PLogger
+from . import Client
 
 # error code
 EC_Config    = 10
-
-
-# replace parameter with compact LFNs
-def replaceParam(patt,inList,tmpJobO,useNewTRF=False):
-    # remove attempt numbers
-    compactLFNs = []
-    for tmpLFN in inList:
-        compactLFNs.append(re.sub('\.\d+$','',tmpLFN))
-    # sort
-    compactLFNs.sort()
-    # replace parameters
-    if len(compactLFNs) < 2:
-        # replace for single input
-        if not useNewTRF:
-            tmpJobO = tmpJobO.replace(patt,compactLFNs[0])
-        else:
-            # use original filename with attempt number in new trf
-            tmpJobO = tmpJobO.replace(patt,inList[0])
-    else:
-        # find head and tail to convert file.1.pool,file.2.pool,file.4.pool to file.[1,2,4].pool
-        tmpHead = ''
-        tmpTail = ''
-        tmpLFN0 = compactLFNs[0]
-        tmpLFN1 = compactLFNs[1]
-        fullLFNList = ''
-        for i in range(len(tmpLFN0)):
-            match = re.search('^(%s)' % tmpLFN0[:i],tmpLFN1)
-            if match:
-                tmpHead = match.group(1)
-            match = re.search('(%s)$' % tmpLFN0[-i:],tmpLFN1)
-            if match:
-                tmpTail = match.group(1)
-        # remove numbers : ABC_00,00_XYZ -> ABC_,_XYZ
-        tmpHead = re.sub('\d*$','',tmpHead)
-        tmpTail = re.sub('^\d*','',tmpTail)
-        # create compact paramter
-        compactPar = '%s[' % tmpHead
-        for tmpLFN in compactLFNs:
-            # keep full LFNs
-            fullLFNList += '%s,' % tmpLFN
-            # extract number
-            tmpLFN = re.sub('^%s' % tmpHead,'',tmpLFN)
-            tmpLFN = re.sub('%s$' % tmpTail,'',tmpLFN)
-            compactPar += '%s,' % tmpLFN
-        compactPar = compactPar[:-1]
-        compactPar += ']%s' % tmpTail
-        fullLFNList = fullLFNList[:-1]
-        # check contents in []
-        conMatch = re.search('\[([^\]]+)\]',compactPar)
-        if conMatch != None and re.search('^[\d,]+$',conMatch.group(1)) != None:
-            # replace with compact format
-            tmpJobO = tmpJobO.replace(patt,compactPar)
-        else:
-            # replace with full format since [] contains non digits
-            tmpJobO = tmpJobO.replace(patt,fullLFNList)
-    # return
-    return tmpJobO
-
-
-# get references from collection
-def getGUIDfromColl(athenaVer,inputColls,directory,refName='Token',verbose=False):
-    allrefs = []
-    refs = {}
-    # supported with 14.4.0 and onward
-    if athenaVer != 'dev' and athenaVer < '14.4.0':
-        print "WARNING : getGUIDfromColl is not supported in %s" \
-              % athenaVer
-        return refs,allrefs
-    # extract refereces
-    for inputColl in inputColls:
-        refs[inputColl] = []
-        com = "CollListFileGUID.exe -queryopt %s -src PFN:%s/%s RootCollection" % \
-              (refName,directory,inputColl)
-        if verbose:
-            print com
-        status,out = commands.getstatusoutput(com)
-        if verbose or status != 0:
-            print status,out
-            if status != 0:
-                raise RuntimeError,"ERROR : failed to run %s" % com
-        # get GUIDs
-        for line in out.split('\n'):
-            items = line.split()
-            # confirm GUID format
-            guid = items[-1]
-            if re.search('^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$',guid):
-                if not refs.has_key(guid):
-                    refs[guid] = inputColl
-                if not guid in allrefs:
-                    allrefs.append(guid)
-    # return
-    return refs,allrefs
-
-
-# convert list of files to compact format : header[body]tailer[attemptNr]
-def convToCompact(fList):
-    # no conversion
-    if len(fList) == 0:
-        return ''
-    elif len(fList) == 1:
-        return '%s' % fList[0]
-    # get header
-    header = fList[0]
-    for item in fList:
-        # look for identical sub-string
-        findStr = False
-        for idx in range(len(item)):
-            if idx == 0:
-                subStr = item
-            else:
-                subStr = item[:-idx]
-            # compare
-            if re.search('^%s' % subStr, header) != None:
-                # set header
-                header = subStr
-                findStr = True
-                break
-        # not found
-        if not findStr:
-            header = ''
-            break
-    # get body and attemptNr
-    bodies = []
-    attNrs = []
-    for item in fList:
-        body  = re.sub('^%s' % header,'',item)
-        attNr = ''
-        # look for attNr
-        match = re.search('(.+)(\.\d+)$',body)
-        if match != None:
-            body  = match.group(1)
-            attNr = match.group(2)
-        # append    
-        bodies.append(body)
-        attNrs.append(attNr)
-    # get tailer
-    tailer = bodies[0]
-    for item in bodies:
-        # look for identical sub-string
-        findStr = False
-        for idx in range(len(item)):
-            subStr = item[idx:]
-            # compare
-            if re.search('%s$' % subStr, tailer) != None:
-                # set tailer
-                tailer = subStr
-                findStr = True
-                break
-        # not found
-        if not findStr:
-            tailer = ''
-            break
-    # remove tailer from bodies
-    realBodies = []
-    for item in bodies:
-        realBody = re.sub('%s$' % tailer,'',item)
-        realBodies.append(realBody)
-    bodies = realBodies    
-    # convert to string
-    retStr = "%s%s%s%s" % (header,bodies,tailer,attNrs)
-    # remove whitespaces and '
-    retStr = re.sub('( |\'|\")','',retStr)
-    return retStr
 
 
 # get CMT projects
@@ -184,7 +20,7 @@ def getCmtProjects(dir='.'):
         # change dir
         os.chdir(dir)
         # get projects
-        out = commands.getoutput('cmt show projects')
+        out = commands_get_output_with_env('cmt show projects')
         lines = out.split('\n')
         # remove CMT warnings
         tupLines = tuple(lines)
@@ -241,15 +77,15 @@ def getAthenaVer():
         # try cmt under a subdir since it doesn't work in top dir
         lines,tmpOut = getCmtProjects(tmpDir)
         # delete the tmp dir
-        commands.getoutput('rm -rf %s' % tmpDir)
+        commands_get_output('rm -rf %s' % tmpDir)
         if len(lines)<2:
-            print out
+            print(out)
             tmpLog.error("cmt gave wrong info")
             return False,{}
     # private work area
     res = re.search('\(in ([^\)]+)\)',lines[0])
     if res==None:
-        print lines[0]
+        print(lines[0])
         tmpLog.error("no TestArea. could not get path to private work area")
         return False,{}
     workArea = os.path.realpath(res.group(1))
@@ -273,7 +109,7 @@ def getAthenaVer():
             if items[0] in ('dist','AtlasRelease','AtlasOffline','AtlasAnalysis','AtlasTrigger',
                             'AtlasReconstruction') or isGitBase:
                 # Atlas release
-                if 'AtlasBuildStamp' in os.environ and ('AtlasReleaseType' not in os.environ or \
+                if 'AtlasBuildStamp' in os.environ and ('AtlasReleaseType' not in os.environ or
                                                             os.environ['AtlasReleaseType'] != 'stable'):
                     athenaVer = os.environ['AtlasBuildStamp']
                     useBuildStamp = True
@@ -307,7 +143,7 @@ def getAthenaVer():
                               'AtlasDerivation','TrigMC'] or \
                               isAthRelease(items[0]) or \
                               items[1].count('.') >= 4:  
-                # tailside cache is used
+                # cache is used
                 if cacheVer != '':
                     continue
                 # production cache
@@ -343,7 +179,7 @@ def getAthenaVer():
                 # group area
                 groupArea = os.path.realpath(res.group(1))
     # cmtconfig
-    if os.environ.has_key('CMTCONFIG'):
+    if 'CMTCONFIG' in os.environ:
         cmtConfig = os.environ['CMTCONFIG']
     # last resort
     if athenaVer == '':
@@ -395,7 +231,7 @@ class ConfigAttr(dict):
                         
 
 # extract run configuration
-def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=False,
+def extractRunConfig(jobO,supStream,shipinput,trf,verbose=False,useAMI=False,
                      inDS='',tmpDir='.'):
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -420,7 +256,7 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
         if verbose:
             tmpLog.debug(com)
         # run ConfigExtractor for normal jobO
-        out = commands.getoutput(com)
+        out = commands_get_output_with_env(com)
         failExtractor = True
         outputConfig['alloutputs'] = []
         skipOutName = False
@@ -468,21 +304,13 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
                 failExtractor = False
                 # AIDA HIST
                 if match[0].startswith('Output=HIST'):
-                    if useAIDA:
-                        tmpLog.info('%s is suppressed. Please use --useAIDA if needed' % line)
-                        continue
-                    else:
-                        outputConfig['outHist'] = True
+                    outputConfig['outHist'] = True
                 # AIDA NTuple
                 if match[0].startswith('Output=NTUPLE'):
-                    if useAIDA:
-                        tmpLog.info('%s is suppressed. Please use --useAIDA if needed' % line)
-                        continue
-                    else:
-                        if not outputConfig.has_key('outNtuple'):
-                            outputConfig['outNtuple'] = []
-                        tmpItems = match[0].split()
-                        outputConfig['outNtuple'].append(tmpItems[1])
+                    if 'outNtuple' not in outputConfig:
+                        outputConfig['outNtuple'] = []
+                    tmpItems = match[0].split()
+                    outputConfig['outNtuple'].append(tmpItems[1])
                 # RDO
                 if match[0].startswith('Output=RDO'):
                     outputConfig['outRDO'] = match[0].split()[1]
@@ -497,26 +325,26 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
                     outputConfig['outTAG'] = True
                 # TAGCOM
                 if match[0].startswith('Output=TAGX'):
-                    if not outputConfig.has_key('outTAGX'):
+                    if 'outTAGX' not in outputConfig:
                         outputConfig['outTAGX'] = []
                     tmpItems = match[0].split()
                     outputConfig['outTAGX'].append(tuple(tmpItems[1:]))
                 # AANT
                 if match[0].startswith('Output=AANT'):
-                    if not outputConfig.has_key('outAANT'):
+                    if 'outAANT' not in outputConfig:
                         outputConfig['outAANT'] = []
                     tmpItems = match[0].split()
                     outputConfig['outAANT'].append(tuple(tmpItems[1:]))
                 # THIST
                 if match[0].startswith('Output=THIST'):            
-                    if not outputConfig.has_key('outTHIST'):
+                    if 'outTHIST' not in outputConfig:
                         outputConfig['outTHIST'] = []
                     tmpItems = match[0].split()
                     if not tmpItems[1] in outputConfig['outTHIST']:
                         outputConfig['outTHIST'].append(tmpItems[1])
                 # IROOT
                 if match[0].startswith('Output=IROOT'):            
-                    if not outputConfig.has_key('outIROOT'):
+                    if 'outIROOT' not in outputConfig:
                         outputConfig['outIROOT'] = []
                     tmpItems = match[0].split()
                     outputConfig['outIROOT'].append(tmpItems[1])
@@ -537,19 +365,19 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
                         outputConfig['outStreamG'].append(tmpNames.split(':'))
                 # Metadata
                 if match[0].startswith('Output=META'):            
-                    if not outputConfig.has_key('outMeta'):
+                    if 'outMeta' not in outputConfig:
                         outputConfig['outMeta'] = []
                     tmpItems = match[0].split()
                     outputConfig['outMeta'].append(tuple(tmpItems[1:]))
                 # UserDataSvc
                 if match[0].startswith('Output=USERDATA'):            
-                    if not outputConfig.has_key('outUserData'):
+                    if 'outUserData' not in outputConfig:
                         outputConfig['outUserData'] = []
                     tmpItems = match[0].split()
                     outputConfig['outUserData'].append(tmpItems[-1])
                 # MultipleStream
                 if match[0].startswith('Output=MS'):
-                    if not outputConfig.has_key('outMS'):
+                    if 'outMS' not in outputConfig:
                         outputConfig['outMS'] = []
                     tmpItems = match[0].split()            
                     outputConfig['outMS'].append(tuple(tmpItems[1:]))
@@ -598,13 +426,13 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
                     inputConfig['backNavi'] = True
                 # Random stream
                 if match[0].startswith('RndmStream'):
-                    if not otherConfig.has_key('rndmStream'):
+                    if 'rndmStream' not in otherConfig:
                         otherConfig['rndmStream'] = []
                     tmpItems = match[0].split()
                     otherConfig['rndmStream'].append(tmpItems[1])
                 # Generator file
                 if match[0].startswith('RndmGenFile'):
-                    if not otherConfig.has_key('rndmGenFile'):
+                    if 'rndmGenFile' not in otherConfig:
                         otherConfig['rndmGenFile'] = []
                     tmpItems = match[0].split()
                     otherConfig['rndmGenFile'].append(tmpItems[-1])
@@ -620,7 +448,7 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
                         continue
                 # condition file
                 if match[0].startswith('CondInput'):
-                    if not otherConfig.has_key('condInput'):
+                    if 'condInput' not in otherConfig:
                         otherConfig['condInput'] = []
                     tmpItems = match[0].split()
                     otherConfig['condInput'].append(tmpItems[-1])
@@ -636,7 +464,7 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
                 skipOutName = False
         # extractor failed
         if failExtractor:
-            print out
+            print(out)
             tmpLog.error("Could not parse jobOptions")
             statsCode = False
     # return
@@ -648,7 +476,7 @@ def extractRunConfig(jobO,supStream,useAIDA,shipinput,trf,verbose=False,useAMI=F
 
 
 # extPoolRefs for old releases which don't contain CollectionTools
-athenaStuff = ['extPoolRefs.C']
+athenaStuff = []
 
 # jobO files with full path names
 fullPathJobOs = {}
@@ -657,7 +485,8 @@ fullPathJobOs = {}
 # convert fullPathJobOs to str
 def convFullPathJobOsToStr():
     tmpStr = ''
-    for fullJobO,localName in fullPathJobOs.iteritems():
+    for fullJobO in fullPathJobOs:
+        localName = fullPathJobOs[fullJobO]
         tmpStr += '%s:%s,' % (fullJobO,localName)
     tmpStr = tmpStr[:-1]
     return tmpStr
@@ -677,20 +506,21 @@ def copyAthenaStuff(currentDir):
     baseName = os.environ['PANDA_SYS'] + "/etc/panda/share"
     for tmpFile in athenaStuff:
         com = 'cp -p %s/%s %s' % (baseName,tmpFile,currentDir)
-        commands.getoutput(com)
-    for fullJobO,localName in fullPathJobOs.iteritems():
+        commands_get_output(com)
+    for fullJobO in fullPathJobOs:
+        localName = fullPathJobOs[fullJobO]
         com = 'cp -p %s %s/%s' % (fullJobO,currentDir,localName)
-        commands.getoutput(com)
+        commands_get_output(com)
 
 
 # delete some athena specific files and copied jobOs
 def deleteAthenaStuff(currentDir):
     for tmpFile in athenaStuff:
         com = 'rm -f %s/%s' % (currentDir,tmpFile)
-        commands.getoutput(com)
+        commands_get_output(com)
     for tmpFile in fullPathJobOs.values():
         com = 'rm -f %s/%s' % (currentDir,tmpFile)
-        commands.getoutput(com)
+        commands_get_output(com)
 
 
 # set extFile
@@ -866,7 +696,8 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                             _packages.append(pName)
                     break
             # check special packages just in case
-            for pName,pPath in specialPackages.iteritems():
+            for pName in specialPackages:
+                pPath = specialPackages[pName]
                 if not pName in _packages:
                     # look for path pattern
                     if re.search(pPath,file) != None:
@@ -959,25 +790,25 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                                 relPath = re.sub(sString+'/','',iFile)
                             if os.path.islink(iFile):
                                 cmd = "tar -uh '%s' -f '%s' --exclude '%s'" % (relPath,_archiveFullName,excludePattern)
-                                out = commands.getoutput(cmd)
+                                out = commands_get_output(cmd)
                             else:
                                 cmd = "tar uf '%s' '%s' --exclude '%s'" % (_archiveFullName,relPath,excludePattern)
-                                out = commands.getoutput(cmd)
+                                out = commands_get_output(cmd)
                             if verbose:
-                                print relPath
+                                print(relPath)
                                 if out != '':    
-                                    print out
+                                    print(out)
                     continue
                 # else
                 if dereferenceSymLinks:
                     cmd = "tar ufh '%s' '%s/%s' --exclude '%s'" % (_archiveFullName,pack,item,excludePattern)
                 else:
                     cmd = "tar uf '%s' '%s/%s' --exclude '%s'" % (_archiveFullName,pack,item,excludePattern)
-                out = commands.getoutput(cmd)
+                out = commands_get_output(cmd)
                 if verbose:
-                    print "%s/%s" % (pack,item)
+                    print("%s/%s" % (pack,item))
                     if out != '':    
-                        print out
+                        print(out)
         # back to previous dir
         os.chdir(_curdir)
 
@@ -994,7 +825,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
     if verbose:
         tmpLog.debug("== private packages ==")
         for pack in packages:
-            print pack
+            print(pack)
         tmpLog.debug("== private files ==")
 
     # create archive
@@ -1038,13 +869,13 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
         # archive
         if not alreadyFlag:
             if os.path.islink(file):
-                out = commands.getoutput("tar -uh '%s' -f '%s'" % (relPath,archiveFullName))                
+                out = commands_get_output("tar -uh '%s' -f '%s'" % (relPath, archiveFullName))
             else:
-                out = commands.getoutput("tar uf '%s' '%s'" % (archiveFullName,relPath))                
+                out = commands_get_output("tar uf '%s' '%s'" % (archiveFullName, relPath))
             if verbose:
-                print relPath
+                print(relPath)
                 if out != '':    
-                    print out
+                    print(out)
     # back to current dir            
     os.chdir(currentDir)
     # return
@@ -1091,11 +922,11 @@ def archiveJobOFiles(workArea,runDir,currentDir,tmpDir,verbose,archiveName=''):
         sString=re.sub('[\+]','.',workArea)
         relPath = re.sub(sString+'/','',file)
         # append
-        out = commands.getoutput("tar -uh '%s' -f '%s'" % (relPath,archiveFullName))
+        out = commands_get_output("tar -uh '%s' -f '%s'" % (relPath,archiveFullName))
         if verbose:
-            print relPath
+            print(relPath)
             if out != '':    
-                print out
+                print(out)
     # return
     return archiveName,archiveFullName
 
@@ -1169,7 +1000,7 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
             # groupArea
             if not os.path.exists('InstallArea'):
                 if verbose:
-                    print "  Doesn't exist. Skip"
+                    print("  Doesn't exist. Skip")
                 continue
             getFiles('InstallArea',files,False,False)
             # cmt/requirements is needed for non-release packages
@@ -1195,23 +1026,23 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
                 if not file in allFiles:
                     # append
                     if file in files:
-                        out = commands.getoutput("tar -rh '%s' -f '%s'" % (file,archiveFullName))
+                        out = commands_get_output("tar -rh '%s' -f '%s'" % (file,archiveFullName))
                     else:
                         # requirements files
-                        out = commands.getoutput("tar -rh '%s' -f '%s'" % (file,groupFullName))
+                        out = commands_get_output("tar -rh '%s' -f '%s'" % (file,groupFullName))
                     allFiles.append(file)
                     if verbose:
-                        print file
+                        print(file)
                         if out != '':    
-                            print out
+                            print(out)
     # append groupArea to sources
     if groupArea != '' and (not nobuild):
         os.chdir(tmpDir)
         if os.path.exists(groupFileName):
-            out = commands.getoutput("tar -rh '%s' -f '%s'" % (groupFileName,archiveFullName))
+            out = commands_get_output("tar -rh '%s' -f '%s'" % (groupFileName,archiveFullName))
             if out != '':    
-                print out
-            commands.getoutput('rm -rf %s' % groupFullName)    
+                print(out)
+            commands_get_output('rm -rf %s' % groupFullName)
 
 
 
@@ -1239,241 +1070,19 @@ def archiveWithCpack(withSource,tmpDir,verbose):
     if verbose:
         tmpLog.debug(comStr)
         comStr += '-V '
-    tmpStat = subprocess.call(comStr,shell=True)
+    tmpStat, tmpOut = commands_get_status_output_with_env(comStr)
     if tmpStat != 0:
         tmpLog.error('cpack failed')
         sys.exit(EC_Config)
+    if verbose:
+        print(tmpOut)
     archiveName += '.tar'
     archiveFullName += '.tar'
     os.chdir(tmpDir)
     comStr = 'tar xfz {0}.gz; tar cf {0} usr > /dev/null 2>&1; rm -rf usr _CPack_Packages {0}.gz'.format(archiveName)
-    subprocess.call(comStr,shell=True)
+    commands_get_output(comStr)
     os.chdir(_curdir)
     return archiveName,archiveFullName
-
-
-
-# index of output files
-indexHIST    = 0
-indexRDO     = 0
-indexESD     = 0
-indexAOD     = 0
-indexTAG     = 0
-indexStream1 = 0
-indexStream2 = 0
-indexBS      = 0
-indexSelBS   = 0
-indexNT      = 0
-indexTHIST   = 0
-indexAANT    = 0
-indexIROOT   = 0
-indexEXT     = 0
-indexTAGX    = 0
-indexStreamG = 0
-indexMeta    = 0
-indexMS      = 0
-
-# global serial number for LFN
-globalSerialnumber = None
-
-
-# set initial index of outputs
-def setInitOutputIndex(runConfig,outDS,individualOutDS,extOutFile,outputIndvDSlist,verbose,descriptionInLFN=''):
-    import Client
-    # use global
-    global indexHIST
-    global indexRDO
-    global indexESD
-    global indexAOD
-    global indexTAG
-    global indexStream1
-    global indexStream2
-    global indexBS
-    global indexSelBS
-    global indexNT
-    global indexTHIST
-    global indexAANT
-    global indexIROOT
-    global indexTAGX
-    global indexEXT
-    global indexStreamG
-    global indexMeta
-    global indexMS
-    global globalSerialnumber
-    # get logger
-    tmpLog = PLogger.getPandaLogger()
-
-    # remove /
-    origOutDS = outDS
-    outDS = re.sub('/$','',outDS)
-    
-    # get maximum index
-    def getIndex(list,pattern):
-        maxIndex = 0
-        for item in list:
-            match = re.match(pattern,item)
-            if match != None:
-                if len(match.groups()) == 1:
-                    # old convention : FullDatasetName.XYZ
-                    tmpIndex = int(match.group(1))
-                else:
-                    # new convention : user.nick.XYZ
-                    tmpIndex = int(match.group(2))
-                if maxIndex < tmpIndex:
-                    maxIndex = tmpIndex
-                    # set global serial number for LFN
-                    if len(match.groups()) == 2:
-                        global globalSerialnumber
-                        if globalSerialnumber == None or \
-                           int(globalSerialnumber.split('_')[-1]) < int(match.group(1).split('_')[-1]):
-                            globalSerialnumber = match.group(1)
-        return maxIndex
-
-    # get files for individualOutDS
-    def getFilesWithSuffix(fileMap,suffix):
-        tmpDsName = "%s_%s" % (outDS,suffix)
-        if origOutDS.endswith('/'):
-            tmpDsName += '/'
-        if not outputIndvDSlist.has_key(tmpDsName):
-            return
-        tmpLog.info("query files in %s" % tmpDsName)
-        tmpList = Client.queryFilesInDataset(tmpDsName,verbose)
-        for tmpLFN,tmpVal in tmpList.iteritems():
-            if not tmpLFN in fileMap:
-                fileMap[tmpLFN] = tmpVal
-        # query files in dataset from Panda
-        status,tmpMap = Client.queryLastFilesInDataset([tmpDsName],verbose)
-        for tmpLFN in tmpMap[tmpDsName]:
-            if not tmpLFN in tmpList:
-                fileMap[tmpLFN] = None
-
-    # query files in dataset from DDM
-    tmpLog.info("query files in %s" % origOutDS)
-    tmpList = Client.queryFilesInDataset(origOutDS,verbose)
-    # query files in dataset from Panda
-    status,tmpMap = Client.queryLastFilesInDataset([origOutDS],verbose)
-    for tmpLFN in tmpMap[origOutDS]:
-        if not tmpLFN in tmpList:
-            tmpList[tmpLFN] = None
-    # query files for individualOutDS:
-    if individualOutDS:
-        if runConfig.output.outHist:
-            getFilesWithSuffix(tmpList,'HIST')
-        if runConfig.output.outRDO:
-            getFilesWithSuffix(tmpList,'RDO')
-        if runConfig.output.outEDS:
-            getFilesWithSuffix(tmpList,'ESD')
-        if runConfig.output.outAOD:
-            getFilesWithSuffix(tmpList,'AOD')
-        if runConfig.output.outTAG:
-            getFilesWithSuffix(tmpList,'TAG')
-        if runConfig.output.outStream1:
-            getFilesWithSuffix(tmpList,'Stream1')
-        if runConfig.output.outStream2:
-            getFilesWithSuffix(tmpList,'Stream2')
-        if runConfig.output.outBS:
-            getFilesWithSuffix(tmpList,'BS')
-        if runConfig.output.outSelBS:    
-            getFilesWithSuffix(tmpList,'SelBS')
-        if runConfig.output.outNtuple:    
-            for sName in runConfig.output.outNtuple:
-                getFilesWithSuffix(tmpList,sName)
-        if runConfig.output.outTHIST:
-            for sName in runConfig.output.outTHIST:
-                getFilesWithSuffix(tmpList,sName)
-        if runConfig.output.outAANT:
-            for aName,sName,fName in runConfig.output.outAANT:
-                getFilesWithSuffix(tmpList,sName)
-        if runConfig.output.outIROOT:
-            for sIndex,sName in enumerate(runConfig.output.outIROOT):
-                getFilesWithSuffix(tmpList,'iROOT%s' % sIndex)
-        if runConfig.output.extOutFile:
-            for sIndex,sName in enumerate(extOutFile):
-                tmpExtStreamName = getExtendedExtStreamName(sIndex,sName,True)
-                getFilesWithSuffix(tmpList,tmpExtStreamName)
-        if runConfig.output.outStreamG:
-            for sName,fName in runConfig.output.outStreamG:
-                getFilesWithSuffix(tmpList,sName)                
-        if runConfig.output.outMeta:
-            iMeta = 0
-            for sName,sAsso in runConfig.output.outMeta:
-                getFilesWithSuffix(tmpList,'META%s' % iMeta)
-                iMeta += 1
-        if runConfig.output.outMS:
-            for sName,sAsso in runConfig.output.outMS:
-                getFilesWithSuffix(tmpList,sName)
-                
-    # set index
-    tmpMatch = re.search('^([^\.]+)\.([^\.]+)\.',outDS)
-    if tmpMatch != None and origOutDS.endswith('/'):
-        shortPrefix = '^%s\.%s\.([_\d]+)' % (tmpMatch.group(1),tmpMatch.group(2))
-        if descriptionInLFN != '':
-            shortPrefix += '\.%s' % descriptionInLFN
-    else:
-        shortPrefix = outDS        
-    indexHIST    = getIndex(tmpList,"%s\.hist\._(\d+)\.root" % shortPrefix)
-    indexRDO     = getIndex(tmpList,"%s\.RDO\._(\d+)\.pool\.root" % shortPrefix)    
-    indexESD     = getIndex(tmpList,"%s\.ESD\._(\d+)\.pool\.root" % shortPrefix)
-    indexAOD     = getIndex(tmpList,"%s\.AOD\._(\d+)\.pool\.root" % shortPrefix)
-    indexTAG     = getIndex(tmpList,"%s\.TAG\._(\d+)\.coll\.root" % shortPrefix)
-    indexStream1 = getIndex(tmpList,"%s\.Stream1\._(\d+)\.pool\.root" % shortPrefix)
-    indexStream2 = getIndex(tmpList,"%s\.Stream2\._(\d+)\.pool\.root" % shortPrefix)
-    indexBS      = getIndex(tmpList,"%s\.BS\._(\d+)\.data" % shortPrefix)
-    if runConfig.output.outSelBS:
-        indexSelBS   = getIndex(tmpList,"%s\.%s\._(\d+)\.data" % (shortPrefix,runConfig.output.outSelBS))
-    if runConfig.output.outNtuple:
-        for sName in runConfig.output.outNtuple:
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (shortPrefix,sName))
-            if tmpIndex > indexNT:
-                indexNT  = tmpIndex
-    if runConfig.output.outTHIST:            
-        for sName in runConfig.output.outTHIST:
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (shortPrefix,sName))
-            if tmpIndex > indexTHIST:
-                indexTHIST  = tmpIndex
-    if runConfig.output.outAANT:            
-        for aName,sName,fName in runConfig.output.outAANT:
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.root" % (shortPrefix,sName))
-            if tmpIndex > indexAANT:
-                indexAANT  = tmpIndex
-    if runConfig.output.outTAGX:            
-        for sName,oName in runConfig.output.outTAGX:
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.%s" % (shortPrefix,sName,oName))
-            if tmpIndex > indexTAGX:
-                indexTAGX  = tmpIndex
-    if runConfig.output.outIROOT:            
-        for sIndex,sName in enumerate(runConfig.output.outIROOT):
-            tmpIndex = getIndex(tmpList,"%s\.iROOT%s\._(\d+)\.%s" % (shortPrefix,sIndex,sName))
-            if tmpIndex > indexIROOT:
-                indexIROOT  = tmpIndex
-    if runConfig.output.extOutFile: 
-        for sIndex,sName in enumerate(runConfig.output.extOutFile):
-            # change * to X and add .tgz
-            if sName.find('*') != -1:
-                sName = sName.replace('*','XYZ')
-                sName = '%s.tgz' % sName
-            tmpExtStreamName = getExtendedExtStreamName(sIndex,sName,False)
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.%s" % (shortPrefix,tmpExtStreamName,sName))
-            if tmpIndex > indexEXT:
-                indexEXT  = tmpIndex
-    if runConfig.output.outStreamG:
-        for sName,sOrigFileName in runConfig.output.outStreamG:
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (shortPrefix,sName))
-            if tmpIndex > indexStreamG:
-                indexStreamG = tmpIndex
-    if runConfig.output.outMeta:            
-        for sName,sAsso in runConfig.output.outMeta:
-            iMeta = 0
-            if sAsso == 'None':
-                tmpIndex = getIndex(tmpList,"%s\.META%s\._(\d+)\.root" % (shortPrefix,iMeta))
-                iMeta += 1
-                if tmpIndex > indexMeta:
-                    indexMeta = tmpIndex
-    if runConfig.output.outMS:                
-        for sName,sAsso in runConfig.output.outMS:
-            tmpIndex = getIndex(tmpList,"%s\.%s\._(\d+)\.pool\.root" % (shortPrefix,sName))
-            if tmpIndex > indexMS:
-                indexMS = tmpIndex
 
 
 # convert runConfig to outMap
@@ -1482,7 +1091,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
     outMap = {}
     paramList = []
     # add IROOT
-    if not outMap.has_key('IROOT'):
+    if 'IROOT' not in outMap:
         outMap['IROOT'] = []
     # remove /
     outDSwoSlash = re.sub('/$','',original_outDS)
@@ -1499,7 +1108,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             lfn  = '%s.%s._${SN/P}.root' % (outDSwoSlash,sName)
             tmpSuffix = '_%s' % sName
             dataset = outDsNameBase + tmpSuffix + '/'
-            if not outMap.has_key('ntuple'):
+            if 'ntuple' not in outMap:
                 outMap['ntuple'] = []
             outMap['ntuple'].append((sName,lfn))
             paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
@@ -1539,7 +1148,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
         for aName,sName,fName in runConfig.output.outAANT:
             # use first sName when multiple streams write to the same file
             realStreamName = sName
-            if fsNameMap.has_key(fName):
+            if fName in fsNameMap:
                 sName = fsNameMap[fName]
             else:
                 fsNameMap[fName] = sName
@@ -1548,7 +1157,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             dataset = outDsNameBase + tmpSuffix + '/'
             if not sName in sNameList:
                 sNameList.append(sName)
-            if not outMap.has_key('AANT'):
+            if 'AANT' not in outMap:
                 outMap['AANT'] = []
             outMap['AANT'].append((aName,realStreamName,lfn))
             paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
@@ -1557,7 +1166,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             lfn  = '%s.%s._${SN/P}.root' % (outDSwoSlash,sName)
             tmpSuffix = '_%s' % sName
             dataset = outDsNameBase + tmpSuffix + '/'
-            if not outMap.has_key('THIST'):
+            if 'THIST' not in outMap:
                 outMap['THIST'] = []
             outMap['THIST'].append((sName,lfn))
             paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
@@ -1566,7 +1175,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             lfn  = '%s.iROOT%s._${SN/P}.%s' % (outDSwoSlash,sIndex,sName)
             tmpSuffix = '_iROOT%s' % sIndex
             dataset = outDsNameBase + tmpSuffix + '/'
-            if not outMap.has_key('IROOT'):
+            if 'IROOT' not in outMap:
                 outMap['IROOT'] = []
             outMap['IROOT'].append((sName,lfn))
             paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
@@ -1581,7 +1190,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             lfn  = '%s.%s._${SN/P}.%s' % (outDSwoSlash,tmpExtStreamName,sName)
             tmpSuffix = '_%s' % tmpExtStreamName
             dataset = outDsNameBase + tmpSuffix + '/'
-            if not outMap.has_key('IROOT'):
+            if 'IROOT' not in outMap:
                 outMap['IROOT'] = []
             outMap['IROOT'].append((origSName,lfn))
             paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
@@ -1590,7 +1199,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             lfn  = '%s.%s._${SN/P}.%s' % (outDSwoSlash,sName,oName)
             tmpSuffix = '_%s' % sName
             dataset = outDsNameBase + tmpSuffix + '/'
-            if not outMap.has_key('IROOT'):
+            if 'IROOT' not in outMap:
                 outMap['IROOT'] = []
             outMap['IROOT'].append((oName,lfn))
             paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
@@ -1616,7 +1225,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
         lfn  = '%s.%s._${SN/P}.data' % (outDSwoSlash,runConfig.output.outSelBS)
         tmpSuffix = '_SelBS'
         dataset = outDsNameBase + tmpSuffix + '/'
-        if not outMap.has_key('IROOT'):
+        if 'IROOT' not in outMap:
             outMap['IROOT'] = []
         outMap['IROOT'].append(('%s.*.data' % runConfig.output.outSelBS,lfn))
         paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
@@ -1639,33 +1248,33 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
                 paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
                 iMeta += 1
                 foundLFN = lfn
-            elif outMap.has_key(sAsso):
+            elif sAsso in outMap:
                 # Stream1,2
                 foundLFN = outMap[sAsso]
             elif sAsso in ['StreamESD','StreamAOD']:
                 # ESD,AOD
                 stKey = re.sub('^Stream','',sAsso)
-                if outMap.has_key(stKey):
+                if stKey in outMap:
                     foundLFN = outMap[stKey]
                 else:
                     # check StreamG when ESD/AOD are not defined as algorithms
-                    if outMap.has_key('StreamG'):
+                    if 'StreamG' in outMap:
                         for tmpStName,tmpLFN in outMap['StreamG']:
                             if tmpStName == sAsso:
                                 foundLFN = tmpLFN
-            elif sAsso == 'StreamRDO' and outMap.has_key('StreamRDO'):
+            elif sAsso == 'StreamRDO' and 'StreamRDO' in outMap:
                 # RDO
                 stKey = re.sub('^Stream','',sAsso)
-                if outMap.has_key(stKey):
+                if stKey in outMap:
                     foundLFN = outMap[stKey]
             else:
                 # general stream
-                if outMap.has_key('StreamG'):
+                if 'StreamG' in outMap:
                     for tmpStName,tmpLFN in outMap['StreamG']:
                         if tmpStName == sAsso:
                             foundLFN = tmpLFN
             if foundLFN != '':
-                if not outMap.has_key('Meta'):
+                if 'Meta' not in outMap:
                     outMap['Meta'] = []
                 outMap['Meta'].append((sName,foundLFN))
     if runConfig.output.outMS:
@@ -1673,7 +1282,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             lfn  = '%s.%s._${SN/P}.pool.root' % (outDSwoSlash,sName)
             tmpSuffix = '_%s' % sName
             dataset = outDsNameBase + tmpSuffix + '/'
-            if not outMap.has_key('IROOT'):
+            if 'IROOT' not in outMap:
                 outMap['IROOT'] = []
             outMap['IROOT'].append((sAsso,lfn))
             paramList += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,allowNoOutput=allowNoOutput)
@@ -1681,26 +1290,26 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
         for sAsso in runConfig.output.outUserData:
             # look for associated LFN
             foundLFN = ''            
-            if outMap.has_key(sAsso):
+            if sAsso in outMap:
                 # Stream1,2
                 foundLFN = outMap[sAsso]
             elif sAsso in ['StreamRDO','StreamESD','StreamAOD']:
                 # RDO,ESD,AOD
                 stKey = re.sub('^Stream','',sAsso)
-                if outMap.has_key(stKey):
+                if stKey in outMap:
                     foundLFN = outMap[stKey]
             else:
                 # general stream
-                if outMap.has_key('StreamG'):
+                if 'StreamG' in outMap:
                     for tmpStName,tmpLFN in outMap['StreamG']:
                         if tmpStName == sAsso:
                             foundLFN = tmpLFN
             if foundLFN != '':
-                if not outMap.has_key('UserData'):
+                if 'UserData' not in outMap:
                     outMap['UserData'] = []
                 outMap['UserData'].append(foundLFN)
     # remove IROOT if unnecessary
-    if outMap.has_key('IROOT') and outMap['IROOT'] == []:
+    if 'IROOT' in outMap and outMap['IROOT'] == []:
         del outMap['IROOT'] 
     # set destination
     if destination != '':
@@ -1712,544 +1321,6 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             tmpParam['token'] = spaceToken
     # return
     return outMap,paramList
-
-
-
-# convert runConfig to outMap
-def convertConfToOutputOld(runConfig,jobR,outMap,individualOutDS,extOutFile,original_outDS='',descriptionInLFN=''):
-    from taskbuffer.FileSpec import FileSpec    
-    # use global to increment index
-    global indexHIST
-    global indexRDO
-    global indexESD
-    global indexAOD
-    global indexTAG
-    global indexTAGX    
-    global indexStream1
-    global indexStream2
-    global indexBS
-    global indexSelBS
-    global indexNT
-    global indexTHIST
-    global indexAANT
-    global indexIROOT
-    global indexEXT
-    global indexStreamG
-    global indexMeta
-    global indexMS
-    # add IROOT
-    if not outMap.has_key('IROOT'):
-        outMap['IROOT'] = []
-    # remove /
-    outDSwoSlash = re.sub('/$','',original_outDS)
-    tmpMatch = re.search('^([^\.]+)\.([^\.]+)\.',original_outDS)
-    if tmpMatch != None and original_outDS.endswith('/'):
-        outDSwoSlash = '%s.%s.' % (tmpMatch.group(1),tmpMatch.group(2))
-        if globalSerialnumber == None:
-            if outDSwoSlash.startswith('group'):
-                outDSwoSlash += "$GROUPJOBSN_"
-            outDSwoSlash += '$JOBSETID'
-        else:
-            outDSwoSlash += globalSerialnumber
-        if descriptionInLFN != '':
-            outDSwoSlash += '.%s' % descriptionInLFN
-    # start conversion
-    if runConfig.output.outNtuple:
-        indexNT += 1
-        for sName in runConfig.output.outNtuple:
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.root' % (outDSwoSlash,sName,indexNT)                
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexNT)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_%s' % sName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
-            if not outMap.has_key('ntuple'):
-                outMap['ntuple'] = []
-            outMap['ntuple'].append((sName,file.lfn))
-    if runConfig.output.outHist:
-        indexHIST += 1
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.hist._%05d.root' % (outDSwoSlash,indexHIST)            
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.hist._%05d.root' % (jobR.destinationDBlock,indexHIST)
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_HIST'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:                    
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['hist'] = file.lfn
-    if runConfig.output.outRDO:
-        indexRDO += 1        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.RDO._%05d.pool.root' % (outDSwoSlash,indexRDO)                    
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.RDO._%05d.pool.root' % (jobR.destinationDBlock,indexRDO)        
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_RDO'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['IROOT'].append((runConfig.output.outRDO,file.lfn))        
-    if runConfig.output.outESD:
-        indexESD += 1        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.ESD._%05d.pool.root' % (outDSwoSlash,indexESD)        
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.ESD._%05d.pool.root' % (jobR.destinationDBlock,indexESD)        
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_ESD'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['IROOT'].append((runConfig.output.outESD,file.lfn))
-    if runConfig.output.outAOD:
-        indexAOD += 1                
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.AOD._%05d.pool.root' % (outDSwoSlash,indexAOD)        
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.AOD._%05d.pool.root' % (jobR.destinationDBlock,indexAOD)        
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_AOD'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['IROOT'].append((runConfig.output.outAOD,file.lfn))
-    if runConfig.output.outTAG:
-        indexTAG += 1                        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.TAG._%05d.coll.root' % (outDSwoSlash,indexTAG)                
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.TAG._%05d.coll.root' % (jobR.destinationDBlock,indexTAG)                
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_TAG'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['TAG'] = file.lfn
-    if runConfig.output.outAANT:
-        indexAANT += 1
-        sNameList = []
-        fsNameMap = {}
-        for aName,sName,fName in runConfig.output.outAANT:
-            # use first sName when multiple streams write to the same file
-            realStreamName = sName
-            if fsNameMap.has_key(fName):
-                sName = fsNameMap[fName]
-            else:
-                fsNameMap[fName] = sName
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.root' % (outDSwoSlash,sName,indexAANT)       
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexAANT)       
-                file.dataset = jobR.destinationDBlock        
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_%s' % sName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            if not sName in sNameList:
-                sNameList.append(sName)
-                jobR.addFile(file)
-            if not outMap.has_key('AANT'):
-                outMap['AANT'] = []
-            outMap['AANT'].append((aName,realStreamName,file.lfn))
-    if runConfig.output.outTHIST:
-        indexTHIST += 1
-        for sName in runConfig.output.outTHIST:
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.root' % (outDSwoSlash,sName,indexTHIST)
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.root' % (jobR.destinationDBlock,sName,indexTHIST)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_%s' % sName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
-            if not outMap.has_key('THIST'):
-                outMap['THIST'] = []
-            outMap['THIST'].append((sName,file.lfn))
-    if runConfig.output.outIROOT:
-        indexIROOT += 1
-        for sIndex,sName in enumerate(runConfig.output.outIROOT):
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.iROOT%s._%05d.%s' % (outDSwoSlash,sIndex,indexIROOT,sName)
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.iROOT%s._%05d.%s' % (jobR.destinationDBlock,sIndex,indexIROOT,sName)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_iROOT%s' % sIndex
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
-            if not outMap.has_key('IROOT'):
-                outMap['IROOT'] = []
-            outMap['IROOT'].append((sName,file.lfn))
-    if extOutFile:
-        indexEXT += 1
-        for sIndex,sName in enumerate(extOutFile):
-            # change * to X and add .tgz
-            origSName = sName
-            if sName.find('*') != -1:
-                sName = sName.replace('*','XYZ')
-                sName = '%s.tgz' % sName
-            file = FileSpec()
-            file.type = 'output'
-            tmpExtStreamName = getExtendedExtStreamName(sIndex,sName,False)
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.%s' % (outDSwoSlash,tmpExtStreamName,indexEXT,sName)
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.%s' % (jobR.destinationDBlock,tmpExtStreamName,indexEXT,sName)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpExtStreamName = getExtendedExtStreamName(sIndex,sName,True)
-                tmpSuffix = '_%s' % tmpExtStreamName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
-            if not outMap.has_key('IROOT'):
-                outMap['IROOT'] = []
-            outMap['IROOT'].append((origSName,file.lfn))
-    if runConfig.output.outTAGX:
-        indexTAGX += 1
-        for sName,oName in runConfig.output.outTAGX:
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.%s' % (outDSwoSlash,sName,indexTAGX,oName)
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.%s' % (jobR.destinationDBlock,sName,indexTAGX,oName)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_%s' % sName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
-            if not outMap.has_key('IROOT'):
-                outMap['IROOT'] = []
-            outMap['IROOT'].append((oName,file.lfn))
-    if runConfig.output.outStream1:
-        indexStream1 += 1                                        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.Stream1._%05d.pool.root' % (outDSwoSlash,indexStream1)
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.Stream1._%05d.pool.root' % (jobR.destinationDBlock,indexStream1)
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_Stream1'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['IROOT'].append((runConfig.output.outStream1,file.lfn))                
-    if runConfig.output.outStream2:
-        indexStream2 += 1                                        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.Stream2._%05d.pool.root' % (outDSwoSlash,indexStream2)
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.Stream2._%05d.pool.root' % (jobR.destinationDBlock,indexStream2)
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_Stream2'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['IROOT'].append((runConfig.output.outStream2,file.lfn))
-    if runConfig.output.outBS:
-        indexBS += 1                                        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.BS._%05d.data' % (outDSwoSlash,indexBS)
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.BS._%05d.data' % (jobR.destinationDBlock,indexBS)
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_BS'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        outMap['BS'] = file.lfn
-    if runConfig.output.outSelBS:
-        indexSelBS += 1                                        
-        file = FileSpec()
-        file.type = 'output'
-        if original_outDS.endswith('/'):
-            file.lfn  = '%s.%s._%05d.data' % (outDSwoSlash,runConfig.output.outSelBS,indexSelBS)
-            file.dataset = original_outDS
-        else:
-            file.lfn  = '%s.%s._%05d.data' % (jobR.destinationDBlock,runConfig.output.outSelBS,indexSelBS)
-            file.dataset = jobR.destinationDBlock        
-        file.destinationDBlock = jobR.destinationDBlock
-        if individualOutDS:
-            tmpSuffix = '_SelBS'
-            if original_outDS.endswith('/'):
-                file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-            else:
-                file.dataset += tmpSuffix
-            file.destinationDBlock += tmpSuffix
-        file.destinationSE = jobR.destinationSE
-        jobR.addFile(file)
-        if not outMap.has_key('IROOT'):
-            outMap['IROOT'] = []
-        outMap['IROOT'].append(('%s.*.data' % runConfig.output.outSelBS,file.lfn))
-    if runConfig.output.outStreamG:
-        indexStreamG += 1
-        for sName,sOrigFileName in runConfig.output.outStreamG:
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.pool.root' % (outDSwoSlash,sName,indexStreamG)
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.pool.root' % (jobR.destinationDBlock,sName,indexStreamG)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_%s' % sName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
-            outMap['IROOT'].append((sOrigFileName,file.lfn))                
-    if runConfig.output.outMeta:
-        iMeta = 0
-	indexMeta += 1
-        for sName,sAsso in runConfig.output.outMeta:
-            foundLFN = ''
-            if sAsso == 'None':
-                # non-associated metadata
-                file = FileSpec()
-                file.type = 'output'
-                if original_outDS.endswith('/'):
-                    file.lfn  = '%s.META%s._%05d.root' % (outDSwoSlash,iMeta,indexMeta)
-                    file.dataset = original_outDS
-                else:
-                    file.lfn  = '%s.META%s._%05d.root' % (jobR.destinationDBlock,iMeta,indexMeta)
-                    file.dataset = jobR.destinationDBlock
-                file.destinationDBlock = jobR.destinationDBlock
-                if individualOutDS:
-                    tmpSuffix = '_META%s' % iMeta
-                    if original_outDS.endswith('/'):
-                        file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                    else:
-                        file.dataset += tmpSuffix
-                    file.destinationDBlock += tmpSuffix
-                file.destinationSE = jobR.destinationSE
-                jobR.addFile(file)
-                iMeta += 1
-                foundLFN = file.lfn
-            elif outMap.has_key(sAsso):
-                # Stream1,2
-                foundLFN = outMap[sAsso]
-            elif sAsso in ['StreamESD','StreamAOD']:
-                # ESD,AOD
-                stKey = re.sub('^Stream','',sAsso)
-                if outMap.has_key(stKey):
-                    foundLFN = outMap[stKey]
-                else:
-                    # check StreamG when ESD/AOD are not defined as algorithms
-                    if outMap.has_key('StreamG'):
-                        for tmpStName,tmpLFN in outMap['StreamG']:
-                            if tmpStName == sAsso:
-                                foundLFN = tmpLFN
-            elif sAsso == 'StreamRDO' and outMap.has_key('StreamRDO'):
-                # RDO
-                stKey = re.sub('^Stream','',sAsso)
-                if outMap.has_key(stKey):
-                    foundLFN = outMap[stKey]
-            else:
-                # general stream
-                if outMap.has_key('StreamG'):
-                    for tmpStName,tmpLFN in outMap['StreamG']:
-                        if tmpStName == sAsso:
-                            foundLFN = tmpLFN
-            if foundLFN != '':
-                if not outMap.has_key('Meta'):
-                    outMap['Meta'] = []
-                outMap['Meta'].append((sName,foundLFN))
-    if runConfig.output.outMS:
-	indexMS += 1
-        for sName,sAsso in runConfig.output.outMS:
-            file = FileSpec()
-            file.type = 'output'
-            if original_outDS.endswith('/'):
-                file.lfn  = '%s.%s._%05d.pool.root' % (outDSwoSlash,sName,indexMS)
-                file.dataset = original_outDS
-            else:
-                file.lfn  = '%s.%s._%05d.pool.root' % (jobR.destinationDBlock,sName,indexMS)
-                file.dataset = jobR.destinationDBlock
-            file.destinationDBlock = jobR.destinationDBlock
-            if individualOutDS:
-                tmpSuffix = '_%s' % sName
-                if original_outDS.endswith('/'):
-                    file.dataset = re.sub('/$','%s/' % tmpSuffix,file.dataset)
-                else:
-                    file.dataset += tmpSuffix
-                file.destinationDBlock += tmpSuffix
-            file.destinationSE = jobR.destinationSE
-            jobR.addFile(file)
-            if not outMap.has_key('IROOT'):
-                outMap['IROOT'] = []
-            outMap['IROOT'].append((sAsso,file.lfn))
-    if runConfig.output.outUserData:
-        for sAsso in runConfig.output.outUserData:
-            # look for associated LFN
-            foundLFN = ''            
-            if outMap.has_key(sAsso):
-                # Stream1,2
-                foundLFN = outMap[sAsso]
-            elif sAsso in ['StreamRDO','StreamESD','StreamAOD']:
-                # RDO,ESD,AOD
-                stKey = re.sub('^Stream','',sAsso)
-                if outMap.has_key(stKey):
-                    foundLFN = outMap[stKey]
-            else:
-                # general stream
-                if outMap.has_key('StreamG'):
-                    for tmpStName,tmpLFN in outMap['StreamG']:
-                        if tmpStName == sAsso:
-                            foundLFN = tmpLFN
-            if foundLFN != '':
-                if not outMap.has_key('UserData'):
-                    outMap['UserData'] = []
-                outMap['UserData'].append(foundLFN)
-    # log
-    file = FileSpec()
-    if original_outDS.endswith('/'):
-        file.lfn  = '%s._$PANDAID.log.tgz' % outDSwoSlash
-    else:
-        file.lfn  = '%s._$PANDAID.log.tgz' % jobR.destinationDBlock
-    file.type = 'log'
-    if original_outDS.endswith('/'):
-        file.dataset = original_outDS
-    else:
-        file.dataset = jobR.destinationDBlock    
-    file.destinationDBlock = jobR.destinationDBlock
-    if individualOutDS:
-        # use original outDS for log, which guarantees location registration and shadow tracing
-        pass
-    file.destinationSE = jobR.destinationSE
-    jobR.addFile(file)
-    # remove IROOT if unnecessary
-    if outMap.has_key('IROOT') and outMap['IROOT'] == []:
-        del outMap['IROOT'] 
 
 
 # get CMTCONFIG + IMG
@@ -2270,7 +1341,7 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbo
     # nightlies
     if cacheVer != None and (re.search('_rel_\d+$',cacheVer) != None or 'AtlasBuildStamp' in os.environ):
         # use local cmtconfig if it is available
-        if os.environ.has_key('CMTCONFIG'):
+        if 'CMTCONFIG' in os.environ:
             return os.environ['CMTCONFIG']
         # get cmtconfig for nightlies
         if athenaVer != None:
@@ -2291,7 +1362,7 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbo
             return 'i686-slc5-gcc43-opt'
     # AthAnalysis
     if cacheVer != None and isAthRelease(cacheVer):
-        if os.environ.has_key('CMTCONFIG'):
+        if 'CMTCONFIG' in os.environ:
             return os.environ['CMTCONFIG']
         else:
             # get logger
@@ -2356,234 +1427,6 @@ def checkCmtConfig(localCmtConfig,userCmtConfig,noBuild):
         return False
     # return OK
     return True
-            
-
-# check configuration tag
-def checkConfigTag(oldDSs,newDS):
-    try:
-        extPatt = '([a-zA-Z]+)(\d+)(_)*([a-zA-Z]+)*(\d+)*'
-        # extract new tag 
-        newTag = newDS.split('.')[5]
-        matchN = re.search(extPatt,newTag)
-        # loop over all DSs
-        for oldDS in oldDSs:
-            # extract old tag
-            oldTag = oldDS.split('.')[5]
-            matchO = re.search(extPatt,oldTag)
-            # check tag consistency beforehand
-            if matchO.group(1) != matchN.group(1):
-                return None
-            if matchO.group(4) != matchN.group(4):
-                return None
-        # use the first DS since they have the same tag        
-        oldTag = oldDSs[0].split('.')[5]
-        matchO = re.search(extPatt,oldTag)
-        # check version
-        verO = int(matchO.group(2))
-        verN = int(matchN.group(2))
-        if verO > verN:
-            return False
-        if verO < verN:
-            return True
-        # check next tag
-        if matchO.group(3) == None:
-            # no next tag 
-            return None
-        # check version
-        verO = int(matchO.group(5))
-        verN = int(matchN.group(5))
-        if verO > verN:
-            return False
-        if verO < verN:
-            return True
-        # same tag
-        return None
-    except:
-        return None
-
-
-# convert GoodRunListXML to datasets
-def convertGoodRunListXMLtoDS(goodRunListXML,goodRunDataType='',goodRunProdStep='',
-                              goodRunListDS='',verbose=False):
-    # get logger
-    tmpLog = PLogger.getPandaLogger()
-    tmpLog.info('trying to convert GoodRunListXML to list of datasets')  
-    # import pyAMI
-    try:
-        from pyAMI import pyAMI
-    except:
-        try:
-            from pyAMI.client import AMIClient
-        except:
-            errType,errValue = sys.exc_info()[:2]
-            print "%s %s" % (errType,errValue)
-            tmpLog.error('cannot import pyAMI module')
-            return False,'',''
-    # read XML
-    try:
-        gl_xml = open(goodRunListXML)
-    except:
-        tmpLog.error('cannot open %s' % goodRunListXML)
-        return False,'',''
-    # parse XML to get run/lumi
-    runLumiMap = {}
-    import xml.dom.minidom
-    rootDOM = xml.dom.minidom.parse(goodRunListXML)
-    for tmpLumiBlock in rootDOM.getElementsByTagName('LumiBlockCollection'):
-        for tmpRunNode in tmpLumiBlock.getElementsByTagName('Run'):
-            tmpRunNum  = long(tmpRunNode.firstChild.data)
-            for tmpLBRange in tmpLumiBlock.getElementsByTagName('LBRange'):
-                tmpLBStart = long(tmpLBRange.getAttribute('Start'))
-                tmpLBEnd   = long(tmpLBRange.getAttribute('End'))        
-                # append
-                if not runLumiMap.has_key(tmpRunNum):
-                    runLumiMap[tmpRunNum] = []
-                runLumiMap[tmpRunNum].append((tmpLBStart,tmpLBEnd))
-    # make arguments
-    amiArgv = []
-    amiArgv.append("GetGoodDatasetList")
-    amiArgv.append("goodRunList="+gl_xml.read())
-    gl_xml.close()
-    if goodRunDataType != '':
-        amiArgv.append('dataType=%s' % goodRunDataType)
-    if goodRunProdStep != '':    
-        amiArgv.append('prodStep=%s' % goodRunProdStep)
-    if verbose:
-        tmpLog.debug(amiArgv)
-    # convert for wildcard
-    goodRunListDS = goodRunListDS.replace('*','.*')
-    # list of datasets
-    if goodRunListDS == '':
-        goodRunListDS = []
-    else:
-        goodRunListDS = goodRunListDS.split(',')
-    # execute
-    try:
-        amiclient=pyAMI.AMI()
-        amiOut = amiclient.execute(amiArgv)
-    except:
-        try:
-            amiclient = AMIClient()
-            amiOut = amiclient.execute(amiArgv)
-        except:
-            errType,errValue = sys.exc_info()[:2]
-            tmpLog.error("%s %s" % (errType,errValue))
-            tmpLog.error('pyAMI failed')
-            return False,'',''
-    # get dataset map
-    try:
-        amiOutDict = amiOut.getDict()
-    except:
-        amiOutDict = amiOut.to_dict()
-    if verbose:
-        tmpLog.debug(amiOutDict)
-    if not amiOutDict.has_key('goodDatasetList'):
-        tmpLog.error("output from pyAMI doesn't contain goodDatasetList")
-        return False,'',''
-    amiDsDict = amiOutDict['goodDatasetList']
-    # parse
-    import Client    
-    datasetMapFromAMI = {}
-    for tmpKey,tmpVal in amiDsDict.iteritems():
-        if tmpVal.has_key('logicalDatasetName'):
-            dsName = str(tmpVal['logicalDatasetName'])
-            runNumber = long(tmpVal['runNumber'])
-            # check dataset names
-            if goodRunListDS == []:    
-                matchFlag = True
-            else:
-                matchFlag = False
-                for tmpPatt in goodRunListDS:
-                    if re.search(tmpPatt,dsName) != None:
-                        matchFlag = True
-            if not matchFlag:
-                continue
-            # check with DQ2 since AMI doesn't store /
-            dsmap = {}
-            try:
-                dsmap = Client.getDatasets(dsName,verbose,True,onlyNames=True)
-            except:
-                pass
-            if not dsmap.has_key(dsName):
-                dsName += '/'
-            # check duplication for the run number
-            if matchFlag:
-                newFlag = True
-                if datasetMapFromAMI.has_key(runNumber):
-                    # check configuration tag to use new one
-                    newConfigTag = checkConfigTag(datasetMapFromAMI[runNumber],
-                                                  dsName)
-                    if newConfigTag == True:
-                        del datasetMapFromAMI[runNumber]
-                    elif newConfigTag == False:
-                        # keep existing one
-                        newFlag = False
-                # append        
-                if newFlag:
-                    if not datasetMapFromAMI.has_key(runNumber):
-                        datasetMapFromAMI[runNumber] = []
-                    datasetMapFromAMI[runNumber].append(dsName)
-    # make string
-    amiRunNumList = datasetMapFromAMI.keys()
-    amiRunNumList.sort()
-    datasets = ''
-    filesStr = []
-    for tmpRunNum in amiRunNumList:
-        datasetListFromAMI = datasetMapFromAMI[tmpRunNum]
-        for dsName in datasetListFromAMI:
-            datasets += '%s,' % dsName
-            # get files in the dataset
-            tmpFilesStr = []
-            tmpFileList = Client.queryFilesInDataset(dsName,verbose)
-            tmpLFNList = tmpFileList.keys()
-            tmpLFNList.sort()
-            for tmpLFN in tmpLFNList:
-                # extract LBs
-                tmpItems = tmpLFN.split('.')
-                # sort format
-                if len(tmpItems) < 7:
-                    tmpFilesStr.append(tmpLFN)
-                    continue
-                tmpLBmatch = re.search('_lb(\d+)-lb(\d+)',tmpLFN)
-                # _lbXXX-lbYYY not found
-                if tmpLBmatch != None:
-                    LBstart_LFN = long(tmpLBmatch.group(1))
-                    LBend_LFN   = long(tmpLBmatch.group(2))
-                else:
-                    # try ._lbXYZ.
-                    tmpLBmatch = re.search('\._lb(\d+)\.',tmpLFN)
-                    if tmpLBmatch != None:
-                        LBstart_LFN = long(tmpLBmatch.group(1))
-                        LBend_LFN   = LBstart_LFN
-                    else:
-                        tmpFilesStr.append(tmpLFN)                    
-                        continue
-                # check range
-                if not runLumiMap.has_key(tmpRunNum):
-                    tmpLog.error('AMI gives a wrong run number (%s) which is not contained in %s' % \
-                                 (tmpRunNum,goodRunListXML))
-                    return False,'',''
-                inRange = False
-                for LBstartXML,LBendXML in runLumiMap[tmpRunNum]:
-                    if (LBstart_LFN >= LBstartXML and LBstart_LFN <= LBendXML) or \
-                       (LBend_LFN >= LBstartXML and LBend_LFN <= LBendXML) or \
-                       (LBstart_LFN >= LBstartXML and LBend_LFN <= LBendXML) or \
-                       (LBstart_LFN <= LBstartXML and LBend_LFN >= LBendXML):
-                        inRange = True
-                        break
-                if inRange:
-                    tmpFilesStr.append(tmpLFN)
-            # check if files are found
-            if tmpFilesStr == '':
-                tmpLog.error('found no files with corresponding LBs in %s' % dsName)
-                return False,'',''
-            filesStr += tmpFilesStr    
-    datasets = datasets[:-1]
-    if verbose:
-        tmpLog.debug('converted to DS:%s LFN:%s' % (datasets,str(filesStr)))
-    # return        
-    return True,datasets,filesStr
-        
 
 
 # use AMI for AutoConf
@@ -2630,86 +1473,6 @@ except:
     oFile.close()
     # reutrn file name
     return optFileName
-
-
-# convert GoodRunListXML to datasets
-def listFilesUsingAMI(inDsStr,verbose):
-    retMetadataMap = {}
-    # get logger
-    tmpLog = PLogger.getPandaLogger()
-    if verbose:
-        tmpLog.debug('trying to get file metadata from AMI for %s' % inDsStr) 
-    # import pyAMI
-    try:
-        from pyAMI import pyAMI
-    except:
-        try:
-            from pyAMI.client import AMIClient
-        except:
-            errType,errValue = sys.exc_info()[:2]
-            print "%s %s" % (errType,errValue)
-            tmpLog.error('cannot import pyAMI module')
-            sys.exit(EC_Config)
-    # loop over all datasets
-    for inDS in inDsStr.split(','):
-        # make arguments
-        tmpInDS = re.sub('/$','',inDS)
-        nLookUp = 1000
-        iLookUp = 0
-        while True:
-            amiArgv = ["ListFiles"]
-            amiArgv.append("logicalDatasetName="+tmpInDS)
-            amiArgv.append("limit=%s,%s" % (iLookUp,iLookUp+nLookUp))
-            if verbose:
-                tmpLog.debug(amiArgv)
-            try:
-                amiclient=pyAMI.AMI()
-                amiOut = amiclient.execute(amiArgv)
-            except:
-                try:
-                    amiclient = AMIClient()
-                    amiOut = amiclient.execute(amiArgv)
-                except:
-                    errType,errValue = sys.exc_info()[:2]
-                    tmpLog.error("%s %s" % (errType,errValue))
-                    errStr  = 'pyAMI failed. '
-                    errStr += 'If %s is not an official dataset, ' % inDS
-                    errStr += 'please manually set --nEventsPerFile '
-                    errStr += 'since metadata is unavailable in AMI'
-                    tmpLog.error(errStr)
-                    sys.exit(EC_Config)
-            # get file metadata
-            try:
-                amiOutDict = amiOut.getDict()
-            except:
-                amiOutDict = amiOut.to_dict()
-            if verbose:
-                tmpLog.debug(amiOutDict)
-            # no more files
-            if amiOutDict == {}:
-                break
-            for tmpEleKey,tmpEleVal in amiOutDict.iteritems():
-                for tmpRowKey,tmpRowVal in tmpEleVal.iteritems():
-                    tmpLFN = str(tmpRowVal['LFN'])
-                    tmpNumEvents = long(tmpRowVal['events'])
-                    # append
-                    retMetadataMap[tmpLFN] = {'nEvents':tmpNumEvents}
-            # increment
-            iLookUp += nLookUp
-    if verbose:
-        tmpLog.debug('metadata from AMI : %s' % str(retMetadataMap))
-    # return        
-    return retMetadataMap
-
-
-# use TAG in TRF 
-def checkUseTagInTrf(jobO,useTagInTRF):
-    if 'inputTAGFile=' in jobO:
-        return True
-    if useTagInTRF:
-        return True
-    return False
-
 
 
 # use CMake

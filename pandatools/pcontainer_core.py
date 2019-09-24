@@ -60,7 +60,8 @@ def construct_cli_options(options):
         newOpts = json.load(open(options['loadJson']))
     else:
         newOpts = dict()
-    for key, val in options.iteritems():
+    for key in options:
+        val = options[key]
         if key in ['loadJson']:
             continue
         if key == 'architecture':

@@ -1,7 +1,9 @@
 import os
 import re
-import commands
-import ConfigParser
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 
 sectionName = 'book'
 confFile = os.path.expanduser('%s/panda.cfg' % os.environ['PANDA_CONFIG_ROOT'])
@@ -30,7 +32,7 @@ if newFlag:
     # set dummy time
     parser.set(sectionName,'last_synctime','')
     # keep old config just in case
-    status,out = commands.getstatusoutput('mv %s %s.back' % (confFile,confFile))
+    os.rename(confFile, '%s.back' % confFile)
     # write
     confFH = open(confFile,'w')
     parser.write(confFH)
@@ -73,9 +75,10 @@ def updateConfig(bookConf):
             if val != None:
                 parser.set(sectionName,attr,val)
     # keep old config
-    status,out = commands.getstatusoutput('mv %s %s.back' % (confFile,confFile))
-    if status != 0:
-        print "WARNING : cannot make backup for %s" % confFile
+    try:
+        os.rename(confFile, '%s.back' % confFile)
+    except Exception as e:
+        print("WARNING : cannot make backup for %s with %s" % (confFile, str(e)))
         return
     # update conf
     conFH = open(confFile,'w')

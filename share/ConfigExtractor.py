@@ -7,7 +7,7 @@ import re
 
 _prompt = "ConfigExtractor > "
 def _printConfig(str):
-    print '%s%s' % (_prompt,str)
+    print('%s%s' % (_prompt,str))
 
 
 def _Service(str):
@@ -81,9 +81,9 @@ else:
     except:
         pass
     for ByteStreamInputSvc in compList:
-        if (hasattr(ByteStreamInputSvc,'FullFileName') and hasattr(ByteStreamInputSvc.FullFileName,'__len__') \
+        if (hasattr(ByteStreamInputSvc,'FullFileName') and hasattr(ByteStreamInputSvc.FullFileName,'__len__')
             and len(ByteStreamInputSvc.FullFileName)) or \
-            (hasattr(ByteStreamInputSvc,'FilePrefix') and hasattr(ByteStreamInputSvc.FilePrefix,'__len__') \
+            (hasattr(ByteStreamInputSvc,'FilePrefix') and hasattr(ByteStreamInputSvc.FilePrefix,'__len__')
              and len(ByteStreamInputSvc.FilePrefix)):
             _printConfig('Input=BS')
             noInputFlag = False
@@ -406,7 +406,8 @@ try:
         metaOutName = mStream.OutputFile.split(':')[-1]
         assStream = None
         # look for associated stream
-        for stName,stOut in streamOutputFiles.iteritems():
+        for stName in streamOutputFiles:
+            stOut = streamOutputFiles[stName]
             if metaOutName == stOut:
                 assStream = stName
                 break
@@ -424,7 +425,8 @@ if strGenStream != '':
     _printConfig('Output=STREAMG %s' % strGenStream)
     _printConfig(' Name: %s'% strGenFName)
 if desdStreams != {}:
-    for tmpStreamName,tmpOutFileName in desdStreams.iteritems():
+    for tmpStreamName in desdStreams:
+        tmpOutFileName = desdStreams[tmpStreamName]
         _printConfig('Output=DESD %s' % tmpStreamName)
         _printConfig(' Name: %s'% tmpOutFileName)
 
@@ -492,10 +494,12 @@ except:
 
 # UserDataSvc
 if userDataSvcStream != {}:
-    for userStName,userFileName in userDataSvcStream.iteritems():
+    for userStName in userDataSvcStream:
+        userFileName = userDataSvcStream[userStName]
         findStream = False
         # look for associated stream
-        for stName,stOut in streamOutputFiles.iteritems():
+        for stName in streamOutputFiles:
+            stOut = streamOutputFiles[stName]
             if userFileName == stOut:
                 _printConfig('Output=USERDATA %s' % stName)
                 findStream = True

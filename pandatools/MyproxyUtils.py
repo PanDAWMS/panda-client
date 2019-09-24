@@ -1,12 +1,12 @@
 # extraction from myproxyUtils
 
-import os
 import re
 import sys
 import getpass
-import commands
-import Client
-import MiscUtils
+from . import Client
+from . import MiscUtils
+from .MiscUtils import commands_get_status_output, commands_get_output
+
 
 """Classes with methods to interact with a myproxy server. 
 
@@ -241,7 +241,7 @@ class MyProxyInterface(object):
         # A file in the /tmp directory is created if no
         # other path has been set already  
         if self.__proxypath == '':
-            self.__proxypath = commands.getoutput( 'mktemp' )
+            self.__proxypath = commands_get_output( 'mktemp' )
 
         return self.__proxypath
 
@@ -253,21 +253,21 @@ class MyProxyInterface(object):
 
     def getPilotProxyPath(self):
         # checking the path is valid
-        st,out = commands.getstatusoutput('grid-proxy-info -exists -file %s' 
+        st,out = commands_get_status_output('grid-proxy-info -exists -file %s'
                                                    % self.__pilotproxypath)
         if st != 0: #invalid path
-            print "\nError: not valid proxy in path %" % self.__pilotproxypath
-            print "\nUsing the already existing proxy to get the path"
-            st, path = commands.getstatusoutput('grid-proxy-info -path')
+            print("\nError: not valid proxy in path %" % self.__pilotproxypath)
+            print("\nUsing the already existing proxy to get the path")
+            st, path = commands_get_status_output('grid-proxy-info -path')
             if st == 0:
                 self.__pilotproxypath = path
             else:
                 raise MyProxyError(2105)
 
         if self.__pilotproxypath == '':
-            print "\nWarning: not valid pilot proxy path specified already"
-            print "\nUsing the already existing proxy to get the path"
-            st, path = commands.getstatusoutput('grid-proxy-info -path') 
+            print("\nWarning: not valid pilot proxy path specified already")
+            print("\nUsing the already existing proxy to get the path")
+            st, path = commands_get_status_output('grid-proxy-info -path')
             if st == 0:
                 self.__pilotproxypath = path
             else:
@@ -331,7 +331,7 @@ class MyProxyInterface(object):
         # credname
         credname = re.sub('-','',MiscUtils.wrappedUuidGen())
 
-        print "=== upload proxy for glexec"
+        print("=== upload proxy for glexec")
         # command options
         cmd += ' -s %s'       % self.servername     # myproxy sever name
         cmd += " -x -Z '%s'"  % self.pilotownerDN   # only user with this DN 
@@ -346,7 +346,7 @@ class MyProxyInterface(object):
                 sys.stdout.write('Enter GRID pass phrase:')
                 sys.stdout.flush()
                 gridPassPhrase = sys.stdin.readline().rstrip()
-                print
+                print('')
             gridPassPhrase = gridPassPhrase.replace('$','\$')
         cmd = 'echo "%s" | %s -S' % (gridPassPhrase,cmd)
         cmd = self.srcFile + ' unset GT_PROXY_MODE; ' + cmd   
@@ -357,14 +357,14 @@ class MyProxyInterface(object):
             cmdStr = cmd
             if gridPassPhrase != '':
                 cmdStr = re.sub(gridPassPhrase,'*****',cmd)
-            print cmdStr
-        status,out = commands.getstatusoutput( cmd )
+            print(cmdStr)
+        status,out = commands_get_status_output( cmd )
         if verbose:
-            print out
+            print(out)
         if status != 0:
             if out.find('Warning: your certificate and proxy will expire') == -1:
                 if not verbose:
-                    print out
+                    print(out)
                 raise MyProxyError(2300)
         return credname
 
@@ -375,10 +375,10 @@ class MyProxyInterface(object):
         cmd = self.srcFile + ' myproxy-info -d '
         cmd += '-s %s' % self.servername
         if verbose:
-            print cmd
-        status,output = commands.getstatusoutput(cmd)
+            print(cmd)
+        status,output = commands_get_status_output(cmd)
         if verbose:
-            print output
+            print(output)
         # check timeleft
         credSector = False
         for line in output.split('\n'):

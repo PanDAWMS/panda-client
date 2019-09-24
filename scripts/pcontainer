@@ -1,6 +1,12 @@
 #!/bin/bash
 
-"exec" "python" "-u" "-Wignore" "$0" "$@"
+"export" "LD_LIBRARY_PATH_ORIG=${LD_LIBRARY_PATH}"
+"export" "LD_LIBRARY_PATH="
+"export" "PYTHONPATH_ORIG=${PYTHONPATH}"
+"export" "PYTHONPATH=${PANDA_PYTHONPATH}"
+"export" "PYTHONHOME_ORIG=${PYTHONHOME}"
+"unset" "PYTHONHOME"
+"exec" "/usr/bin/python" "-u" "-Wignore" "$0" "$@"
 
 import os
 import sys

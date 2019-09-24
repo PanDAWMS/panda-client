@@ -162,8 +162,7 @@ setup(
                                         'icons/orange.png',                                        
                                         ]
                     ),
-                   ('etc/panda/share', ['share/extPoolRefs.C',
-                                        'share/FakeAppMgr.py',
+                   ('etc/panda/share', ['share/FakeAppMgr.py',
                                         'share/ConfigExtractor.py',
                                         ]
                     ),

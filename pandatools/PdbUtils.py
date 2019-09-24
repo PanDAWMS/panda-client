@@ -1,14 +1,17 @@
 import os
 import re
 import sys
-import types
 import time
 import datetime
-import commands
+from .MiscUtils import commands_get_status_output
+try:
+    long()
+except Exception:
+    long = int
 
-import PLogger
-from LocalJobSpec import LocalJobSpec
-from LocalJobsetSpec import LocalJobsetSpec
+from . import PLogger
+from .LocalJobSpec import LocalJobSpec
+from .LocalJobsetSpec import LocalJobsetSpec
 
 class PdbProxy:
 
@@ -45,7 +48,8 @@ class PdbProxy:
         # logger  
         tmpLog = PLogger.getPandaLogger()
         # expand variables
-        for tmpKey,tmpVal in var.iteritems():
+        for tmpKey in var:
+            tmpVal = var[tmpKey]
             sql = sql.replqce(tmpKey,str(tmpVal))
         # construct command
         com = '%s %s "%s"' % (self.engine,self.database,sql)
@@ -53,10 +57,11 @@ class PdbProxy:
             tmpLog.debug("DB Req : " + com)
         # execute
         nTry = 5
+        status =0
         for iTry in range(nTry):
             if self.verbose:
                 tmpLog.debug("   Try : %s/%s" % (iTry,nTry))
-            status,output = commands.getstatusoutput(com)
+            status,output = commands_get_status_output(com)
             status %= 255
             if status == 0:
                 break
@@ -129,7 +134,7 @@ class PdbProxy:
 
     # remove old database
     def deleteDatabase(self):
-        status,output = commands.getstatusoutput('rm -f %s' % self.database)
+        commands_get_status_output('rm -f %s' % self.database)
         
         
     # initialize database
@@ -137,7 +142,7 @@ class PdbProxy:
         # import sqlite3
         # check if sqlite3 is available
         com = 'which %s' % self.engine
-        status,output = commands.getstatusoutput(com)
+        status,output = commands_get_status_output(com)
         if status != 0:
             errstr  = "\n\n"
             errstr += "ERROR : %s is not available in PATH\n\n" % self.engine
@@ -152,7 +157,7 @@ class PdbProxy:
             errstr += " * install %s from the standard SL4 repository. e.g.,\n" % self.engine
             errstr += "   $ yum install %s\n\n" % self.engine
             errstr += " * use SLC5\n"
-            raise RuntimeError,errstr
+            raise RuntimeError(errstr)
         # create dir for DB
         if not os.path.exists(self.database_dir):
             os.makedirs(self.database_dir)
@@ -169,7 +174,7 @@ class PdbProxy:
         # get tables
         retS,retV = self.execute('.table')
         if not retS:
-            raise RuntimeError,"cannot get tables"
+            raise RuntimeError("cannot get tables")
         # the table already exist or not
         if retV == []:
             return False
@@ -185,7 +190,7 @@ class PdbProxy:
         # get colum names
         retS,retV = self.execute('PRAGMA table_info(%s)' % self.tablename)
         if not retS:
-            raise RuntimeError,"cannot get table_info"
+            raise RuntimeError("cannot get table_info")
         # parse
         columns = []
         for line in retV:
@@ -193,15 +198,16 @@ class PdbProxy:
             if len(items) > 1:
                 columns.append(items[1])
         # check        
-        for tmpC,tmpA in LocalJobSpec.appended.iteritems():
+        for tmpC in LocalJobSpec.appended:
+            tmpA = LocalJobSpec.appended[tmpC]
             if not tmpC in columns:
                 if noAdd:
-                    raise RuntimeError,"%s not found in database schema" % tmpC
+                    raise RuntimeError("%s not found in database schema" % tmpC)
                 # add column
                 retS,retV = self.execute("ALTER TABLE %s ADD COLUMN '%s' %s" % \
                                          (self.tablename,tmpC,tmpA))
                 if not retS:
-                    raise RuntimeError,"cannot add %s to database schema" % tmpC
+                    raise RuntimeError("cannot add %s to database schema" % tmpC)
         if noAdd:
             return
         # check whole schema just in case
@@ -232,17 +238,18 @@ class PdbProxy:
         sql += "'dbStatus'       VARCHAR(20),"
         sql += "'buildStatus'    VARCHAR(20),"
         sql += "'commandToPilot' VARCHAR(20),"
-        for tmpC,tmpA in LocalJobSpec.appended.iteritems():
+        for tmpC in LocalJobSpec.appended:
+            tmpA = LocalJobSpec.appended[tmpC]
             sql += "'%s' %s," % (tmpC,tmpA)
         sql = sql[:-1]
         sql += ")"
         # execute
         retS,retV = self.execute(sql)
         if not retS:
-            raise RuntimeError,"failed to create %s" % self.tablename
+            raise RuntimeError("failed to create %s" % self.tablename)
         # confirm
         if not self.checkTable():
-            raise RuntimeError,"failed to confirm %s" % self.tablename
+            raise RuntimeError("failed to confirm %s" % self.tablename)
 
 
 # convert Panda jobs to DB representation
@@ -256,7 +263,7 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
         # create new spec
         ddata = LocalJobSpec()
     # sort by PandaID
-    pandIDs = pandaIDstatus.keys()
+    pandIDs = list(pandaIDstatus)
     pandIDs.sort()
     pStr = ''
     sStr = ''
@@ -324,9 +331,9 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
     iDSlist  = []
     oDSlist = []
     if fileInfo != {}:
-        if fileInfo.has_key('inDS'):
+        if 'inDS' in fileInfo:
             iDSlist = fileInfo['inDS']
-        if fileInfo.has_key('outDS'):
+        if 'outDS' in fileInfo:
             oDSlist = fileInfo['outDS']
     else:
         for pandaJob in pandaJobList:
@@ -507,7 +514,7 @@ def insertJobDB(job,verbose=False):
     sql1+= "VALUES " + job.values()
     status,out = pdbProxy.execute_direct(sql1)
     if not status:
-        raise RuntimeError,"failed to insert job"
+        raise RuntimeError("failed to insert job")
 
 
 # update job info in DB
@@ -524,7 +531,7 @@ def updateJobDB(job,verbose=False,updateTime=None):
         job.lastUpdate = datetime.datetime.utcnow()
     status,out = pdbProxy.execute_direct(sql1)
     if not status:
-        raise RuntimeError,"failed to update job"
+        raise RuntimeError("failed to update job")
 
 
 # set retryID
@@ -535,7 +542,7 @@ def setRetryID(job,verbose=False):
     sql1 += " WHERE JobID=%s AND (nRebro IS NULL OR nRebro=%s)" % (job.provenanceID,job.nRebro)
     status,out = pdbProxy.execute(sql1)
     if not status:
-        raise RuntimeError,"failed to set retryID"
+        raise RuntimeError("failed to set retryID")
 
 
 # delete old jobs
@@ -547,7 +554,7 @@ def deleteOldJobs(days,verbose=False):
     sql1 += " WHERE creationTime<'%s' " % limit.strftime('%Y-%m-%d %H:%M:%S')
     status,out = pdbProxy.execute_direct(sql1)
     if not status:
-        raise RuntimeError,"failed to delete old jobs"
+        raise RuntimeError("failed to delete old jobs")
 
 
 # read job info from DB
@@ -558,7 +565,7 @@ def readJobDB(JobID,verbose=False):
     # execute
     status,out = pdbProxy.execute_direct(sql1, fetch=True)
     if not status:
-        raise RuntimeError,"failed to get JobID=%s" % JobID
+        raise RuntimeError("failed to get JobID=%s" % JobID)
     if len(out) == 0:
         return None
     # instantiate LocalJobSpec
@@ -580,7 +587,7 @@ def readJobsetDB(JobsetID,verbose=False):
     # execute
     status,out = pdbProxy.execute(sql1)
     if not status:
-        raise RuntimeError,"failed to get JobsetID=%s" % JobsetID
+        raise RuntimeError("failed to get JobsetID=%s" % JobsetID)
     if len(out) == 0:
         return None
     # instantiate LocalJobSpec
@@ -590,7 +597,7 @@ def readJobsetDB(JobsetID,verbose=False):
         job = LocalJobSpec()
         job.pack(values)
         # return frozen job if exists
-        if job.dbStatus == 'frozen' or not tmpJobMap.has_key(job.JobID):
+        if job.dbStatus == 'frozen' or job.JobID not in tmpJobMap:
             tmpJobMap[job.JobID] = job
     # make jobset
     jobset = LocalJobsetSpec()
@@ -624,10 +631,11 @@ def checkJobsetStatus(JobsetID,verbose=False):
         job = LocalJobSpec()
         job.pack(values)
         # use frozen job if exists
-        if not jobMap.has_key(job.JobID) or job.dbStatus == 'frozen':
+        if job.JobID not in jobMap or job.dbStatus == 'frozen':
             jobMap[job.JobID] = job
     # check all job status
-    for tmpJobID,tmpJobSpec in jobMap.iteritems():
+    for tmpJobID in jobMap:
+        tmpJobSpec = jobMap[tmpJobID]
         if tmpJobSpec != 'frozen':
             return True,'running'
     # return 
@@ -641,7 +649,7 @@ def bulkReadJobDB(verbose=False):
     # execute
     status,out = pdbProxy.execute_direct(sql1, fetch=True)
     if not status:
-        raise RuntimeError,"failed to get jobs"
+        raise RuntimeError("failed to get jobs")
     if len(out) == 0:
         return []
     # instantiate LocalJobSpec
@@ -651,23 +659,24 @@ def bulkReadJobDB(verbose=False):
         job = LocalJobSpec()
         job.pack(values)
         # use frozen job if exists
-        if (not retMap.has_key(job.JobID)) or job.dbStatus == 'frozen':
+        if job.JobID not in retMap or job.dbStatus == 'frozen':
             if job.groupID in [0,'0','NULL',-1,'-1']:
                 retMap[long(job.JobID)] = job
             else:
                 # add jobset
                 tmpJobsetID = long(job.groupID)
-                if (not retMap.has_key(tmpJobsetID)) or (not jobsetMap.has_key(tmpJobsetID)):
+                if tmpJobsetID not in retMap or tmpJobsetID not in jobsetMap:
                     jobsetMap[tmpJobsetID] = []
                     jobset = LocalJobsetSpec()
                     retMap[tmpJobsetID] = jobset
                 # add job    
                 jobsetMap[tmpJobsetID].append(job)
     # add jobs to jobset
-    for tmpJobsetID,tmpJobList in jobsetMap.iteritems():
+    for tmpJobsetID in jobsetMap:
+        tmpJobList = jobsetMap[tmpJobsetID]
         retMap[tmpJobsetID].setJobs(tmpJobList)
     # sort
-    ids = retMap.keys()
+    ids = list(retMap)
     ids.sort()
     retVal = []
     for id in ids:
@@ -683,7 +692,7 @@ def getListOfJobIDs(nonFrozen=False,verbose=False):
     # execute
     status,out = pdbProxy.execute_direct(sql1, fetch=True)
     if not status:
-        raise RuntimeError,"failed to get list of JobIDs"
+        raise RuntimeError("failed to get list of JobIDs")
     allList = []
     frozenList = []
     for item in out:
@@ -716,7 +725,7 @@ def getMapJobsetIDJobIDs(verbose=False):
     # execute
     status,out = pdbProxy.execute(sql1)
     if not status:
-        raise RuntimeError,"failed to get list of JobIDs"
+        raise RuntimeError("failed to get list of JobIDs")
     allMap = {}
     for item in out:
         # JobsetID
@@ -724,7 +733,7 @@ def getMapJobsetIDJobIDs(verbose=False):
         # JobID
         tmpJobID = long(item.split('|')[-1])
         # append
-        if not allMap.has_key(tmpJobsetID):
+        if tmpJobsetID not in allMap:
             allMap[tmpJobsetID] = []
         if not tmpJobID in allMap[tmpJobsetID]:
             allMap[tmpJobsetID].append(tmpJobID)
@@ -749,7 +758,7 @@ def getJobsetTaskMap(verbose=False):
     # execute
     status,out = pdbProxy.execute_direct(sql1, fetch=True)
     if not status:
-        raise RuntimeError,"failed to get list of JobIDs"
+        raise RuntimeError("failed to get list of JobIDs")
     allMap = {}
     for item in out:
         # JobsetID

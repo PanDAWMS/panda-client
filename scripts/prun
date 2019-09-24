@@ -1,29 +1,32 @@
 #!/bin/bash
 
-"exec" "python" "-u" "-Wignore" "$0" "$@"
+"export" "LD_LIBRARY_PATH_ORIG=${LD_LIBRARY_PATH}"
+"export" "LD_LIBRARY_PATH="
+"export" "PYTHONPATH_ORIG=${PYTHONPATH}"
+"export" "PYTHONPATH=${PANDA_PYTHONPATH}"
+"export" "PYTHONHOME_ORIG=${PYTHONHOME}"
+"unset" "PYTHONHOME"
+"exec" "/usr/bin/python" "-u" "-Wignore" "$0" "$@"
 
 import re
 import os
 import sys
-import time
 import shutil
 import atexit
-import datetime
 import argparse
-import commands
-import urllib
-import shelve
-import copy
+try:
+    from urllib import quote
+except ImportError:
+    from urllib.parse import quote
 import types
 import json
 import copy
+from pandatools.MiscUtils import commands_get_output, commands_get_status_output
 
 # default cloud/site
 defaultCloud = None
 defaultSite  = 'AUTO'
 
-# max lookup for cross site option
-maxCrossSite = 50
 
 # error code
 EC_Config    = 10
@@ -66,38 +69,24 @@ optP.add_argument('--eventPickStreamName',action='store',dest='eventPickStreamNa
                   help='stream name for event picking. e.g., physics_CosmicCaloEM')
 optP.add_argument('--eventPickDS',action='store',dest='eventPickDS',default='',
                   help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
-optP.add_argument('--eventPickStagedDS',action='store',dest='eventPickStagedDS',default='',
-                  help='--eventPick options create a temporary dataset to stage-in interesting files when those files are available only on TAPE, and then a stage-in request is automatically sent to DaTRI. Once DaTRI transfers the dataset to DISK you can use the dataset as an input using this option')
 optP.add_argument('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
                   help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
-optP.add_argument('--eventPickNumSites',action='store',dest='eventPickNumSites',default=1,
-                type=int, help='The event picking service makes a temprary dataset container to stage files to DISK. The consistuent datasets are distibued to N sites (N=1 by default)')
-optP.add_argument('--eventPickSkipDaTRI',action='store_const',const=True,dest='eventPickSkipDaTRI',default=False,
-                help='Skip sending a staging request to DaTRI for event picking')
 optP.add_argument('--eventPickWithGUID',action='store_const',const=True,dest='eventPickWithGUID',default=False,
                 help='Using GUIDs together with run and event numbers in eventPickEvtList to skip event lookup')
 optP.add_argument('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before large submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
 optP.add_argument('--debugMode', action='store_const',const=True,dest='debugMode',default=False,
                 help="Send the job with the debug mode on. If this option is specified the subjob will send stdout to the panda monitor every 5 min. The number of debug subjobs per user is limited. When this option is used and the quota has already exceeded, the panda server supresses the option so that subjobs will run without the debug mode. If you submit multiple subjobs in a single job, only the first subjob will set the debug mode on. Note that you can turn the debug mode on/off by using pbook after jobs are submitted" )
-optP.add_argument('--useContElementBoundary',action='store_const',const=True,dest='useContElementBoundary',default=False,
-                help="Split job in such a way that sub jobs do not mix files of different datasets in the input container. See --useNthFieldForLFN too")
 optP.add_argument('--addNthFieldOfInDSToLFN',action='store',dest='addNthFieldOfInDSToLFN',default='',
                 help="A middle name is added to LFNs of output files when they are produced from one dataset in the input container or input dataset list. The middle name is extracted from the dataset name. E.g., if --addNthFieldOfInDSToLFN=2 and the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is extracted and LFN is something like user.hoge.TASKID.00160387.blah. Concatenate multiple field numbers with commas if necessary, e.g., --addNthFieldOfInDSToLFN=2,6.")
 optP.add_argument('--addNthFieldOfInFileToLFN',action='store',dest='addNthFieldOfInFileToLFN',default='',
                 help="A middle name is added to LFNs of output files similarly as --addNthFieldOfInDSToLFN, but strings are extracted from input file names")
-optP.add_argument('--buildInLastChunk',action='store_const',const=True,dest='buildInLastChunk',default=False,
-                help="Produce lib.tgz in the last chunk when jobs are split to multiple chunks due to the limit on the number of files in each chunk or due to --useContElementBoundary/--loadXML")
 optP.add_argument('--followLinks',action='store_const',const=True,dest='followLinks',default=False,
                 help="Resolve symlinks to directories when building the input tarball. This option requires python2.6 or higher")
 optP.add_argument('--outDS',action='store',dest='outDS',default='',
                 help='Name of an output dataset. OUTDS will contain all output files')
 optP.add_argument('--destSE',action='store', dest='destSE',default='',
                 help='Destination strorage element')
-optP.add_argument('--libDS',action='store',dest='libDS',default='',
-                help='Name of a library dataset')
-optP.add_argument('--removedDS', action='store', dest='removedDS', default='',
-                  help="don't use datasets in the input dataset container")
 optP.add_argument('--useHomeDir', action='store_const',const=True,dest='useHomeDir',default=False,
                 help='execute prun just under the HOME dir')
 optP.add_argument('--noBuild', action='store_const',const=True,dest='noBuild',default=False,
@@ -106,36 +95,24 @@ optP.add_argument('--bulkSubmission', action='store_const', const=True, dest='bu
                 help='Bulk submit tasks. When this option is used, --inOutDsJson is required while --inDS and --outDS are ignored. It is possible to use %%DATASET_IN and %%DATASET_OUT in --exec which are replaced with actual dataset names when tasks are submitted, and %%BULKSEQNUMBER which is replaced with a sequential number of tasks in the bulk submission')
 optP.add_argument('--noCompile', action='store_const',const=True,dest='noCompile',default=False,
                 help='Just upload a tarball in the build step to avoid the tighter size limit imposed by --noBuild. The tarball contains binaries compiled on your local computer, so that compilation is skipped in the build step on remote WN')
-optP.add_argument('--individualOutDS',action='store_const',const=True,dest='individualOutDS',default=False,
-                help='Create individual output dataset for each data-type. By default, all output files are added to one output dataset')
-optP.add_argument('--transferredDS',action='store', dest='transferredDS',default='',
-                help='Specify a comma-separated list of patterns so that only datasets which match the given patterns are transferred when --destSE is set. Either \ or "" is required when a wildcard is used. If omitted, all datasets are transferred')
 optP.add_argument('--secondaryDSs',action='store',dest='secondaryDSs',default='',
                 help='List of secondary datasets when the job requires multiple inputs. See PandaRun wiki page for detail')
 optP.add_argument('--reusableSecondary',action='store',dest='reusableSecondary',default='',
                 help='A comma-separated list of secondary streams which reuse files when all files are used')
 optP.add_argument('--site',action='store',dest='site',default=defaultSite,
                 help='Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites')
-optP.add_argument('--cloud',action='store',dest='cloud',default=None,
-                help='Cloud where jobs are submitted. default is set according to your VOMS country group')
 optP.add_argument('--match',action='store',dest='match',default='',
                 help='Use only files matching with given pattern')
 optP.add_argument('--antiMatch',action='store',dest='antiMatch',default='',
                 help='Skip files matching with given pattern')
 optP.add_argument('--notSkipLog',action='store_const',const=True,dest='notSkipLog',default=False,
                 help="Don't skip log files in input datasets (obsolete. use --useLogAsInput instead)")
-optP.add_argument('--skipScan',action='store_const',const=True,dest='skipScan',default=False,
-                help='Skip LFC lookup at job submission')
 optP.add_argument('--memory',action='store',dest='memory',default=-1,type=int,
                 help='Required memory size in MB. e.g., for 1GB --memory 1024')
 optP.add_argument('--nCore', action='store', dest='nCore', default=-1, type=int,
                 help='The number of CPU cores. Note that the system distinguishes only nCore=1 and nCore>1. This means that even if you set nCore=2 jobs can go to sites with nCore=8 and your application must use the 8 cores there. The number of available cores is defined in an environment variable, $ATHENA_PROC_NUMBER, on WNs. Your application must check the env variable when starting up to dynamically change the number of cores')
 optP.add_argument('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type=int,
                 help='Required CPU count in seconds. Mainly to extend time limit for looping job detection')
-optP.add_argument('--safetySize',action='store',dest='safetySize',default=500,type=int,
-                help='Specify the expected size of input sandbox in MB. 500 by default')
-optP.add_argument('--useShortLivedReplicas', action='store_const', const=True, dest='useShortLivedReplicas', default=False,
-                help="Use replicas even if they have very sort lifetime")
 optP.add_argument('--useDirectIOSites', action='store_const', const=True, dest='useDirectIOSites', default=False,
                 help="Use only sites which use directIO to read input files")
 optP.add_argument('--official',action='store_const',const=True,dest='official',default=False,
@@ -146,10 +123,6 @@ optP.add_argument('--descriptionInLFN',action='store',dest='descriptionInLFN',de
                 help='LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something')
 optP.add_argument('--useRootCore',action='store_const',const=True,dest='useRootCore',default=False,
                 help='Use RootCore. See PandaRun wiki page for detail')
-optP.add_argument('--useMana',action='store_const',const=True,dest='useMana',default=False,
-                help='Use Mana. See PandaRun wiki page for detail')
-optP.add_argument('--manaVer',action='store',dest='manaVer',default='',
-                help='Specify a mana version if you want to use an older version. If omitted, the latest version is used. e.g., --manaVer=20130301' )
 optP.add_argument('--useAthenaPackages',action='store_const',const=True,dest='useAthenaPackages',default=False,
                 help='Use Athena packages. See PandaRun wiki page for detail')
 optP.add_argument('--gluePackages', action='store', dest='gluePackages',  default='',
@@ -186,8 +159,6 @@ optP.add_argument('--excludeFile',action='store',dest='excludeFile',default='',
                 help='specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C')
 optP.add_argument('--inputFileList', action='store', dest='inputFileListName', default='',
                   help='name of file which contains a list of files to be run in the input dataset')
-optP.add_argument('--crossSite',action='store',dest='crossSite',default=maxCrossSite,
-                type=int,help='submit jobs to N sites at most when datasets in container split over many sites (N=%s by default)' % maxCrossSite)
 optP.add_argument('--outputs',action='store',dest='outputs',default='',
                 help='Names of output files. Comma separated. e.g., --outputs out1.dat,out2.txt. You can specify a suffix for each output container like <datasetNameSuffix>:<outputFileName>. e.g., --outputs AAA:out1.dat,BBB:out2.txt. In this case output container names are outDS_AAA/ and outDS_BBB/ instead of outDS_out1.dat/ and outDS_out2.txt/')
 optP.add_argument('--allowNoOutput',action='store',dest='allowNoOutput',default='',
@@ -202,8 +173,6 @@ optP.add_argument('--prodSourceLabel', action='store', dest='prodSourceLabel', d
                 help="set prodSourceLabel")
 optP.add_argument('--processingType', action='store', dest='processingType', default='prun',
                 help="set processingType")
-optP.add_argument('--seriesLabel', action='store', dest='seriesLabel',  default='',
-                help="set seriesLabel")
 optP.add_argument('--workingGroup', action='store', dest='workingGroup',  default=None,
                 help="set workingGroup")
 optP.add_argument('--tmpDir',action='store',dest='tmpDir',default='',
@@ -236,50 +205,24 @@ optP.add_argument('--bexec',action='store',dest='bexec',default='',
                 help='execution string for build stage. e.g., --bexec "make"')
 optP.add_argument('--disableAutoRetry',action='store_const',const=True,dest='disableAutoRetry',default=False,
                 help='disable automatic job retry on the server side')
-optP.add_argument('--myproxy',action='store',dest='myproxy',default='myproxy.cern.ch',
-                help='Name of the myproxy server')
 optP.add_argument('--maxNFilesPerJob',action='store',dest='maxNFilesPerJob',default=200,type=int,
                 help='The maximum number of files per job is 200 by default since too many input files result in a too long command-line argument on WN which crashes the job. This option relax the limit. In many cases it is better to use this option together with --writeInputToTxt')
 optP.add_argument('--writeInputToTxt',action='store',dest='writeInputToTxt',default='',
                 help='Write the input file list to a file so that your application gets the list from the file instead of stdin. The argument is a comma separated list of StreamName:FileName. e.g., IN:input1.txt,IN2:input2.txt')
 optP.add_argument('--dbRelease',action='store',dest='dbRelease',default='',
                   help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used. Most likely the --useAthenaPackages or --athenaTag option is required to setup Athena runtime on WN')
-optP.add_argument('--dbRunNumber',action='store',dest='dbRunNumber', default='',
-                  help='RunNumber for DBRelease or CDRelease. If this option is used some redundant files are removed to save disk usage when unpacking DBRelease tarball. e.g., 0091890')
 optP.add_argument('--notExpandDBR',action='store_const',const=True,dest='notExpandDBR',default=False,
                 help='By default, DBRelease.tar.gz is expanded on WN and gets deleted after changing environment variables accordingly. If you need tar.gz, use this option')
 optP.add_argument('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
                 help="merge output files")
 optP.add_argument('--mergeScript',action='store',dest='mergeScript',default='',
                 help='Specify user-defied script execution string for output merging')
-optP.add_argument('--provenanceID',action='store',dest='provenanceID',default=-1,type=int,
-                help='provenanceID')
-optP.add_argument('--useSiteGroup',action='store',dest='useSiteGroup',default=-1,type=int,
-                help='Use only site groups which have group numbers not higher than --siteGroup. Group 0: T1 or undefined, 1,2,3,4: alpha,bravo,charlie,delta which are defined based on site reliability')
 optP.add_argument('-v', '--verbose', action='store_const',const=True,dest='verbose',default=False,
                 help='Verbose')
-optP.add_argument('--long', action='store_const',const=True,dest='long',default=False,
-                help='Send job to a long queue')
 optP.add_argument('--pfnList',action='store',dest='pfnList',default='',
                 help='Name of file which contains a list of input PFNs. Those files can be un-registered in DDM')
-optP.add_argument('--outputPath',action='store',dest='outputPath', default='',
-                  help='Physical path of output directory relative to a root path')
-optP.add_argument('--useOldStyleOutput',action='store_const',const=True,dest='useOldStyleOutput',default=False,
-                help="use output dataset and long LFN instead of output dataset container and short LFN")
-optP.add_argument('--disableRebrokerage',action='store_const',const=True,dest='disableRebrokerage',default=False,
-                help="disable auto-rebrokerage")
-optP.add_argument('--useChirpServer',action='store',dest='useChirpServer', default='',
-                  help='The CHIRP server where output files are written to. e.g., --useChirpServer voatlas92.cern.ch')
-optP.add_argument('--useGOForOutput',action='store',dest='useGOForOutput',default='',metavar='GOENDPOINT',
-                  help='The Globus Online server where output files are written to. e.g., --useGOForOutput voatlas92.cern.ch')
-optP.add_argument('--enableJEM',action='store_const',const=True,dest='enableJEM',default=False,
-                help="enable JEM")
-optP.add_argument('--configJEM', action='store', dest='configJEM', default='',
-                  help='configration parameters for JEM')
 optP.add_argument('--cmtConfig', action='store', dest='cmtConfig', default=None,
-                  help='CMTCONFIG=i686-slc5-gcc43-opt is used on remote worker-node by default even if you use another CMTCONFIG locally. This option allows you to use another CMTCONFIG remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt. If you use --libDS together with this option, make sure that the libDS was compiled with the same CMTCONFIG, in order to avoid failures due to inconsistency in binary files')
-optP.add_argument('--requireLFC',action='store_const',const=True,dest='requireLFC',default=False,
-                help='Require that LFC lookup is 100% successful (a single miss will fail the submission)')
+                  help='CMTCONFIG=i686-slc5-gcc43-opt is used on remote worker-node by default even if you use another CMTCONFIG locally. This option allows you to use another CMTCONFIG remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt.')
 optP.add_argument('--loadXML',action='store',dest='loadXML',default=None,
                 help='Expert mode: load complete submission configuration from an XML file ')
 optP.add_argument('--loadJson', action='store', dest='loadJson',default=None,
@@ -296,8 +239,6 @@ optP.add_argument('--useNewCode',action='store_const',const=True,dest='useNewCod
                 help='When task are resubmitted with the same outDS, the original souce code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries') 
 optP.add_argument('--allowTaskDuplication',action='store_const',const=True,dest='allowTaskDuplication',default=False,
                 help="As a general rule each task has a unique outDS and history of file usage is recorded per task. This option allows multiple tasks to contribute to the same outDS. Typically useful to submit a new task with the outDS which was used by another broken task. Use this option very carefully at your own risk, since file duplication happens when the second task runs on the same input which the first task successfully processed")
-optP.add_argument('--useRucio',action='store_const',const=True,dest='useRucio',default=False,
-                help="Use Rucio as DDM backend")
 optP.add_argument('--skipFilesUsedBy', action='store',dest='skipFilesUsedBy',default='',
                   help='A comma-separated list of TaskIDs. Files used by those tasks are skipped when running a new task')
 optP.add_argument('--maxAttempt', action='store', dest='maxAttempt', default=-1,
@@ -323,21 +264,22 @@ optP.add_argument('--maxWalltime', action='store', dest='maxWalltime', default=0
 from pandatools import MiscUtils
 
 # parse options
-options = optP.parse_args()
+options, args = optP.parse_known_args()
 if options.verbose:
-    print options
-    print
+    print(options)
+    print('')
 # load json
 jsonExecStr = ''
 if options.loadJson is not None:
     loadOpts = MiscUtils.decodeJSON(options.loadJson)
-    for k, v in loadOpts.iteritems():
+    for k in loadOpts:
+        v = loadOpts[k]
         origK = k
         if k == 'exec':
             k = 'jobParams'
         if not hasattr(options, k):
-            print "ERROR: unknown parameter {0} in {1}".format(k, options.loadJson) 
-	    sys.exit(0)
+            print("ERROR: unknown parameter {0} in {1}".format(k, options.loadJson) )
+            sys.exit(0)
         else:
             setattr(options,k, v)
         if v is True:
@@ -348,73 +290,38 @@ if options.loadJson is not None:
             else:
                 jsonExecStr += " --{0}={1}".format(origK, v)
     if options.verbose:
-        print "options after loading json"
-        print options
-        print
+        print("options after loading json")
+        print(options)
+        print('')
 
 # display version
 from pandatools import PandaToolsPkgInfo
 if options.version:
-    print "Version: %s" % PandaToolsPkgInfo.release_version
+    print("Version: %s" % PandaToolsPkgInfo.release_version)
     sys.exit(0)
 
 from pandatools import Client
 from pandatools import PsubUtils
 from pandatools import AthenaUtils
-from pandatools import GlobalConfig
-from pandatools import AppConfig
 from pandatools import PLogger
 
 # update panda-client
 if options.update:
     res = PsubUtils.updatePackage(options.verbose)
     if res:
-	sys.exit(0)
-    else:
-	sys.exit(1)
+        sys.exit(0)
+    sys.exit(1)
 
 # full execution string
 fullExecString = PsubUtils.convSysArgv()
 fullExecString += jsonExecStr
 
 # set dummy CMTSITE
-if not os.environ.has_key('CMTSITE'):
+if 'CMTSITE' not in os.environ:
     os.environ['CMTSITE'] = ''
-
-# set grid source file
-globalConf = GlobalConfig.getConfig()
-if globalConf.grid_src != '' and not os.environ.has_key('PATHENA_GRID_SETUP_SH'):
-    os.environ['PATHENA_GRID_SETUP_SH'] = globalConf.grid_src
 
 # get logger
 tmpLog = PLogger.getPandaLogger()
-
-# set default
-appConf = AppConfig.AppConfig('prun')
-for tmpAppConfKey,tmpAppConfVal in appConf.getConfig().iteritems():
-    # check lower characters just in case
-    tmpAppConfKeys = [tmpAppConfKey,tmpAppConfKey.lower()]
-    for tmpKey in tmpAppConfKeys:
-        if hasattr(options,tmpKey):
-            tmpSetAttFlag = False
-	    if getattr(options,tmpKey) in [-1,0,None,'','AUTO',False]:
-		setattr(options,tmpKey,tmpAppConfVal)
-		tmpSetAttFlag = True
-            elif getattr(options,tmpKey) == []:
-                tmpSetValue = tmpAppConfVal.split(',')
-                if '' in tmpSetValue:
-                    tmpSetValue.remove('')
-                setattr(options,tmpKey,tmpSetValue)
-                tmpSetAttFlag = True
-            if tmpSetAttFlag:
-                # append parameter to metadata
-                if isinstance(tmpAppConfVal,types.BooleanType):
-                    fullExecString += ' --%s' % tmpKey
-                else:
-                    fullExecString += ' --%s=%s' % (tmpKey,tmpAppConfVal)
-                if options.verbose:
-                    tmpLog.debug("Use default option in panda.cfg %s=%s" % (tmpKey,getattr(options,tmpKey)))
-            break
 
 # use dev server
 if options.devSrv:
@@ -423,14 +330,6 @@ if options.devSrv:
 # use INTR server
 if options.intrSrv:
     Client.useIntrServer()
-    
-# version check
-PsubUtils.checkPandaClientVer(options.verbose)
-
-# obsolete options
-if options.useOldStyleOutput:
-    options.useOldStyleOutput = False
-    tmpLog.warning("disabled --useOldStyleOutput since it is obsolete")
 
 # noCompile uses noBuild stuff
 if options.noCompile:
@@ -449,9 +348,6 @@ if options.containerImage != '':
     
 # files to be deleted
 delFilesOnExit = []
-                            
-# suffix for shadow dataset
-suffixShadow = Client.suffixShadow
 
 # load submission configuration from xml file (if provided)
 xconfig = None
@@ -470,7 +366,7 @@ if options.loadXML != None:
         xconfig.files_in_DS(options.inDS)
     except:
         errtype,errvalue = sys.exc_info()[:2]
-        print errvalue
+        print(errvalue)
         tmpLog.error('verification of XML failed')
         sys.exit(EC_Config)
     # inDS match and secondaryDS filter will be determined later from xconfig
@@ -488,8 +384,6 @@ curDir = os.path.realpath(os.getcwd())
 if options.outputs != '':
     options.outputs = re.sub(' ','',options.outputs)
 
-brokerageLogs  = []
-userBrokerLogs = []
 
 # exclude sites
 if options.excludedSite != []:
@@ -509,10 +403,6 @@ siteSpecified = True
 if options.site == 'AUTO':
     siteSpecified = False
 
-# cloud specified
-if options.cloud != defaultCloud:
-    # add logging info
-    userBrokerLogs = PsubUtils.getUserBrokerageInfo(options.cloud,'cloud',userBrokerLogs)
 
 # list of output files which can be skipped
 options.allowNoOutput = options.allowNoOutput.split(',')
@@ -541,45 +431,9 @@ if options.bulkSubmission:
 else:
     ioList = [{'inDS': options.inDS, 'outDS': options.outDS}]
 
-# use outputPath as outDS
-if Client.isDQ2free(options.site):
-    if options.outDS != '':
-	options.outputPath = options.outDS
-    else:
-	options.outputPath = './'
-    options.outDS = options.outputPath
-else:
-    # enforce to use output dataset container
-    if not options.useOldStyleOutput and not options.outDS.endswith('/'):
-        options.outDS = options.outDS + '/'
-
-# keep original outDS
-original_outDS_Name = options.outDS
-     
-# reset crossSite unless container is used for output 
-if not original_outDS_Name.endswith('/'):
-    options.crossSite = 0
-
-usingContainerForOut = original_outDS_Name.endswith('/')
-
-# disable expiring file check
-if options.useShortLivedReplicas:
-    Client.useExpiringFiles()
-    
-# libDS
-libds_file = '%s/libds_prun.dat' % os.environ['PANDA_CONFIG_ROOT']
-if options.libDS == 'LAST':
-    if not os.path.exists(libds_file):
-        tmpLog.error("LAST cannot be used until you submit at least one job without --libDS")
-        sys.exit(EC_Config)
-    # read line
-    tmpFile = open(libds_file)
-    tmpLibDS = tmpFile.readline()
-    tmpFile.close()
-    # remove \n
-    tmpLibDS = tmpLibDS.replace('\n','')
-    # set
-    options.libDS = tmpLibDS
+# enforce to use output dataset container
+if not options.outDS.endswith('/'):
+    options.outDS = options.outDS + '/'
 
 # absolute path for PFN list
 if options.pfnList != '':
@@ -650,7 +504,7 @@ if options.inDS != '':
     options.inDS = options.inDS.replace(' ', '')
 
 # warning
-if options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
+if options.nFilesPerJob is not None and options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
     tmpLog.warning("Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
                    "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option.")
 
@@ -659,42 +513,13 @@ if options.maxNFilesPerJob < 5:
                    "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option.")
 
 # check grid-proxy
-gridPassPhrase,vomsFQAN = PsubUtils.checkGridProxy('',False,options.verbose,options.vomsRoles)
-
-# add allowed sites
-if not siteSpecified:
-    tmpSt = Client.addAllowedSites(options.verbose)
-    if not tmpSt:
-        tmpLog.error("Failed to get allowed site list")
-        sys.exit(EC_Config)
-
-# removed datasets
-if options.removedDS == '':
-    options.removedDS = []
-else:
-    options.removedDS = options.removedDS.split(',')
+PsubUtils.check_proxy(options.verbose, options.vomsRoles)
 
 # convert in/outTarBall to full path
 if options.inTarBall != '':
     options.inTarBall = os.path.abspath(os.path.expanduser(options.inTarBall))
 if options.outTarBall != '':
     options.outTarBall = os.path.abspath(os.path.expanduser(options.outTarBall))
-
-# set workdir for mana
-if options.useMana:
-    tmpSt,tmpOut = MiscUtils.getManaSetupParam('workarea')
-    if not tmpSt:
-        tmpLog.error(tmpOut)
-        sys.exit(EC_Config)
-    options.workDir = tmpOut
-    tmpLog.info("setting workDir=%s for mana" % options.workDir)
-    # extract mana version number
-    if options.manaVer == '':
-        tmpSt,tmpOut = MiscUtils.getManaVer()
-        if not tmpSt:
-            tmpLog.error(tmpOut)
-            sys.exit(EC_Config)
-        options.manaVer = tmpOut    
 
 # check working dir
 options.workDir = os.path.realpath(options.workDir)
@@ -703,14 +528,14 @@ if options.workDir != curDir and (not curDir.startswith(options.workDir+'/')):
     sys.exit(EC_Config)
 
 # avoid gathering up the home dir
-if os.environ.has_key('HOME') and not options.useHomeDir and not options.useAthenaPackages \
+if 'HOME' in os.environ and not options.useHomeDir and not options.useAthenaPackages \
        and os.path.realpath(os.path.expanduser(os.environ['HOME'])) == options.workDir:
     tmpStr  = 'prun is executed just under the HOME directoy '
     tmpStr += 'and is going to send all files under the dir including ~/Mail/* and ~/private/*. '
     tmpStr += 'Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)'
     tmpLog.warning(tmpStr)
     while True:
-        tmpAnswer = raw_input('y/N: ')
+        tmpAnswer = input('y/N: ')
         tmpAnswer = tmpAnswer.strip()
         if tmpAnswer in ['y','N']:
             break
@@ -739,8 +564,8 @@ os.makedirs(tmpDir)
 # exit action
 def _onExit(dir,files):
     for tmpFile in files:
-        commands.getoutput('rm -rf %s' % tmpFile)        
-    commands.getoutput('rm -rf %s' % dir)
+        commands_get_output('rm -rf %s' % tmpFile)        
+    commands_get_output('rm -rf %s' % dir)
 atexit.register(_onExit,tmpDir,delFilesOnExit)
 
 # parse tag
@@ -755,7 +580,7 @@ if options.useAthenaPackages:
     # failed
     if not stA:
         tmpLog.error("You need to setup Athena runtime to use --useAthenaPackages")
-        sys.exit(EC_CMT)
+        sys.exit(EC_Config)
     workArea  = retA['workArea'] 
     athenaVer = 'Atlas-%s' % retA['athenaVer'] 
     groupArea = retA['groupArea'] 
@@ -786,9 +611,9 @@ elif options.athenaTag != '':
         if match != None:
             athenaVer = 'Atlas-%s' % match.group(1)
             # cache
-	    cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
-	    if cmatch != None:
-		cacheVer += '_%s' % cmatch.group(1)
+            cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
+            if cmatch != None:
+                cacheVer += '_%s' % cmatch.group(1)
             else:
                 cacheVer += '_%s' % match.group(1)
         else:
@@ -811,7 +636,7 @@ elif options.athenaTag != '':
             elif 'devval' in items:
                 athenaVer = 'Atlas-devval'
             cacheVer  = '-AtlasOffline_%s' % item
-	# CMTCONFIG
+        # CMTCONFIG
         if item in ['32','64']:
             tmpLog.warning("%s in --athenaTag is unsupported. Please use --cmtConfig instead" % item)
     # check cache
@@ -833,16 +658,6 @@ elif options.athenaTag != '':
 # set CMTCONFIG
 options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
 
-# set mana version
-if options.useMana and options.manaVer != '': 
-    if options.manaVer != '':
-        tmpLog.info("checking manaVer=%s on CVMFS" % options.manaVer)
-        sMana,oMana,options.manaVer,options.cmtConfig = MiscUtils.checkManaVersion(options.manaVer,options.cmtConfig)
-        if not sMana:
-            tmpLog.error(oMana)
-            sys.exit(EC_Config)
-        tmpLog.info("full manaVer=%s cmtConfig=%s" % (options.manaVer,options.cmtConfig))
-
 # check CMTCONFIG
 if not AthenaUtils.checkCmtConfig(cmtConfig,options.cmtConfig,options.noBuild):
     sys.exit(EC_Config)
@@ -862,7 +677,7 @@ if options.eventPickEvtList != '':
                                                      options.outDS,
                                                      epLockedBy,
                                                      fullExecString,
-                                                     options.eventPickNumSites,
+                                                     1,
                                                      options.eventPickWithGUID,
                                                      options.ei_api,
                                                      options.verbose)
@@ -872,7 +687,7 @@ if options.eventPickEvtList != '':
         options.inDS = 'dummy'
     tmpLog.info('requested Event Picking service to stage input as %s' % options.inDS)
 
-# additinal files
+# additional files
 if options.extFile == '':
     options.extFile = []
 else:
@@ -935,12 +750,12 @@ if options.outDS == '':
 if options.pfnList != '':
     # don't use inDS
     if options.inDS != '':
-	tmpLog.error("--pfnList and --inDS cannot be used at the same time")
-	sys.exit(EC_Config)
-    # use site    
+        tmpLog.error("--pfnList and --inDS cannot be used at the same time")
+        sys.exit(EC_Config)
+    # use site
     if options.site == 'AUTO':
-	tmpLog.error("--site must be specified when --pfnList is used")
-	sys.exit(EC_Config)
+        tmpLog.error("--site must be specified when --pfnList is used")
+        sys.exit(EC_Config)
         
 # secondary datasets
 if options.secondaryDSs != '':
@@ -981,32 +796,6 @@ if options.reusableSecondary == '':
     options.reusableSecondary = []
 else:
     options.reusableSecondary = options.reusableSecondary.split(',')
-
-# correct site
-if options.site != 'AUTO':
-    origSite = options.site
-    # patch for BNL
-    if options.site in ['BNL',"ANALY_BNL"]:
-        options.site = "ANALY_BNL_SHORT"
-    # try to convert DQ2ID to PandaID
-    pID = PsubUtils.convertDQ2toPandaID(options.site, getAll=True)
-    if pID != '':
-	if ',' in pID:
-	    includedSite = pID.split(',')
-	    pID = 'AUTO'
-        options.site = pID
-    # add ANALY
-    if options.site != 'AUTO':
-	if not options.site.startswith('ANALY_'):
-	    options.site = 'ANALY_%s' % options.site
-        # check
-        if not Client.PandaSites.has_key(options.site):
-            tmpLog.error("unknown siteID:%s" % origSite)
-            sys.exit(EC_Config)
-        # set cloud
-        options.cloud = Client.PandaSites[options.site]['cloud']
-    # add logging info
-    userBrokerLogs = PsubUtils.getUserBrokerageInfo(options.site,'site',userBrokerLogs)
         
 # get DN
 distinguishedName = PsubUtils.getDN()
@@ -1035,7 +824,8 @@ if not options.nGBPerJob in [-1,'MAX']:
         sys.exit(EC_Config)
 
 # split options are mutually exclusive
-if options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob != -1:
+if options.nFilesPerJob is not None and options.nFilesPerJob > 0 \
+        and options.nEventsPerJob > 0 and options.nGBPerJob != -1:
     tmpLog.error("split by files, split by events and split by file size can not be used simultaneously")
     sys.exit(EC_Config)
 
@@ -1055,7 +845,7 @@ if options.containerImage == '' or options.useSandbox:
         # copy RootCore packages 
         if options.useRootCore:
             # check $ROOTCOREDIR
-            if not os.environ.has_key('ROOTCOREDIR'):
+            if 'ROOTCOREDIR' not in os.environ:
                 tmpErrMsg  = '$ROOTCOREDIR is not definied in your enviornment. '
                 tmpErrMsg += 'Please setup RootCore runtime beforehand'
                 tmpLog.error(tmpErrMsg)
@@ -1099,14 +889,14 @@ if options.containerImage == '' or options.useSandbox:
             if options.noCompile:
                 shutil.copy(rootCoreCompileNbSh,rootCoreDestWorkDir)
         # gather Athena packages
+        archiveName = ""
         if options.useAthenaPackages:
-            archiveName = ""
             if AthenaUtils.useCMake():
                 # archive with cpack
                 archiveName,archiveFullName = AthenaUtils.archiveWithCpack(True,tmpDir,options.verbose)
             # set extFile
             AthenaUtils.setExtFile(options.extFile)
-            if options.libDS == '' and not options.noBuild:
+            if not options.noBuild:
                 # archive sources
                 archiveName,archiveFullName = AthenaUtils.archiveSourceFiles(workArea,runDir,curDir,tmpDir,
                                                                              options.verbose,options.gluePackages,
@@ -1118,9 +908,8 @@ if options.containerImage == '' or options.useSandbox:
                                                                            tmpDir,options.verbose,
                                                                            archiveName=archiveName)
             # archive InstallArea
-            if options.libDS == '':
-                AthenaUtils.archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
-                                               tmpDir,options.noBuild,options.verbose)
+            AthenaUtils.archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
+                                           tmpDir,options.noBuild,options.verbose)
         # gather normal files
         if True:
             if options.useAthenaPackages:
@@ -1153,7 +942,7 @@ if options.containerImage == '' or options.useSandbox:
                     if options.useAthenaPackages:
                         if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
                             if options.verbose:
-                                print 'skip Athena archive %s' % tmpFile
+                                print('skip Athena archive %s' % tmpFile)
                             continue
                     tmpPath = '%s/%s' % (tmpRoot,tmpFile)
                     # get size
@@ -1163,7 +952,7 @@ if options.containerImage == '' or options.useSandbox:
                         # skip dead symlink
                         if options.verbose:
                             type,value,traceBack = sys.exc_info()
-                            print "  Ignore : %s:%s" % (type,value)
+                            print("  Ignore : %s:%s" % (type,value))
                         continue
                     # check exclude files
                     excludeFileFlag = False
@@ -1195,24 +984,25 @@ if options.containerImage == '' or options.useSandbox:
                         emptyFlag = False
                         # skipped extensions
                         if isSkippedExt:
-                            print "  skip %s %s" % (str(skippedExt),tmpPath)
+                            print("  skip %s %s" % (str(skippedExt),tmpPath))
                             skippedFlag = True
                             continue
                         # skip root
                         if isRoot:
-                            print "  skip root file %s" % tmpPath
+                            print("  skip root file %s" % tmpPath)
                             skippedFlag = True
                             continue
                         # check size
                         if size > options.maxFileSize:
-                            print "  skip large file %s:%sB>%sB" % (tmpPath,size,options.maxFileSize)
+                            print("  skip large file %s:%sB>%sB" % (tmpPath,size,options.maxFileSize))
                             skippedFlag = True
                             continue
                     # remove ./
                     tmpPath = re.sub('^\./','',tmpPath)
                     # append
                     workDirFiles.append(tmpPath)
-                    emptyFlag = False
+                    if emptyFlag:
+                        emptyFlag = False
                 # add empty directory
                 if emptyFlag and tmpDirs==[] and tmpFiles==[]:
                     tmpPath = re.sub('^\./','',tmpRoot)
@@ -1234,8 +1024,8 @@ if options.containerImage == '' or options.useSandbox:
             # set archive name
             if not options.useAthenaPackages:    
                 # create archive
-                if options.libDS != '' or (options.noBuild and not options.noCompile):
-                    # use 'jobO' for libDS/noBuild
+                if options.noBuild and not options.noCompile:
+                    # use 'jobO' for noBuild
                     archiveName     = 'jobO.%s.tar' % MiscUtils.wrappedUuidGen()
                 else:
                     # use 'sources' for normal build
@@ -1246,41 +1036,41 @@ if options.containerImage == '' or options.useSandbox:
                 # avoid self-archiving
                 if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
                     if options.verbose:
-                        print 'skip self-archiving for %s' % tmpFile
+                        print('skip self-archiving for %s' % tmpFile)
                     continue
                 if os.path.islink(tmpFile):
-                    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -uh '%s' -f '%s'" % (tmpFile,archiveFullName))
+                    status,out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -uh '%s' -f '%s'" % (tmpFile,archiveFullName))
                 else:
-                    status,out = commands.getstatusoutput("tar --exclude '.[a-zA-Z]*' -uf '%s' '%s'" % (archiveFullName,tmpFile))
+                    status,out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -uf '%s' '%s'" % (archiveFullName,tmpFile))
                 if options.verbose:
-                    print tmpFile
+                    print(tmpFile)
                 if status != 0 or out != '':
-                    print out
+                    print(out)
         # go to tmpdir
         os.chdir(tmpDir)
 
         # make empty if archive doesn't exist
         if not os.path.exists(archiveFullName):
-            commands.getstatusoutput('tar cvf %s --files-from /dev/null ' % archiveName)
+            commands_get_status_output('tar cvf %s --files-from /dev/null ' % archiveName)
 
         # compress
-        status,out = commands.getstatusoutput('gzip %s' % archiveName)
+        status,out = commands_get_status_output('gzip %s' % archiveName)
         archiveName += '.gz'
         if status !=0 or options.verbose:
-            print out
+            print(out)
 
         # check archive
-        status,out = commands.getstatusoutput('ls -l {0}'.format(archiveName))
+        status,out = commands_get_status_output('ls -l {0}'.format(archiveName))
         if options.verbose:
-            print out
+            print(out)
         if status != 0:
-            tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'")
+            tmpLog.error("Failed to archive working area.\nIf you see 'Disk quota exceeded', try '--tmpDir /tmp'")
             sys.exit(EC_Archive)
 
         # check symlinks
         if options.useAthenaPackages:
             tmpLog.info("checking symbolic links")
-            status,out = commands.getstatusoutput('tar tvfz %s' % archiveName)
+            status,out = commands_get_status_output('tar tvfz %s' % archiveName)
             if status != 0:
                 tmpLog.error("Failed to expand archive")
                 sys.exit(EC_Archive)
@@ -1295,12 +1085,12 @@ if options.containerImage == '' or options.useSandbox:
                 tmpStr += "   Please ignore if you believe they are harmless"
                 tmpLog.warning(tmpStr)
                 for symlink in symlinks:
-                    print "  %s" % symlink
+                    print("  %s" % symlink)
     else:
         # go to tmp dir
         os.chdir(tmpDir)
         # use a saved copy
-        if options.libDS == '' and (options.noCompile or not options.noBuild):
+        if options.noCompile or not options.noBuild:
             archiveName     = 'sources.%s.tar' % MiscUtils.wrappedUuidGen()
             archiveFullName = "%s/%s" % (tmpDir,archiveName)
         else:
@@ -1322,7 +1112,7 @@ if options.containerImage == '' or options.useSandbox:
             # found the same input sandbox to reuse
             archiveName = out.split(':')[-1]
         elif out != 'True':
-            print out
+            print(out)
             tmpLog.error("failed to upload source files with %s" % status)
             sys.exit(EC_Post)
         # good run list
@@ -1375,7 +1165,6 @@ if options.site != 'AUTO':
     taskParamMap['site'] = options.site
 else:
     taskParamMap['site'] = None
-taskParamMap['cloud'] = options.cloud
 taskParamMap['excludedSite'] = options.excludedSite
 if includedSite != None and includedSite != []:
     taskParamMap['includedSite'] = includedSite
@@ -1385,7 +1174,7 @@ if options.priority is not None:
     taskParamMap['currentPriority'] = options.priority
 if options.nFiles != 0:
     taskParamMap['nFiles'] = options.nFiles
-if options.nFilesPerJob != None:    
+if options.nFilesPerJob is not None:
     taskParamMap['nFilesPerJob'] = options.nFilesPerJob
 if not options.nGBPerJob in [-1,'MAX']:
     # don't set MAX since it is the defalt on the server side
@@ -1415,8 +1204,6 @@ if options.official:
 taskParamMap['nMaxFilesPerJob'] = options.maxNFilesPerJob
 if options.useNewCode:
     taskParamMap['fixedSandbox'] = archiveName
-if options.useRucio:
-    taskParamMap['ddmBackEnd'] = 'rucio'
 if options.maxCpuCount > 0:
     taskParamMap['walltime'] = -options.maxCpuCount
 if options.maxWalltime > 0:
@@ -1463,7 +1250,7 @@ if options.addNthFieldOfInFileToLFN != '':
 if options.spaceToken != '':
     taskParamMap['log']['token'] = options.spaceToken
 
-# job parametes
+# job parameters
 taskParamMap['jobParameters'] = [
     {'type':'constant',
      'value': '-j "" --sourceURL ${SURL}',
@@ -1524,10 +1311,10 @@ if options.outputs != '':
                 sys.exit(EC_Config)
             dsSuffix.append(tmpDsSuffix)
         tmpNewLFN = tmpLFN
-	# change * to XYZ and add .tgz
-	if '*' in tmpNewLFN:
-	    tmpNewLFN = tmpNewLFN.replace('*','XYZ')
-	    tmpNewLFN += '.tgz'
+        # change * to XYZ and add .tgz
+        if '*' in tmpNewLFN:
+            tmpNewLFN = tmpNewLFN.replace('*','XYZ')
+            tmpNewLFN += '.tgz'
         if len(outDatasetName.split('.')) > 2:
             lfn = '{0}.{1}'.format(*outDatasetName.split('.')[:2])
         else:
@@ -1582,7 +1369,7 @@ if options.inDS != '':
     taskParamMap['dsForIN'] = options.inDS
 elif options.pfnList != '':
     taskParamMap['pfnList'] = PsubUtils.getListPFN(options.pfnList)
-    # use noInput mecahism
+    # use noInput
     taskParamMap['noInput'] = True
     if options.nFiles == 0:
         taskParamMap['nFiles'] = len(taskParamMap['pfnList'])
@@ -1596,7 +1383,7 @@ elif options.goodRunListXML != '':
                'param_type':'input',
                'value':'-i "${IN/T}"',
                'dataset':'%%INDS%%',
-	       'expand':True,
+               'expand':True,
                'exclude':'\.log\.tgz(\.\d+)*$',
                'files':'%%INLFNLIST%%',
                }
@@ -1606,16 +1393,16 @@ else:
     # no input
     taskParamMap['noInput'] = True
     if options.nEvents > 0:
-	taskParamMap['nEvents'] = options.nEvents
-	if options.nJobs > 0:
-	    taskParamMap['nEventsPerJob'] = options.nEvents / options.nJobs
+        taskParamMap['nEvents'] = options.nEvents
+        if options.nJobs > 0:
+            taskParamMap['nEventsPerJob'] = options.nEvents // options.nJobs
         else:
             # set granularity
             if options.nEventsPerChunk > 0:
                 taskParamMap['nEventsPerRange'] = options.nEventsPerChunk
             else:
                 # use 1/20 by default
-                taskParamMap['nEventsPerRange'] = options.nEvents / 20
+                taskParamMap['nEventsPerRange'] = options.nEvents // 20
                 if taskParamMap['nEventsPerRange'] <= 0:
                     taskParamMap['nEventsPerRange'] = 1
     else:
@@ -1649,9 +1436,10 @@ if options.secondaryDSs != {}:
     inMap = {}
     streamNames = []
     if options.inDS != '':
-	inMap['IN'] = 'tmp_IN'
-	streamNames.append('IN')
-    for tmpDsName,tmpMap in options.secondaryDSs.iteritems():
+        inMap['IN'] = 'tmp_IN'
+        streamNames.append('IN')
+    for tmpDsName in options.secondaryDSs:
+        tmpMap = options.secondaryDSs[tmpDsName]
         # make template item
         streamName = tmpMap['streamName']
         if options.loadXML == None:
@@ -1692,11 +1480,6 @@ if AthenaUtils.useCMake():
 # use RootCore
 if options.useRootCore:
     jobParameters += "--useRootCore "
-# use mana
-if options.useMana:
-    jobParameters += "--useMana "
-    if options.manaVer != '':
-        jobParameters += "--manaVer %s " % options.manaVer
 # root
 if options.rootVer != '':
     jobParameters += "--rootVer %s " % options.rootVer
@@ -1706,11 +1489,6 @@ if options.writeInputToTxt != '':
 # debug parameters
 if options.queueData != '':
     jobParameters += "--overwriteQueuedata=%s " % options.queueData
-# JEM
-if options.enableJEM:
-    jobParameters += "--enable-jem "
-    if options.configJEM != '':
-        jobParameters += "--jem-config %s " % options.configJEM
 # container
 if options.containerImage != '':
     jobParameters += "--containerImage {0} ".format(options.containerImage)
@@ -1734,7 +1512,7 @@ else:
     jobParameters += '-r {0} '.format(runDir)
     # exec
     if options.bexec != '':
-	jobParameters += '--bexec "{0}" '.format(urllib.quote(options.bexec))
+        jobParameters += '--bexec "{0}" '.format(quote(options.bexec))
     # use Athena packages
     if options.useAthenaPackages:
         jobParameters += "--useAthenaPackages "
@@ -1747,11 +1525,6 @@ else:
     # use CMake
     if AthenaUtils.useCMake():
         jobParameters += "--useCMake "
-    # use mana
-    if options.useMana:
-        jobParameters += "--useMana "
-	if options.manaVer != '':
-	    jobParameters += "--manaVer %s " % options.manaVer
     # root
     if options.rootVer != '':
         jobParameters += "--rootVer %s " % options.rootVer
@@ -1829,31 +1602,21 @@ if options.mergeOutput:
 
 exitCode = 0
 dumpList = []
-if not options.noSubmit:
-    # upload proxy for glexec
-    if Client.PandaSites.has_key(options.site):
-        # delegation
-        delResult = PsubUtils.uploadProxy(options.site,options.myproxy,gridPassPhrase,
-                                          Client.PandaClouds[options.cloud]['pilotowners'],
-                                          options.verbose)
-        if not delResult:
-            tmpLog.error("failed to upload proxy")
-            sys.exit(EC_MyProxy)
 
 # submit task
 for iSubmission, ioItem in enumerate(ioList):
     if options.verbose:
-        print "== parameters =="
-        print "Site       : %s" % options.site
-        print "Athena     : %s" % athenaVer
+        print("== parameters ==")
+        print("Site       : %s" % options.site)
+        print("Athena     : %s" % athenaVer)
         if groupArea != '':
-            print "Group Area : %s" % groupArea
+            print("Group Area : %s" % groupArea)
         if cacheVer != '':
-            print "Cache      : %s" % cacheVer[1:]
+            print("Cache      : %s" % cacheVer[1:])
         if nightVer != '':
-            print "Nightly    : %s" % nightVer[1:]
-        print "RunDir     : %s" % runDir
-        print "exec       : %s" % options.jobParams
+            print("Nightly    : %s" % nightVer[1:])
+        print("RunDir     : %s" % runDir)
+        print("exec       : %s" % options.jobParams)
 
     if len(ioList) == 1:
         newTaskParamMap = taskParamMap
@@ -1868,7 +1631,7 @@ for iSubmission, ioItem in enumerate(ioList):
     taskID = None
     # check outDS format
     if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,
-                                    options.site,vomsFQAN,options.mergeOutput):
+                                    options.mergeOutput, options.verbose):
         tmpStr = "invalid output datasetname:%s" % options.outDS
         tmpLog.error(tmpStr)
         exitCode = EC_Config
@@ -1880,10 +1643,10 @@ for iSubmission, ioItem in enumerate(ioList):
     if options.noSubmit:
         if options.verbose:
             tmpLog.debug("==== taskParams ====")
-            tmpKeys = newTaskParamMap.keys()
+            tmpKeys = list(newTaskParamMap)
             tmpKeys.sort() 
             for tmpKey in tmpKeys:
-                print '%s : %s' % (tmpKey, newTaskParamMap[tmpKey])
+                print('%s : %s' % (tmpKey, newTaskParamMap[tmpKey]))
     if not options.noSubmit and exitCode == 0:
         tmpLog.info("submit {0}".format(options.outDS))
         status,tmpOut = Client.insertTaskParams(newTaskParamMap, options.verbose, True)
