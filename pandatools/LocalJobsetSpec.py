@@ -4,7 +4,7 @@ local jobset specification
 """
 
 import re
-import datetime
+
 
 class LocalJobsetSpec(object):
     # attributes
@@ -30,7 +30,7 @@ class LocalJobsetSpec(object):
         if self.flag_showSubstatus != '':
             self.flag_longFormat = True
         # get JobID list
-        jobIDs = self.JobMap.keys()
+        jobIDs = list(self.JobMap)
         jobIDs.sort()
         # initialize
         firstJob = True
@@ -89,14 +89,14 @@ class LocalJobsetSpec(object):
                 match = re.search('^(\w+)\*(\d+)$',item)
                 if match == None:
                     # non compact
-                    if not statusMap.has_key(item):
+                    if item not in statusMap:
                         statusMap[item] = 0
                     statusMap[item] += 1
                 else:
                     # compact
                     tmpStatus = match.group(1)
                     tmpCount  = int(match.group(2))
-                    if not statusMap.has_key(tmpStatus):
+                    if tmpStatus not in statusMap:
                         statusMap[tmpStatus] = 0
                     statusMap[tmpStatus] += tmpCount
             # merge
@@ -111,26 +111,27 @@ class LocalJobsetSpec(object):
                     if tmpIndex < len(tmpStatusList):
                         tmpStatus = tmpStatusList[tmpIndex]
                     else:
-                        # use unkown for out-range
+                        # use unknown for out-range
                         tmpStatus = 'unknown'
                     # append for all jobs
-                    if not totalJobStatus.has_key(tmpStatus):
+                    if tmpStatus not in totalJobStatus:
                         totalJobStatus[tmpStatus] = 0
                     totalJobStatus[tmpStatus] += 1    
                     # status of interest
                     if not tmpStatus in self.flag_showSubstatus.split(','):
                         continue
                     # append for individual job
-                    if not pandaIDstatusMap.has_key(tmpStatus):
+                    if tmpStatus not in pandaIDstatusMap:
                         pandaIDstatusMap[tmpStatus] = 'PandaID='
                     pandaIDstatusMap[tmpStatus] += '%s,' % tmpPandaID
             else:
                 totalJobStatus = statusMap
             statusStr = job.dbStatus
-            for tmpStatus,tmpCount in statusMap.iteritems():
+            for tmpStatus in statusMap:
+                tmpCount = statusMap[tmpStatus]
                 statusStr += '\n%8s   %10s : %s' % ('',tmpStatus,tmpCount)
                 if self.flag_showSubstatus:
-                    if pandaIDstatusMap.has_key(tmpStatus):
+                    if tmpStatus in pandaIDstatusMap:
                         statusStr += '\n%8s   %10s   %s' % ('','',pandaIDstatusMap[tmpStatus][:-1])
             # number of jobs
             nJobs = len(job.PandaID.split(','))
@@ -171,7 +172,8 @@ class LocalJobsetSpec(object):
         strOut = strOut1 + strOut2
         # not long format
         if not self.flag_longFormat:
-            for tmpStatus,tmpCount in totalJobStatus.iteritems():
+            for tmpStatus in totalJobStatus:
+                tmpCount = totalJobStatus[tmpStatus]
                 strOut += '%8s   %10s : %s\n' % ('',tmpStatus,tmpCount)
         else:
             strOut += strOutJob
@@ -188,10 +190,10 @@ class LocalJobsetSpec(object):
         if name == 'dbStatus':
             tmpJobs = object.__getattribute__(self,'JobMap')
             runningFlag = False
-            for tmpJobID,tmpJob in tmpJobs.iteritems():
+            for tmpJobID in tmpJobs:
+                tmpJob = tmpJobs[tmpJobID]
                 if tmpJob.dbStatus == 'killing':
                     return 'killing'
-                    break
                 if tmpJob.dbStatus == 'running':
                     runningFlag = True
             if runningFlag:
@@ -240,7 +242,7 @@ class LocalJobsetSpec(object):
         strOutDS = ''
         tmpInDSList = []
         tmpOutDSList = []
-        jobIDs = self.JobMap.keys()
+        jobIDs = list(self.JobMap)
         jobIDs.sort()
         for jobID in jobIDs:
             job = self.JobMap[jobID]

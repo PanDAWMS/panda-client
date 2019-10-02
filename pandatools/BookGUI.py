@@ -1,17 +1,22 @@
 import re
 import os
-import sys
 import gtk
-import time
 import pango
 import gobject
 import gtk.glade
 import threading
-import commands
-import Queue
-import GlobalConfig
-import PLogger
-import LocalJobSpec
+
+try:
+    import Queue
+except ImportError:
+    import queue as Queue
+from . import PLogger
+from . import LocalJobSpec
+from .MiscUtils import commands_get_output, commands_get_status_output
+try:
+    long()
+except Exception:
+    long = int
 
 gobject.threads_init()
 gtk.gdk.threads_init()
@@ -106,19 +111,19 @@ class UrlOpener(threading.Thread):
     def run(self):
         if self.browser == 'firefox':
             # check application
-            status,output = commands.getstatusoutput('which %s' % self.browser)
+            status,output = commands_get_status_output('which %s' % self.browser)
             if status != 0:
                 self.tmpLog.error('%s is unavailable' % self.browser)
                 return
             # check version
-            status,output = commands.getstatusoutput('%s -v' % self.browser)
+            output = commands_get_output('%s -v' % self.browser)
             version = output.split()[2]
             version = version[:-1]
             if version < '2.0':
                 self.tmpLog.warning("too old %s : version %s It wouldn't work properly" % (self.browser,version))
             # open url
             com = '%s %s' % (self.browser,self.url)
-            commands.getstatusoutput(com)
+            commands_get_output(com)
         # release queue
         self.queue.put(True)
         return
@@ -156,7 +161,7 @@ class PBookGuiGlobal:
     # set current job
     def setCurrentJob(self,jobID):
         lock = self.lock.get()        
-        if self.jobMap.has_key(jobID):
+        if jobID in self.jobMap:
             self.currentJob = jobID
         self.lock.put(lock)
         
@@ -388,7 +393,7 @@ class PSumView:
                     match = re.search('\s*(\S+)\s*:',line)
                     if match != None:
                         realLabel = match.group(1)
-                        if self.jumper.has_key(realLabel) and iItem != 0:
+                        if realLabel in self.jumper and iItem != 0:
                             # set jobID
                             jumper = self.jumper[realLabel]
                             jobID = strLabel.strip()
@@ -572,11 +577,13 @@ class PTreeView:
         self.treeView.get_selection().connect('changed',self.showJob)
         # pixel buffer
         self.pbMap = {}
-        for tmpStatus,tmpFname, in {'finished' : 'green.png',
+        icon_map = {'finished' : 'green.png',
                                     'failed'   : 'red.png',
                                     'running'  : 'yellow.png',
                                     'cancelled': 'orange.png',
-                                   }.iteritems():
+                                   }
+        for tmpStatus in icon_map:
+            tmpFname = icon_map[tmpStatus]
             pixbuf = gtk.gdk.pixbuf_new_from_file(os.environ['PANDA_SYS'] \
                                                   + "/etc/panda/icons/" + tmpFname)
             self.pbMap[tmpStatus] = pixbuf
@@ -606,7 +613,7 @@ class PTreeView:
         tmpJobIntoStrMap = {}
         for tmpJobIDStr in jobList.keys():
             tmpJobIntoStrMap[long(tmpJobIDStr)] = tmpJobIDStr
-        tmpJobIDs = tmpJobIntoStrMap.keys()
+        tmpJobIDs = list(tmpJobIntoStrMap)
         tmpJobIDs.sort()
         tmpJobIDs.reverse()
         # get offset
@@ -766,32 +773,9 @@ class PConfigButton:
         # XML name
         self.gladefile = gladefile
 
-
     # clicked action
     def on_clicked(self,widget):
-        # set config parameters
-        globalConf = GlobalConfig.getConfig()
-        # get pathname of grid source file
-        gridSrc = globalConf.grid_src
-        # get dialog
-        widget = gtk.glade.XML(self.gladefile,"configDialog")
-        dlg = widget.get_widget("configDialog")
-        # get entry
-        gridSrcEntry = widget.get_widget("gridSrcEntry")
-        gridSrcEntry.set_text(gridSrc)
-        # run
-        result = dlg.run()
-        # get result
-        if result == gtk.RESPONSE_OK:
-            # update config
-            globalConf = GlobalConfig.getConfig()
-            globalConf.grid_src = gridSrcEntry.get_text()
-            GlobalConfig.updateConfig(globalConf)
-        # destroy
-        dlg.destroy()
-        # return
-        return result
-
+        return
 
 
 # update button
@@ -881,7 +865,7 @@ class PRetryButton:
         self.guiGlobal = guiGlobal
         # emitter
         self.pEmitter = pEmitter
-        # queue for retry wokers
+        # queue for retry workers
         self.retryQueue = Queue.Queue(1)
         self.retryQueue.put(pbookCore)
 
@@ -926,8 +910,7 @@ gobject.type_register(PEmitter)
 # wrapper for gtk.main_quit
 def overallQuit(*arg):
     gtk.main_quit()
-    #commands.getoutput('kill -9 -- -%s' % os.getpgrp())
-    commands.getoutput('kill -- -%s' % os.getpgrp())        
+    commands_get_output('kill -- -%s' % os.getpgrp())
 
 
 
@@ -974,7 +957,8 @@ class PBookGuiMain:
             'syncButton'  : 'sync.png',
             'forwardButton'  : 'forward.png',
             }
-        for buttonName,iconName in iconMap.iteritems():
+        for buttonName in iconMap:
+            iconName = iconMap[buttonName]
             image = gtk.Image()
             image.set_from_file(os.environ['PANDA_SYS'] + "/etc/panda/icons/"
                                 + iconName)

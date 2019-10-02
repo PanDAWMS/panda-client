@@ -1,107 +1,16 @@
 import re
+import os
 import json
-import commands
-
-SWLISTURL='https://atlpan.web.cern.ch/atlpan/swlist/'
+import uuid
+import subprocess
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 # wrapper for uuidgen
 def wrappedUuidGen():
-    # check if uuidgen is available
-    tmpSt,tmpOut = commands.getstatusoutput('which uuidgen')
-    if tmpSt == 0:
-        # use uuidgen
-        return commands.getoutput('uuidgen 2>/dev/null')
-    else:
-        # use python uuidgen
-        try:
-            import uuid
-        except:
-            raise ImportError,'uuidgen and uuid.py are unavailable on your system. Please install one of them'
-        return str(uuid.uuid4())
-
-
-# get mana setup parameters
-def getManaSetupParam(paramName):
-    comStr = 'hwaf show setup'
-    tmpSt,tmpOut = commands.getstatusoutput(comStr)
-    if tmpSt != 0:
-        return False,"'%s' failed : %s" % (comStr,tmpOut)
-    # look for param
-    for line in tmpOut.split('\n'):
-        items = line.split('=')
-        if len(items) != 2:
-            continue
-        # found
-        if items[0] == paramName:
-            return True,items[1]
-    # not found
-    return False,"%s not found in the following output from '%s'\n%s" % \
-           (paramName,comStr,tmpOut)
-
-
-# get mana version
-def getManaVer():
-    # get projects
-    getS,getO = getManaSetupParam('projects')
-    if not getS:
-        return getS,getO
-    # look for mana-core/XYZ
-    match = re.search('mana-core/(\d+)/',getO)
-    # not found
-    if match == None:
-        return False,"mana version number not found in '%s'" % getO
-    # found
-    return True,match.group(1)
-
-
-# check mana version
-def checkManaVersion(verStr,cmtConfig):
-    if verStr == '':
-        return True,'',verStr,cmtConfig
-    # get list
-    import urllib2
-    req = urllib2.Request(url=SWLISTURL+'mana')
-    f = urllib2.urlopen(req)
-    listStr = f.read()
-    tmpSwList = listStr.split('\n')
-    # remove short format
-    swList = []
-    for tmpSW in tmpSwList:
-        if re.search('^\d+$',tmpSW) != None:
-            continue
-        # append
-        swList.append(tmpSW)
-    # check
-    retVal = False
-    if verStr in swList:
-        retVal = True
-        retVer = verStr
-    else:
-        # add cmtConfig to short format version number
-        if re.search('^\d+$',verStr) != None:
-            # make search string
-            if not cmtConfig in ['',None]:
-                verStr += '-%s' % cmtConfig
-        # look for pattern
-        for tmpItem in swList:
-            if re.search('^%s' % verStr,tmpItem) != None:
-                retVal = True
-                retVer = tmpItem
-                # use default cmtConfig if available
-                if 'x86_64-slc5-gcc43-opt' in retVer:
-                    break
-    # not found
-    if not retVal:
-        errStr  = "mana version %s is unavailable on CVMFS. " % verStr
-        errStr += "Must be one of the following versions\n"
-        errStr += listStr
-        return False,errStr,None,None
-    # extract cmtConfig
-    if cmtConfig in ['',None]:
-        cmtConfig = re.sub('^\d+-','',re.sub('-python.+$','',retVer))
-    # return
-    return True,'',retVer,cmtConfig
-    
+    return str(uuid.uuid4())
 
 
 # make JEDI job parameter
@@ -154,39 +63,14 @@ def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=Fals
     if reusableAtt:
         dictItem['reusable'] = True
     return [dictItem]
-        
-
-
-# get dataset name and num of files for a stream
-def getDatasetNameAndNumFiles(streamDS,nFilesPerJob,streamName):
-    if streamDS == "":
-        # read from stdin   
-        print
-        print "This job uses %s stream" % streamName
-        while True:
-            streamDS = raw_input("Enter dataset name for Minimum Bias : ")
-            streamDS = streamDS.strip()
-            if streamDS != "":
-                break
-    # number of files per one signal
-    if nFilesPerJob < 0:
-        while True:
-            tmpStr = raw_input("Enter the number of %s files per job : " % streamName)
-            try:
-                nFilesPerJob = int(tmpStr)
-                break
-            except:
-                pass
-    # return
-    return streamDS,nFilesPerJob
-
 
 
 # convert UTF-8 to ASCII in json dumps
 def unicodeConvert(input):
     if isinstance(input, dict):
         retMap = {}
-        for tmpKey,tmpVal in input.iteritems():
+        for tmpKey in input:
+            tmpVal = input[tmpKey]
             retMap[unicodeConvert(tmpKey)] = unicodeConvert(tmpVal)
         return retMap
     elif isinstance(input, list):
@@ -203,3 +87,66 @@ def unicodeConvert(input):
 def decodeJSON(input_file):
     with open(input_file) as f:
         return json.load(f, object_hook=unicodeConvert)
+
+
+# replacement for commands
+def commands_get_status_output(com):
+    try:
+        data = subprocess.check_output(com, shell=True, universal_newlines=True, stderr=subprocess.STDOUT)
+        status = 0
+    except subprocess.CalledProcessError as ex:
+        data = ex.output
+        status = ex.returncode
+    if data[-1:] == '\n':
+        data = data[:-1]
+    return status, data
+
+
+def commands_get_output(com):
+    return commands_get_status_output(com)[1]
+
+
+# decorator to run with the original environment
+def run_with_original_env(func):
+    def new_func(*args, **kwargs):
+        if 'LD_LIBRARY_PATH_ORIG' in os.environ:
+            os.environ['LD_LIBRARY_PATH_RESERVE'] = os.environ['LD_LIBRARY_PATH']
+            os.environ['LD_LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH_ORIG']
+        if 'PYTHONPATH_ORIG' in os.environ:
+            os.environ['PYTHONPATH_RESERVE'] = os.environ['PYTHONPATH']
+            os.environ['PYTHONPATH'] = os.environ['PYTHONPATH_ORIG']
+        if 'PYTHONHOME_ORIG' in os.environ and os.environ['PYTHONHOME_ORIG'] != '':
+            if 'PYTHONHOME' in os.environ:
+                os.environ['PYTHONHOME_RESERVE'] = os.environ['PYTHONHOME']
+            os.environ['PYTHONHOME'] = os.environ['PYTHONHOME_ORIG']
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            raise e
+        finally:
+            if 'LD_LIBRARY_PATH_RESERVE' in os.environ:
+                os.environ['LD_LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH_RESERVE']
+            if 'PYTHONPATH_RESERVE' in os.environ:
+                os.environ['PYTHONPATH'] = os.environ['PYTHONPATH_RESERVE']
+            if 'PYTHONHOME_RESERVE' in os.environ:
+                os.environ['PYTHONHOME'] = os.environ['PYTHONHOME_RESERVE']
+    return new_func
+
+
+# run commands with the original environment
+@run_with_original_env
+def commands_get_output_with_env(com):
+    return commands_get_output(com)
+
+
+@run_with_original_env
+def commands_get_status_output_with_env(com):
+    return commands_get_status_output(com)
+
+
+# unpickle python2 pickle with python3
+def pickle_loads(str_input):
+    try:
+        return pickle.loads(str_input)
+    except Exception:
+        return pickle.loads(str_input.encode('utf-8'), encoding='latin1')

@@ -4,9 +4,20 @@ local job specification
 """
 
 import re
-import types
-import urllib
+try:
+    from urllib import quote, unquote
+except ImportError:
+    from urllib.parse import quote, unquote
 import datetime
+try:
+    long()
+except Exception:
+    long = int
+try:
+    unicode()
+except Exception:
+    unicode = str
+
 
 class LocalJobSpec(object):
     # attributes
@@ -49,20 +60,20 @@ class LocalJobSpec(object):
             match = re.search('^(\w+)\*(\d+)$',item)
             if match == None:
                 # non compact
-                if not statusMap.has_key(item):
+                if item not in statusMap:
                     statusMap[item] = 0
                 statusMap[item] += 1
             else:
                 # compact
                 tmpStatus = match.group(1)
                 tmpCount  = int(match.group(2))
-                if not statusMap.has_key(tmpStatus):
+                if tmpStatus not in statusMap:
                     statusMap[tmpStatus] = 0
                 statusMap[tmpStatus] += tmpCount
-        # show PandaIDs in particular states        
+        # show PandaIDs in particular states
+        pandaIDstatusMap = {}
         if self.flag_showSubstatus != '':
-            # get PandaIDs for each status 
-            pandaIDstatusMap = {}
+            # get PandaIDs for each status
             tmpStatusList  = self.jobStatus.split(',')
             tmpPandaIDList = self.PandaID.split(',')
             for tmpIndex,tmpPandaID in enumerate(tmpPandaIDList):
@@ -75,14 +86,15 @@ class LocalJobSpec(object):
                 if not tmpStatus in self.flag_showSubstatus.split(','):
                     continue
                 # append    
-                if not pandaIDstatusMap.has_key(tmpStatus):
+                if tmpStatus not in pandaIDstatusMap:
                     pandaIDstatusMap[tmpStatus] = 'PandaID='
                 pandaIDstatusMap[tmpStatus] += '%s,' % tmpPandaID
         statusStr = self.dbStatus
-        for tmpStatus,tmpCount in statusMap.iteritems():
+        for tmpStatus in statusMap:
+            tmpCount = statusMap[tmpStatus]
             statusStr += '\n%8s   %10s : %s' % ('',tmpStatus,tmpCount)
             if self.flag_showSubstatus:
-                if pandaIDstatusMap.has_key(tmpStatus):
+                if tmpStatus in pandaIDstatusMap:
                     statusStr += '\n%8s   %10s   %s' % ('','',pandaIDstatusMap[tmpStatus][:-1])
         # disable showSubstatus    
         self.flag_showSubstatus = ''
@@ -183,7 +195,7 @@ class LocalJobSpec(object):
             retS = "("
         # loop over all attributes     
         for attr in self._attributes:
-            if encVal.has_key(attr):
+            if attr in encVal:
                 val = encVal[attr]
             else:
                 val = getattr(self,attr)
@@ -237,11 +249,11 @@ class LocalJobSpec(object):
                     sStr += "%s," % tmpStatus
         self.jobStatus = sStr[:-1]
         # job parameters
-        self.jobParams = urllib.unquote(self.jobParams)
+        self.jobParams = unquote(self.jobParams)
         # datetime
         for attr in self._attributes:
             val = getattr(self, attr)
-            if not isinstance(val, types.StringTypes):
+            if not isinstance(val, (str, unicode)):
                 continue
             # convert str to datetime
             match = re.search('^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)$',val)
@@ -267,7 +279,7 @@ class LocalJobSpec(object):
             else:
                 self.dbStatus = 'running'
         # job parameters
-        ret['jobParams'] = urllib.quote(self.jobParams)
+        ret['jobParams'] = quote(self.jobParams)
         # PandaID
         pStr = ''
         sID = None

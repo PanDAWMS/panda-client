@@ -113,10 +113,10 @@ class JobSpec(object):
     def valuesMap(self, useSeq=False, onlyChanged=False):
         ret = {}
         for attr in self._attributes:
-            if useSeq and self._seqAttrMap.has_key(attr):
+            if useSeq and attr in self._seqAttrMap:
                 continue
             if onlyChanged:
-                if not self._changedAttrs.has_key(attr):
+                if attr not in self._changedAttrs:
                     continue
             val = getattr(self, attr)
             if val == 'NULL':
@@ -128,7 +128,7 @@ class JobSpec(object):
             if attr in self._suppAttrs:
                 val = None
             # truncate too long values
-            if self._limitLength.has_key(attr):
+            if attr in self._limitLength:
                 if val != None:
                     val = val[:self._limitLength[attr]]
             ret[':%s' % attr] = val
@@ -188,7 +188,7 @@ class JobSpec(object):
         from config import panda_config
         ret = "VALUES("
         for attr in cls._attributes:
-            if useSeq and cls._seqAttrMap.has_key(attr):
+            if useSeq and attr in cls._seqAttrMap:
                 if panda_config.backend == 'mysql':
                     # mysql
                     ret += "%s," % "NULL"
@@ -247,7 +247,7 @@ class JobSpec(object):
     def bindUpdateChangesExpression(self):
         ret = ""
         for attr in self._attributes:
-            if self._changedAttrs.has_key(attr):
+            if attr in self._changedAttrs:
                 ret += '%s=:%s,' % (attr, attr)
         ret = ret[:-1]
         ret += ' '
@@ -262,7 +262,7 @@ class JobSpec(object):
 
     # truncate string attribute
     def truncateStringAttr(cls, attr, val):
-        if not cls._limitLength.has_key(attr):
+        if attr not in cls._limitLength:
             return val
         if val == None:
             return val
@@ -430,7 +430,7 @@ class JobSpec(object):
                 if not tmpFile.lfn in lfnMap:
                     lfnMap[tmpFile.lfn] = []
                 lfnMap[tmpFile.lfn].append(tmpFile)
-            lfns = lfnMap.keys()
+            lfns = list(lfnMap)
             lfns.sort()
             newFiles = []
             for tmpLFN in lfns:

@@ -1,6 +1,12 @@
 #!/bin/bash
 
-"exec" "python" "-u" "-Wignore" "$0" "$@"
+"export" "LD_LIBRARY_PATH_ORIG=${LD_LIBRARY_PATH}"
+"export" "LD_LIBRARY_PATH="
+"export" "PYTHONPATH_ORIG=${PYTHONPATH}"
+"export" "PYTHONPATH=${PANDA_PYTHONPATH}"
+"export" "PYTHONHOME_ORIG=${PYTHONHOME}"
+"unset" "PYTHONHOME"
+"exec" "/usr/bin/python" "-u" "-Wignore" "$0" "$@"
 
 import re
 import os
@@ -9,25 +15,16 @@ import code
 import atexit
 import signal
 import tempfile
-import commands
-
-# tweak sys.path since threading cannot be imported with Athena 15 on SLC5/64
+from pandatools.MiscUtils import commands_get_output
 try:
-    import threading
-except:
-    tmpOut = commands.getoutput('unset LD_LIBRARY_PATH; unset PYTHONPATH; /usr/bin/python -c "import sys;print sys.path"')
-    try:
-        exec "tmpSysPath = %s" % tmpOut.split('\n')[-1]
-        sys.path = tmpSysPath + sys.path
-    except:
-        pass
+    long()
+except Exception:
+    long = int
 
 import optparse
 import readline
 
-
 from pandatools import PLogger
-from pandatools import GlobalConfig
 from pandatools import Client
 from pandatools import PandaToolsPkgInfo
 
@@ -46,13 +43,8 @@ if os.path.exists(historyFile):
 readline.set_history_length(1024)
 
 # set dummy CMTSITE
-if not os.environ.has_key('CMTSITE'):
+if 'CMTSITE' not in os.environ:
     os.environ['CMTSITE'] = ''
-
-# set grid source file
-globalConf = GlobalConfig.getConfig()
-if globalConf.grid_src != '' and not os.environ.has_key('PATHENA_GRID_SETUP_SH'):
-    os.environ['PATHENA_GRID_SETUP_SH'] = globalConf.grid_src
 
 # make tmp dir
 tmpDir = tempfile.mkdtemp()
@@ -69,14 +61,12 @@ def _onExit(dirName,hFile):
     if fork_child_pid == 0:
         readline.write_history_file(hFile)
     # remove tmp dir
-    commands.getoutput('rm -rf %s' % dirName)
+    commands_get_output('rm -rf %s' % dirName)
 atexit.register(_onExit,tmpDir,historyFile)
 
 
 
 # look for PandaTools package
-if os.environ.has_key('PANDA_DEBUG'):
-    print "DEBUG : look for PandaTools package"
 for path in sys.path:
     if path == '':
         path = '.'
@@ -86,17 +76,8 @@ for path in sys.path:
         os.symlink('%s/pandatools' % path,'%s/taskbuffer' % tmpDir)
         break
 sys.path = [tmpDir]+sys.path
-if os.environ.has_key('PANDA_DEBUG'):
-    print "DEBUG : done"
-
-
-
 
 from pandatools import PBookCore
-
-# keep original help
-_orgHelp = help
-
 
 
 # main for interactive session
@@ -104,13 +85,8 @@ def intmain(pbookCore,comString):
 
     # help
     def help(*arg):
-        """Print help"""
-        # use built-in help
-        if len(arg) > 0:
-            apply(_orgHelp,arg)
-            return
         # print available methods
-        str = """The following commands are available:
+        tmp_str = """The following commands are available:
 
    sync
    show
@@ -122,7 +98,7 @@ def intmain(pbookCore,comString):
    getUserJobMetadata
          
 For more info, do help(show) for example."""
-        print str
+        print(tmp_str)
 
     # show status
     def show(JobID=None,upperJobID=None,forceUpdate=False,showPandaIDinState='',longFormat=False):
@@ -144,7 +120,7 @@ For more info, do help(show) for example."""
                     tmpLog = PLogger.getPandaLogger()
                     tmpLog.error("upper JobID must be larger than %s" % JobID)
                     return
-                if JobID < 0:
+                if JobID is None or JobID < 0:
                     tmpLog = PLogger.getPandaLogger()
                     tmpLog.error("JobID must be positive when upper JobID is given")
                     return
@@ -161,12 +137,12 @@ For more info, do help(show) for example."""
                     else:
                         if (JobID is not None and long(job.JobsetID) < JobID) or long(job.JobsetID) > upperJobID:
                             continue
-                print "======================================"
+                print("======================================")
                 if showPandaIDinState != '':
                     job.flag_showSubstatus = showPandaIDinState
                 if longFormat:
                     job.flag_longFormat = True
-                print job
+                print(job)
         elif JobID == 'running':
             # show running jobs
             jobList = pbookCore.getLocalJobList()
@@ -183,12 +159,12 @@ For more info, do help(show) for example."""
         else:
             job = pbookCore.statusJobJobset(JobID,forceUpdate)
             # print
-            print "======================================"
+            print("======================================")
             if showPandaIDinState:
                 job.flag_showSubstatus = showPandaIDinState
             if longFormat:
                 job.flag_longFormat = True
-            print job
+            print(job)
 
     # kill
     def kill(JobID,upperJobID=None,useJobsetID=True):
@@ -255,7 +231,7 @@ For more info, do help(show) for example."""
             retK = pbookCore.finish(JobID,soft)
 
     # retry
-    def retry(JobID,upperJobID=None,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=True,retryBuild=False):
+    def retry(JobID,upperJobID=None,newOpts=None,noSubmit=False,ignoreDuplication=False,useJobsetID=True,retryBuild=False):
         """Retry failed/cancelled subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be retried if upperJobID is given. Set useJobsetID=False if you want to retry JobIDs between JobID and UpperJobID. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. One can use newOpts which is a map of options and new arguments like {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'} to overwrite task parameters. The list of changeable parameters is site,excludedSite,includedSite,nFilesPerJob,nGBPerJob,nFiles,nEvents. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True. Set retryBuild=True if you want to retry jobs which have a failed buildJob
 
          example:
@@ -264,6 +240,8 @@ For more info, do help(show) for example."""
            >>> retry(15,newOpts={'excludedSite':'siteA,siteB'})
            >>> retry(15,ignoreDuplication=True)
         """
+        if newOpts is None:
+            newOpts = {}
         # use range or not    
         if upperJobID != None:
             # check range
@@ -285,7 +263,7 @@ For more info, do help(show) for example."""
         """Turn the debug mode on/off for a subjob with PandaID. modeOn is True/False to enable/disable the debug mode. Note that the maxinum number of debug subjobs is limited. If you already hit the limit you need to disable the debug mode for a subjob before debugging another subjob
         
          example:
-           >>> reassign(1234,True)
+           >>> debug(1234,True)
         """
         pbookCore.debug(PandaID,modeOn)
 
@@ -299,12 +277,14 @@ For more info, do help(show) for example."""
         pbookCore.clean(nDays)
 
     # kill and retry
-    def killAndRetry(JobID,newSite=False,newOpts={},ignoreDuplication=False,retryBuild=False):
+    def killAndRetry(JobID,newSite=False,newOpts=None,ignoreDuplication=False,retryBuild=False):
         """Kill JobID and then retry failed/cancelled sub-jobs. Concerning newSite and newOpts, see help(retry)
 
          example:
            >>> killAndRetry(15)
         """
+        if newOpts is None:
+            newOpts = {}
         ret = pbookCore.killAndRetry(JobID,newSite=newSite,newOpts=newOpts,ignoreDuplication=ignoreDuplication,
                                      retryBuild=retryBuild)
 
@@ -347,7 +327,7 @@ For more info, do help(show) for example."""
         # update map
         pbookCore.updateTaskJobsetMap()
         # exec : exec cannot be used due to unqualified exec with nested functions
-        apply(locals()[comName],comArg,comMap)
+        locals()[comName](*comArg, **comMap)
         # exit
         sys.exit(0)
     # run sync
@@ -361,13 +341,7 @@ For more info, do help(show) for example."""
 
 # main for GUI session
 def guimain(pbookCore):
-    try:
-        import gtk
-    except Exception:
-        tmpOut = commands.getoutput('unset LD_LIBRARY_PATH; unset PYTHONPATH; unset PYTHONHOME; /usr/bin/python -c "import sys;print sys.path"')
-        exec "tmpSysPath = %s" % tmpOut.split('\n')[-1]
-        sys.path = tmpSysPath + sys.path
-        import gtk
+    import gtk
     from pandatools import BookGUI
     pbookGuiMain = BookGUI.PBookGuiMain(pbookCore)
     # get logger
@@ -382,13 +356,11 @@ def catch_sig(sig, frame):
     # cleanup
     _onExit(tmpDir,historyFile)
     # kill
-    commands.getoutput('kill -9 -- -%s' % os.getpgrp())
+    commands_get_output('kill -9 -- -%s' % os.getpgrp())
 
 
 # overall main
 if __name__ == "__main__":
-    if os.environ.has_key('PANDA_DEBUG'):
-        print "DEBUG : into main()"
     # parse option
     parser = optparse.OptionParser()
     parser.add_option("-v",action="store_true",dest="verbose",default=False,
@@ -414,7 +386,7 @@ if __name__ == "__main__":
 
     # display version
     if options.version:
-        print "Version: %s" % PandaToolsPkgInfo.release_version
+        print("Version: %s" % PandaToolsPkgInfo.release_version)
         sys.exit(0)
 
     # use dev server
@@ -428,7 +400,7 @@ if __name__ == "__main__":
     # fork for Ctl-c
     fork_child_pid = os.fork()
     if fork_child_pid == -1:
-        print "ERROR : Failed to fork"
+        print("ERROR : Failed to fork")
         sys.exit(1)
     if fork_child_pid == 0:
         # main
@@ -442,7 +414,8 @@ if __name__ == "__main__":
             guimain(pbookCore)
         else:
             # instantiate core
-            print options
+            if options.verbose:
+                print(options)
             pbookCore = PBookCore.PBookCore(False, options.verbose, options.restoreDB)
             
             # CUI
@@ -453,4 +426,3 @@ if __name__ == "__main__":
         signal.signal(signal.SIGHUP, catch_sig)
         signal.signal(signal.SIGTERM,catch_sig)
         os.wait()
-    
