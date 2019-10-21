@@ -168,13 +168,13 @@ def getNickname(verbose=False):
         wMessage =  'Could not get nickname by using voms-proxy-info which gave\n\n'
         wMessage += output
         wMessage += '\nPlease register nickname to ATLAS VO via\n\n'
-        wMessage += '   https://lcg-voms.cern.ch:8443/vo/atlas/vomrs\n'
+        wMessage += '   https://lcg-voms2.cern.ch:8443/voms/atlas/vomrs\n'
         wMessage += '      [Member Info] -> [Edit Personal Info]'
         print('')
         tmpLog.warning(wMessage)
         print('')
     return nickName
-        
+
 
 # set Rucio accounting
 def setRucioAccount(account,appid,forceSet):
@@ -210,15 +210,15 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',mergeOutput=Fals
         if prodGroups == []:
             errStr  = "The --official option requires production role. Please use the --voms option to set production role;\n"
             errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
-            errStr += "If you don't have production role for the group please request it in ATLAS VO first"                        
+            errStr += "If you don't have production role for the group please request it in ATLAS VO first"
             tmpLog.error(errStr)
             return False
-        # loop over all prefixes    
+        # loop over all prefixes
         allowedPrefix = ['group']
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
                 tmpPattO = '^'+tmpPrefix+'\d{2}'+'\.'+tmpGroup+'\.'
-                tmpPattN = '^'+tmpPrefix+'\.'+tmpGroup+'\.'                
+                tmpPattN = '^'+tmpPrefix+'\.'+tmpGroup+'\.'
                 if re.search(tmpPattO,outDS) != None or re.search(tmpPattN,outDS) != None:
                     return True
         # didn't match
@@ -249,7 +249,7 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',mergeOutput=Fals
         return False
     # check convention
     if re.match(matStrO,outDS) != None:
-        outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)        
+        outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
         tmpStr  = "You are still using the old naming convention for --outDS (%s.XYZ), " % outDsPrefixO
         tmpStr += "which is not allowed any more. "
         tmpStr += "Please use user.nickname.XYZ instead. If you don't know your nickname, "
@@ -363,7 +363,7 @@ def checkPandaClientVer(verbose):
             tmpLog.warning(warStr+'\n')
 
 
-# function for path completion 
+# function for path completion
 def completePathFunc(text, status):
     # remove white spaces
     text = text.strip()
@@ -375,7 +375,7 @@ def completePathFunc(text, status):
         origText = text
         # convert
         text = os.path.expanduser(text)
-    # put / to directories    
+    # put / to directories
     if (not text.endswith('/')) and os.path.isdir(text):
         text += '/'
     # list dirs/files
@@ -393,13 +393,13 @@ def completePathFunc(text, status):
             if useTilde:
                 tmpItem = re.sub('^%s' % os.path.expanduser(origText),
                                  origText,tmpItem)
-            # append    
+            # append
             results.append(tmpItem)
-        # sort    
+        # sort
         results.sort()
     # return
     return results[status]
-                                                                                                                                            
+
 
 # update package
 def updatePackage(verbose=False):
@@ -472,7 +472,7 @@ def updatePackage(verbose=False):
                 if newPrefix != '':
                     break
             # unset hook
-            readline.set_startup_hook(None) 
+            readline.set_startup_hook(None)
             break
         if str == '3':
             cleanInstall = False
@@ -489,24 +489,24 @@ def updatePackage(verbose=False):
     com = 'wget --no-check-certificate --timeout 120 https://atlpan.web.cern.ch/atlpan/panda-client/%s' \
           % packageName
     status = os.system(com)
-    status %= 255    
+    status %= 255
     if status != 0:
         tmpLog.error('failed to download tarball : %s' % status)
         # delete tarball just in case
-        commands_get_output('rm %s' % packageName)    
+        commands_get_output('rm %s' % packageName)
         return False
     # install
     if not rpmInstall:
         # expand
         status,output = commands_get_status_output('tar xvfz %s' % packageName)
-        status %= 255    
+        status %= 255
         if verbose:
             tmpLog.debug(status)
             tmpLog.debug(output)
         if status != 0:
-            tmpLog.error('failed to expand tarball : %s' % status)        
+            tmpLog.error('failed to expand tarball : %s' % status)
             # delete dirs just in case
-            commands_get_output('rm -rf panda-client-%s' % latestVer)    
+            commands_get_output('rm -rf panda-client-%s' % latestVer)
             return False
         # delete tarball
         commands_get_output('rm %s' % packageName)
@@ -522,7 +522,7 @@ def updatePackage(verbose=False):
                 tmpLog.error(output)
                 tmpLog.error('failed to keep old version')
                 # delete dirs
-                commands_get_output('rm -rf panda-client-%s' % latestVer)    
+                commands_get_output('rm -rf panda-client-%s' % latestVer)
                 return False
         # install
         result = True
@@ -537,7 +537,7 @@ def updatePackage(verbose=False):
             tmpLog.error('failed to install panda-client : %s' % status)
             # recover old one
             commands_get_output('rm -rf %s' % os.environ['PANDA_SYS'])
-            commands_get_output('mv %s.back %s' % (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))        
+            commands_get_output('mv %s.back %s' % (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))
             result = False
         # cleanup
         commands_get_output('rm -rf panda-client-%s' % latestVer)
@@ -548,7 +548,7 @@ def updatePackage(verbose=False):
         com = 'sudo rpm -Uvh %s' % packageName
         print(com)
         status = os.system(com)
-        status %= 255    
+        status %= 255
         if status != 0:
             tmpLog.error('failed to install rpm : %s' % status)
             result = False
@@ -586,7 +586,7 @@ def checkUnmergedDataset(inDS,secDS):
     return
 
 
-# read dataset names from text 
+# read dataset names from text
 def readDsFromFile(txtName):
     dsList = ''
     try:
@@ -602,27 +602,27 @@ def readDsFromFile(txtName):
                 continue
             # append
             dsList += '%s,' % tmpLine
-        # close file    
+        # close file
         txt.close()
         # remove the last comma
-        dsList = dsList[:-1] 
+        dsList = dsList[:-1]
     except:
         errType,errValue = sys.exc_info()[:2]
         tmpLog = PLogger.getPandaLogger()
         tmpLog.error('cannot read datasets from %s due to %s:%s' \
                      % (txtName,errType,errValue))
-        sys.exit(EC_Config)    
+        sys.exit(EC_Config)
     return dsList
 
 
 # convert param string to JEDI params
 def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,usePfnList=False,includeIO=True):
-    # list of place holders for input 
+    # list of place holders for input
     inList = ['IN','CAVIN','MININ','LOMBIN','HIMBIN','BHIN','BGIN','BGHIN','BGCIN','BGOIN']
     # place holder for output
     outHolder = 'SN'
     # place holders with extension
-    digExList = ['RNDMSEED','FIRSTEVENT']  
+    digExList = ['RNDMSEED','FIRSTEVENT']
     allExList = digExList + ['DBR']
     # mapping of client and JEDI place holders
     holders = {'RNDMSEED'  : 'RNDM',
@@ -659,7 +659,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
         encStr = re.sub(oldH,newH,encStr)
     # replace %OUT to outDS${SN}
     if includeIO:
-        encStr = re.sub('%OUT',outNamePrefix+'.${'+outHolder+'}',encStr)    
+        encStr = re.sub('%OUT',outNamePrefix+'.${'+outHolder+'}',encStr)
     # make pattern for split
     patS  = "("
     allKeys = list(holders)
@@ -684,7 +684,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
                 # use constant since it is templated in another option e.g., -i
                 tmpDict = {'type':'constant'}
                 if encode:
-                    tmpDict['value'] = '${' + tmpHolder + '/E}' 
+                    tmpDict['value'] = '${' + tmpHolder + '/E}'
                 else:
                     tmpDict['value'] = tmpItem
                 # set dataset if PFN list is not used or the stream is not primary
@@ -741,7 +741,7 @@ def splitCommaConcatenatedItems(oldList):
 def uploadGzippedFile(origFileName,currentDir,tmpLog,delFilesOnExit,nosubmit,verbose):
     # open original file
     if origFileName.startswith('/'):
-        # absolute path 
+        # absolute path
         tmpIn = open(origFileName)
     else:
         # relative path
