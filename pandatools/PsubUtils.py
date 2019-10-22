@@ -46,7 +46,7 @@ def resetCacheValues():
     global cacheLastUpdate
     global cacheVomsInfo
     timeNow = datetime.datetime.utcnow()
-    if cacheLastUpdate == None or (timeNow-cacheLastUpdate) > datetime.timedelta(minutes=60):
+    if cacheLastUpdate is None or (timeNow-cacheLastUpdate) > datetime.timedelta(minutes=60):
         cacheLastUpdate = timeNow
         cacheProxyStatus = None
         cacheVomsStatus = None
@@ -128,7 +128,7 @@ def getDN(verbose=False):
             distinguishedName = re.sub('\(','',distinguishedName)
             distinguishedName = re.sub('\)','',distinguishedName)
             distinguishedName = distinguishedName.strip()
-            if re.search(' ',distinguishedName) != None:
+            if re.search(' ',distinguishedName) is not None:
                 # look for full name
                 distinguishedName = distinguishedName.replace(' ','')
                 break
@@ -158,7 +158,7 @@ def getNickname(verbose=False):
     for line in output.split('\n'):
         if line.startswith('attribute'):
             match = re.search('nickname =\s*([^\s]+)\s*\(atlas\)',line)
-            if match != None:
+            if match is not None:
                 nickName = match.group(1)
                 break
     # check
@@ -202,7 +202,7 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',mergeOutput=Fals
         prodGroups = []
         for tmpLine in output.split('\n'):
             match = re.search('/([^/]+)/Role=production',tmpLine)
-            if match != None:
+            if match is not None:
                 # ignore atlas production role
                 if not match.group(1) in ['atlas']:
                     prodGroups.append(match.group(1))
@@ -219,7 +219,7 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',mergeOutput=Fals
             for tmpGroup in prodGroups:
                 tmpPattO = '^'+tmpPrefix+'\d{2}'+'\.'+tmpGroup+'\.'
                 tmpPattN = '^'+tmpPrefix+'\.'+tmpGroup+'\.'
-                if re.search(tmpPattO,outDS) != None or re.search(tmpPattN,outDS) != None:
+                if re.search(tmpPattO,outDS) is not None or re.search(tmpPattN,outDS) is not None:
                     return True
         # didn't match
         errStr  = "Your proxy is allowed to produce official datasets\n"
@@ -237,7 +237,7 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',mergeOutput=Fals
     # check output dataset format
     matStrO = '^user' + '\d{2}' + '\.' + distinguishedName + '\.'
     matStrN = '^user\.'+nickName+'\.'
-    if re.match(matStrO,outDS) == None and (nickName == '' or re.match(matStrN,outDS) == None):
+    if re.match(matStrO,outDS) is None and (nickName == '' or re.match(matStrN,outDS) is None):
         if nickName == '':
             errStr = "Could not get nickname from voms proxy\n"
         else:
@@ -248,7 +248,7 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',mergeOutput=Fals
         tmpLog.error(errStr)
         return False
     # check convention
-    if re.match(matStrO,outDS) != None:
+    if re.match(matStrO,outDS) is not None:
         outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
         tmpStr  = "You are still using the old naming convention for --outDS (%s.XYZ), " % outDsPrefixO
         tmpStr += "which is not allowed any more. "
@@ -295,14 +295,14 @@ def convSysArgv():
         # remove option
         match = re.search('(^-[^=]+=)(.+)',item)
         noSpace = False
-        if match != None:
+        if match is not None:
             paramStr += ' %s' % match.group(1)
             item = match.group(2)
             noSpace = True
         if not noSpace:
             paramStr += ' '
         match = re.search('(\*| |\')',item)
-        if match == None:
+        if match is None:
             # normal parameters
             paramStr += '%s' % item
         else:
@@ -317,14 +317,14 @@ def isLatestVersion(latestVer):
     # extract local version numbers
     import PandaToolsPkgInfo
     match = re.search('^(\d+)\.(\d+)\.(\d+)$',PandaToolsPkgInfo.release_version)
-    if match == None:
+    if match is None:
         return True
     localMajorVer  = int(match.group(1))
     localMinorVer  = int(match.group(2))
     localBugfixVer = int(match.group(3))
     # extract local version numbers
     match = re.search('^(\d+)\.(\d+)\.(\d+)$',latestVer)
-    if match == None:
+    if match is None:
         return True
     latestMajorVer  = int(match.group(1))
     latestMinorVer  = int(match.group(2))
@@ -573,7 +573,7 @@ def checkUnmergedDataset(inDS,secDS):
     unMergedDs = ''
     for tmpDs in dsList:
         # check dataset name
-        if re.search(unPatt,tmpDs) != None:
+        if re.search(unPatt,tmpDs) is not None:
             unMergedDs += '%s,' % tmpDs
     unMergedDs = unMergedDs[:-1]
     # return
@@ -606,7 +606,7 @@ def readDsFromFile(txtName):
         txt.close()
         # remove the last comma
         dsList = dsList[:-1]
-    except:
+    except Exception:
         errType,errValue = sys.exc_info()[:2]
         tmpLog = PLogger.getPandaLogger()
         tmpLog.error('cannot read datasets from %s due to %s:%s' \
@@ -640,7 +640,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
     for newH in holders:
         oldH = holders[newH]
         # JEDI-only place holders
-        if oldH == None:
+        if oldH is None:
             oldH = newH
         oldH = '%' + oldH
         # with extension
@@ -651,7 +651,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
                 oldH += '(:|=)([^ \'\"\}]+)'
             # look for extension
             tmpM = re.search(oldH,encStr)
-            if tmpM != None:
+            if tmpM is not None:
                 extensionMap[newH] = tmpM.group(2)
             newH = '${' + newH + '}'
         else:
@@ -677,7 +677,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
     for tmpItem in tmpItems:
         # check if a place holder
         matchP = re.search('\$\{([^:\}]+)',tmpItem)
-        if re.search(patS,tmpItem) != None and matchP != None:
+        if re.search(patS,tmpItem) is not None and matchP is not None:
             tmpHolder = matchP.group(1)
             # set attributes
             if tmpHolder in inList:
@@ -688,7 +688,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
                 else:
                     tmpDict['value'] = tmpItem
                 # set dataset if PFN list is not used or the stream is not primary
-                if not usePfnList or not tmpHolder in ['IN']:
+                if not usePfnList or tmpHolder not in ['IN']:
                     tmpDict['param_type'] = 'input'
                     tmpDict['dataset'] = inputMap[tmpHolder]
             elif tmpHolder == outHolder:
@@ -704,7 +704,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
                 if tmpHolder in extensionMap:
                     try:
                         tmpDict['offset'] = long(extensionMap[tmpHolder])
-                    except:
+                    except Exception:
                         pass
         else:
             # constant
@@ -732,7 +732,7 @@ def splitCommaConcatenatedItems(oldList):
             # remove empty
             if tmpItem == '':
                 continue
-            if not tmpItem in newList:
+            if tmpItem not in newList:
                 newList.append(tmpItem)
     return newList
 

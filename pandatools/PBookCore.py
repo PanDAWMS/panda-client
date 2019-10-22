@@ -14,7 +14,7 @@ from . import PLogger
 from . import PsubUtils
 
 # core class for book keeping
-class PBookCore:
+class PBookCore(object):
 
     # constructor
     def __init__(self,enforceEnter=False,verbose=False,restoreDB=False):
@@ -28,7 +28,7 @@ class PBookCore:
         PsubUtils.check_proxy(self.verbose, None)
         # map between jobset and jediTaskID
         self.jobsetTaskMap = {}
- 
+
 
 
     # synchronize database
@@ -50,7 +50,7 @@ class PBookCore:
         # set sync time for the first attempt
         bookConf = BookConfig.getConfig()
         if self.restoreDB:
-            # reset last_synctime to restore database 
+            # reset last_synctime to restore database
             bookConf.last_synctime = ''
         # disable
         self.restoreDB = False
@@ -87,7 +87,7 @@ class PBookCore:
                 # convert JEDI task
                 localJob = PdbUtils.convertJTtoD(jediTaskDicts[remoteJobID],job)
                 # update database
-                if not remoteJobID in localJobIDs:
+                if remoteJobID not in localJobIDs:
                     # insert to DB
                     try:
                         PdbUtils.insertJobDB(localJob,self.verbose)
@@ -107,7 +107,7 @@ class PBookCore:
         BookConfig.updateConfig(bookConf)
         self.updateTaskJobsetMap()
         tmpLog.info("Synchronization Completed")
-        
+
 
     # update task and jobset map
     def updateTaskJobsetMap(self):
@@ -123,7 +123,7 @@ class PBookCore:
         # get job info from local repository
         job = PdbUtils.readJobDB(JobID,self.verbose)
         # not found
-        if job == None:
+        if job is None:
             tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)
             return None
         # return
@@ -137,10 +137,10 @@ class PBookCore:
         # try to get jobset
         job = PdbUtils.readJobsetDB(id,self.verbose)
         # get job info from local repository
-        if job == None:
+        if job is None:
             job = PdbUtils.readJobDB(id,self.verbose)
         # not found
-        if job == None:
+        if job is None:
             tmpLog.warning("JobsetID/JobID=%s not found in local repository. Synchronization may be needed" % JobID)
             return None
         # return
@@ -177,7 +177,7 @@ class PBookCore:
         PsubUtils.check_proxy(self.verbose, None)
         # get job info from local repository
         job = self.getJobInfo(JobID)
-        if job == None:
+        if job is None:
             # not found
             return None
         # update if needed
@@ -201,7 +201,7 @@ class PBookCore:
                 tmpLog.error("Failed to update local repository for JobID=%s: %s" % (JobID, str(e)))
                 return None
             if not job.isJEDI():
-                tmpLog.info("Updated JobID=%s" % JobID)                        
+                tmpLog.info("Updated JobID=%s" % JobID)
             else:
                 tmpLog.info("Updated TaskID=%s ..." % job.jediTaskID)
         # return
@@ -210,7 +210,7 @@ class PBookCore:
     # get status for JobSet and Job
     def statusJobJobset(self, id, forceUpdate=False):
         tmpJobIDList = self.getJobIDsWithSetID(id)
-        if tmpJobIDList == None:
+        if tmpJobIDList is None:
             # not a jobset
             job = self.status(id, forceUpdate)
         else:
@@ -220,7 +220,7 @@ class PBookCore:
             isJEDI = False
             for tmpJobID in tmpJobIDList:
                 tmpJob = self.status(tmpJobID, forceUpdate)
-                if tmpJob == None:
+                if tmpJob is None:
                     return None
                 tmpJobs.append(tmpJob)
                 if tmpJob.isJEDI():
@@ -233,7 +233,7 @@ class PBookCore:
                 # check merge jobs are already got
                 tmpIDtoBeChecked = []
                 for tmpMergeID in tmpMergeIdList:
-                    if not tmpMergeID in tmpJobIDList:
+                    if tmpMergeID not in tmpJobIDList:
                         tmpIDtoBeChecked.append(tmpMergeID)
                 # sync to get merge job info
                 if tmpIDtoBeChecked != []:
@@ -257,7 +257,7 @@ class PBookCore:
         self.status(JobID,True)
         # get jobset
         jobList = self.getJobIDsWithSetID(JobID)
-        if jobList == None:
+        if jobList is None:
             # works only for jobsetID
             if useJobsetID:
                 return
@@ -269,11 +269,11 @@ class PBookCore:
                 tmpMsg += '%s,' % tmpJobID
             tmpMsg = tmpMsg[:-1]
             tmpLog.info(tmpMsg)
-        for tmpJobID in jobList:    
+        for tmpJobID in jobList:
             # get job info from local repository
             job = self.getJobInfo(tmpJobID)
-            if job == None:
-                tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % tmpJobID)            
+            if job is None:
+                tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % tmpJobID)
                 continue
             # skip frozen job
             if job.dbStatus == 'frozen':
@@ -307,7 +307,7 @@ class PBookCore:
         self.status(JobID,True)
         # get jobset
         jobList = self.getJobIDsWithSetID(JobID)
-        if jobList == None:
+        if jobList is None:
             # works with jobID
             jobList = [JobID]
         else:
@@ -316,11 +316,11 @@ class PBookCore:
                 tmpMsg += '%s,' % tmpJobID
             tmpMsg = tmpMsg[:-1]
             tmpLog.info(tmpMsg)
-        for tmpJobID in jobList:    
+        for tmpJobID in jobList:
             # get job info from local repository
             job = self.getJobInfo(tmpJobID)
-            if job == None:
-                tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % tmpJobID)            
+            if job is None:
+                tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % tmpJobID)
                 continue
             # skip frozen job
             if job.dbStatus == 'frozen':
@@ -367,7 +367,7 @@ class PBookCore:
         # delete
         try:
             PdbUtils.deleteOldJobs(nDays,self.verbose)
-        except:
+        except Exception:
             tmpLog.error("Failed to delete old jobs")
             return
         # done
@@ -390,7 +390,7 @@ class PBookCore:
         for iTry in range(nTry):
             # get status
             job = self.status(JobID)
-            if job == None:
+            if job is None:
                 return False
             # check if frozen
             if job.dbStatus == 'frozen':
@@ -411,7 +411,7 @@ class PBookCore:
             ignoreDuplication=ignoreDuplication,
             retryBuild=retryBuild)
         return
-                        
+
 
     # retry
     def retry(self,JobsetID,newSite=False,newOpts={},noSubmit=False,ignoreDuplication=False,useJobsetID=False,retryBuild=False,reproduceFiles=[],unsetRetryID=False):
@@ -427,11 +427,11 @@ class PBookCore:
         # get jobset
         newJobsetID = -1
         jobList = self.getJobIDsWithSetID(JobsetID)
-        if jobList == None:
+        if jobList is None:
             # works only for jobsetID
             if useJobsetID:
                 return
-            # works with jobID   
+            # works with jobID
             isJobset = False
             jobList = [JobsetID]
         else:
@@ -441,11 +441,11 @@ class PBookCore:
                 tmpMsg += '%s,' % tmpJobID
             tmpMsg = tmpMsg[:-1]
             tmpLog.info(tmpMsg)
-        for JobID in jobList:    
+        for JobID in jobList:
             # get job info from local repository
             localJob = self.getJobInfo(JobID)
-            if localJob == None:
-                tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)            
+            if localJob is None:
+                tmpLog.warning("JobID=%s not found in local repository. Synchronization may be needed" % JobID)
                 return None
             # for JEDI
             status,out = Client.retryTask(
@@ -459,7 +459,7 @@ class PBookCore:
                 tmpLog.error("Failed to retry TaskID=%s" % localJob.jediTaskID)
                 return False
             tmpStat,tmpDiag = out
-            if (not tmpStat in [0,True] and newOpts == {}) or (newOpts != {} and tmpStat != 3):
+            if (tmpStat not in [0,True] and newOpts == {}) or (newOpts != {} and tmpStat != 3):
                 tmpLog.error(tmpDiag)
                 tmpLog.error("Failed to retry TaskID=%s" % localJob.jediTaskID)
                 return False

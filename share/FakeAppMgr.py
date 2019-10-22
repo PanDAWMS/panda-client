@@ -11,7 +11,7 @@ class fakeProperty(list):
     def __getattribute__(self,name):
         try:
             return object.__getattribute__(self,name)
-        except:
+        except Exception:
             setattr(self,name,fakeProperty(name))
             return object.__getattribute__(self,name)
 
@@ -44,12 +44,12 @@ class fakeAppMgr(fakeProperty):
         # streams
         try:
             self._streams = self.origTheApp._streams 
-        except:
+        except Exception:
             self._streams = []
         # for https://savannah.cern.ch/bugs/index.php?66675
         try:
             self.allConfigurables = self.origTheApp.allConfigurables
-        except:
+        except Exception:
             pass
 
     def service(self,name):
@@ -71,13 +71,13 @@ class fakeAppMgr(fakeProperty):
     def serviceMgr(self):
         try:
             return self.origTheApp.serviceMgr()
-        except:
+        except Exception:
             return self._serviceMgr
 
     def toolSvc(self):
         try:
             return self.origTheApp.toolSvc()
-        except:
+        except Exception:
             return self._toolSvc
         
     def addOutputStream(self,stream):
@@ -101,7 +101,7 @@ theApp = fakeAppMgr(_theApp)
 try:
     import AthenaCommon.AppMgr
     AthenaCommon.AppMgr.theApp = theApp
-except:
+except Exception:
     pass
 
 # for boot strap

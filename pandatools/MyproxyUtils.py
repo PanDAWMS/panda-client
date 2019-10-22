@@ -384,7 +384,7 @@ class MyProxyInterface(object):
         for line in output.split('\n'):
             # look for name:
             match = re.search('^\s+name:\s+([a-zA-Z0-9]+)',line)
-            if match != None:
+            if match is not None:
                 if match.group(1) == credname:
                     credSector = True
                 else:
@@ -394,7 +394,7 @@ class MyProxyInterface(object):
                 continue
             # look for timeleft:
             match = re.search('^\s+timeleft:\s+([0-9:]+)',line)
-            if match != None:
+            if match is not None:
                 hour = match.group(1).split(':')[0]
                 hour = int(hour)
                 # valid more than 3 days

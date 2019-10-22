@@ -35,14 +35,14 @@ class Synchronizer(threading.Thread):
         # try to get core
         try:
             self.pbookCore = self.syncQueue.get_nowait()
-        except:
+        except Exception:
             self.pbookCore = None
         # emitter
         self.pEmitter = pEmitter
 
     # run
     def run(self):
-        if self.pbookCore == None:
+        if self.pbookCore is None:
             return
         # synchronize database
         self.pbookCore.sync()
@@ -69,14 +69,14 @@ class RetryWorker(threading.Thread):
         # try to get core
         try:
             self.pbookCore = self.retryQueue.get_nowait()
-        except:
+        except Exception:
             self.pbookCore = None
         # emitter
         self.pEmitter = pEmitter
 
     # run
     def run(self):
-        if self.pbookCore == None:
+        if self.pbookCore is None:
             return
         # retry
         self.pbookCore.retry(long(self.jobID))
@@ -237,7 +237,7 @@ class PJumper:
     def on_clicked(self,tag,textview,event,iter):
         # mouse clicked
         if event.type == gtk.gdk.BUTTON_PRESS:
-            if self.jobID != None:
+            if self.jobID is not None:
                 # set jobID to global
                 self.guiGlobal.setCurrentJob(self.jobID)
                 # emit
@@ -364,7 +364,7 @@ class PSumView:
             # decompose line to label and value
             line = lines[iLine]
             match = re.search('^([^:]+:)(.*)',line)
-            if match == None:
+            if match is None:
                 items = [line,'']
             else:
                 items = match.groups()
@@ -391,7 +391,7 @@ class PSumView:
                             tagname = 'skyblue'
                     # add jumper
                     match = re.search('\s*(\S+)\s*:',line)
-                    if match != None:
+                    if match is not None:
                         realLabel = match.group(1)
                         if realLabel in self.jumper and iItem != 0:
                             # set jobID
@@ -430,7 +430,7 @@ class PSumView:
                         # delete
                         textbuf.delete(textbuf.get_start_iter(),
                                        textbuf.get_end_iter())
-                    except:
+                    except Exception:
                         pass
             else:
                 # get textbuffer
@@ -757,7 +757,7 @@ class PWebButton:
     def on_clicked(self,widget):
         try:
             ret = self.queue.get_nowait()
-        except:
+        except Exception:
             return
         # make opener
         thr = UrlOpener(self.url,self.queue)
@@ -797,7 +797,7 @@ class PUpdateButton:
         tmpLog = PLogger.getPandaLogger()
         # get jobID
         jobID = self.guiGlobal.getCurrentJob()
-        if jobID == None:
+        if jobID is None:
             tmpLog.warning('No job is selected. Please click a job in the left list first')
             return
         # skip if frozen
@@ -835,7 +835,7 @@ class PKillButton:
         tmpLog = PLogger.getPandaLogger()
         # get jobID
         jobID = self.guiGlobal.getCurrentJob()
-        if jobID == None:
+        if jobID is None:
             tmpLog.warning('No job is selected. Please click a job in the left list first')
             return
         # skip if frozen
@@ -876,7 +876,7 @@ class PRetryButton:
         tmpLog = PLogger.getPandaLogger()
         # get jobID
         jobID = self.guiGlobal.getCurrentJob()
-        if jobID == None:
+        if jobID is None:
             tmpLog.warning('No job is selected. Please click a job in the left list first')
             return
         # skip if frozen

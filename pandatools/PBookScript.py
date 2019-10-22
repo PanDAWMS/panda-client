@@ -67,7 +67,7 @@ for path in sys.path:
         break
 sys.path = [tmpDir]+sys.path
 
-from pandatools import PBookCore
+from pandatools import PBookCore    # noqa: E402
 
 
 # main for interactive session
@@ -105,7 +105,7 @@ For more info, do help(show) for example."""
          """
         if JobID is None or JobID < 0 or upperJobID is not None:
             # check range
-            if upperJobID != None:
+            if upperJobID is not None:
                 if JobID > upperJobID:
                     tmpLog = PLogger.getPandaLogger()
                     tmpLog.error("upper JobID must be larger than %s" % JobID)
@@ -120,7 +120,7 @@ For more info, do help(show) for example."""
                 jobList = jobList[JobID:]
             # print
             for job in jobList:
-                if upperJobID != None:
+                if upperJobID is not None:
                     if hasattr(job,'JobID'):
                         if job.JobID < JobID or job.JobID > upperJobID:
                             continue
@@ -176,7 +176,7 @@ For more info, do help(show) for example."""
                     else:
                         # jobset
                         retK = pbookCore.kill(long(job.JobsetID),True)
-        elif upperJobID != None:
+        elif upperJobID is not None:
             # check range
             if JobID > upperJobID:
                 tmpLog = PLogger.getPandaLogger()
@@ -208,7 +208,7 @@ For more info, do help(show) for example."""
                     else:
                         # jobset
                         retK = pbookCore.finish(long(job.JobsetID),soft)
-        elif upperJobID != None:
+        elif upperJobID is not None:
             # check range
             if JobID > upperJobID:
                 tmpLog = PLogger.getPandaLogger()
@@ -233,7 +233,7 @@ For more info, do help(show) for example."""
         if newOpts is None:
             newOpts = {}
         # use range or not
-        if upperJobID != None:
+        if upperJobID is not None:
             # check range
             if JobID > upperJobID:
                 tmpLog = PLogger.getPandaLogger()

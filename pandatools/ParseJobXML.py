@@ -144,7 +144,7 @@ class dom_parser:
             s.dom = xml.dom.minidom.parse(fname)
             s.parse()
             s.check()
-        if xmlStr != None:
+        if xmlStr is not None:
             s.dom = xml.dom.minidom.parseString(xmlStr)
             s.parse()
             s.check()
@@ -217,7 +217,7 @@ class dom_parser:
                 s.primaryds = None
             for job in s.dom.getElementsByTagName('job'):
                 s.jobs.append(dom_job(job,primaryds=s.primaryds,defaultcmd=s.command,defaultout=s.global_outfiles))
-        except:
+        except Exception:
             print('ERROR: failed to parse',s.fname)
             raise
     def to_dom(s):

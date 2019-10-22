@@ -25,12 +25,12 @@ class FileSpec(object):
     def __getattribute__(self,name):
         # PandaID
         if name == 'PandaID':
-            if self._owner == None:
+            if self._owner is None:
                 return 'NULL'
             return self._owner.PandaID
         # others
         ret = object.__getattribute__(self,name)
-        if ret == None:
+        if ret is None:
             return "NULL"
         return ret
 

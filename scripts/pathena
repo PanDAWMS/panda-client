@@ -57,7 +57,7 @@ optP.add_argument('--nEventsPerFile', action='store', dest='nEventsPerFile',  de
 optP.add_argument('--nGBPerJob',action='store',dest='nGBPerJob',default=-1, help='Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value')
 optP.add_argument('--nGBPerMergeJob',action='store',dest='nGBPerMergeJob',default=-1, help='Instantiate one merge job per NGBPERMERGEJOB GB of pre-merged files')
 optP.add_argument('--site', action='store', dest='site',  default="AUTO",
-                type=str,    help='Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites')
+                type=str,    help='Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is found not in the previous sites')
 optP.add_argument('--athenaTag',action='store',dest='athenaTag',default='',type=str,
                 help='Use differnet version of Athena on remote WN. By defualt the same version which you are locally using is set up on WN. e.g., --athenaTag=AtlasProduction,14.2.24.3')
 optP.add_argument('--inDS',  action='store', dest='inDS',  default='',
@@ -399,7 +399,7 @@ if options.excludedSite != []:
 
 # use certain sites
 includedSite = None
-if re.search(',',options.site) != None:
+if re.search(',',options.site) is not None:
     includedSite = PsubUtils.splitCommaConcatenatedItems([options.site])
     options.site = 'AUTO'
 
@@ -479,7 +479,7 @@ if not options.nGBPerJob in [-1,'MAX']:
     try:
         if options.nGBPerJob != 'MAX':
             options.nGBPerJob = int(options.nGBPerJob)
-    except:
+    except Exception:
         tmpLog.error("nGBPerJob must be an integer or MAX")
         sys.exit(EC_Config)
     # check negative    
@@ -494,7 +494,7 @@ else:
     orig_trfStr = options.trf
 
 # AMI event-level split
-if options.useAMIEventLevelSplit == None:
+if options.useAMIEventLevelSplit is None:
     if options.inDS.startswith('data') or options.goodRunListXML != '':
         # use AMI for real data since the number of events per file is not uniform
         options.useAMIEventLevelSplit = True
@@ -530,13 +530,13 @@ if options.eventPickEvtList != '':
 options.extFile = options.extFile.split(',')
 try:
     options.extFile.remove('')
-except:
+except Exception:
     pass
 options.extOutFile = re.sub(' ','',options.extOutFile)
 options.extOutFile = options.extOutFile.split(',')
 try:
     options.extOutFile.remove('')
-except:
+except Exception:
     pass
 
 # user-specified merging script
@@ -551,7 +551,7 @@ if options.mergeScript != '':
 options.gluePackages = options.gluePackages.split(',')
 try:
     options.gluePackages.remove('')
-except:
+except Exception:
     pass
 
 # set excludeFile
@@ -585,7 +585,7 @@ if options.inputFileList != '':
 options.supStream = options.supStream.upper().split(',')
 try:
     options.supStream.remove('')
-except:
+except Exception:
     pass
 
 # split related
@@ -696,16 +696,16 @@ if options.athenaTag != '':
     for item in items:
         # releases
         match = re.search('^(\d+\.\d+\.\d+)',item)
-        if match != None:
+        if match is not None:
             athenaVer = match.group(1)
             # cache
             cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
-            if cmatch != None:
+            if cmatch is not None:
                 cacheVer += '_%s' % cmatch.group(1)
         else:
             # nightlies
             match = re.search('^(\d+\.\d+\.X|\d+\.X\.\d+)$',item)
-            if match != None:
+            if match is not None:
                 athenaVer = 'Atlas-%s' % match.group(1)
         # project
         if item.startswith('Atlas') or item in listProjects:
@@ -725,8 +725,8 @@ if options.athenaTag != '':
         if item in ['32','64']:
             tmpLog.warning("%s in --athenaTag is unsupported. Please use --cmtConfig instead" % item)
     # check cache
-    if re.search('^-.+_.+$',cacheVer) == None:
-        if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) != None:
+    if re.search('^-.+_.+$',cacheVer) is None:
+        if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) is not None:
             # use AtlasProduction
             cacheVer = '-AtlasProduction'+cacheVer
         elif 'AthAnalysisBase' in cacheVer or 'AthAnalysis' in cacheVer:
@@ -849,7 +849,7 @@ if not options.trf:
             # append .root for tag files
             if runConfig.other.inColl:
                 match = re.search('\.root(\.\d+)*$',fileName)
-                if match == None:
+                if match is None:
                     fileName = '%s.root' % fileName
             # check ship files in the current dir
             if not os.path.exists(fileName):
@@ -859,7 +859,7 @@ if not options.trf:
             options.extFile.append(fileName)
             if not runConfig.input.shipFiles:
                 runConfig.input['shipFiles'] = []
-            if not fileName in runConfig.input['shipFiles']:    
+            if fileName not in runConfig.input['shipFiles']:    
                 runConfig.input['shipFiles'].append(fileName)
     # generator files
     if runConfig.other.rndmGenFile:
@@ -890,7 +890,7 @@ else:
     newJobO = ''
     for tmpString in jobO.split(';'):
         match = re.search(' AMI=',tmpString)
-        if match == None:
+        if match is None:
             # use original command
             newJobO += (tmpString + ';')
         else:
@@ -935,12 +935,12 @@ else:
     # look for --outputDAODFile and --reductionConf 
     match = re.search('--outputDAODFile[ =\"\']+([^ \"\',]+)',tmpString)
     outputDAODFile = None
-    if match != None:
+    if match is not None:
         outputDAODFile = match.group(1)
         # remove %OUT
         outputDAODFile = re.sub('%OUT\.','',outputDAODFile)
         match = re.search('--reductionConf[ =\"\']+([^ \"\']+)',tmpString)
-        if match != None:
+        if match is not None:
             # remove %OUT from outputDAODFile
             jobO = jobO.replace('%OUT.'+outputDAODFile,outputDAODFile)
             # loop over all configs
@@ -951,7 +951,7 @@ else:
                     continue
                 # make actual output names for derivation
                 tmpOutName = 'DAOD_{0}.{1}'.format(reductionItem,outputDAODFile)
-                if not tmpOutName in options.extOutFile:
+                if tmpOutName not in options.extOutFile:
                     options.extOutFile.append(tmpOutName)
                     oneOut = True
     # look for %OUT
@@ -961,9 +961,9 @@ else:
             # append basenames to extOutFile
             tmpOutName = match.group(1)
             # skip basename of derivation
-            if outputDAODFile != None and outputDAODFile == tmpOutName:
+            if outputDAODFile is not None and outputDAODFile == tmpOutName:
                 continue
-            if not tmpOutName in options.extOutFile:
+            if tmpOutName not in options.extOutFile:
                 options.extOutFile.append(tmpOutName)
                 oneOut = True
     # warning if no output
@@ -975,7 +975,7 @@ tmpOutKeys = list(runConfig.output)
 for tmpIgnorKey in ['outUserData','alloutputs']:
     try:
         tmpOutKeys.remove(tmpIgnorKey)
-    except:
+    except Exception:
         pass
 if tmpOutKeys == [] and options.extOutFile == [] and not options.noOutput:
     errStr  = "No output stream was extracted from jobOs or --trf. "
@@ -1042,7 +1042,7 @@ if runConfig.other.G4RandomSeeds == True:
                 if num > 0:
                     runConfig.other.G4RandomSeeds = num
                     break
-            except:
+            except Exception:
                 pass
         print('')
     else:
@@ -1136,7 +1136,7 @@ if True:
     if options.inTarBall == '':
         # extract jobOs with full pathnames
         for tmpItem in jobO.split():
-            if re.search('^/.*\.py$',tmpItem) != None:
+            if re.search('^/.*\.py$',tmpItem) is not None:
                 # set random name to avoid overwriting
                 tmpName = tmpItem.split('/')[-1]
                 tmpName = '%s_%s' % (MiscUtils.wrappedUuidGen(),tmpName)
@@ -1285,7 +1285,7 @@ if options.site != 'AUTO':
 else:
     taskParamMap['site'] = None
 taskParamMap['excludedSite'] = options.excludedSite
-if includedSite != None and includedSite != []:
+if includedSite is not None and includedSite != []:
     taskParamMap['includedSite'] = includedSite
 else:
     taskParamMap['includedSite'] = None
@@ -1315,7 +1315,7 @@ if options.respectSplitRule:
     taskParamMap['respectSplitRule'] = True
 if options.disableAutoRetry:
     taskParamMap['disableAutoRetry'] = 1
-if options.workingGroup != None:
+if options.workingGroup is not None:
     taskParamMap['workingGroup'] = options.workingGroup
 if options.official:
     taskParamMap['official'] = True
@@ -1344,7 +1344,7 @@ if options.osMatching:
 taskParamMap['osInfo'] = PsubUtils.get_os_information()
 # source URL
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
-if matchURL != None:
+if matchURL is not None:
     taskParamMap['sourceURL'] = matchURL.group(1)
 # middle name
 if options.addNthFieldOfInFileToLFN != '':
@@ -1552,7 +1552,7 @@ else:
 dbrInTRF = False
 if options.trf:
     tmpMatch = re.search('%DB=([^ \'\";]+)',jobO)
-    if tmpMatch != None:
+    if tmpMatch is not None:
         options.dbRelease = tmpMatch.group(1)
         dbrInTRF = True
 # param for DBR     
