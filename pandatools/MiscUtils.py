@@ -92,10 +92,19 @@ def decodeJSON(input_file):
 # replacement for commands
 def commands_get_status_output(com):
     try:
-        data = subprocess.check_output(com, shell=True, universal_newlines=True, stderr=subprocess.STDOUT)
+        # for python 2.6
+        #data = subprocess.check_output(com, shell=True, universal_newlines=True, stderr=subprocess.STDOUT)
+        p = subprocess.Popen(com, shell=True, universal_newlines=True, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT)
+        data, unused_err = p.communicate()
+        retcode = p.poll()
+        if retcode:
+            raise subprocess.CalledProcessError(retcode, com)
         status = 0
     except subprocess.CalledProcessError as ex:
-        data = ex.output
+        # for python 2.6
+        #data = ex.output
+        data = str(ex)
         status = ex.returncode
     if data[-1:] == '\n':
         data = data[:-1]
