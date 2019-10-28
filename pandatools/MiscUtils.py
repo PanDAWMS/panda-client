@@ -2,6 +2,7 @@ import re
 import os
 import json
 import uuid
+import traceback
 import subprocess
 try:
     import cPickle as pickle
@@ -91,6 +92,7 @@ def decodeJSON(input_file):
 
 # replacement for commands
 def commands_get_status_output(com):
+    data = ''
     try:
         # for python 2.6
         #data = subprocess.check_output(com, shell=True, universal_newlines=True, stderr=subprocess.STDOUT)
@@ -99,12 +101,12 @@ def commands_get_status_output(com):
         data, unused_err = p.communicate()
         retcode = p.poll()
         if retcode:
-            raise subprocess.CalledProcessError(retcode, com)
+            ex = subprocess.CalledProcessError(retcode, com)
+            raise ex
         status = 0
     except subprocess.CalledProcessError as ex:
         # for python 2.6
         #data = ex.output
-        data = str(ex)
         status = ex.returncode
     if data[-1:] == '\n':
         data = data[:-1]
@@ -131,6 +133,7 @@ def run_with_original_env(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
+            print(str(e) + traceback.format_exc())
             raise e
         finally:
             if 'LD_LIBRARY_PATH_RESERVE' in os.environ:

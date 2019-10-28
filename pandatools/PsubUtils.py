@@ -68,6 +68,11 @@ def get_proxy_info(force, verbose):
         if verbose:
             tmpLog.debug(com)
         status,out = commands_get_status_output_with_env(com)
+        if status != 0:
+            com = '%s voms-proxy-info2 --all --e' % gridSrc
+            if verbose:
+                tmpLog.debug(com)
+            status, out = commands_get_status_output_with_env(com)
         if verbose:
             tmpLog.debug(status % 255)
             tmpLog.debug(out)
@@ -103,8 +108,12 @@ def check_proxy(verbose, voms_role, refresh_info=False, generate_new=True):
         com += '-voms %s' % voms_role
     if verbose:
         tmpLog.debug(re.sub(gridPassPhrase, "*****", com))
-    status = os.system(com)
+    status, output = commands_get_status_output_with_env(com)
     if status != 0:
+        com = com.replace('voms-proxy-init', 'voms-proxy-init2')
+        status, output = commands_get_status_output_with_env(com)
+    if status != 0:
+        tmpLog.error(output)
         tmpLog.error("Could not generate a grid proxy")
         sys.exit(EC_Config)
     return check_proxy(verbose, voms_role, refresh_info=True, generate_new=False)
