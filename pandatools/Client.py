@@ -67,11 +67,14 @@ def _x509():
 
 # look for a CA certificate directory
 def _x509_CApath():
-    # use X509_CERT_DIR
-    try:
-        return os.environ['X509_CERT_DIR']
-    except Exception:
-        return '/etc/grid-security/certificates'
+    if 'X509_CERT_DIR' not in os.environ or os.environ['X509_CERT_DIR'] == '':
+        com = "{0} echo $X509_CERT_DIR".format(_getGridSrc())
+        output = commands_get_output(com)
+        output = output.split('\n')[-1]
+        if output == '':
+            output = '/etc/grid-security/certificates'
+        os.environ['X509_CERT_DIR'] = output
+    return os.environ['X509_CERT_DIR']
 
 # keep list of tmp files for cleanup
 globalTmpDir = ''
