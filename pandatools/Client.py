@@ -452,7 +452,15 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
 
 # get grid source file
 def _getGridSrc():
-    return ''
+    if 'PATHENA_GRID_SETUP_SH' in os.environ:
+        gridSrc = os.environ['PATHENA_GRID_SETUP_SH']
+    else:
+        gridSrc = '/dev/null'
+    gridSrc = 'source %s > /dev/null;' % gridSrc
+    # some grid_env.sh doen't correct PATH/LD_LIBRARY_PATH
+    gridSrc = "unset LD_LIBRARY_PATH; unset PYTHONPATH; unset MANPATH; export PATH=/usr/local/bin:/bin:/usr/bin; %s" % \
+              gridSrc
+    return gridSrc
 
 
 # get DN

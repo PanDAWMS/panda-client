@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.0.1 (10/29/2019)
+  * fixed for T3
+
 1.0.0 (10/29/2019)
   * cleanup
   
