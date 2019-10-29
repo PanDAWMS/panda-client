@@ -12,7 +12,6 @@ import copy
 import platform
 
 from . import Client
-from . import MyproxyUtils
 from . import MiscUtils
 from . import PLogger
 
