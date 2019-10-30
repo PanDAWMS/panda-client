@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.0
+  * changed version number for EventLoop
+
 1.0.1 (10/29/2019)
   * fixed for T3
 
