@@ -1183,6 +1183,8 @@ if options.nEventsPerJob > 0:
     taskParamMap['nEventsPerJob'] = options.nEventsPerJob
     if options.nEventsPerFile <= 0:
         taskParamMap['useRealNumEvents'] = True
+    else:
+        taskParamMap['nEventsPerFile'] = options.nEventsPerFile
     if options.nJobs > 0 and options.nEvents < 0:
         taskParamMap['nEvents'] = options.nJobs * options.nEventsPerJob
 taskParamMap['cliParams'] = fullExecString

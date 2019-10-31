@@ -12,7 +12,6 @@ import copy
 import platform
 
 from . import Client
-from . import MyproxyUtils
 from . import MiscUtils
 from . import PLogger
 
@@ -76,8 +75,8 @@ def get_proxy_info(force, verbose):
 
 
 # new proxy check
-def check_proxy(verbose, voms_role):
-    status, out = get_proxy_info(False, verbose)
+def check_proxy(verbose, voms_role, refresh_info=False, generate_new=True):
+    status, out = get_proxy_info(refresh_info, verbose)
     if status == 0:
         if voms_role is None:
             return True
@@ -88,6 +87,8 @@ def check_proxy(verbose, voms_role):
             role = voms_role.split(':')[-1]
             if role in tmpItem:
                 return True
+    if not generate_new:
+        return False
     # generate proxy
     import getpass
     tmpLog = PLogger.getPandaLogger()
@@ -101,14 +102,12 @@ def check_proxy(verbose, voms_role):
         com += '-voms %s' % voms_role
     if verbose:
         tmpLog.debug(re.sub(gridPassPhrase, "*****", com))
-    status = os.system(com)
+    status, output = commands_get_status_output_with_env(com)
     if status != 0:
+        tmpLog.error(output)
         tmpLog.error("Could not generate a grid proxy")
         sys.exit(EC_Config)
-    status, out = get_proxy_info(False, verbose)
-    if status == 0:
-        return True
-    return False
+    return check_proxy(verbose, voms_role, refresh_info=True, generate_new=False)
 
 
 # get DN

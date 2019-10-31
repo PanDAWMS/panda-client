@@ -12,6 +12,9 @@ from . import Client
 from . import BookConfig
 from . import PLogger
 from . import PsubUtils
+from pandatools import queryPandaMonUtils
+from pandatools import localSpecs
+from pandatools import MiscUtils
 
 # core class for book keeping
 class PBookCore(object):
@@ -26,6 +29,11 @@ class PBookCore(object):
         PdbUtils.initialzieDB(self.verbose,self.restoreDB)
         # check proxy
         PsubUtils.check_proxy(self.verbose, None)
+        # user name
+        self.username = 'DEFAULT_USER'
+        username_from_proxy = MiscUtils.extract_voms_proxy_username()
+        if username_from_proxy:
+            self.username = username_from_proxy
         # map between jobset and jediTaskID
         self.jobsetTaskMap = {}
 
@@ -493,3 +501,44 @@ class PBookCore(object):
         tmpLog.info('dumped to {0}'.format(output_filename))
         # return
         return True
+
+    # show status
+    def show(self, username=None, limit=1000, taskname=None, days=14, jeditaskid=None,
+                metadata=False, sync=False, format='standard', verbose=False):
+        # user name
+        if username is None:
+            username = self.username
+        # query
+        ts, url, data = queryPandaMonUtils.query_tasks( username=username, limit=limit,
+                                                        taskname=taskname, days=days, jeditaskid=jeditaskid,
+                                                        metadata=metadata, sync=sync)
+        # verbose
+        if verbose:
+            print('timestamp: {ts} \nquery_url: {url}'.format(ts=ts, url=url))
+        # print header row
+        _tmpts = localSpecs.LocalTaskSpec
+        if format in ['json', 'plain']:
+            pass
+        elif format == 'long':
+            print(_tmpts.head_dict['long'])
+        else:
+            print(_tmpts.head_dict['standard'])
+        # print tasks
+        if format == 'json':
+            print(json.dumps(data, sort_keys=True, indent=4))
+        elif format == 'plain':
+            for task in data:
+                taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)
+                taskspec.print_plain()
+        elif format == 'long':
+            i_count = 1
+            for task in data:
+                taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)
+                if i_count % 10 == 0:
+                    print(_tmpts.head_dict['long'])
+                taskspec.print_long()
+                i_count += 1
+        else:
+            for task in data:
+                taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)
+                taskspec.print_standard()

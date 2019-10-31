@@ -2,6 +2,7 @@ import re
 import os
 import json
 import uuid
+import traceback
 import subprocess
 try:
     import cPickle as pickle
@@ -91,11 +92,21 @@ def decodeJSON(input_file):
 
 # replacement for commands
 def commands_get_status_output(com):
+    data = ''
     try:
-        data = subprocess.check_output(com, shell=True, universal_newlines=True, stderr=subprocess.STDOUT)
+        # for python 2.6
+        #data = subprocess.check_output(com, shell=True, universal_newlines=True, stderr=subprocess.STDOUT)
+        p = subprocess.Popen(com, shell=True, universal_newlines=True, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT)
+        data, unused_err = p.communicate()
+        retcode = p.poll()
+        if retcode:
+            ex = subprocess.CalledProcessError(retcode, com)
+            raise ex
         status = 0
     except subprocess.CalledProcessError as ex:
-        data = ex.output
+        # for python 2.6
+        #data = ex.output
         status = ex.returncode
     if data[-1:] == '\n':
         data = data[:-1]
@@ -122,6 +133,7 @@ def run_with_original_env(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
+            print(str(e) + traceback.format_exc())
             raise e
         finally:
             if 'LD_LIBRARY_PATH_RESERVE' in os.environ:
@@ -150,3 +162,32 @@ def pickle_loads(str_input):
         return pickle.loads(str_input)
     except Exception:
         return pickle.loads(str_input.encode('utf-8'), encoding='latin1')
+
+
+# extract voms proxy user name
+def extract_voms_proxy_username():
+    cmd = ['voms-proxy-info', '--subject']
+    try:
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = p.communicate()
+        return_code = p.returncode
+        stdout_list = None
+        if stdout is not None:
+            if not isinstance(stdout, str):
+                stdout = stdout.decode()
+            stdout_str = stdout.replace('\n', ' ')
+            stdout_list = stdout.split('\n')
+        if stderr is not None:
+            if not isinstance(stderr, str):
+                stderr = stderr.decode()
+            stderr_str = stderr.replace('\n', ' ')
+    except Exception:
+        return None
+    else:
+        if stdout_list:
+            # remove trailing /CN=proxy or /CN=xxxnumxxx
+            user_dn = re.sub(r'(/CN=\d+)+$', '', stdout_list[0].replace('/CN=proxy', ''))
+            username = user_dn.split('=')[-1]
+            return username
+        else:
+            return None

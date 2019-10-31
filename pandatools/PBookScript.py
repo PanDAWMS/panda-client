@@ -1,3 +1,8 @@
+"""
+Do NOT import this module in your code.
+Import PBookCore instead.
+"""
+
 import re
 import os
 import sys
@@ -90,71 +95,76 @@ def intmain(pbookCore,comString):
 For more info, do help(show) for example."""
         print(tmp_str)
 
-    # show status
-    def show(JobID=None,upperJobID=None,forceUpdate=False,showPandaIDinState='',longFormat=False):
-        """Print job records. All jobs will be shown if JobID is omitted. Jobs between JobID and upperJobID are shown when upperJobID is specified. Only running jobs and last N jobs will be shown if show('running') and show(-N), respectively. If forceUpdate=True, it will try to retrieve job infomation from the panda server. This may be useful to fix the local DB when synchronization between the local DB and the panda DB is lost somehow. When longFormat=True, jobs in the job set will be individually shown. showPandaIDinState takes a list of states so that PandaIDs in one of those states will be shown.
+    # # show status
+    # def show(JobID=None,upperJobID=None,forceUpdate=False,showPandaIDinState='',longFormat=False):
+        # """Print job records. All jobs will be shown if JobID is omitted. Jobs between JobID and upperJobID are shown when upperJobID is specified. Only running jobs and last N jobs will be shown if show('running') and show(-N), respectively. If forceUpdate=True, it will try to retrieve job infomation from the panda server. This may be useful to fix the local DB when synchronization between the local DB and the panda DB is lost somehow. When longFormat=True, jobs in the job set will be individually shown. showPandaIDinState takes a list of states so that PandaIDs in one of those states will be shown.
+        #
+        #  example:
+        #    >>> show()
+        #    >>> show(12)
+        #    >>> show(12,15)
+        #    >>> show(-5)
+        #    >>> show('running')
+        #    >>> show(15,showPandaIDinState='activated,running')
+        #    >>> show(15,longFormat=True)
+        #  """
+        # if JobID is None or JobID < 0 or upperJobID is not None:
+        #     # check range
+        #     if upperJobID is not None:
+        #         if JobID > upperJobID:
+        #             tmpLog = PLogger.getPandaLogger()
+        #             tmpLog.error("upper JobID must be larger than %s" % JobID)
+        #             return
+        #         if JobID is None or JobID < 0:
+        #             tmpLog = PLogger.getPandaLogger()
+        #             tmpLog.error("JobID must be positive when upper JobID is given")
+        #             return
+        #     # show all local info
+        #     jobList = pbookCore.getLocalJobList()
+        #     if JobID is not None and JobID < 0:
+        #         jobList = jobList[JobID:]
+        #     # print
+        #     for job in jobList:
+        #         if upperJobID is not None:
+        #             if hasattr(job,'JobID'):
+        #                 if job.JobID < JobID or job.JobID > upperJobID:
+        #                     continue
+        #             else:
+        #                 if (JobID is not None and long(job.JobsetID) < JobID) or long(job.JobsetID) > upperJobID:
+        #                     continue
+        #         print("======================================")
+        #         if showPandaIDinState != '':
+        #             job.flag_showSubstatus = showPandaIDinState
+        #         if longFormat:
+        #             job.flag_longFormat = True
+        #         print(job)
+        # elif JobID == 'running':
+        #     # show running jobs
+        #     jobList = pbookCore.getLocalJobList()
+        #     for job in jobList:
+        #         if job.dbStatus != 'frozen':
+        #             if hasattr(job,'JobID'):
+        #                 # job
+        #                 show(job.JobID,forceUpdate=forceUpdate,
+        #                      showPandaIDinState=showPandaIDinState,longFormat=longFormat)
+        #             else:
+        #                 # jobset
+        #                 show(long(job.JobsetID),forceUpdate=forceUpdate,
+        #                      showPandaIDinState=showPandaIDinState,longFormat=longFormat)
+        # else:
+        #     job = pbookCore.statusJobJobset(JobID,forceUpdate)
+        #     # print
+        #     print("======================================")
+        #     if showPandaIDinState:
+        #         job.flag_showSubstatus = showPandaIDinState
+        #     if longFormat:
+        #         job.flag_longFormat = True
+        #     print(job)
 
-         example:
-           >>> show()
-           >>> show(12)
-           >>> show(12,15)
-           >>> show(-5)
-           >>> show('running')
-           >>> show(15,showPandaIDinState='activated,running')
-           >>> show(15,longFormat=True)
-         """
-        if JobID is None or JobID < 0 or upperJobID is not None:
-            # check range
-            if upperJobID is not None:
-                if JobID > upperJobID:
-                    tmpLog = PLogger.getPandaLogger()
-                    tmpLog.error("upper JobID must be larger than %s" % JobID)
-                    return
-                if JobID is None or JobID < 0:
-                    tmpLog = PLogger.getPandaLogger()
-                    tmpLog.error("JobID must be positive when upper JobID is given")
-                    return
-            # show all local info
-            jobList = pbookCore.getLocalJobList()
-            if JobID is not None and JobID < 0:
-                jobList = jobList[JobID:]
-            # print
-            for job in jobList:
-                if upperJobID is not None:
-                    if hasattr(job,'JobID'):
-                        if job.JobID < JobID or job.JobID > upperJobID:
-                            continue
-                    else:
-                        if (JobID is not None and long(job.JobsetID) < JobID) or long(job.JobsetID) > upperJobID:
-                            continue
-                print("======================================")
-                if showPandaIDinState != '':
-                    job.flag_showSubstatus = showPandaIDinState
-                if longFormat:
-                    job.flag_longFormat = True
-                print(job)
-        elif JobID == 'running':
-            # show running jobs
-            jobList = pbookCore.getLocalJobList()
-            for job in jobList:
-                if job.dbStatus != 'frozen':
-                    if hasattr(job,'JobID'):
-                        # job
-                        show(job.JobID,forceUpdate=forceUpdate,
-                             showPandaIDinState=showPandaIDinState,longFormat=longFormat)
-                    else:
-                        # jobset
-                        show(long(job.JobsetID),forceUpdate=forceUpdate,
-                             showPandaIDinState=showPandaIDinState,longFormat=longFormat)
-        else:
-            job = pbookCore.statusJobJobset(JobID,forceUpdate)
-            # print
-            print("======================================")
-            if showPandaIDinState:
-                job.flag_showSubstatus = showPandaIDinState
-            if longFormat:
-                job.flag_longFormat = True
-            print(job)
+    # show status
+    def show(*args, **kwargs):
+        return pbookCore.show(*args, **kwargs)
+
 
     # kill
     def kill(JobID,upperJobID=None,useJobsetID=True):
@@ -350,8 +360,7 @@ def catch_sig(sig, frame):
 
 
 # overall main
-# if __name__ == "__main__":
-if True:
+def main():
     # parse option
     parser = optparse.OptionParser()
     parser.add_option("-v",action="store_true",dest="verbose",default=False,
