@@ -14,6 +14,7 @@ import sys
 import shutil
 import atexit
 import argparse
+from cStringIO import StringIO
 try:
     from urllib import quote
 except ImportError:
@@ -41,80 +42,165 @@ usage = """prun [options]
 
   HowTo is available at https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun"""
 
+examples = """Put a few most common examples herec
+  prun --exec "echo %IN > input.txt; root.exe; root -b -q macrotest.C" --athenaTag=22.0.0 --inDS ...
+  prun --exec "cpptest %IN" --bexec "make" --athenaTag=22.0.0 --inDS ...
+  ...
+"""
+
+class MyParser(argparse.ArgumentParser):
+    def __init__(self, usage, conflict_handler):
+        self.groups_dict = {}
+        super(MyParser, self).__init__(usage=usage, conflict_handler=conflict_handler)
+
+    def add_group(self, name, desc=None):
+        # group = argparse.ArgumentParser.add_argument_group(self, name, desc)
+        group = argparse._ArgumentGroup(self, name, desc)
+        self.groups_dict[name.upper()] = group
+        return group
+
+    def update_action_groups(self):
+        for group in self.groups_dict.values():
+            self._action_groups.append(group)
+
+# optP = argparse.ArgumentParser(usage=usage, conflict_handler="resolve")
+optP = MyParser(usage=usage, conflict_handler="resolve")
+briefHelp = None
+
+class MyList(list):
+    # list subclass that uses upper() when testing for 'in'
+    def __contains__(self, other):
+        return super(MyList,self).__contains__(other.upper())
+
+class print_briefHelp(argparse.Action):
+     def __call__(self, parser, namespace, values, option_string=None):
+         if briefHelp != None:
+            briefHelp.seek(0)
+            print(''.join(briefHelp.readlines()))
+            print(examples)
+            sys.exit(0)
+
+class print_groupHelp(argparse.Action):
+     def __init__(self, option_strings, dest, nargs=None, **kwargs):
+         if nargs is not None:
+             raise ValueError("nargs not allowed")
+         super(print_groupHelp, self).__init__(option_strings, dest, **kwargs)
+     def __call__(self, parser, namespace, values, option_string=None):
+         values = values.upper()
+         groups = parser.groups_dict
+         if values == 'ALL':
+            parser.print_help()
+         elif values in groups.keys():
+            group = groups[values]
+            formatter = parser._get_formatter()
+            formatter.start_section(group.title)
+            formatter.add_text(group.description)
+            formatter.add_arguments(group._group_actions)
+            formatter.end_section()
+            print(formatter.format_help())
+         else:
+            raise Exception("!!!ERROR!!! Unknown group name=%s" % values)
+         sys.exit(0)
+
 # command-line parameters
-optP = argparse.ArgumentParser(usage=usage, conflict_handler="resolve")
-optP.add_argument('--version',action='store_const',const=True,dest='version',default=False,
+group_print = optP.add_group('print', 'print info level')
+group_input = optP.add_group('input', 'input dataset(s)/files')
+group_output = optP.add_group('output', 'output dataset/files')
+group_evtFilter = optP.add_group('evtFilter', 'event filter such as good run and event pick')
+group_build = optP.add_group('build', 'build/compile the package')
+group_submit = optP.add_group('submit', 'job submission')
+
+choices_m = MyList(optP.groups_dict.keys() + ['ALL'])
+optP.add_argument('--helpMoreOn', choices=choices_m, action=print_groupHelp, help='Print individual group help, where "ALL" will print all groups options together')
+
+old_stdout = sys.stdout
+sys.stdout = briefHelp = StringIO()
+optP.print_help()
+sys.stdout = old_stdout
+
+optP.add_argument('-h', '--help', action=print_briefHelp, nargs=0, help="Print this help")
+
+optP.update_action_groups()
+
+group_print.add_argument('--version',action='store_const',const=True,dest='version',default=False,
                   help='Displays version')
-optP.add_argument('--inDS',action='store',dest='inDS',default='',
+group_input.add_argument('--inDS',action='store',dest='inDS',default='',
                   help='Name of an input dataset or dataset container')
-optP.add_argument('--inDsTxt',action='store',dest='inDsTxt',default='',
+group_input.add_argument('--inDsTxt',action='store',dest='inDsTxt',default='',
                   help='A text file which contains the list of datasets to run over. Newlines are replaced by commas and the result is set to --inDS. Lines starting with # are ignored')
-optP.add_argument('--inOutDsJson', action='store', dest='inOutDsJson', default='',
+# the option is shared by both groups, group_input and group_output
+action = group_input.add_argument('--inOutDsJson', action='store', dest='inOutDsJson', default='',
                   help="A json file to specify input and output datasets for bulk submission. It contains a json dump of [{'inDS': a comma-concatenated input dataset names, 'outDS': output dataset name}, ...]")
-optP.add_argument('--goodRunListXML', action='store', dest='goodRunListXML', default='',
+group_output._group_actions.append(action)
+group_evtFilter.add_argument('--goodRunListXML', action='store', dest='goodRunListXML', default='',
                   help='Good Run List XML which will be converted to datasets by AMI')
-optP.add_argument('--goodRunListDataType', action='store', dest='goodRunDataType', default='',
+group_evtFilter.add_argument('--goodRunListDataType', action='store', dest='goodRunDataType', default='',
                   help='specify data type when converting Good Run List XML to datasets, e.g, AOD (default)')
-optP.add_argument('--goodRunListProdStep', action='store', dest='goodRunProdStep', default='',
+group_evtFilter.add_argument('--goodRunListProdStep', action='store', dest='goodRunProdStep', default='',
                   help='specify production step when converting Good Run List to datasets, e.g, merge (default)')
-optP.add_argument('--goodRunListDS', action='store', dest='goodRunListDS', default='',
+group_evtFilter.add_argument('--goodRunListDS', action='store', dest='goodRunListDS', default='',
                   help='A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used')
-optP.add_argument('--eventPickEvtList',action='store',dest='eventPickEvtList',default='',
+group_evtFilter.add_argument('--eventPickEvtList',action='store',dest='eventPickEvtList',default='',
                   help='a file name which contains a list of runs/events for event picking')
-optP.add_argument('--eventPickDataType',action='store',dest='eventPickDataType',default='',
+group_evtFilter.add_argument('--eventPickDataType',action='store',dest='eventPickDataType',default='',
                   help='type of data for event picking. one of AOD,ESD,RAW')
-optP.add_argument('--ei_api',action='store',dest='ei_api',default='',
+group_evtFilter.add_argument('--ei_api',action='store',dest='ei_api',default='',
                   help='flag to signalise mc in event picking')
-optP.add_argument('--eventPickStreamName',action='store',dest='eventPickStreamName',default='',
+group_evtFilter.add_argument('--eventPickStreamName',action='store',dest='eventPickStreamName',default='',
                   help='stream name for event picking. e.g., physics_CosmicCaloEM')
-optP.add_argument('--eventPickDS',action='store',dest='eventPickDS',default='',
+group_evtFilter.add_argument('--eventPickDS',action='store',dest='eventPickDS',default='',
                   help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
-optP.add_argument('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
+group_evtFilter.add_argument('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
                   help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
-optP.add_argument('--eventPickWithGUID',action='store_const',const=True,dest='eventPickWithGUID',default=False,
+group_evtFilter.add_argument('--eventPickWithGUID',action='store_const',const=True,dest='eventPickWithGUID',default=False,
                 help='Using GUIDs together with run and event numbers in eventPickEvtList to skip event lookup')
-optP.add_argument('--express', action='store_const',const=True,dest='express',default=False,
+group_submit.add_argument('--express', action='store_const',const=True,dest='express',default=False,
                 help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before large submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities")
-optP.add_argument('--debugMode', action='store_const',const=True,dest='debugMode',default=False,
+group_print.add_argument('--debugMode', action='store_const',const=True,dest='debugMode',default=False,
                 help="Send the job with the debug mode on. If this option is specified the subjob will send stdout to the panda monitor every 5 min. The number of debug subjobs per user is limited. When this option is used and the quota has already exceeded, the panda server supresses the option so that subjobs will run without the debug mode. If you submit multiple subjobs in a single job, only the first subjob will set the debug mode on. Note that you can turn the debug mode on/off by using pbook after jobs are submitted" )
-optP.add_argument('--addNthFieldOfInDSToLFN',action='store',dest='addNthFieldOfInDSToLFN',default='',
+group_input.add_argument('--addNthFieldOfInDSToLFN',action='store',dest='addNthFieldOfInDSToLFN',default='',
                 help="A middle name is added to LFNs of output files when they are produced from one dataset in the input container or input dataset list. The middle name is extracted from the dataset name. E.g., if --addNthFieldOfInDSToLFN=2 and the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is extracted and LFN is something like user.hoge.TASKID.00160387.blah. Concatenate multiple field numbers with commas if necessary, e.g., --addNthFieldOfInDSToLFN=2,6.")
-optP.add_argument('--addNthFieldOfInFileToLFN',action='store',dest='addNthFieldOfInFileToLFN',default='',
+group_input.add_argument('--addNthFieldOfInFileToLFN',action='store',dest='addNthFieldOfInFileToLFN',default='',
                 help="A middle name is added to LFNs of output files similarly as --addNthFieldOfInDSToLFN, but strings are extracted from input file names")
-optP.add_argument('--followLinks',action='store_const',const=True,dest='followLinks',default=False,
+group_build.add_argument('--followLinks',action='store_const',const=True,dest='followLinks',default=False,
                 help="Resolve symlinks to directories when building the input tarball. This option requires python2.6 or higher")
-optP.add_argument('--outDS',action='store',dest='outDS',default='',
+group_output.add_argument('--outDS',action='store',dest='outDS',default='',
                 help='Name of an output dataset. OUTDS will contain all output files')
-optP.add_argument('--destSE',action='store', dest='destSE',default='',
+group_output.add_argument('--destSE',action='store', dest='destSE',default='',
                 help='Destination strorage element')
+
+# I do not know which group "--useHomeDir" should go?
 optP.add_argument('--useHomeDir', action='store_const',const=True,dest='useHomeDir',default=False,
                 help='execute prun just under the HOME dir')
-optP.add_argument('--noBuild', action='store_const',const=True,dest='noBuild',default=False,
+group_build.add_argument('--noBuild', action='store_const',const=True,dest='noBuild',default=False,
                 help='Skip buildGen')
-optP.add_argument('--bulkSubmission', action='store_const', const=True, dest='bulkSubmission', default=False,
+group_submit.add_argument('--bulkSubmission', action='store_const', const=True, dest='bulkSubmission', default=False,
                 help='Bulk submit tasks. When this option is used, --inOutDsJson is required while --inDS and --outDS are ignored. It is possible to use %%DATASET_IN and %%DATASET_OUT in --exec which are replaced with actual dataset names when tasks are submitted, and %%BULKSEQNUMBER which is replaced with a sequential number of tasks in the bulk submission')
-optP.add_argument('--noCompile', action='store_const',const=True,dest='noCompile',default=False,
+group_build.add_argument('--noCompile', action='store_const',const=True,dest='noCompile',default=False,
                 help='Just upload a tarball in the build step to avoid the tighter size limit imposed by --noBuild. The tarball contains binaries compiled on your local computer, so that compilation is skipped in the build step on remote WN')
-optP.add_argument('--secondaryDSs',action='store',dest='secondaryDSs',default='',
+group_input.add_argument('--secondaryDSs',action='store',dest='secondaryDSs',default='',
                 help='List of secondary datasets when the job requires multiple inputs. See PandaRun wiki page for detail')
-optP.add_argument('--reusableSecondary',action='store',dest='reusableSecondary',default='',
+group_input.add_argument('--reusableSecondary',action='store',dest='reusableSecondary',default='',
                 help='A comma-separated list of secondary streams which reuse files when all files are used')
-optP.add_argument('--site',action='store',dest='site',default=defaultSite,
+group_submit.add_argument('--site',action='store',dest='site',default=defaultSite,
                 help='Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites')
-optP.add_argument('--match',action='store',dest='match',default='',
+group_input.add_argument('--match',action='store',dest='match',default='',
                 help='Use only files matching with given pattern')
-optP.add_argument('--antiMatch',action='store',dest='antiMatch',default='',
+group_input.add_argument('--antiMatch',action='store',dest='antiMatch',default='',
                 help='Skip files matching with given pattern')
-optP.add_argument('--notSkipLog',action='store_const',const=True,dest='notSkipLog',default=False,
+group_input.add_argument('--notSkipLog',action='store_const',const=True,dest='notSkipLog',default=False,
                 help="Don't skip log files in input datasets (obsolete. use --useLogAsInput instead)")
-optP.add_argument('--memory',action='store',dest='memory',default=-1,type=int,
+group_submit.add_argument('--memory',action='store',dest='memory',default=-1,type=int,
                 help='Required memory size in MB. e.g., for 1GB --memory 1024')
-optP.add_argument('--nCore', action='store', dest='nCore', default=-1, type=int,
+group_submit.add_argument('--nCore', action='store', dest='nCore', default=-1, type=int,
                 help='The number of CPU cores. Note that the system distinguishes only nCore=1 and nCore>1. This means that even if you set nCore=2 jobs can go to sites with nCore=8 and your application must use the 8 cores there. The number of available cores is defined in an environment variable, $ATHENA_PROC_NUMBER, on WNs. Your application must check the env variable when starting up to dynamically change the number of cores')
-optP.add_argument('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type=int,
+group_submit.add_argument('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type=int,
                 help='Required CPU count in seconds. Mainly to extend time limit for looping job detection')
-optP.add_argument('--useDirectIOSites', action='store_const', const=True, dest='useDirectIOSites', default=False,
+group_submit.add_argument('--useDirectIOSites', action='store_const', const=True, dest='useDirectIOSites', default=False,
                 help="Use only sites which use directIO to read input files")
+
+# please make more groups if needed and assign the following options accordingly.
+
 optP.add_argument('--official',action='store_const',const=True,dest='official',default=False,
                 help='Produce official dataset')
 optP.add_argument('--unlimitNumOutputs', action='store_const', const=True, dest='unlimitNumOutputs',  default=False,
