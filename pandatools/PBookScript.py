@@ -10,11 +10,24 @@ import code
 import atexit
 import signal
 import tempfile
+
 from pandatools.MiscUtils import commands_get_output
 try:
     long()
 except Exception:
     long = int
+
+try:
+    from concurrent.futures import ThreadPoolExecutor
+except ImportError:
+    def list_parallel_exec(func, array):
+        return [ func(x) for x in array ]
+else:
+    def list_parallel_exec(func, array):
+        with ThreadPoolExecutor(8) as thread_pool:
+            dataIterator = thread_pool.map(func, array)
+        return list(dataIterator)
+
 
 import optparse
 import readline
@@ -60,7 +73,6 @@ def _onExit(dirName,hFile):
 atexit.register(_onExit,tmpDir,historyFile)
 
 
-
 # look for PandaTools package
 for path in sys.path:
     if path == '':
@@ -80,20 +92,30 @@ def intmain(pbookCore,comString):
 
     # help
     def help(*arg):
-        # print available methods
-        tmp_str = """The following commands are available:
+        """
+        Show the help doc
+        """
+        if len(arg) > 0:
+            func = arg[0]
+            print(func.__doc__)
+        else:
+            # print available methods
+            tmp_str = """
+The following commands are available:
 
-   sync
-   show
-   kill
-   retry
-   clean
-   finish
-   killAndRetry
-   getUserJobMetadata
+    help
+    sync
+    show
+    kill
+    retry
+    clean
+    finish
+    killAndRetry
+    getUserJobMetadata
 
-For more info, do help(show) for example."""
-        print(tmp_str)
+For more info, do help(show) for example
+"""
+            print(tmp_str)
 
     # # show status
     # def show(JobID=None,upperJobID=None,forceUpdate=False,showPandaIDinState='',longFormat=False):
@@ -163,143 +185,174 @@ For more info, do help(show) for example."""
 
     # show status
     def show(*args, **kwargs):
+        """
+        Print job records. The following keyword arguments are available in the way of panda monitor url query: [username, limit, taskname, days, jeditaskid].
+        If sync=True, it forces panda monitor to get the latest records rather than get from cache.
+        Specify display format with format='xxx', available formats are ['standard', 'long', 'json', 'plain'].
+        The default filter conditions are: username=(name from user voms proxy), limit=1000, days=14, sync=False, format='standard'.
+
+        example:
+        >>> show()
+        >>> show(taskname='my_task_name')
+        >>> show(jeditaskid=123, format='long')
+        >>> show(superstatus='running', days=7, limit=100)
+        >>> show(format='json', sync=True)
+        """
         return pbookCore.show(*args, **kwargs)
 
 
     # kill
-    def kill(JobID,upperJobID=None,useJobsetID=True):
-        """Kill all subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be killed if upperJobID is given. Set useJobsetID=False if you want to kill JobIDs between JobID and UpperJobID. If 'running' is used as JobID, all running jobs will be killed
+    # def kill(JobID,upperJobID=None,useJobsetID=True):
+    #     """Kill all subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be killed if upperJobID is given. Set useJobsetID=False if you want to kill JobIDs between JobID and UpperJobID. If 'running' is used as JobID, all running jobs will be killed
+    #
+    #      example:
+    #        >>> kill(15)
+    #        >>> kill(15,20)
+    #        >>> kill('running')
+    #     """
+    #     if JobID == 'running':
+    #         # show running jobs
+    #         jobList = pbookCore.getLocalJobList()
+    #         for job in jobList:
+    #             if job.dbStatus != 'frozen':
+    #                 if hasattr(job,'JobID'):
+    #                     # job
+    #                     retK = pbookCore.kill(job.JobID,False)
+    #                 else:
+    #                     # jobset
+    #                     retK = pbookCore.kill(long(job.JobsetID),True)
+    #     elif upperJobID is not None:
+    #         # check range
+    #         if JobID > upperJobID:
+    #             tmpLog = PLogger.getPandaLogger()
+    #             tmpLog.error("upper JobID must be larger than %s" % JobID)
+    #         else:
+    #             # kill jobs between the range
+    #             for tmpJobID in range(JobID,upperJobID+1):
+    #                 retK = pbookCore.kill(tmpJobID,useJobsetID)
+    #     else:
+    #         retK = pbookCore.kill(JobID)
+
+    def kill(taskIDs):
+        """
+        Kill all subJobs in taskIDs (ID or a list of ID). If 'all', kill all active tasks of the user.
 
          example:
-           >>> kill(15)
-           >>> kill(15,20)
-           >>> kill('running')
+           >>> kill(123)
+           >>> kill([123, 345, 567])
+           >>> kill('all')
         """
-        if JobID == 'running':
-            # show running jobs
-            jobList = pbookCore.getLocalJobList()
-            for job in jobList:
-                if job.dbStatus != 'frozen':
-                    if hasattr(job,'JobID'):
-                        # job
-                        retK = pbookCore.kill(job.JobID,False)
-                    else:
-                        # jobset
-                        retK = pbookCore.kill(long(job.JobsetID),True)
-        elif upperJobID is not None:
-            # check range
-            if JobID > upperJobID:
-                tmpLog = PLogger.getPandaLogger()
-                tmpLog.error("upper JobID must be larger than %s" % JobID)
-            else:
-                # kill jobs between the range
-                for tmpJobID in range(JobID,upperJobID+1):
-                    retK = pbookCore.kill(tmpJobID,useJobsetID)
+        if taskIDs == 'all':
+            # active tasks
+            task_list = pbookCore.get_active_tasks()
+            ret = list_parallel_exec(lambda task: pbookCore.kill(task.jeditaskid), task_list)
+        elif isinstance(taskIDs, (list, tuple)):
+            ret = list_parallel_exec(lambda taskID: pbookCore.kill(taskID), taskIDs)
+        elif isinstance(taskIDs, (int, long)):
+            ret = [ pbookCore.kill(taskIDs) ]
         else:
-            retK = pbookCore.kill(JobID)
+            print('Error: Invalid argument')
+            ret = None
+        return ret
 
     # finish
-    def finish(JobID,upperJobID=None,soft=False):
-        """finish all subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be killed if upperJobID is given. If soft is False (default), all running jobs are killed and the task finishes immediately. If soft is True, new jobs are not generated and the task finishes once all running jobs finish.
+    def finish(taskIDs, soft=False):
+        """
+        Finish all subJobs in taskIDs (ID or a list of ID). If 'all', finish all active tasks of the user. If soft is False (default), all running jobs are killed and the task finishes immediately. If soft is True, new jobs are not generated and the task finishes once all running jobs finish.
 
          example:
-           >>> kill(15)
-           >>> kill(15,20)
-           >>> kill('running')
+           >>> finish(123)
+           >>> finish(234, soft=True)
+           >>> finish([123, 345, 567])
+           >>> finish('all')
         """
-        if JobID == 'running':
-            # show runnig jobs
-            jobList = pbookCore.getLocalJobList()
-            for job in jobList:
-                if job.dbStatus != 'frozen':
-                    if hasattr(job,'JobID'):
-                        # job
-                        retK = pbookCore.finish(job.JobID,soft)
-                    else:
-                        # jobset
-                        retK = pbookCore.finish(long(job.JobsetID),soft)
-        elif upperJobID is not None:
-            # check range
-            if JobID > upperJobID:
-                tmpLog = PLogger.getPandaLogger()
-                tmpLog.error("upper JobID must be larger than %s" % JobID)
-            else:
-                # kill jobs between the range
-                for tmpJobID in range(JobID,upperJobID+1):
-                    retK = pbookCore.finish(tmpJobID,useJobsetID,soft)
+        if taskIDs == 'all':
+            # active tasks
+            task_list = pbookCore.get_active_tasks()
+            ret = list_parallel_exec(lambda task: pbookCore.finish(task.jeditaskid, soft=soft), task_list)
+        elif isinstance(taskIDs, (list, tuple)):
+            ret = list_parallel_exec(lambda taskID: pbookCore.finish(taskID, soft=soft), taskIDs)
+        elif isinstance(taskIDs, (int, long)):
+            ret = [ pbookCore.finish(taskIDs, soft=soft) ]
         else:
-            retK = pbookCore.finish(JobID,soft)
+            print('Error: Invalid argument')
+            ret = None
+        return ret
 
     # retry
-    def retry(JobID,upperJobID=None,newOpts=None,noSubmit=False,ignoreDuplication=False,useJobsetID=True,retryBuild=False):
-        """Retry failed/cancelled subJobs in JobID or JobsetID. Jobsets between JobID and UpperJobID will be retried if upperJobID is given. Set useJobsetID=False if you want to retry JobIDs between JobID and UpperJobID. This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. One can use newOpts which is a map of options and new arguments like {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'} to overwrite task parameters. The list of changeable parameters is site,excludedSite,includedSite,nFilesPerJob,nGBPerJob,nFiles,nEvents. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs. If you need to disable duplication check (e.g., you are using the same EVNT file for multiple simulation subjobs, set ignoreDuplication=True. Set retryBuild=True if you want to retry jobs which have a failed buildJob
+    def retry(taskIDs, newOpts=None):
+        """
+        Retry failed/cancelled subJobs in taskIDs (ID or a list of ID). This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. One can use newOpts which is a map of options and new arguments like {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'} to overwrite task parameters. The list of changeable parameters is site,excludedSite,includedSite,nFilesPerJob,nGBPerJob,nFiles,nEvents. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs.
 
          example:
-           >>> retry(15)
-           >>> retry(15,20)
-           >>> retry(15,newOpts={'excludedSite':'siteA,siteB'})
-           >>> retry(15,ignoreDuplication=True)
+           >>> retry(123)
+           >>> retry([123, 345, 567])
+           >>> retry(789, newOpts={'excludedSite':'siteA,siteB'})
         """
         if newOpts is None:
             newOpts = {}
-        # use range or not
-        if upperJobID is not None:
-            # check range
-            if JobID > upperJobID:
-                tmpLog = PLogger.getPandaLogger()
-                tmpLog.error("upper JobID must be larger than %s" % JobID)
-            else:
-                # retry jobs between the range
-                for tmpJobID in range(JobID,upperJobID+1):
-                    pbookCore.retry(tmpJobID,newOpts=newOpts,noSubmit=noSubmit,
-                                    ignoreDuplication=ignoreDuplication,
-                                    useJobsetID=useJobsetID,retryBuild=retryBuild)
+        if isinstance(taskIDs, (list, tuple)):
+            ret = list_parallel_exec(lambda taskID: pbookCore.retry(taskID, newOpts=newOpts), taskIDs)
+        elif isinstance(taskIDs, (int, long)):
+            ret = [ pbookCore.retry(taskIDs, newOpts=newOpts) ]
         else:
-            pbookCore.retry(JobID,newOpts=newOpts,noSubmit=noSubmit,
-                            ignoreDuplication=ignoreDuplication,retryBuild=retryBuild)
+            print('Error: Invalid argument')
+            ret = None
+        return ret
 
     # debug mode
-    def debug(PandaID,modeOn):
-        """Turn the debug mode on/off for a subjob with PandaID. modeOn is True/False to enable/disable the debug mode. Note that the maxinum number of debug subjobs is limited. If you already hit the limit you need to disable the debug mode for a subjob before debugging another subjob
+    def debug(PandaID, modeOn):
+        """
+        Turn the debug mode on/off for a subjob with PandaID. modeOn is True/False to enable/disable the debug mode. Note that the maxinum number of debug subjobs is limited. If you already hit the limit you need to disable the debug mode for a subjob before debugging another subjob
 
          example:
-           >>> debug(1234,True)
+           >>> debug(1234, True)
         """
-        pbookCore.debug(PandaID,modeOn)
+        pbookCore.debug(PandaID, modeOn)
 
     # delete jobs older than nDays
-    def clean(nDays):
-        """Delete jobs older than nDays from local database. Old jobs are automatically deleted 90 days after they were created, to keep the database size reasonable
-
-         example:
-           >>> clean(60)
-        """
-        pbookCore.clean(nDays)
+    # def clean(nDays):
+    #     """Delete jobs older than nDays from local database. Old jobs are automatically deleted 90 days after they were created, to keep the database size reasonable
+    #
+    #      example:
+    #        >>> clean(60)
+    #     """
+    #     pbookCore.clean(nDays)
 
     # kill and retry
-    def killAndRetry(JobID,newSite=False,newOpts=None,ignoreDuplication=False,retryBuild=False):
-        """Kill JobID and then retry failed/cancelled sub-jobs. Concerning newSite and newOpts, see help(retry)
+    def killAndRetry(taskIDs, newOpts=None):
+        """
+        Kill JobID and then retry failed/cancelled sub-jobs in taskIDs (ID or a list of ID). Concerning newOpts, see help(retry)
 
          example:
-           >>> killAndRetry(15)
+           >>> killAndRetry(123)
+           >>> killAndRetry([123, 345, 567])
+           >>> killAndRetry(789, newOpts={'excludedSite':'siteA,siteB'})
         """
         if newOpts is None:
             newOpts = {}
-        ret = pbookCore.killAndRetry(JobID,newSite=newSite,newOpts=newOpts,ignoreDuplication=ignoreDuplication,
-                                     retryBuild=retryBuild)
+        if isinstance(taskIDs, (list, tuple)):
+            ret = list_parallel_exec(lambda taskID: pbookCore.killAndRetry(taskID, newOpts=newOpts), taskIDs)
+        elif isinstance(taskIDs, (int, long)):
+            ret = [ pbookCore.killAndRetry(taskIDs, newOpts=newOpts) ]
+        else:
+            print('Error: Invalid argument')
+            ret = None
+        return ret
 
     # synchronize local repository
-    def sync():
-        """Synchronize local repository
-
-         example:
-           >>> sync()
-        """
-        pbookCore.sync()
+    # def sync():
+    #     """Synchronize local repository
+    #
+    #      example:
+    #        >>> sync()
+    #     """
+    #     pbookCore.sync()
 
     # get user job metadata
     def getUserJobMetadata(taskID, outputFileName):
-        """Get user metadata of successful jobs in a task and write them in a json file
+        """
+        Get user metadata of successful jobs in a task and write them in a json file
 
          example:
            >>> getUserJobMetadata(123, 'meta.json')
@@ -325,30 +378,30 @@ For more info, do help(show) for example."""
                     comArg.append(eval(item))
         comArg = tuple(comArg)
         # update map
-        pbookCore.updateTaskJobsetMap()
+        # pbookCore.updateTaskJobsetMap()
         # exec : exec cannot be used due to unqualified exec with nested functions
         locals()[comName](*comArg, **comMap)
         # exit
         sys.exit(0)
     # run sync
-    pbookCore.sync()
+    # pbookCore.sync()
     # delete old jobs
-    pbookCore.clean()
+    # pbookCore.clean()
     # go to interactive prompt
     code.interact(banner="\nStart pBook %s" % PandaToolsPkgInfo.release_version,
                   local=locals())
 
 
 # main for GUI session
-def guimain(pbookCore):
-    import gtk
-    from pandatools import BookGUI
-    pbookGuiMain = BookGUI.PBookGuiMain(pbookCore)
-    # get logger
-    tmpLog = PLogger.getPandaLogger()
-    tmpLog.info("Start pBook %s" % PandaToolsPkgInfo.release_version)
-    # GTK main
-    gtk.main()
+# def guimain(pbookCore):
+#     import gtk
+#     from pandatools import BookGUI
+#     pbookGuiMain = BookGUI.PBookGuiMain(pbookCore)
+#     # get logger
+#     tmpLog = PLogger.getPandaLogger()
+#     tmpLog.info("Start pBook %s" % PandaToolsPkgInfo.release_version)
+#     # GTK main
+#     gtk.main()
 
 
 # kill whole process
@@ -365,16 +418,16 @@ def main():
     parser = optparse.OptionParser()
     parser.add_option("-v",action="store_true",dest="verbose",default=False,
                       help="verbose")
-    parser.add_option("--gui",action="store_true",dest="gui",default=False,
-                      help="use GUI")
+    # parser.add_option("--gui",action="store_true",dest="gui",default=False,
+    #                   help="use GUI")
     parser.add_option('-c',action='store',dest='comString',default='',type='string',
                       help='execute a command in the batch mode')
-    parser.add_option("--restoreDB",action="store_true",dest="restoreDB",default=False,
-                      help="restore local database")
-    parser.add_option("--noPass",action="store_true",dest="noPass",default=True,
-                      help=optparse.SUPPRESS_HELP)
-    parser.add_option("--inputPass",action="store_true",dest="inputPass",default=False,
-                      help="enter pass phrase so that pbook periodically renews the grid proxy in GUI mode")
+    # parser.add_option("--restoreDB",action="store_true",dest="restoreDB",default=False,
+    #                   help="restore local database")
+    # parser.add_option("--noPass",action="store_true",dest="noPass",default=True,
+    #                   help=optparse.SUPPRESS_HELP)
+    # parser.add_option("--inputPass",action="store_true",dest="inputPass",default=False,
+    #                   help="enter pass phrase so that pbook periodically renews the grid proxy in GUI mode")
     parser.add_option('--version',action='store_const',const=True,dest='version',default=False,
                       help='Displays version')
     parser.add_option('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
@@ -404,19 +457,21 @@ def main():
         sys.exit(1)
     if fork_child_pid == 0:
         # main
-        if options.gui:
-            # instantiate core with pass phrase
-            if options.noPass or not options.inputPass:
-                pbookCore = PBookCore.PBookCore(False,options.verbose)
-            else:
-                pbookCore = PBookCore.PBookCore(True,options.verbose)
-            # GUI
-            guimain(pbookCore)
+        # if options.gui:
+        if False:
+            pass
+            # # instantiate core with pass phrase
+            # if options.noPass or not options.inputPass:
+            #     pbookCore = PBookCore.PBookCore(False,options.verbose)
+            # else:
+            #     pbookCore = PBookCore.PBookCore(True,options.verbose)
+            # # GUI
+            # guimain(pbookCore)
         else:
             # instantiate core
             if options.verbose:
                 print(options)
-            pbookCore = PBookCore.PBookCore(False, options.verbose, options.restoreDB)
+            pbookCore = PBookCore.PBookCore(verbose=options.verbose)
 
             # CUI
             intmain(pbookCore,options.comString)

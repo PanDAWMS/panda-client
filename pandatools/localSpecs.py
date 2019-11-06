@@ -1,5 +1,10 @@
 import copy
 
+
+task_active_superstatus_list = ['running', 'submitting', 'registered', 'ready']
+task_final_superstatus_list = ['finished', 'failed', 'done', 'broken', 'aborted']
+
+
 class LocalTaskSpec(object):
 
     _attributes_hidden = (
@@ -61,6 +66,12 @@ class LocalTaskSpec(object):
             else:
                 setattr(self, aname, '{0}'.format(self._fulldict['dsinfo'][aname]))
         self._weburl = 'https://bigpanda.cern.ch/tasknew/{0}/'.format(self.jeditaskid)
+
+    def is_terminated(self):
+        if self.superstatus in task_final_superstatus_list:
+            return True
+        else:
+            return False
 
     def print_plain(self):
         print('_'*64)
