@@ -8,6 +8,11 @@ try:
     import cPickle as pickle
 except ImportError:
     import pickle
+try:
+    raw_input
+except NameError:
+    raw_input = input
+
 
 # wrapper for uuidgen
 def wrappedUuidGen():
@@ -64,6 +69,29 @@ def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=Fals
     if reusableAtt:
         dictItem['reusable'] = True
     return [dictItem]
+
+
+# get dataset name and num of files for a stream
+def getDatasetNameAndNumFiles(streamDS,nFilesPerJob,streamName):
+    if streamDS == "":
+        # read from stdin
+        print("\nThis job uses %s stream" % streamName)
+        while True:
+            streamDS = raw_input("Enter dataset name for {0}: ".format(streamName))
+            streamDS = streamDS.strip()
+            if streamDS != "":
+                break
+    # number of files per one signal
+    if nFilesPerJob < 0:
+        while True:
+            tmpStr = raw_input("Enter the number of %s files per job : " % streamName)
+            try:
+                nFilesPerJob = int(tmpStr)
+                break
+            except Exception:
+                pass
+    # return
+    return streamDS,nFilesPerJob
 
 
 # convert UTF-8 to ASCII in json dumps
