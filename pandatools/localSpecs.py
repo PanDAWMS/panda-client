@@ -81,7 +81,6 @@ class LocalTaskSpec(object):
                 continue
             print(str_format.format(attr=aname, value= getattr(self, aname)))
 
-
     def print_long(self):
         str_format = self.strf_dict['long']
         print(str_format.format(sst=self.superstatus, st=self.status, jtid=self.jeditaskid, reqid=self.reqid,
