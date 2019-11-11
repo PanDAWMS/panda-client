@@ -32,7 +32,10 @@ See ChangeLog.txt
 1. Request atlas-adc-tier3sw-install to copy on CVMFS
 
 # Uploading to pip
+```
 python setup.py sdist upload
-
+```
+Uploading source so that wheel generates setup files locally.
+ 
 # Acknowledge
 Icons from http://iconka.com

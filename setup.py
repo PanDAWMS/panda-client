@@ -3,6 +3,8 @@ import sys
 import os
 import re
 import site
+import distutils
+
 sys.path.insert(0,'.')
 
 # get release version
@@ -42,16 +44,14 @@ class install_data_panda (install_data_org):
                                    ('install_scripts','install_scripts'))
                                             
     def run (self):
-        # not to use wheel to correctly generate setup.sh 
-        if 'bdist_wheel' in self.distribution.get_cmdline_options():
-            # wheel is disabled
-            sys.exit('\n\033[32m'+'WARNING : Wheel is disabled. Please try installation from source'+'\033[0m')
         rpmInstall = False
         # set install_dir
         if not self.install_dir:
             if self.root:
-                # rpm
-                self.install_dir = self.root
+                # rpm or wheel
+                self.install_dir = self.prefix
+                self.install_purelib = distutils.sysconfig.get_python_lib()
+                self.install_scripts = os.path.join(self.prefix, 'bin')
                 rpmInstall = True
             else:
                 # sdist
@@ -97,7 +97,7 @@ class install_data_panda (install_data_org):
                 # replace patterns
                 for item in re.findall('@@([^@]+)@@',filedata):
                     if not hasattr(self,item):
-                        raise RuntimeError,'unknown pattern %s in %s' % (item,srcFile)
+                        raise RuntimeError('unknown pattern %s in %s' % (item,srcFile))
                     # get pattern
                     patt = getattr(self,item)
                     # convert to absolute path
@@ -118,6 +118,20 @@ class install_data_panda (install_data_org):
         # install
         self.data_files = new_data_files
         install_data_org.run(self)
+        # post install
+        target = os.path.join(self.install_purelib, 'taskbuffer')
+        if not os.path.exists(target):
+            os.symlink('pandatools',
+                       os.path.join(self.install_purelib, 'taskbuffer'))
+        target = os.path.join(self.install_purelib, 'pandaserver')
+        if not os.path.exists(target):
+            os.makedirs(target)
+        target_init = os.path.join(target, '__init__.py')
+        with open(target_init, 'w'):
+            pass
+        target = os.path.join(target, 'taskbuffer')
+        if not os.path.exists(target):
+            os.symlink('../pandatools', target)
         # delete
         for autoGenFile in autoGenFiles:
             try:
