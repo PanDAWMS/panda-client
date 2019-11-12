@@ -32,7 +32,10 @@ if newFlag:
     # set dummy time
     parser.set(sectionName,'last_synctime','')
     # keep old config just in case
-    os.rename(confFile, '%s.back' % confFile)
+    try:
+        os.rename(confFile, '%s.back' % confFile)
+    except Exception:
+        pass
     # write
     confFH = open(confFile,'w')
     parser.write(confFH)

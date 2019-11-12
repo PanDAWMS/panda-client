@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.4 (11/12/2019)
+  * fixed BookConfig
+
 1.4.3 (11/11/2019)
   * symlink for python2/3 server
 
