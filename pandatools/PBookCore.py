@@ -19,11 +19,12 @@ from pandatools import localSpecs
 from pandatools import MiscUtils
 
 
-def _get_one_task(self, taskID):
+def _get_one_task(self, taskID, verbose=False):
     """
     get one task spec by ID
     """
-    ts, url, data = queryPandaMonUtils.query_tasks(username=self.username, jeditaskid=taskID)
+    ts, url, data = queryPandaMonUtils.query_tasks(username=self.username, jeditaskid=taskID,
+                                                    verbose=verbose)
     if isinstance(data, list) and data:
         task = data[0]
         taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)
@@ -53,7 +54,7 @@ def check_task_owner(func):
             if jeditaskid is None:
                 tmpLog.error('no taskID sepcified, nothing done')
                 return
-            taskspec = _get_one_task(self, jeditaskid)
+            taskspec = _get_one_task(self, jeditaskid, self.verbose)
         except Exception as e:
             tmpLog.error('got {0}: {1}'.format(e.__class__.__name__, e))
         else:
@@ -158,7 +159,7 @@ class PBookCore(object):
         nTry = 6
         for iTry in range(nTry):
             # check if task terminated
-            taskspec = _get_one_task(self, taskID)
+            taskspec = _get_one_task(self, taskID, self.verbose)
             if taskspec is not None:
                 if taskspec.is_terminated():
                     break
@@ -228,7 +229,8 @@ class PBookCore(object):
         get all reachable task specs of the user
         """
         active_superstatus_str = '|'.join(localSpecs.task_active_superstatus_list)
-        ts, url, data = queryPandaMonUtils.query_tasks(username=self.username, superstatus=active_superstatus_str)
+        ts, url, data = queryPandaMonUtils.query_tasks(username=self.username, superstatus=active_superstatus_str,
+                                                        verbose=self.verbose)
         if isinstance(data, list) and list:
             taskspec_list = [ localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts) for task in data ]
             return taskspec_list
@@ -237,17 +239,17 @@ class PBookCore(object):
 
     # show status
     def show(self, username=None, limit=1000, taskname=None, days=14, jeditaskid=None,
-                metadata=False, sync=False, format='standard', verbose=False):
+                metadata=False, sync=False, format='standard'):
         # user name
         if username is None:
             username = self.username
         # query
         ts, url, data = queryPandaMonUtils.query_tasks( username=username, limit=limit,
                                                         taskname=taskname, days=days, jeditaskid=jeditaskid,
-                                                        metadata=metadata, sync=sync)
+                                                        metadata=metadata, sync=sync, verbose=self.verbose)
         # verbose
-        if verbose:
-            print('timestamp: {ts} \nquery_url: {url}'.format(ts=ts, url=url))
+        # if self.verbose:
+        #     print('timestamp: {ts} \nquery_url: {url}'.format(ts=ts, url=url))
         # print header row
         _tmpts = localSpecs.LocalTaskSpec
         if format in ['json', 'plain']:
