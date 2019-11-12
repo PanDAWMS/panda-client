@@ -38,17 +38,17 @@ class LocalTaskSpec(object):
 
     # stdout string format
     strf_dict = {}
-    strf_dict['standard'] = '{jtid:>10}  {reqid:>8}  {sst:>10}/{st:10}  {pctf:>5}  {tname}'
-    strf_dict['long'] = (   '{jtid:>10}  {sst:>10}  {cret:20}  {modt:20}  ({filesprog})\n'
-                            '{reqid:>10}  {st:>10}  {tname}\n'
-                            '            {pctf:>10}  {weburl}\n' ) + '_'*78
+    strf_dict['standard'] = '{jtid:>10}  {reqid:>8}  {st:>10}  {pctf:>5}  {tname}'
+    strf_dict['long'] = (   '{jtid:>10}  {st:>10}  {cret:20}  {modt:20}  ({filesprog})\n'
+                            '{reqid:>10}  {pctf:>10}  {tname}\n'
+                            '                        {weburl}\n' ) + '_'*78
 
     # header row
     head_dict = {}
-    head_dict['standard'] = strf_dict['standard'].format(sst='SupStatus', st='Status', jtid='JediTaskID',
-                                                            reqid='ReqID', pctf='Fin%', tname='TaskName') \
+    head_dict['standard'] = strf_dict['standard'].format(st='Status', jtid='JediTaskID',
+                                                        reqid='ReqID', pctf='Fin%', tname='TaskName') \
                             + '\n' + '_'*64
-    head_dict['long'] = strf_dict['long'].format(sst='SupStatus', st='Status', jtid='JediTaskID', reqid='ReqID',
+    head_dict['long'] = strf_dict['long'].format(st='Status', jtid='JediTaskID', reqid='ReqID',
                                                 tname='TaskName', weburl='Webpage', filesprog='finished|  failed|   total NInputFiles',
                                                 pctf='Finished_%', cret='CreationDate', modt='ModificationTime')
 
