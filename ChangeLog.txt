@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.3 (11/11/2019)
+  * symlink for python2/3 server
+
 1.4.0 (10/30/2019)
   * changed version number for EventLoop
 
