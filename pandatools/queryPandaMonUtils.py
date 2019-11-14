@@ -4,7 +4,7 @@ import json
 import sys
 
 try:
-    from urllib.parmase import urlencode
+    from urllib.parse import urlencode
     from urllib.request import urlopen, Request
     from urllib.error import HTTPError
 except ImportError:
