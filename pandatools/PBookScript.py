@@ -118,15 +118,16 @@ For more info, do help(show) for example
     # show status
     def show(*args, **kwargs):
         """
-        Print job records. The following keyword arguments are available in the way of panda monitor url query: [username, limit, taskname, days, jeditaskid].
+        Print job records. The first argument (non-keyword) can be an jediTaskID or reqID, and can be omitted. The following keyword arguments are available in the way of panda monitor url query: [username, limit, taskname, days, jeditaskid].
         If sync=True, it forces panda monitor to get the latest records rather than get from cache.
         Specify display format with format='xxx', available formats are ['standard', 'long', 'json', 'plain'].
         The default filter conditions are: username=(name from user voms proxy), limit=1000, days=14, sync=False, format='standard'.
 
         example:
         >>> show()
+        >>> show(123)
+        >>> show(12345678, format='long')
         >>> show(taskname='my_task_name')
-        >>> show(jeditaskid=123, format='long')
         >>> show(superstatus='running', days=7, limit=100)
         >>> show(format='json', sync=True)
         """
@@ -135,7 +136,7 @@ For more info, do help(show) for example
     # kill
     def kill(taskIDs):
         """
-        Kill all subJobs in taskIDs (ID or a list of ID). If 'all', kill all active tasks of the user.
+        Kill all subJobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). If 'all', kill all active tasks of the user.
 
          example:
            >>> kill(123)
@@ -158,7 +159,7 @@ For more info, do help(show) for example
     # finish
     def finish(taskIDs, soft=False):
         """
-        Finish all subJobs in taskIDs (ID or a list of ID). If 'all', finish all active tasks of the user. If soft is False (default), all running jobs are killed and the task finishes immediately. If soft is True, new jobs are not generated and the task finishes once all running jobs finish.
+        Finish all subJobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). If 'all', finish all active tasks of the user. If soft is False (default), all running jobs are killed and the task finishes immediately. If soft is True, new jobs are not generated and the task finishes once all running jobs finish.
 
          example:
            >>> finish(123)
@@ -182,7 +183,7 @@ For more info, do help(show) for example
     # retry
     def retry(taskIDs, newOpts=None):
         """
-        Retry failed/cancelled subJobs in taskIDs (ID or a list of ID). This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. One can use newOpts which is a map of options and new arguments like {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'} to overwrite task parameters. The list of changeable parameters is site,excludedSite,includedSite,nFilesPerJob,nGBPerJob,nFiles,nEvents. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs.
+        Retry failed/cancelled subJobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. One can use newOpts which is a map of options and new arguments like {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'} to overwrite task parameters. The list of changeable parameters is site,excludedSite,includedSite,nFilesPerJob,nGBPerJob,nFiles,nEvents. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs.
 
          example:
            >>> retry(123)
@@ -213,7 +214,7 @@ For more info, do help(show) for example
     # kill and retry
     def killAndRetry(taskIDs, newOpts=None):
         """
-        Kill JobID and then retry failed/cancelled sub-jobs in taskIDs (ID or a list of ID). Concerning newOpts, see help(retry)
+        Kill JobID and then retry failed/cancelled sub-jobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). Concerning newOpts, see help(retry)
 
          example:
            >>> killAndRetry(123)

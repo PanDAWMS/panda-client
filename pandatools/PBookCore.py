@@ -19,6 +19,12 @@ from pandatools import localSpecs
 from pandatools import MiscUtils
 
 
+def is_reqid(id):
+    """
+    whether an id is a reqID (otherwise jediTaskID)
+    """
+    return (id < 10 ** 7)
+
 def _get_one_task(self, taskID, verbose=False):
     """
     get one task spec by ID
@@ -29,6 +35,21 @@ def _get_one_task(self, taskID, verbose=False):
         task = data[0]
         taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)
         return taskspec
+    else:
+        return None
+
+def _get_tasks_from_reqid(self, reqID, verbose=False):
+    """
+    get a list of task spec by reqID
+    """
+    ts, url, data = queryPandaMonUtils.query_tasks(username=self.username, reqid=reqID,
+                                                    verbose=verbose)
+    if isinstance(data, list) and data:
+        taskspec_list = []
+        for task in data:
+            taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)
+            taskspec_list.append(taskspec)
+        return taskspec_list
     else:
         return None
 
@@ -46,22 +67,34 @@ def check_task_owner(func):
         PsubUtils.check_proxy(self.verbose, None)
         # check task owner
         try:
-            jeditaskid = None
+            taskid = None
             if args:
-                jeditaskid = args[0]
-            elif kwargs:
-                jeditaskid = kwargs.get('taskID')
-            if jeditaskid is None:
+                taskid = args[0]
+            if taskid is None:
                 tmpLog.error('no taskID sepcified, nothing done')
                 return
-            taskspec = _get_one_task(self, jeditaskid, self.verbose)
+            # taskspec = _get_one_task(self, taskid, self.verbose)
+            if is_reqid(taskid):
+                taskspec_list = _get_tasks_from_reqid(self, taskid, self.verbose)
+            else:
+                taskspec_list = [_get_one_task(self, taskid, self.verbose)]
         except Exception as e:
             tmpLog.error('got {0}: {1}'.format(e.__class__.__name__, e))
         else:
-            if taskspec is not None and taskspec.username == self.username:
-                ret = func(self, *args, **kwargs)
+            ret = True
+            if taskspec_list is None:
+                sys.stdout.write('Permission denied: reqID={0} is not owned by {1} \n'.format(
+                                    taskid, self.username))
+                ret = False
             else:
-                sys.stdout.write('Permission denied: taskID={0} is not owned by {1} \n'.format(jeditaskid, self.username))
+                for taskspec in taskspec_list:
+                    if taskspec is not None and taskspec.username == self.username:
+                        args_new = (taskspec.jeditaskid,) + args[1:]
+                        ret = ret and func(self, *args_new, **kwargs)
+                    else:
+                        sys.stdout.write('Permission denied: taskID={0} is not owned by {1} \n'.format(
+                                            taskid, self.username))
+                        ret = False
         return ret
     return wrapper
 
@@ -80,8 +113,6 @@ class PBookCore(object):
         username_from_proxy = MiscUtils.extract_voms_proxy_username()
         if username_from_proxy:
             self.username = username_from_proxy
-        # map between jobset and jediTaskID
-        self.jobsetTaskMap = {}
 
     # kill
     @check_task_owner
@@ -175,8 +206,7 @@ class PBookCore(object):
                 tmpLog.info('Max attempts exceeded. Please try later')
                 return False
         # retry
-        self.retry(taskID, newOpts=newOpts)
-        return
+        return self.retry(taskID, newOpts=newOpts)
 
 
     # retry
@@ -205,6 +235,7 @@ class PBookCore(object):
             tmpLog.error('Failed to retry TaskID=%s' % taskID)
             return False
         tmpLog.info(tmpDiag)
+        return True
 
     # get job metadata
     def getUserJobMetadata(self, taskID, output_filename):
@@ -238,13 +269,26 @@ class PBookCore(object):
             return None
 
     # show status
-    def show(self, username=None, limit=1000, taskname=None, days=14, jeditaskid=None,
-                metadata=False, sync=False, format='standard'):
+    def show(self, some_ids=None, username=None, limit=1000, taskname=None, days=14, jeditaskid=None,
+                reqid=None, metadata=False, sync=False, format='standard'):
         # user name
         if username is None:
             username = self.username
+        # shortcut of jeditaskid and reqid
+        if isinstance(some_ids, (int, long)):
+            if is_reqid(some_ids):
+                reqid = str(some_ids)
+            else:
+                jeditaskid = str(some_ids)
+        elif isinstance(some_ids, (list, tuple)) and some_ids:
+            first_id = some_ids[0]
+            ids_str = '|'.join([str(x) for x in some_ids])
+            if first_id and isinstance(first_id, (int, long)) and is_reqid(first_id):
+                reqid = ids_str
+            else:
+                jeditaskid = ids_str
         # query
-        ts, url, data = queryPandaMonUtils.query_tasks( username=username, limit=limit,
+        ts, url, data = queryPandaMonUtils.query_tasks( username=username, limit=limit, reqid=reqid,
                                                         taskname=taskname, days=days, jeditaskid=jeditaskid,
                                                         metadata=metadata, sync=sync, verbose=self.verbose)
         # verbose

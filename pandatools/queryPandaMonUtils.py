@@ -16,7 +16,7 @@ HEADERS = {'Accept': 'application/json', 'Content-Type':'application/json'}
 
 
 def query_tasks(jeditaskid=None, username=None, limit=10000, taskname=None, status=None, superstatus=None,
-                days=None, metadata=False, sync=False, verbose=False):
+                reqid=None, days=None, metadata=False, sync=False, verbose=False):
     timestamp = int(time.time())
     parmas = {  'json': 1,
                 'datasets': True,
@@ -32,6 +32,8 @@ def query_tasks(jeditaskid=None, username=None, limit=10000, taskname=None, stat
         parmas['status'] = status
     if superstatus:
         parmas['superstatus'] = superstatus
+    if reqid:
+        parmas['reqid'] = reqid
     if days is not None:
         parmas['days'] = days
     if metadata:
