@@ -270,7 +270,7 @@ class PBookCore(object):
 
     # show status
     def show(self, some_ids=None, username=None, limit=1000, taskname=None, days=14, jeditaskid=None,
-                reqid=None, metadata=False, sync=False, format='standard'):
+                reqid=None, status=None, superstatus=None, metadata=False, sync=False, format='standard'):
         # user name
         if username is None:
             username = self.username
@@ -287,8 +287,13 @@ class PBookCore(object):
                 reqid = ids_str
             else:
                 jeditaskid = ids_str
+        elif some_ids == 'run':
+            superstatus = '|'.join(localSpecs.task_active_superstatus_list)
+        elif some_ids == 'fin':
+            superstatus = '|'.join(localSpecs.task_final_superstatus_list)
         # query
         ts, url, data = queryPandaMonUtils.query_tasks( username=username, limit=limit, reqid=reqid,
+                                                        status=status, superstatus=superstatus,
                                                         taskname=taskname, days=days, jeditaskid=jeditaskid,
                                                         metadata=metadata, sync=sync, verbose=self.verbose)
         # verbose
