@@ -37,12 +37,12 @@ def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=Fals
             dictItem['token'] = token
         if not padding:
             dictItem['padding'] = padding
-        if allowNoOutput != None:
+        if allowNoOutput is not None:
             for tmpPatt in allowNoOutput:
                 if tmpPatt == '':
                     continue
                 tmpPatt = '^.*'+tmpPatt+'$'
-                if re.search(tmpPatt,lfn) != None:
+                if re.search(tmpPatt,lfn) is not None:
                     dictItem['allowNoOutput'] = True
                     break
     elif paramType == 'input':
@@ -58,9 +58,9 @@ def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=Fals
             dictItem['exclude'] = exclude
         if expand:
             dictItem['expand'] = expand
-        if not nFilesPerJob in [None,0]:
+        if nFilesPerJob not in [None,0]:
             dictItem['nFilesPerJob'] = nFilesPerJob
-        if useNumFilesAsRatio and not nFilesPerJob in [None,0]:
+        if useNumFilesAsRatio and nFilesPerJob not in [None,0]:
             dictItem['ratio'] = nFilesPerJob
     if hidden:
         dictItem['hidden'] = hidden
@@ -190,3 +190,32 @@ def pickle_loads(str_input):
         return pickle.loads(str_input)
     except Exception:
         return pickle.loads(str_input.encode('utf-8'), encoding='latin1')
+
+
+# extract voms proxy user name
+def extract_voms_proxy_username():
+    cmd = ['voms-proxy-info', '--subject']
+    try:
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = p.communicate()
+        return_code = p.returncode
+        stdout_list = None
+        if stdout is not None:
+            if not isinstance(stdout, str):
+                stdout = stdout.decode()
+            stdout_str = stdout.replace('\n', ' ')
+            stdout_list = stdout.split('\n')
+        if stderr is not None:
+            if not isinstance(stderr, str):
+                stderr = stderr.decode()
+            stderr_str = stderr.replace('\n', ' ')
+    except Exception:
+        return None
+    else:
+        if stdout_list:
+            # remove trailing /CN=proxy or /CN=xxxnumxxx
+            user_dn = re.sub(r'(/CN=\d+)+$', '', stdout_list[0].replace('/CN=proxy', ''))
+            username = user_dn.split('=')[-1]
+            return username
+        else:
+            return None

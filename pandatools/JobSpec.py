@@ -70,7 +70,7 @@ class JobSpec(object):
     # override __getattribute__ for SQL
     def __getattribute__(self, name):
         ret = object.__getattribute__(self, name)
-        if ret == None:
+        if ret is None:
             return "NULL"
         return ret
 
@@ -80,7 +80,7 @@ class JobSpec(object):
         object.__setattr__(self, name, value)
         newVal = getattr(self, name)
         # collect changed attributes
-        if oldVal != newVal and not name in self._suppAttrs:
+        if oldVal != newVal and name not in self._suppAttrs:
             self._changedAttrs[name] = value
 
     # reset changed attribute list
@@ -129,7 +129,7 @@ class JobSpec(object):
                 val = None
             # truncate too long values
             if attr in self._limitLength:
-                if val != None:
+                if val is not None:
                     val = val[:self._limitLength[attr]]
             ret[':%s' % attr] = val
         return ret
@@ -264,7 +264,7 @@ class JobSpec(object):
     def truncateStringAttr(cls, attr, val):
         if attr not in cls._limitLength:
             return val
-        if val == None:
+        if val is None:
             return val
         return val[:cls._limitLength[attr]]
 
@@ -291,7 +291,7 @@ class JobSpec(object):
 
     # get LB number
     def getLumiBlockNr(self):
-        if self.specialHandling != None:
+        if self.specialHandling is not None:
             for tmpItem in self.specialHandling.split(','):
                 if tmpItem.startswith('lb:'):
                     return int(tmpItem.split(':')[-1])
@@ -299,7 +299,7 @@ class JobSpec(object):
 
     # get DDM backend
     def getDdmBackEnd(self):
-        if self.specialHandling == None:
+        if self.specialHandling is None:
             return None
         for tmpItem in self.specialHandling.split(','):
             if tmpItem.startswith('ddm:'):
@@ -312,7 +312,7 @@ class JobSpec(object):
         if self.specialHandling in [None, '']:
             self.specialHandling = token
         else:
-            if not token in self.specialHandling.split(','):
+            if token not in self.specialHandling.split(','):
                 self.specialHandling = self.specialHandling + ',' + token
 
     # accept partial finish
@@ -332,7 +332,7 @@ class JobSpec(object):
 
     # get cloud
     def getCloud(self):
-        if self.specialHandling != None:
+        if self.specialHandling is not None:
             for tmpItem in self.specialHandling.split(','):
                 if tmpItem.startswith('hc:'):
                     return tmpItem.split(':')[-1]
@@ -345,17 +345,17 @@ class JobSpec(object):
     # get file names which were uploaded to alternative locations
     def altStgOutFileList(self):
         try:
-            if self.jobMetrics != None:
+            if self.jobMetrics is not None:
                 for item in self.jobMetrics.split():
                     if item.startswith('altTransferred='):
                         return item.split('=')[-1].split(',')
-        except:
+        except Exception:
             pass
         return []
 
     # get mode for alternative stage-out
     def getAltStgOut(self):
-        if self.specialHandling != None:
+        if self.specialHandling is not None:
             for tmpItem in self.specialHandling.split(','):
                 if tmpItem.startswith('{0}:'.format(self._tagForSH['altStgOut'])):
                     return tmpItem.split(':')[-1]
@@ -363,7 +363,7 @@ class JobSpec(object):
 
     # set alternative stage-out
     def setAltStgOut(self, mode):
-        if self.specialHandling != None:
+        if self.specialHandling is not None:
             items = self.specialHandling.split(',')
         else:
             items = []
@@ -378,13 +378,13 @@ class JobSpec(object):
 
     # put log files to OS
     def putLogToOS(self):
-        if self.specialHandling != None:
+        if self.specialHandling is not None:
             return self._tagForSH['putLogToOS'] in self.specialHandling.split(',')
         return False
 
     # set to put log files to OS
     def setToPutLogToOS(self):
-        if self.specialHandling != None:
+        if self.specialHandling is not None:
             items = self.specialHandling.split(',')
         else:
             items = []
@@ -394,13 +394,13 @@ class JobSpec(object):
 
     # write input to file
     def writeInputToFile(self):
-        if self.specialHandling != None:
+        if self.specialHandling is not None:
             return self._tagForSH['writeInputToFile'] in self.specialHandling.split(',')
         return False
 
     # set to write input to file
     def setToWriteInputToFile(self):
-        if self.specialHandling != None:
+        if self.specialHandling is not None:
             items = self.specialHandling.split(',')
         else:
             items = []
@@ -410,7 +410,7 @@ class JobSpec(object):
 
     # set request type
     def setRequestType(self, reqType):
-        if self.specialHandling != None:
+        if self.specialHandling is not None:
             items = self.specialHandling.split(',')
         else:
             items = []
@@ -437,5 +437,5 @@ class JobSpec(object):
                 for tmpFile in lfnMap[tmpLFN]:
                     newFiles.append(tmpFile)
             self.Files = newFiles
-        except:
+        except Exception:
             pass

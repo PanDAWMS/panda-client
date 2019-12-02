@@ -67,11 +67,11 @@ class install_data_panda (install_data_org):
         self.install_dir = os.path.abspath(self.install_dir)
         # remove /usr for bdist/bdist_rpm
         match = re.search('(build/[^/]+/dumb)/usr',self.install_dir)
-        if match != None:
+        if match is not None:
             self.install_dir = re.sub(match.group(0),match.group(1),self.install_dir)
         # remove /var/tmp/*-buildroot for bdist_rpm
         match = re.search('(/var/tmp/.*-buildroot)/usr',self.install_dir)
-        if match != None:
+        if match is not None:
             self.install_dir = re.sub(match.group(0),match.group(1),self.install_dir)
         # create tmp area
         tmpDir = 'build/tmp'
