@@ -16,7 +16,7 @@ from . import PLogger
 from . import PsubUtils
 from pandatools import queryPandaMonUtils
 from pandatools import localSpecs
-from pandatools import MiscUtils
+from pandatools import PsubUtils
 
 
 def is_reqid(id):
@@ -110,7 +110,7 @@ class PBookCore(object):
         PsubUtils.check_proxy(self.verbose, None)
         # user name
         self.username = 'DEFAULT_USER'
-        username_from_proxy = MiscUtils.extract_voms_proxy_username()
+        username_from_proxy = PsubUtils.extract_voms_proxy_username()
         if username_from_proxy:
             self.username = username_from_proxy
 
