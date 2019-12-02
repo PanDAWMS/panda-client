@@ -291,6 +291,9 @@ class PBookCore(object):
             superstatus = '|'.join(localSpecs.task_active_superstatus_list)
         elif some_ids == 'fin':
             superstatus = '|'.join(localSpecs.task_final_superstatus_list)
+        # print
+        sys.stderr.write('Showing only max {limit} tasks in last {days} days. One can set days=N to see tasks in last N days, and limit=M to see at most M latest tasks \n'
+                            .format(days=days, limit=limit))
         # query
         ts, url, data = queryPandaMonUtils.query_tasks( username=username, limit=limit, reqid=reqid,
                                                         status=status, superstatus=superstatus,

@@ -47,15 +47,8 @@ def query_tasks(jeditaskid=None, username=None, limit=10000, taskname=None, stat
         sys.stderr.write('headers   = {0}\n'.format(json.dumps(HEADERS)))
     try:
         req = Request(url, headers=HEADERS)
-        try:
-            rep =  urlopen(req)
-        except URLError as e:
-            if isinstance(e.reason, ssl.SSLError):
-                sys.stderr.write('SSLError: {0} . Trying again without SSL verification... \n'.format(e))
-                context = ssl._create_unverified_context()
-                rep = urlopen(req, context=context)
-            else:
-                raise
+        context = ssl._create_unverified_context()
+        rep = urlopen(req, context=context)
         if verbose:
             sys.stderr.write('time UTC  = {0}\n'.format(datetime.datetime.utcnow()))
         rec = rep.getcode()
