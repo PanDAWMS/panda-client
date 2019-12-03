@@ -47,8 +47,14 @@ def query_tasks(jeditaskid=None, username=None, limit=10000, taskname=None, stat
         sys.stderr.write('headers   = {0}\n'.format(json.dumps(HEADERS)))
     try:
         req = Request(url, headers=HEADERS)
-        context = ssl._create_unverified_context()
-        rep = urlopen(req, context=context)
+        try:
+            # Skip SSL verification
+            context = ssl._create_unverified_context()
+        except AttributeError:
+            # Legacy Python that doesn't verify HTTPS certificates by default
+            rep = urlopen(req)
+        else:
+            rep = urlopen(req, context=context)
         if verbose:
             sys.stderr.write('time UTC  = {0}\n'.format(datetime.datetime.utcnow()))
         rec = rep.getcode()
