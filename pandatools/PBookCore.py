@@ -109,10 +109,13 @@ class PBookCore(object):
         # check proxy
         PsubUtils.check_proxy(self.verbose, None)
         # user name
-        self.username = 'DEFAULT_USER'
         username_from_proxy = PsubUtils.extract_voms_proxy_username()
         if username_from_proxy:
             self.username = username_from_proxy
+            sys.stdout.write('PBook user: {0} \n'.format(self.username))
+        else:
+            sys.stderr.write('ERROR : Cannot get user name from proxy. Exit... \n')
+            sys.exit(1)
 
     # kill
     @check_task_owner
@@ -299,9 +302,6 @@ class PBookCore(object):
                                                         status=status, superstatus=superstatus,
                                                         taskname=taskname, days=days, jeditaskid=jeditaskid,
                                                         metadata=metadata, sync=sync, verbose=self.verbose)
-        # verbose
-        # if self.verbose:
-        #     print('timestamp: {ts} \nquery_url: {url}'.format(ts=ts, url=url))
         # print header row
         _tmpts = localSpecs.LocalTaskSpec
         if format in ['json', 'plain']:
