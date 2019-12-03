@@ -858,3 +858,15 @@ def replaceInputOutput(taskParamMap, inDS, outDS, seqNum):
 # get OS information
 def get_os_information():
     return platform.platform()
+
+# extract voms proxy user name
+def extract_voms_proxy_username():
+    username = None
+    status, output = get_proxy_info(False, False)
+    for line in output.split('\n'):
+        if line.startswith('subject'):
+            subj = line.split(':', 1)[-1].lstrip()
+            user_dn = re.sub(r'(/CN=\d+)+$', '', subj.replace('/CN=proxy', ''))
+            username = user_dn.split('=')[-1]
+            break
+    return username

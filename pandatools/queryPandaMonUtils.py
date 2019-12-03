@@ -2,14 +2,15 @@ import time
 import datetime
 import json
 import sys
+import ssl
 
 try:
     from urllib.parse import urlencode
     from urllib.request import urlopen, Request
-    from urllib.error import HTTPError
+    from urllib.error import HTTPError, URLError
 except ImportError:
     from urllib import urlencode
-    from urllib2 import urlopen, Request, HTTPError
+    from urllib2 import urlopen, Request, HTTPError, URLError
 
 
 HEADERS = {'Accept': 'application/json', 'Content-Type':'application/json'}
@@ -46,8 +47,8 @@ def query_tasks(jeditaskid=None, username=None, limit=10000, taskname=None, stat
         sys.stderr.write('headers   = {0}\n'.format(json.dumps(HEADERS)))
     try:
         req = Request(url, headers=HEADERS)
-        # res = urlopen(req).read().decode('utf-8')
-        rep =  urlopen(req)
+        context = ssl._create_unverified_context()
+        rep = urlopen(req, context=context)
         if verbose:
             sys.stderr.write('time UTC  = {0}\n'.format(datetime.datetime.utcnow()))
         rec = rep.getcode()

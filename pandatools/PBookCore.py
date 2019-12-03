@@ -16,7 +16,7 @@ from . import PLogger
 from . import PsubUtils
 from pandatools import queryPandaMonUtils
 from pandatools import localSpecs
-from pandatools import MiscUtils
+from pandatools import PsubUtils
 
 
 def is_reqid(id):
@@ -109,10 +109,13 @@ class PBookCore(object):
         # check proxy
         PsubUtils.check_proxy(self.verbose, None)
         # user name
-        self.username = 'DEFAULT_USER'
-        username_from_proxy = MiscUtils.extract_voms_proxy_username()
+        username_from_proxy = PsubUtils.extract_voms_proxy_username()
         if username_from_proxy:
             self.username = username_from_proxy
+            sys.stdout.write('PBook user: {0} \n'.format(self.username))
+        else:
+            sys.stderr.write('ERROR : Cannot get user name from proxy. Exit... \n')
+            sys.exit(1)
 
     # kill
     @check_task_owner
@@ -270,7 +273,7 @@ class PBookCore(object):
 
     # show status
     def show(self, some_ids=None, username=None, limit=1000, taskname=None, days=14, jeditaskid=None,
-                reqid=None, metadata=False, sync=False, format='standard'):
+                reqid=None, status=None, superstatus=None, metadata=False, sync=False, format='standard'):
         # user name
         if username is None:
             username = self.username
@@ -287,13 +290,18 @@ class PBookCore(object):
                 reqid = ids_str
             else:
                 jeditaskid = ids_str
+        elif some_ids == 'run':
+            superstatus = '|'.join(localSpecs.task_active_superstatus_list)
+        elif some_ids == 'fin':
+            superstatus = '|'.join(localSpecs.task_final_superstatus_list)
+        # print
+        sys.stderr.write('Showing only max {limit} tasks in last {days} days. One can set days=N to see tasks in last N days, and limit=M to see at most M latest tasks \n'
+                            .format(days=days, limit=limit))
         # query
         ts, url, data = queryPandaMonUtils.query_tasks( username=username, limit=limit, reqid=reqid,
+                                                        status=status, superstatus=superstatus,
                                                         taskname=taskname, days=days, jeditaskid=jeditaskid,
                                                         metadata=metadata, sync=sync, verbose=self.verbose)
-        # verbose
-        # if self.verbose:
-        #     print('timestamp: {ts} \nquery_url: {url}'.format(ts=ts, url=url))
         # print header row
         _tmpts = localSpecs.LocalTaskSpec
         if format in ['json', 'plain']:

@@ -105,6 +105,7 @@ The following commands are available:
 
     help
     show
+    showl
     kill
     retry
     finish
@@ -118,7 +119,7 @@ For more info, do help(show) for example
     # show status
     def show(*args, **kwargs):
         """
-        Print job records. The first argument (non-keyword) can be an jediTaskID or reqID, and can be omitted. The following keyword arguments are available in the way of panda monitor url query: [username, limit, taskname, days, jeditaskid].
+        Print task records. The first argument (non-keyword) can be an jediTaskID or reqID, or 'run' (show active tasks only), or 'fin' (show terminated tasks only), or can be omitted. The following keyword arguments are available in the way of panda monitor url query: [username, limit, taskname, days, jeditaskid].
         If sync=True, it forces panda monitor to get the latest records rather than get from cache.
         Specify display format with format='xxx', available formats are ['standard', 'long', 'json', 'plain'].
         The default filter conditions are: username=(name from user voms proxy), limit=1000, days=14, sync=False, format='standard'.
@@ -128,9 +129,24 @@ For more info, do help(show) for example
         >>> show(123)
         >>> show(12345678, format='long')
         >>> show(taskname='my_task_name')
-        >>> show(superstatus='running', days=7, limit=100)
+        >>> show('run')
+        >>> show('fin', days=7, limit=100)
         >>> show(format='json', sync=True)
         """
+        return pbookCore.show(*args, **kwargs)
+
+    # shortcut to show long status
+    def showl(*args, **kwargs):
+        """
+        Print task records in long format; shortcut function of show(..., format='long'). See help message of show() for other keywords arguments
+
+        example:
+        >>> showl()
+        >>> showl(123)
+        >>> showl(12345678)
+        >>> showl(taskname='my_task_name')
+        """
+        kwargs['format'] = 'long'
         return pbookCore.show(*args, **kwargs)
 
     # kill

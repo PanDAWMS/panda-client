@@ -190,32 +190,3 @@ def pickle_loads(str_input):
         return pickle.loads(str_input)
     except Exception:
         return pickle.loads(str_input.encode('utf-8'), encoding='latin1')
-
-
-# extract voms proxy user name
-def extract_voms_proxy_username():
-    cmd = ['voms-proxy-info', '--subject']
-    try:
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = p.communicate()
-        return_code = p.returncode
-        stdout_list = None
-        if stdout is not None:
-            if not isinstance(stdout, str):
-                stdout = stdout.decode()
-            stdout_str = stdout.replace('\n', ' ')
-            stdout_list = stdout.split('\n')
-        if stderr is not None:
-            if not isinstance(stderr, str):
-                stderr = stderr.decode()
-            stderr_str = stderr.replace('\n', ' ')
-    except Exception:
-        return None
-    else:
-        if stdout_list:
-            # remove trailing /CN=proxy or /CN=xxxnumxxx
-            user_dn = re.sub(r'(/CN=\d+)+$', '', stdout_list[0].replace('/CN=proxy', ''))
-            username = user_dn.split('=')[-1]
-            return username
-        else:
-            return None
