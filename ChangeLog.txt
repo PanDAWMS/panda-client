@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * changed pbook -c to return error codes for failures
+
 1.4.7 (12/3/2019)
   * fixed pbook for python 2.6
 

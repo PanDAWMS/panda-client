@@ -32,7 +32,6 @@ else:
 import optparse
 import readline
 
-from pandatools import PLogger
 from pandatools import Client
 from pandatools import PandaToolsPkgInfo
 
@@ -344,4 +343,10 @@ def main():
         signal.signal(signal.SIGINT, catch_sig)
         signal.signal(signal.SIGHUP, catch_sig)
         signal.signal(signal.SIGTERM,catch_sig)
-        os.wait()
+        pid, status = os.wait()
+        if os.WIFSIGNALED(status):
+            sys.exit(-os.WTERMSIG(status))
+        elif os.WIFEXITED(status):
+            sys.exit(os.WEXITSTATUS(status))
+        else:
+            sys.exit(0)
