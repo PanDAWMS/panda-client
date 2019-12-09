@@ -95,11 +95,17 @@ def intmain(pbookCore,comString):
         Show the help doc
         """
         if len(arg) > 0:
-            func = arg[0]
-            print(func.__doc__)
-        else:
-            # print available methods
-            tmp_str = """
+            try:
+                if isinstance(arg[0], str):
+                    func = main_locals[arg[0]]
+                else:
+                    func = arg[0]
+                print(func.__doc__)
+                return
+            except Exception:
+                print("Unknown command : {0}".format(str(arg[0])))
+        # print available methods
+        tmp_str = """
 The following commands are available:
 
     help
@@ -113,7 +119,7 @@ The following commands are available:
 
 For more info, do help(show) for example
 """
-            print(tmp_str)
+        print(tmp_str)
 
     # show status
     def show(*args, **kwargs):
@@ -281,6 +287,7 @@ For more info, do help(show) for example
         locals()[comName](*comArg, **comMap)
         # exit
         sys.exit(0)
+    main_locals = locals()
     # go to interactive prompt
     code.interact(banner="\nStart pBook %s" % PandaToolsPkgInfo.release_version,
                   local=locals())
