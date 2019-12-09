@@ -3,7 +3,6 @@ Do NOT import this module in your code.
 Import PBookCore instead.
 """
 
-import re
 import os
 import sys
 import code
@@ -29,7 +28,7 @@ else:
         return list(dataIterator)
 
 
-import optparse
+import argparse
 import readline
 
 from pandatools import Client
@@ -265,26 +264,7 @@ For more info, do help(show) for example
 
     # execute command in the batch mode
     if comString != '':
-        # decompose to function name and argument
-        match = re.search('^([^\(]+)\(([^\)]*)\)$',comString)
-        comName = match.group(1)
-        comArgS = match.group(2)
-        comArg = []
-        comMap = {}
-        if comArgS != '':
-            for item in comArgS.split(','):
-                item = item.strip()
-                if '=' in item:
-                    tmpKey = item.split('=')[0]
-                    tmpVal = item.split('=')[-1]
-                    comMap[tmpKey.strip()] = eval(tmpVal)
-                else:
-                    comArg.append(eval(item))
-        comArg = tuple(comArg)
-        # update map
-        # pbookCore.updateTaskJobsetMap()
-        # exec : exec cannot be used due to unqualified exec with nested functions
-        locals()[comName](*comArg, **comMap)
+        exec(comString) in globals(), locals()
         # exit
         sys.exit(0)
     main_locals = locals()
@@ -304,19 +284,21 @@ def catch_sig(sig, frame):
 # overall main
 def main():
     # parse option
-    parser = optparse.OptionParser()
-    parser.add_option("-v",action="store_true",dest="verbose",default=False,
-                      help="verbose")
-    parser.add_option('-c',action='store',dest='comString',default='',type='string',
-                      help='execute a command in the batch mode')
-    parser.add_option('--version',action='store_const',const=True,dest='version',default=False,
+    parser = argparse.ArgumentParser(conflict_handler="resolve")
+    parser.add_argument("-v",action="store_true",dest="verbose",default=False,
+                      help="Verbose")
+    parser.add_argument('-c',action='store',dest='comString',default='',type=str,
+                      help='Execute a command in the batch mode')
+    parser.add_argument("-3", action="store_true", dest="python3", default=False,
+                      help="Use python3")
+    parser.add_argument('--version',action='store_const',const=True,dest='version',default=False,
                       help='Displays version')
-    parser.add_option('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
-                      help="Please don't use this option. Only for developers to use the dev panda server")
-    parser.add_option('--intrSrv',action='store_const',const=True, dest='intrSrv',default=False,
-                      help="Please don't use this option. Only for developers to use the intr panda server")
+    parser.add_argument('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
+                      help=argparse.SUPPRESS)
+    parser.add_argument('--intrSrv',action='store_const',const=True, dest='intrSrv',default=False,
+                      help=argparse.SUPPRESS)
 
-    options,args = parser.parse_args()
+    options,args = parser.parse_known_args()
 
     # display version
     if options.version:
