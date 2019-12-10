@@ -131,7 +131,7 @@ class _Curl:
             tmpFD,tmpName = tempfile.mkstemp(dir=globalTmpDir)
         else:
             tmpFD,tmpName = tempfile.mkstemp()
-        os.write(tmpFD,strData)
+        os.write(tmpFD, strData.encode())
         os.close(tmpFD)
         com += ' --config %s' % tmpName
         com += ' %s' % url

@@ -1,23 +1,26 @@
 #!/bin/bash
 
-"export" "LD_LIBRARY_PATH_ORIG=${LD_LIBRARY_PATH}"
-"export" "LD_LIBRARY_PATH="
-"export" "PYTHONPATH_ORIG=${PYTHONPATH}"
-"export" "PYTHONPATH=${PANDA_PYTHONPATH}"
-"export" "PYTHONHOME_ORIG=${PYTHONHOME}"
-"unset" "PYTHONHOME"
-"exec" "/usr/bin/python" "-u" "-Wignore" "$0" "$@"
+export LD_LIBRARY_PATH_ORIG=${LD_LIBRARY_PATH}
+export LD_LIBRARY_PATH=
+export PYTHONPATH_ORIG=${PYTHONPATH}
+export PYTHONPATH=${PANDA_PYTHONPATH}
+export PYTHONHOME_ORIG=${PYTHONHOME}
+unset PYTHONHOME
 
-import os
-import sys
+# look for option for python3
+for i in "$@"
+do
+case $i in
+  -3)
+  PANDA_PY3=1
+  ;;
+  *)
+  ;;
+esac
+done
 
-from pandatools import pcontainer_core
-
-os.environ['PANDA_EXEC_STRING'] = os.path.basename(sys.argv[0])
-
-optP = pcontainer_core.make_arg_parse()
-
-options = optP.parse_args()
-
-status, output = pcontainer_core.submit(options)
-sys.exit(status)
+if [ -z "$PANDA_PY3" ]; then
+  /usr/bin/python -u -W ignore -c "import pandatools.PcontainerScript" "$@"
+else
+  /usr/bin/python3 -u -W ignore -c "import pandatools.PcontainerScript" "$@"
+fi
