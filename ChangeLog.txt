@@ -1,7 +1,9 @@
 ** Release Notes
 
-current
-  * changed pbook -c to return error codes for failures
+1.4.9
+  * changed pbook -c to allow running scripts
+  * added -3 to pathena, prun, pbook
+  * removed ()' from username
 
 1.4.8 (12/9/2019)
   * doc for pbook
