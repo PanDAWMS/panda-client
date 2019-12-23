@@ -42,11 +42,10 @@ usage = """prun [options]
 
   HowTo is available at https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun"""
 
-examples = """Put a few most common examples herec
+examples = """Put a few most common examples here
   prun --exec "echo %IN > input.txt; root.exe; root -b -q macrotest.C" --athenaTag=22.0.0 --inDS ...
   prun --exec "cpptest %IN" --bexec "make" --athenaTag=22.0.0 --inDS ...
   prun --loadJson prunConfig.json   # read all prun options from one json file
-  ...
 """
 
 removedOpts = [  # list of deprecated options w.r.t version 0.6.25
@@ -93,7 +92,7 @@ group_config = optP.add_group('config', 'single configuration file to set multip
 group_input = optP.add_group('input', 'input dataset(s)/files/format')
 group_output = optP.add_group('output', 'output dataset/files')
 group_job = optP.add_group('job', 'job running control on grid')
-group_build = optP.add_group('build', 'build/compile the package')
+group_build = optP.add_group('build', 'build/compile the package and env setup')
 group_submit = optP.add_group('submit', 'job submission/site/retry')
 group_evtFilter = optP.add_group('evtFilter', 'event filter such as good run and event pick')
 group_expert = optP.add_group('expert', 'for experts/developers only')
@@ -126,8 +125,9 @@ group_evtFilter.add_argument('--goodRunListDataType', action='store', dest='good
                   help='specify data type when converting Good Run List XML to datasets, e.g, AOD (default)')
 group_evtFilter.add_argument('--goodRunListProdStep', action='store', dest='goodRunProdStep', default='',
                   help='specify production step when converting Good Run List to datasets, e.g, merge (default)')
-group_evtFilter.add_argument('--goodRunListDS', action='store', dest='goodRunListDS', default='',
+action = group_evtFilter.add_argument('--goodRunListDS', action='store', dest='goodRunListDS', default='',
                   help='A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used')
+group_input.shareWithMe(action)
 group_evtFilter.add_argument('--eventPickEvtList',action='store',dest='eventPickEvtList',default='',
                   help='a file name which contains a list of runs/events for event picking')
 group_evtFilter.add_argument('--eventPickDataType',action='store',dest='eventPickDataType',default='',
@@ -136,8 +136,9 @@ group_evtFilter.add_argument('--ei_api',action='store',dest='ei_api',default='',
                   help='flag to signalise mc in event picking')
 group_evtFilter.add_argument('--eventPickStreamName',action='store',dest='eventPickStreamName',default='',
                   help='stream name for event picking. e.g., physics_CosmicCaloEM')
-group_evtFilter.add_argument('--eventPickDS',action='store',dest='eventPickDS',default='',
+action = group_evtFilter.add_argument('--eventPickDS',action='store',dest='eventPickDS',default='',
                   help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*')
+group_input.shareWithMe(action)
 group_evtFilter.add_argument('--eventPickAmiTag',action='store',dest='eventPickAmiTag',default='',
                   help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*')
 group_evtFilter.add_argument('--eventPickWithGUID',action='store_const',const=True,dest='eventPickWithGUID',default=False,
@@ -250,7 +251,7 @@ group_submit.add_argument('--workingGroup', action='store', dest='workingGroup',
                 help="set workingGroup")
 group_build.add_argument('--tmpDir',action='store',dest='tmpDir',default='',
                 help='Temporary directory where an archive file is created')
-group_submit.add_argument('--voms', action='store', dest='vomsRoles',  default=None, 
+group_build.add_argument('--voms', action='store', dest='vomsRoles',  default=None, 
                 help="generate proxy with paticular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot")
 group_submit.add_argument('--noEmail', action='store_const', const=True, dest='noEmail',  default=False,
                 help='Suppress email notification')
@@ -347,6 +348,7 @@ for arg in sys.argv[1:]:
 
 # options, args = optP.parse_known_args()
 options = optP.parse_args()
+
 if options.verbose:
     print(options)
     print('')
