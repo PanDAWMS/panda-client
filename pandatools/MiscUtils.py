@@ -37,12 +37,12 @@ def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=Fals
             dictItem['token'] = token
         if not padding:
             dictItem['padding'] = padding
-        if allowNoOutput != None:
+        if allowNoOutput is not None:
             for tmpPatt in allowNoOutput:
                 if tmpPatt == '':
                     continue
                 tmpPatt = '^.*'+tmpPatt+'$'
-                if re.search(tmpPatt,lfn) != None:
+                if re.search(tmpPatt,lfn) is not None:
                     dictItem['allowNoOutput'] = True
                     break
     elif paramType == 'input':
@@ -58,9 +58,9 @@ def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=Fals
             dictItem['exclude'] = exclude
         if expand:
             dictItem['expand'] = expand
-        if not nFilesPerJob in [None,0]:
+        if nFilesPerJob not in [None,0]:
             dictItem['nFilesPerJob'] = nFilesPerJob
-        if useNumFilesAsRatio and not nFilesPerJob in [None,0]:
+        if useNumFilesAsRatio and nFilesPerJob not in [None,0]:
             dictItem['ratio'] = nFilesPerJob
     if hidden:
         dictItem['hidden'] = hidden

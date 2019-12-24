@@ -57,9 +57,9 @@ def getCmtProjects(dir='.'):
 # check if ath release
 def isAthRelease(cacheVer):
     try:
-        if 'AthAnalysis' in cacheVer or re.search('Ath[a-zA-Z]+Base',cacheVer) != None:
+        if 'AthAnalysis' in cacheVer or re.search('Ath[a-zA-Z]+Base',cacheVer) is not None:
             return True
-    except:
+    except Exception:
         pass
     return False
 
@@ -97,7 +97,7 @@ def getAthenaVer():
     cmtConfig = ''
     for line in lines[1:]:
         res = re.search('\(in ([^\)]+)\)',line)
-        if res != None:
+        if res is not None:
             items = line.split()
             if items[0].startswith('Athena') or items[0].startswith('Analysis') or \
                     items[0] in ['AthDerivations','AnalysisBase','AthSimulation','AthDerivation', 'AthAnalysis',
@@ -121,7 +121,7 @@ def getAthenaVer():
                     # extract base release
                     if not useCMake():
                         tmpMatch = re.search('/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+',line)
-                        if tmpMatch == None:
+                        if tmpMatch is None:
                             tmpLog.error("unsupported nightly %s" % line)
                             return False,{}
                         # set athenaVer and cacheVer
@@ -151,7 +151,7 @@ def getAthenaVer():
                 if items[0] == 'AtlasProduction' and cacheTag.startswith('rel'):
                     # nightlies for cache
                     tmpMatch = re.search('/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+',line)
-                    if tmpMatch == None:
+                    if tmpMatch is None:
                         tmpLog.error("unsupported nightly %s" % line)
                         return False,{}
                     cacheVer  = '-AtlasOffline_%s' % cacheTag
@@ -160,7 +160,7 @@ def getAthenaVer():
                 elif items[0] == 'TrigMC' and cacheTag.startswith('rel'):
                     # nightlies for cache
                     tmpMatch = re.search('/([^/]+)(/rel_\d+)*/[^/]+/rel_\d+',line)
-                    if tmpMatch == None:
+                    if tmpMatch is None:
                         tmpLog.error("unsupported nightly %s" % line)
                         return False,{}
                     cacheVer  = '-%s_%s' % (items[0],cacheTag)
@@ -170,7 +170,7 @@ def getAthenaVer():
                     cacheVer  = '-%s_%s' % (items[0],cacheTag)
                 else:
                     # doesn't use when it is a base release since it is not installed in EGEE
-                    if re.search('^\d+\.\d+\.\d+$',cacheTag) == None:
+                    if re.search('^\d+\.\d+\.\d+$',cacheTag) is None:
                         cacheVer = '-%s_%s' % (items[0],cacheTag)
                 # no more check for AthAnalysis
                 if isAthRelease(items[0]):
@@ -270,15 +270,15 @@ def extractRunConfig(jobO,supStream,shipinput,trf,verbose=False,useAMI=False,
                     tmpSt2 = "NoneNoneNone"
                     try:
                         tmpSt0 = match[0].replace('=',' ').split()[1].upper()
-                    except:
+                    except Exception:
                         pass
                     try:
                         tmpSt1 = match[0].replace('=',' ').split()[-1].upper()
-                    except:
+                    except Exception:
                         pass
                     try:
                         tmpSt2 = match[0].replace('=',' ').split()[2].upper()
-                    except:
+                    except Exception:
                         pass
                     toBeSuppressed = False
                     # normal check
@@ -290,9 +290,9 @@ def extractRunConfig(jobO,supStream,shipinput,trf,verbose=False,useAMI=False,
                             if '*' in tmpPatt:
                                 tmpPatt = '^' + tmpPatt.replace('*','.*')
                                 tmpPatt = tmpPatt.upper()
-                                if re.search(tmpPatt,tmpSt0) != None or \
-                                       re.search(tmpPatt,tmpSt1) != None or \
-                                       re.search(tmpPatt,tmpSt2) != None:
+                                if re.search(tmpPatt,tmpSt0) is not None or \
+                                       re.search(tmpPatt,tmpSt1) is not None or \
+                                       re.search(tmpPatt,tmpSt2) is not None:
                                     toBeSuppressed = True
                                     break
                     # suppressed            
@@ -556,7 +556,7 @@ def setExcludeFile(strExcludeFile):
 def matchExtFile(fileName):
     # check exclude files
     for tmpPatt in excludeFile:
-        if re.search(tmpPatt,fileName) != None:
+        if re.search(tmpPatt,fileName) is not None:
             return False
     # gather files with special extensions
     for tmpExtention in ['.py','.dat','.C','.xml','Makefile',
@@ -572,15 +572,15 @@ def matchExtFile(fileName):
             if patt == baseName:
                 return True
             # patt may contain / for sub dir
-            if patt != '' and re.search(patt,fileName) != None:
+            if patt != '' and re.search(patt,fileName) is not None:
                 return True
         else:
             # use regex for *
             tmpPatt = patt.replace('*','.*')
-            if re.search(tmpPatt,baseName) != None:
+            if re.search(tmpPatt,baseName) is not None:
                 return True
             # patt may contain / for sub dir
-            if patt != '' and re.search(tmpPatt,fileName) != None:
+            if patt != '' and re.search(tmpPatt,fileName) is not None:
                 return True
     # not matched
     return False
@@ -627,7 +627,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
     def getFileList(dir,files,forPackage,readLink=True):
         try:
             list = os.listdir(dir)
-        except:
+        except Exception:
             return
         for item in list:
             # skip if doc or .svn
@@ -637,7 +637,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
             if os.path.isdir(fullName):
                 # ignore symlinked dir just under InstallArea/include
                 # they are created for g77
-                if os.path.islink(fullName) and re.search('/InstallArea/include$',dir) != None:
+                if os.path.islink(fullName) and re.search('/InstallArea/include$',dir) is not None:
                     pass
                 elif os.path.islink(fullName) and readLink and forPackage:
                     # resolve symlink
@@ -691,22 +691,22 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                     if target in ['[^/]+\.h']:
                         # convert PackageDir/PackageName/PackageName to PackageDir/PackageName
                         pName = re.sub('/[^/]+$','',pName)
-                    if not pName in _packages:
+                    if pName not in _packages:
                         if os.path.isdir(_workArea+'/'+pName):
                             _packages.append(pName)
                     break
             # check special packages just in case
             for pName in specialPackages:
                 pPath = specialPackages[pName]
-                if not pName in _packages:
+                if pName not in _packages:
                     # look for path pattern
-                    if re.search(pPath,file) != None:
+                    if re.search(pPath,file) is not None:
                         if os.path.isdir(_workArea+'/'+pName):
                             # check structured style
                             tmpDirList = os.listdir(_workArea+'/'+pName)
                             useSS = False
                             for tmpDir in tmpDirList:
-                                if re.search('-\d+-\d+-\d+$',tmpDir) != None:
+                                if re.search('-\d+-\d+-\d+$',tmpDir) is not None:
                                     _packages.append(pName+'/'+tmpDir)
                                     useSS = True
                                     break
@@ -718,15 +718,15 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                             break
         # check glue packages
         for pName in gluePackages:
-            if not pName in _packages:
+            if pName not in _packages:
                 if os.path.isdir(_workArea+'/'+pName):
                     # check structured style
                     tmpDirList = os.listdir(_workArea+'/'+pName)
                     useSS = False
                     for tmpDir in tmpDirList:
-                        if re.search('-\d+-\d+-\d+$',tmpDir) != None:
+                        if re.search('-\d+-\d+-\d+$',tmpDir) is not None:
                             fullPName = pName+'/'+tmpDir
-                            if not fullPName in _packages:
+                            if fullPName not in _packages:
                                 _packages.append(fullPName)
                             useSS = True
                             break
@@ -761,7 +761,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                 # check exclude files
                 excludeFileFlag = False
                 for tmpPatt in excludeFile:
-                    if re.search(tmpPatt,'%s/%s' % (pack,item)) != None:
+                    if re.search(tmpPatt,'%s/%s' % (pack,item)) is not None:
                         excludeFileFlag = True
                         break
                 if excludeFileFlag:
@@ -774,7 +774,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                     tmpFiles = []
                     getFileList('%s/%s/run' % (_workArea,pack),tmpFiles,False,False)
                     for tmpFile in tmpFiles:
-                        if not tmpFile in files:
+                        if tmpFile not in files:
                             files.append(tmpFile)
                     for iFile in files:
                         # converted to real path
@@ -854,7 +854,7 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
             continue
         # check special files
         spBaseName = relPath
-        if re.search('/',spBaseName) != None:
+        if re.search('/',spBaseName) is not None:
             spBaseName = spBaseName.split('/')[-1]
         if spBaseName in specialFilesForAthena:
             warStr  = '%s in the current dir is sent to remote WNs, which might cause a database problem. ' % spBaseName
@@ -897,7 +897,7 @@ def archiveJobOFiles(workArea,runDir,currentDir,tmpDir,verbose,archiveName=''):
             fullName=dir+'/'+item
             if os.path.isdir(fullName):
                 # skip symlinks in include since they cause full scan on releases
-                if os.path.islink(fullName) and re.search('InstallArea/include$',dir) != None:
+                if os.path.islink(fullName) and re.search('InstallArea/include$',dir) is not None:
                     continue
                 # dir
                 getJobOs(fullName,files)
@@ -944,7 +944,7 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
             tmpLog.debug("  getFiles(%s)" % dir)
         try:    
             list = os.listdir(dir)
-        except:
+        except Exception:
             return
         for item in list:
             if ignoreLib and (item.startswith('i686') or item.startswith('i386') or
@@ -953,7 +953,7 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
             fullName=dir+'/'+item
             if os.path.isdir(fullName):
                 # ignore symlinked dir just under InstallArea/include
-                if ignoreSymLink and os.path.islink(fullName) and re.search('InstallArea/include$',dir) != None:
+                if ignoreSymLink and os.path.islink(fullName) and re.search('InstallArea/include$',dir) is not None:
                     continue
                 # dir
                 getFiles(fullName,files,False,ignoreSymLink)
@@ -969,7 +969,7 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
                 # dir
                 getCMTFiles(fullName,files)
             else:
-                if re.search('cmt/requirements$',fullName) != None:
+                if re.search('cmt/requirements$',fullName) is not None:
                     files.append(fullName)
 
     # get files
@@ -1016,14 +1016,14 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
             # check exclude files
             excludeFileFlag = False
             for tmpPatt in excludeFile:
-                if re.search(tmpPatt,relPath) != None:
+                if re.search(tmpPatt,relPath) is not None:
                     excludeFileFlag = True
                     break
             if excludeFileFlag:
                 continue
             if not relPath.startswith('/'):
                 # use files in private InstallArea instead of group InstallArea
-                if not file in allFiles:
+                if file not in allFiles:
                     # append
                     if file in files:
                         out = commands_get_output("tar -rh '%s' -f '%s'" % (file,archiveFullName))
@@ -1097,7 +1097,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
     outDSwoSlash = re.sub('/$','',original_outDS)
     outDsNameBase = outDSwoSlash
     tmpMatch = re.search('^([^\.]+)\.([^\.]+)\.',original_outDS)
-    if tmpMatch != None and original_outDS.endswith('/'):
+    if tmpMatch is not None and original_outDS.endswith('/'):
         outDSwoSlash = '%s.%s' % (tmpMatch.group(1),tmpMatch.group(2))
         if descriptionInLFN != '':
             outDSwoSlash += descriptionInLFN
@@ -1155,7 +1155,7 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
             lfn  = '%s.%s._${SN/P}.root' % (outDSwoSlash,sName)       
             tmpSuffix = '_%s' % sName
             dataset = outDsNameBase + tmpSuffix + '/'
-            if not sName in sNameList:
+            if sName not in sNameList:
                 sNameList.append(sName)
             if 'AANT' not in outMap:
                 outMap['AANT'] = []
@@ -1336,15 +1336,15 @@ def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None
 # get CMTCONFIG
 def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbose=False):
     # use user-specified cmtconfig
-    if cmtConfig != None:
+    if cmtConfig is not None:
         return cmtConfig
     # nightlies
-    if cacheVer != None and (re.search('_rel_\d+$',cacheVer) != None or 'AtlasBuildStamp' in os.environ):
+    if cacheVer is not None and (re.search('_rel_\d+$',cacheVer) is not None or 'AtlasBuildStamp' in os.environ):
         # use local cmtconfig if it is available
         if 'CMTCONFIG' in os.environ:
             return os.environ['CMTCONFIG']
         # get cmtconfig for nightlies
-        if athenaVer != None:
+        if athenaVer is not None:
             # remove prefix
             verStr = re.sub('^[^-]+-','',athenaVer)
             # dev nightlies
@@ -1361,7 +1361,7 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbo
             # use i686-slc5-gcc43-opt by default
             return 'i686-slc5-gcc43-opt'
     # AthAnalysis
-    if cacheVer != None and isAthRelease(cacheVer):
+    if cacheVer is not None and isAthRelease(cacheVer):
         if 'CMTCONFIG' in os.environ:
             return os.environ['CMTCONFIG']
         else:
@@ -1370,12 +1370,12 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbo
             tmpLog.error('environment variable CMTCONFIG is undefined')
             sys.exit(EC_Config)
     # get default cmtconfig according to Atlas release
-    if athenaVer != None:
+    if athenaVer is not None:
         # remove prefix
         verStr = re.sub('^[^-]+-','',athenaVer)
         # get cmtconfig list
         cmtConfigList = Client.getCmtConfigList(athenaVer,verbose)
-        if cmtConfigList == [] and not verStr in ['',athenaVer]:
+        if cmtConfigList == [] and verStr not in ['',athenaVer]:
             cmtConfigList = Client.getCmtConfigList(verStr,verbose)
         if len(cmtConfigList) == 1:
             # no choice
@@ -1389,7 +1389,7 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbo
             return cmtConfigList[-1]
         # extract version numbers
         match = re.search('(\d+)\.(\d+)\.(\d+)',verStr)
-        if match == None:
+        if match is None:
             return None
         # major,miner,rev
         maVer = int(match.group(1))
@@ -1412,7 +1412,7 @@ def checkCmtConfig(localCmtConfig,userCmtConfig,noBuild):
     if userCmtConfig in ['',None]:
         return True
     # CVMFS version format
-    if re.search('-gcc\d+\.\d+$',userCmtConfig) != None:
+    if re.search('-gcc\d+\.\d+$',userCmtConfig) is not None:
         return True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -1451,7 +1451,7 @@ try:
         return %s
 
     AthenaCommon.AthenaCommonFlags.FilesInput.__call__ = _dummyFilesInput
-except:
+except Exception:
     pass
 
 try:
@@ -1462,12 +1462,12 @@ try:
 
     for tmpAttr in dir (AthenaCommon.AthenaCommonFlags):
         import re
-        if re.search('^(Pool|BS).*Input$',tmpAttr) != None:
+        if re.search('^(Pool|BS).*Input$',tmpAttr) is not None:
             try:
                 getattr(AthenaCommon.AthenaCommonFlags,tmpAttr).get_Value = _dummyGet_Value
-            except:
+            except Exception:
                 pass
-except:
+except Exception:
     pass
 """ % (inputFiles,inputFiles))
     oFile.close()

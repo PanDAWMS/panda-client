@@ -35,17 +35,17 @@ class PdbProxy:
         self.con = None
         # logger
         self.log = PLogger.getPandaLogger()
-                              
+
 
     # set verbose
     def setVerbose(self,verbose):
         # verbose
         self.verbose = verbose
-                        
-        
+
+
     # execute SQL
     def execute(self,sql,var={}):
-        # logger  
+        # logger
         tmpLog = PLogger.getPandaLogger()
         # expand variables
         for tmpKey in var:
@@ -79,7 +79,7 @@ class PdbProxy:
             # remove ''
             try:
                 outList.remove('')
-            except:
+            except Exception:
                 pass
             # remove junk messages
             ngStrings = ['Loading resources from']
@@ -88,14 +88,14 @@ class PdbProxy:
                 flagNG = False
                 for ngStr in ngStrings:
                     match = re.search(ngStr,tmpStr,re.I)
-                    if match != None:
+                    if match is not None:
                         flagNG = True
                         break
                 # remove
                 if flagNG:
                     try:
                         outList.remove(tmpStr)
-                    except:
+                    except Exception:
                         pass
             return True,outList
 
@@ -135,8 +135,8 @@ class PdbProxy:
     # remove old database
     def deleteDatabase(self):
         commands_get_status_output('rm -f %s' % self.database)
-        
-        
+
+
     # initialize database
     def initialize(self):
         # import sqlite3
@@ -178,13 +178,13 @@ class PdbProxy:
         # the table already exist or not
         if retV == []:
             return False
-        if not self.tablename in retV[-1].split():
+        if self.tablename not in retV[-1].split():
             return False
         # check schema
         self.checkSchema()
         return True
 
-            
+
     # check schema
     def checkSchema(self,noAdd=False):
         # get colum names
@@ -197,10 +197,10 @@ class PdbProxy:
             items = line.split('|')
             if len(items) > 1:
                 columns.append(items[1])
-        # check        
+        # check
         for tmpC in LocalJobSpec.appended:
             tmpA = LocalJobSpec.appended[tmpC]
-            if not tmpC in columns:
+            if tmpC not in columns:
                 if noAdd:
                     raise RuntimeError("%s not found in database schema" % tmpC)
                 # add column
@@ -212,7 +212,7 @@ class PdbProxy:
             return
         # check whole schema just in case
         self.checkSchema(noAdd=True)
-        
+
 
 
     # create table
@@ -231,7 +231,7 @@ class PdbProxy:
         sql += "'outDS'          TEXT,"
         sql += "'libDS'          VARCHAR(255),"
         sql += "'jobParams'      TEXT,"
-        sql += "'retryID'        INTEGER,"        
+        sql += "'retryID'        INTEGER,"
         sql += "'provenanceID'   INTEGER,"
         sql += "'creationTime'   TIMESTAMP,"
         sql += "'lastUpdate'     TIMESTAMP,"
@@ -255,8 +255,8 @@ class PdbProxy:
 # convert Panda jobs to DB representation
 def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobForSiteID=None):
     statusOnly = False
-    if localJob != None:
-        # update status only 
+    if localJob is not None:
+        # update status only
         ddata = localJob
         statusOnly = True
     else:
@@ -289,10 +289,10 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
         for pandaJob in pandaJobList:
             if pandaJob.prodSourceLabel == 'panda':
                 break
-    elif pandaJobForSiteID != None:
+    elif pandaJobForSiteID is not None:
         pandaJob = pandaJobForSiteID
     # extract libDS
-    if pandaJob != None:
+    if pandaJob is not None:
         if pandaJob.prodSourceLabel == 'panda':
             # build Jobs
             ddata.buildStatus = pandaJob.jobStatus
@@ -319,11 +319,11 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
         if ddata.buildStatus != '':
             ddata.buildStatus = sStr.split(',')[0]
         # set computingSite mainly for rebrokerage
-        if pandaJobForSiteID != None:
+        if pandaJobForSiteID is not None:
             ddata.site = pandaJobForSiteID.computingSite
             ddata.nRebro = pandaJobForSiteID.specialHandling.split(',').count('rebro') + \
                            pandaJobForSiteID.specialHandling.split(',').count('sretry')
-        # return    
+        # return
         return ddata
     # job parameters
     ddata.jobParams = pandaJob.metadata
@@ -339,10 +339,10 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
         for pandaJob in pandaJobList:
             for tmpFile in pandaJob.Files:
                 if tmpFile.type == 'input' and not tmpFile.lfn.endswith('.lib.tgz'):
-                    if not tmpFile.dataset in iDSlist:
+                    if tmpFile.dataset not in iDSlist:
                         iDSlist.append(tmpFile.dataset)
                 elif tmpFile.type == 'output' and not tmpFile.lfn.endswith('.lib.tgz'):
-                    if not tmpFile.dataset in oDSlist:
+                    if tmpFile.dataset not in oDSlist:
                         oDSlist.append(tmpFile.dataset)
     # convert to string
     ddata.inDS = ''
@@ -361,7 +361,7 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
     ddata.jobType = pandaJob.prodSeriesLabel
     # site
     ddata.site = pandaJob.computingSite
-    # cloud 
+    # cloud
     ddata.cloud = pandaJob.cloud
     # job ID
     ddata.JobID = pandaJob.jobDefinitionID
@@ -372,7 +372,7 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
     # groupID
     ddata.groupID = pandaJob.jobsetID
     ddata.retryJobsetID = -1
-    if not pandaJob.sourceSite in ['NULL',None,'']: 
+    if pandaJob.sourceSite not in ['NULL',None,'']:
         ddata.parentJobsetID = long(pandaJob.sourceSite)
     else:
         ddata.parentJobsetID = -1
@@ -390,8 +390,8 @@ def convertPtoD(pandaJobList,pandaIDstatus,localJob=None,fileInfo={},pandaJobFor
 # convert JediTask to DB representation
 def convertJTtoD(jediTaskDict,localJob=None):
     statusOnly = False
-    if localJob != None:
-        # update status only 
+    if localJob is not None:
+        # update status only
         ddata = localJob
         statusOnly = True
     else:
@@ -409,9 +409,9 @@ def convertJTtoD(jediTaskDict,localJob=None):
         ddata.PandaID += '%s,' % tmpPandaID
     ddata.PandaID = ddata.PandaID[:-1]
     if len(jediTaskDict['PandaID']) > maxIDs:
-        ddata.PandaID += ',+%sIDs' % (len(jediTaskDict['PandaID'])-maxIDs) 
+        ddata.PandaID += ',+%sIDs' % (len(jediTaskDict['PandaID'])-maxIDs)
     # merge status
-    if not 'mergeStatus' in jediTaskDict or jediTaskDict['mergeStatus'] == None:
+    if 'mergeStatus' not in jediTaskDict or jediTaskDict['mergeStatus'] is None:
         ddata.mergeJobStatus = 'NA'
     else:
         ddata.mergeJobStatus = jediTaskDict['mergeStatus']
@@ -428,7 +428,7 @@ def convertJTtoD(jediTaskDict,localJob=None):
     # release
     ddata.releaseVar = jediTaskDict['transUses']
     # cache
-    if jediTaskDict['transHome'] == None:
+    if jediTaskDict['transHome'] is None:
         tmpCache = ''
     else:
         tmpCache = re.sub('^[^-]+-*','',jediTaskDict['transHome'])
@@ -442,7 +442,7 @@ def convertJTtoD(jediTaskDict,localJob=None):
             ddata.jobParams = jediTaskDict['cliParams']
         # truncate
         ddata.jobParams = ddata.jobParams[:1024]
-    except:
+    except Exception:
         pass
     # input datasets
     try:
@@ -458,7 +458,7 @@ def convertJTtoD(jediTaskDict,localJob=None):
         if len(inDSs) > maxDS:
             strInDS += ',+{0}DSs'.format(len(inDSs)-maxDS)
         ddata.inDS = strInDS
-    except:
+    except Exception:
         ddata.inDS = jediTaskDict['inDS']
     # output datasets
     ddata.outDS = jediTaskDict['outDS']
@@ -470,7 +470,7 @@ def convertJTtoD(jediTaskDict,localJob=None):
     ddata.jobType = jediTaskDict['processingType']
     # site
     ddata.site = jediTaskDict['site']
-    # cloud 
+    # cloud
     ddata.cloud = jediTaskDict['cloud']
     # job ID
     ddata.JobID = jediTaskDict['reqID']
@@ -482,7 +482,7 @@ def convertJTtoD(jediTaskDict,localJob=None):
     ddata.groupID = jediTaskDict['reqID']
     # jediTaskID
     ddata.jediTaskID = jediTaskDict['jediTaskID']
-    # IDs for retry 
+    # IDs for retry
     ddata.retryJobsetID = -1
     ddata.parentJobsetID = -1
     # the number of rebrokerage actions
@@ -502,7 +502,7 @@ def initialzieDB(verbose=False,restoreDB=False):
         pdbProxy.deleteDatabase()
     pdbProxy.initialize()
     pdbProxy.setVerbose(verbose)
-    
+
 
 # insert job info to DB
 def insertJobDB(job,verbose=False):
@@ -524,7 +524,7 @@ def updateJobDB(job,verbose=False,updateTime=None):
     sql1 += job.values(forUpdate=True)
     sql1 += " WHERE JobID=%s " % job.JobID
     # set update time
-    if updateTime != None:
+    if updateTime is not None:
         job.lastUpdate = updateTime
         sql1 += " AND lastUpdate<'%s' " % updateTime.strftime('%Y-%m-%d %H:%M:%S')
     else:
@@ -609,8 +609,8 @@ def readJobsetDB(JobsetID,verbose=False):
 
 # check jobset status in DB
 def checkJobsetStatus(JobsetID,verbose=False):
-    # logger  
-    tmpLog = PLogger.getPandaLogger()    
+    # logger
+    tmpLog = PLogger.getPandaLogger()
     # make sql
     sql1 = "SELECT %s FROM %s " % (LocalJobSpec.columnNames(),pdbProxy.tablename)
     sql1+= "WHERE groupID=%s" % JobsetID
@@ -638,7 +638,7 @@ def checkJobsetStatus(JobsetID,verbose=False):
         tmpJobSpec = jobMap[tmpJobID]
         if tmpJobSpec != 'frozen':
             return True,'running'
-    # return 
+    # return
     return True,'frozen'
 
 
@@ -669,7 +669,7 @@ def bulkReadJobDB(verbose=False):
                     jobsetMap[tmpJobsetID] = []
                     jobset = LocalJobsetSpec()
                     retMap[tmpJobsetID] = jobset
-                # add job    
+                # add job
                 jobsetMap[tmpJobsetID].append(job)
     # add jobs to jobset
     for tmpJobsetID in jobsetMap:
@@ -681,7 +681,7 @@ def bulkReadJobDB(verbose=False):
     retVal = []
     for id in ids:
         retVal.append(retMap[id])
-    # return    
+    # return
     return retVal
 
 
@@ -701,20 +701,20 @@ def getListOfJobIDs(nonFrozen=False,verbose=False):
         # status in DB
         tmpStatus = item[-1]
         # keep all jobs
-        if not tmpID in allList:
+        if tmpID not in allList:
             allList.append(tmpID)
         # keep frozen jobs
         if nonFrozen and tmpStatus == 'frozen':
-            if not tmpID in frozenList:
+            if tmpID not in frozenList:
                 frozenList.append(tmpID)
     # remove redundant jobs
     retVal = []
     for item in allList:
-        if not item in frozenList:
+        if item not in frozenList:
             retVal.append(item)
     # sort
     retVal.sort()
-    # return 
+    # return
     return retVal
 
 
@@ -735,12 +735,12 @@ def getMapJobsetIDJobIDs(verbose=False):
         # append
         if tmpJobsetID not in allMap:
             allMap[tmpJobsetID] = []
-        if not tmpJobID in allMap[tmpJobsetID]:
+        if tmpJobID not in allMap[tmpJobsetID]:
             allMap[tmpJobsetID].append(tmpJobID)
     # sort
     for tmpKey in allMap.keys():
         allMap[tmpKey].sort()
-    # return 
+    # return
     return allMap
 
 
@@ -767,5 +767,5 @@ def getJobsetTaskMap(verbose=False):
         jediTaskID = long(item[-1])
         # append
         allMap[jediTaskID] = tmpJobsetID
-    # return 
+    # return
     return allMap

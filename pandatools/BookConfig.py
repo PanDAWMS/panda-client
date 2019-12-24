@@ -18,7 +18,7 @@ if not os.path.exists(confFile):
     # make dir
     try:
         os.makedirs(os.environ['PANDA_CONFIG_ROOT'])
-    except:
+    except Exception:
         pass
 else:
     # add section
@@ -32,7 +32,10 @@ if newFlag:
     # set dummy time
     parser.set(sectionName,'last_synctime','')
     # keep old config just in case
-    os.rename(confFile, '%s.back' % confFile)
+    try:
+        os.rename(confFile, '%s.back' % confFile)
+    except Exception:
+        pass
     # write
     confFH = open(confFile,'w')
     parser.write(confFH)
@@ -51,11 +54,11 @@ def getConfig():
     # expand sequencer section
     for key,val in parser.items(sectionName):
         # convert int/bool
-        if re.search('^\d+$',val) != None:
+        if re.search('^\d+$',val) is not None:
             val = int(val)
-        elif re.search('true',val,re.I) != None:
+        elif re.search('true',val,re.I) is not None:
             val = True
-        elif re.search('false',val,re.I) != None:
+        elif re.search('false',val,re.I) is not None:
             val = False
         # set attributes    
         setattr(bookConf,key,val)
@@ -72,7 +75,7 @@ def updateConfig(bookConf):
     for attr in dir(bookConf):
         if not attr.startswith('_'):
             val = getattr(bookConf,attr)
-            if val != None:
+            if val is not None:
                 parser.set(sectionName,attr,val)
     # keep old config
     try:

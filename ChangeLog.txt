@@ -1,5 +1,29 @@
 ** Release Notes
 
+1.4.9
+  * changed pbook -c to allow running scripts
+  * added -3 to pathena, prun, pbook
+  * removed ()' from username
+
+1.4.8 (12/9/2019)
+  * doc for pbook
+  * modified pbook to return an error code in case of failures
+
+1.4.7 (12/3/2019)
+  * fixed pbook for python 2.6
+
+1.4.6 (12/3/2019)
+  * fixed pbook for T3
+
+1.4.5 (12/2/2019)
+  * added new pandamon-based pbook
+
+1.4.4 (11/12/2019)
+  * fixed BookConfig
+
+1.4.3 (11/11/2019)
+  * symlink for python2/3 server
+
 1.4.0 (10/30/2019)
   * changed version number for EventLoop
 

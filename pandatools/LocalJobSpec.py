@@ -38,7 +38,7 @@ class LocalJobSpec(object):
         'jediTaskID'    : 'INTEGER',
         'taskStatus'    : 'VARCHAR(16)',
         }
-    
+
     _attributes += tuple(appended.keys())
     # slots
     __slots__ = _attributes + ('flag_showSubstatus','flag_longFormat')
@@ -58,7 +58,7 @@ class LocalJobSpec(object):
         statusMap = {}
         for item in self.jobStatus.split(','):
             match = re.search('^(\w+)\*(\d+)$',item)
-            if match == None:
+            if match is None:
                 # non compact
                 if item not in statusMap:
                     statusMap[item] = 0
@@ -83,9 +83,9 @@ class LocalJobSpec(object):
                     # use unkown for out-range
                     tmpStatus = 'unknown'
                 # status of interest
-                if not tmpStatus in self.flag_showSubstatus.split(','):
+                if tmpStatus not in self.flag_showSubstatus.split(','):
                     continue
-                # append    
+                # append
                 if tmpStatus not in pandaIDstatusMap:
                     pandaIDstatusMap[tmpStatus] = 'PandaID='
                 pandaIDstatusMap[tmpStatus] += '%s,' % tmpPandaID
@@ -96,7 +96,7 @@ class LocalJobSpec(object):
             if self.flag_showSubstatus:
                 if tmpStatus in pandaIDstatusMap:
                     statusStr += '\n%8s   %10s   %s' % ('','',pandaIDstatusMap[tmpStatus][:-1])
-        # disable showSubstatus    
+        # disable showSubstatus
         self.flag_showSubstatus = ''
         # number of jobs
         nJobs = len(self.PandaID.split(','))
@@ -110,29 +110,29 @@ class LocalJobSpec(object):
         try:
             tmpInDSList = []
             for tmpItem in str(self.inDS).split(','):
-                if not tmpItem in tmpInDSList:
+                if tmpItem not in tmpInDSList:
                     tmpInDSList.append(tmpItem)
                     strInDS += '%s,' % tmpItem
             strInDS = strInDS[:-1]
-        except:
+        except Exception:
             pass
         strOutDS = ''
         try:
             tmpOutDSList = []
             for tmpItem in str(self.outDS).split(','):
-                if not tmpItem in tmpOutDSList:
+                if tmpItem not in tmpOutDSList:
                     tmpOutDSList.append(tmpItem)
                     strOutDS += '%s,' % tmpItem
             strOutDS = strOutDS[:-1]
-        except:
+        except Exception:
             pass
         # parse
         relStr = ''
-        if not self.releaseVar in ['','NULL','None',None]:
+        if self.releaseVar not in ['','NULL','None',None]:
             relStr = self.releaseVar
         # cache
         cacheStr = ''
-        if not self.cacheVar in ['','NULL','None',None]:
+        if self.cacheVar not in ['','NULL','None',None]:
             cacheStr = self.cacheVar
         # string representation
         strFormat = "%15s : %s\n"
@@ -148,15 +148,15 @@ class LocalJobSpec(object):
         strOut += strFormat % ("PandaID",      self.encodeCompact()['PandaID'])
         strOut += strFormat % ("nJobs",        nJobsStr)
         strOut += strFormat % ("site",         self.site)
-        strOut += strFormat % ("cloud",        self.cloud)                
+        strOut += strFormat % ("cloud",        self.cloud)
         strOut += strFormat % ("inDS",         strInDS)
         strOut += strFormat % ("outDS",        strOutDS)
         strOut += strFormat % ("libDS",        str(self.libDS))
-        strOut += strFormat % ("retryID",      self.retryID)        
+        strOut += strFormat % ("retryID",      self.retryID)
         strOut += strFormat % ("provenanceID", self.provenanceID)
-        if not self.mergeJobStatus in ['NA']:
+        if self.mergeJobStatus not in ['NA']:
             strOut += strFormat % ("mergeJobStatus", self.mergeJobStatus)
-            strOut += strFormat % ("mergeJobID",     self.mergeJobID)            
+            strOut += strFormat % ("mergeJobID",     self.mergeJobID)
         strOut += strFormat % ("creationTime", self.creationTime.strftime('%Y-%m-%d %H:%M:%S'))
         strOut += strFormat % ("lastUpdate",   self.lastUpdate.strftime('%Y-%m-%d %H:%M:%S'))
         strOut += strFormat % ("params",       self.jobParams)
@@ -164,15 +164,15 @@ class LocalJobSpec(object):
         # return
         return strOut
 
-    
+
     # override __getattribute__ for SQL
     def __getattribute__(self,name):
         ret = object.__getattribute__(self,name)
-        if ret == None:
+        if ret is None:
             return "NULL"
         return ret
-        
-    
+
+
     # pack tuple into JobSpec
     def pack(self,values):
         for i in range(len(self._attributes)):
@@ -193,7 +193,7 @@ class LocalJobSpec(object):
         else:
             # for INSERT
             retS = "("
-        # loop over all attributes     
+        # loop over all attributes
         for attr in self._attributes:
             if attr in encVal:
                 val = encVal[attr]
@@ -207,7 +207,7 @@ class LocalJobSpec(object):
                 if attr == 'id':
                     continue
                 retS += '%s=' % attr
-            # value    
+            # value
             if val == 'NULL':
                 retS += 'NULL,'
             else:
@@ -217,14 +217,14 @@ class LocalJobSpec(object):
             retS += ')'
         return retS
 
-    
+
     # expand compact values
     def decodeCompact(self):
         # PandaID
         pStr = ''
         for item in self.PandaID.split(','):
             match = re.search('^(\d+)-(\d+)$',item)
-            if match == None:
+            if match is None:
                 # non compact
                 pStr += (item+',')
             else:
@@ -238,7 +238,7 @@ class LocalJobSpec(object):
         sStr = ''
         for item in self.jobStatus.split(','):
             match = re.search('^(\w+)\*(\d+)$',item)
-            if match == None:
+            if match is None:
                 # non compact
                 sStr += (item+',')
             else:
@@ -257,7 +257,7 @@ class LocalJobSpec(object):
                 continue
             # convert str to datetime
             match = re.search('^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)$',val)
-            if match != None:
+            if match is not None:
                 tmpDate = datetime.datetime(year   = int(match.group(1)),
                                             month  = int(match.group(2)),
                                             day    = int(match.group(3)),
@@ -286,19 +286,19 @@ class LocalJobSpec(object):
         eID = None
         tmpPandaIDs = self.PandaID.split(',')
         if includeMerge:
-            tmpPandaIDs += self.mergeJobID.split(',')    
+            tmpPandaIDs += self.mergeJobID.split(',')
         for item in tmpPandaIDs:
             if item in ['','None']:
                 continue
             # convert to long
             try:
                 tmpID = long(item)
-            except:
+            except Exception:
                 sID = item
                 eID = item
                 break
             # set start/end ID
-            if sID == None:
+            if sID is None:
                 sID = tmpID
                 eID = tmpID
                 continue
@@ -329,10 +329,10 @@ class LocalJobSpec(object):
         toBeFrozen = True
         for tmpStatus in self.jobStatus.split(','):
             # check if is should be frozen
-            if toBeFrozen and not tmpStatus in ['finished','failed','partial','cancelled']:
+            if toBeFrozen and tmpStatus not in ['finished','failed','partial','cancelled']:
                 toBeFrozen = False
             # set start status
-            if sStatus == None:
+            if sStatus is None:
                 sStatus = tmpStatus
                 nStatus += 1
                 continue
@@ -355,8 +355,8 @@ class LocalJobSpec(object):
             sStr += '%s*%s,' % (sStatus,nStatus)
         ret['jobStatus'] = sStr[:-1]
         # set merge job status
-        if '--mergeOutput' in self.jobParams and not self.jobType in ['usermerge']:
-            if not self.mergeJobStatus in ['NA','standby','generating','generated','aborted']:
+        if '--mergeOutput' in self.jobParams and self.jobType not in ['usermerge']:
+            if self.mergeJobStatus not in ['NA','standby','generating','generated','aborted']:
                 self.mergeJobStatus = 'standby'
         else:
             self.mergeJobStatus = 'NA'
@@ -379,11 +379,11 @@ class LocalJobSpec(object):
     # merge job generation is active
     def activeMergeGen(self):
         if '--mergeOutput' in self.jobParams and self.mergeJobStatus in ['standby','generating'] \
-               and not self.jobType in ['usermerge']:
+               and self.jobType not in ['usermerge']:
             return True
         return False
-    
-        
+
+
     # return column names for INSERT or full SELECT
     def columnNames(cls):
         ret = ""

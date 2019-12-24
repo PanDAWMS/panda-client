@@ -45,7 +45,7 @@ def resetCacheValues():
     global cacheLastUpdate
     global cacheVomsInfo
     timeNow = datetime.datetime.utcnow()
-    if cacheLastUpdate == None or (timeNow-cacheLastUpdate) > datetime.timedelta(minutes=60):
+    if cacheLastUpdate is None or (timeNow-cacheLastUpdate) > datetime.timedelta(minutes=60):
         cacheLastUpdate = timeNow
         cacheProxyStatus = None
         cacheVomsStatus = None
@@ -127,7 +127,7 @@ def getDN(verbose=False):
             distinguishedName = re.sub('\(','',distinguishedName)
             distinguishedName = re.sub('\)','',distinguishedName)
             distinguishedName = distinguishedName.strip()
-            if re.search(' ',distinguishedName) != None:
+            if re.search(' ',distinguishedName) is not None:
                 # look for full name
                 distinguishedName = distinguishedName.replace(' ','')
                 break
@@ -157,7 +157,7 @@ def getNickname(verbose=False):
     for line in output.split('\n'):
         if line.startswith('attribute'):
             match = re.search('nickname =\s*([^\s]+)\s*\(atlas\)',line)
-            if match != None:
+            if match is not None:
                 nickName = match.group(1)
                 break
     # check
@@ -167,13 +167,13 @@ def getNickname(verbose=False):
         wMessage =  'Could not get nickname by using voms-proxy-info which gave\n\n'
         wMessage += output
         wMessage += '\nPlease register nickname to ATLAS VO via\n\n'
-        wMessage += '   https://lcg-voms.cern.ch:8443/vo/atlas/vomrs\n'
+        wMessage += '   https://lcg-voms2.cern.ch:8443/voms/atlas/vomrs\n'
         wMessage += '      [Member Info] -> [Edit Personal Info]'
         print('')
         tmpLog.warning(wMessage)
         print('')
     return nickName
-        
+
 
 # set Rucio accounting
 def setRucioAccount(account,appid,forceSet):
@@ -201,7 +201,7 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',mergeOutput=Fals
         prodGroups = []
         for tmpLine in output.split('\n'):
             match = re.search('/([^/]+)/Role=production',tmpLine)
-            if match != None:
+            if match is not None:
                 # ignore atlas production role
                 if not match.group(1) in ['atlas']:
                     prodGroups.append(match.group(1))
@@ -209,16 +209,16 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',mergeOutput=Fals
         if prodGroups == []:
             errStr  = "The --official option requires production role. Please use the --voms option to set production role;\n"
             errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
-            errStr += "If you don't have production role for the group please request it in ATLAS VO first"                        
+            errStr += "If you don't have production role for the group please request it in ATLAS VO first"
             tmpLog.error(errStr)
             return False
-        # loop over all prefixes    
+        # loop over all prefixes
         allowedPrefix = ['group']
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
                 tmpPattO = '^'+tmpPrefix+'\d{2}'+'\.'+tmpGroup+'\.'
-                tmpPattN = '^'+tmpPrefix+'\.'+tmpGroup+'\.'                
-                if re.search(tmpPattO,outDS) != None or re.search(tmpPattN,outDS) != None:
+                tmpPattN = '^'+tmpPrefix+'\.'+tmpGroup+'\.'
+                if re.search(tmpPattO,outDS) is not None or re.search(tmpPattN,outDS) is not None:
                     return True
         # didn't match
         errStr  = "Your proxy is allowed to produce official datasets\n"
@@ -236,7 +236,7 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',mergeOutput=Fals
     # check output dataset format
     matStrO = '^user' + '\d{2}' + '\.' + distinguishedName + '\.'
     matStrN = '^user\.'+nickName+'\.'
-    if re.match(matStrO,outDS) == None and (nickName == '' or re.match(matStrN,outDS) == None):
+    if re.match(matStrO,outDS) is None and (nickName == '' or re.match(matStrN,outDS) is None):
         if nickName == '':
             errStr = "Could not get nickname from voms proxy\n"
         else:
@@ -247,8 +247,8 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',mergeOutput=Fals
         tmpLog.error(errStr)
         return False
     # check convention
-    if re.match(matStrO,outDS) != None:
-        outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)        
+    if re.match(matStrO,outDS) is not None:
+        outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
         tmpStr  = "You are still using the old naming convention for --outDS (%s.XYZ), " % outDsPrefixO
         tmpStr += "which is not allowed any more. "
         tmpStr += "Please use user.nickname.XYZ instead. If you don't know your nickname, "
@@ -294,14 +294,14 @@ def convSysArgv():
         # remove option
         match = re.search('(^-[^=]+=)(.+)',item)
         noSpace = False
-        if match != None:
+        if match is not None:
             paramStr += ' %s' % match.group(1)
             item = match.group(2)
             noSpace = True
         if not noSpace:
             paramStr += ' '
         match = re.search('(\*| |\')',item)
-        if match == None:
+        if match is None:
             # normal parameters
             paramStr += '%s' % item
         else:
@@ -316,14 +316,14 @@ def isLatestVersion(latestVer):
     # extract local version numbers
     import PandaToolsPkgInfo
     match = re.search('^(\d+)\.(\d+)\.(\d+)$',PandaToolsPkgInfo.release_version)
-    if match == None:
+    if match is None:
         return True
     localMajorVer  = int(match.group(1))
     localMinorVer  = int(match.group(2))
     localBugfixVer = int(match.group(3))
     # extract local version numbers
     match = re.search('^(\d+)\.(\d+)\.(\d+)$',latestVer)
-    if match == None:
+    if match is None:
         return True
     latestMajorVer  = int(match.group(1))
     latestMinorVer  = int(match.group(2))
@@ -362,7 +362,7 @@ def checkPandaClientVer(verbose):
             tmpLog.warning(warStr+'\n')
 
 
-# function for path completion 
+# function for path completion
 def completePathFunc(text, status):
     # remove white spaces
     text = text.strip()
@@ -374,7 +374,7 @@ def completePathFunc(text, status):
         origText = text
         # convert
         text = os.path.expanduser(text)
-    # put / to directories    
+    # put / to directories
     if (not text.endswith('/')) and os.path.isdir(text):
         text += '/'
     # list dirs/files
@@ -392,13 +392,13 @@ def completePathFunc(text, status):
             if useTilde:
                 tmpItem = re.sub('^%s' % os.path.expanduser(origText),
                                  origText,tmpItem)
-            # append    
+            # append
             results.append(tmpItem)
-        # sort    
+        # sort
         results.sort()
     # return
     return results[status]
-                                                                                                                                            
+
 
 # update package
 def updatePackage(verbose=False):
@@ -471,7 +471,7 @@ def updatePackage(verbose=False):
                 if newPrefix != '':
                     break
             # unset hook
-            readline.set_startup_hook(None) 
+            readline.set_startup_hook(None)
             break
         if str == '3':
             cleanInstall = False
@@ -488,24 +488,24 @@ def updatePackage(verbose=False):
     com = 'wget --no-check-certificate --timeout 120 https://atlpan.web.cern.ch/atlpan/panda-client/%s' \
           % packageName
     status = os.system(com)
-    status %= 255    
+    status %= 255
     if status != 0:
         tmpLog.error('failed to download tarball : %s' % status)
         # delete tarball just in case
-        commands_get_output('rm %s' % packageName)    
+        commands_get_output('rm %s' % packageName)
         return False
     # install
     if not rpmInstall:
         # expand
         status,output = commands_get_status_output('tar xvfz %s' % packageName)
-        status %= 255    
+        status %= 255
         if verbose:
             tmpLog.debug(status)
             tmpLog.debug(output)
         if status != 0:
-            tmpLog.error('failed to expand tarball : %s' % status)        
+            tmpLog.error('failed to expand tarball : %s' % status)
             # delete dirs just in case
-            commands_get_output('rm -rf panda-client-%s' % latestVer)    
+            commands_get_output('rm -rf panda-client-%s' % latestVer)
             return False
         # delete tarball
         commands_get_output('rm %s' % packageName)
@@ -521,7 +521,7 @@ def updatePackage(verbose=False):
                 tmpLog.error(output)
                 tmpLog.error('failed to keep old version')
                 # delete dirs
-                commands_get_output('rm -rf panda-client-%s' % latestVer)    
+                commands_get_output('rm -rf panda-client-%s' % latestVer)
                 return False
         # install
         result = True
@@ -536,7 +536,7 @@ def updatePackage(verbose=False):
             tmpLog.error('failed to install panda-client : %s' % status)
             # recover old one
             commands_get_output('rm -rf %s' % os.environ['PANDA_SYS'])
-            commands_get_output('mv %s.back %s' % (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))        
+            commands_get_output('mv %s.back %s' % (os.environ['PANDA_SYS'],os.environ['PANDA_SYS']))
             result = False
         # cleanup
         commands_get_output('rm -rf panda-client-%s' % latestVer)
@@ -547,7 +547,7 @@ def updatePackage(verbose=False):
         com = 'sudo rpm -Uvh %s' % packageName
         print(com)
         status = os.system(com)
-        status %= 255    
+        status %= 255
         if status != 0:
             tmpLog.error('failed to install rpm : %s' % status)
             result = False
@@ -572,7 +572,7 @@ def checkUnmergedDataset(inDS,secDS):
     unMergedDs = ''
     for tmpDs in dsList:
         # check dataset name
-        if re.search(unPatt,tmpDs) != None:
+        if re.search(unPatt,tmpDs) is not None:
             unMergedDs += '%s,' % tmpDs
     unMergedDs = unMergedDs[:-1]
     # return
@@ -585,7 +585,7 @@ def checkUnmergedDataset(inDS,secDS):
     return
 
 
-# read dataset names from text 
+# read dataset names from text
 def readDsFromFile(txtName):
     dsList = ''
     try:
@@ -601,27 +601,27 @@ def readDsFromFile(txtName):
                 continue
             # append
             dsList += '%s,' % tmpLine
-        # close file    
+        # close file
         txt.close()
         # remove the last comma
-        dsList = dsList[:-1] 
-    except:
+        dsList = dsList[:-1]
+    except Exception:
         errType,errValue = sys.exc_info()[:2]
         tmpLog = PLogger.getPandaLogger()
         tmpLog.error('cannot read datasets from %s due to %s:%s' \
                      % (txtName,errType,errValue))
-        sys.exit(EC_Config)    
+        sys.exit(EC_Config)
     return dsList
 
 
 # convert param string to JEDI params
 def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,usePfnList=False,includeIO=True):
-    # list of place holders for input 
+    # list of place holders for input
     inList = ['IN','CAVIN','MININ','LOMBIN','HIMBIN','BHIN','BGIN','BGHIN','BGCIN','BGOIN']
     # place holder for output
     outHolder = 'SN'
     # place holders with extension
-    digExList = ['RNDMSEED','FIRSTEVENT']  
+    digExList = ['RNDMSEED','FIRSTEVENT']
     allExList = digExList + ['DBR']
     # mapping of client and JEDI place holders
     holders = {'RNDMSEED'  : 'RNDM',
@@ -639,7 +639,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
     for newH in holders:
         oldH = holders[newH]
         # JEDI-only place holders
-        if oldH == None:
+        if oldH is None:
             oldH = newH
         oldH = '%' + oldH
         # with extension
@@ -650,7 +650,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
                 oldH += '(:|=)([^ \'\"\}]+)'
             # look for extension
             tmpM = re.search(oldH,encStr)
-            if tmpM != None:
+            if tmpM is not None:
                 extensionMap[newH] = tmpM.group(2)
             newH = '${' + newH + '}'
         else:
@@ -658,7 +658,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
         encStr = re.sub(oldH,newH,encStr)
     # replace %OUT to outDS${SN}
     if includeIO:
-        encStr = re.sub('%OUT',outNamePrefix+'.${'+outHolder+'}',encStr)    
+        encStr = re.sub('%OUT',outNamePrefix+'.${'+outHolder+'}',encStr)
     # make pattern for split
     patS  = "("
     allKeys = list(holders)
@@ -676,18 +676,18 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
     for tmpItem in tmpItems:
         # check if a place holder
         matchP = re.search('\$\{([^:\}]+)',tmpItem)
-        if re.search(patS,tmpItem) != None and matchP != None:
+        if re.search(patS,tmpItem) is not None and matchP is not None:
             tmpHolder = matchP.group(1)
             # set attributes
             if tmpHolder in inList:
                 # use constant since it is templated in another option e.g., -i
                 tmpDict = {'type':'constant'}
                 if encode:
-                    tmpDict['value'] = '${' + tmpHolder + '/E}' 
+                    tmpDict['value'] = '${' + tmpHolder + '/E}'
                 else:
                     tmpDict['value'] = tmpItem
                 # set dataset if PFN list is not used or the stream is not primary
-                if not usePfnList or not tmpHolder in ['IN']:
+                if not usePfnList or tmpHolder not in ['IN']:
                     tmpDict['param_type'] = 'input'
                     tmpDict['dataset'] = inputMap[tmpHolder]
             elif tmpHolder == outHolder:
@@ -703,7 +703,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
                 if tmpHolder in extensionMap:
                     try:
                         tmpDict['offset'] = long(extensionMap[tmpHolder])
-                    except:
+                    except Exception:
                         pass
         else:
             # constant
@@ -731,7 +731,7 @@ def splitCommaConcatenatedItems(oldList):
             # remove empty
             if tmpItem == '':
                 continue
-            if not tmpItem in newList:
+            if tmpItem not in newList:
                 newList.append(tmpItem)
     return newList
 
@@ -740,7 +740,7 @@ def splitCommaConcatenatedItems(oldList):
 def uploadGzippedFile(origFileName,currentDir,tmpLog,delFilesOnExit,nosubmit,verbose):
     # open original file
     if origFileName.startswith('/'):
-        # absolute path 
+        # absolute path
         tmpIn = open(origFileName)
     else:
         # relative path
@@ -855,6 +855,21 @@ def replaceInputOutput(taskParamMap, inDS, outDS, seqNum):
             tmpDict['value'] = re.sub(oldOutDS, outDS, tmpDict['value'])
     return newTaskParamMap
 
+
 # get OS information
 def get_os_information():
     return platform.platform()
+
+
+# extract voms proxy user name
+def extract_voms_proxy_username():
+    username = None
+    status, output = get_proxy_info(False, False)
+    for line in output.split('\n'):
+        if line.startswith('subject'):
+            subj = line.split(':', 1)[-1].lstrip()
+            user_dn = re.sub(r'(/CN=\d+)+$', '', subj.replace('/CN=proxy', ''))
+            username = user_dn.split('=')[-1]
+            username = re.sub("[()']", '', username)
+            break
+    return username

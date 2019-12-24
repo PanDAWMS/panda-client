@@ -402,7 +402,7 @@ group_submit.add_argument('--osMatching', action='store_const', const=True, dest
 group_job.add_argument('--cpuTimePerEvent', action='store', dest='cpuTimePerEvent', default=-1, type=int,
                 help='Expected HS06 seconds per event (~= 10 * the expected duration per event in seconds)')
 group_job.add_argument('--maxWalltime', action='store', dest='maxWalltime', default=0, type=int,
-                help='Max walltime for each job in hours. Note that this option works only ' \
+  help='Max walltime for each job in hours. Note that this option works only ' \
                      'when the nevents metadata of input files are available in rucio')
 
 from pandatools import MiscUtils

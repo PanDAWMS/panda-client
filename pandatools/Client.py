@@ -28,11 +28,11 @@ from . import PLogger
 # configuration
 try:
     baseURL = os.environ['PANDA_URL']
-except:
+except Exception:
     baseURL = 'http://pandaserver.cern.ch:25080/server/panda'
 try:
     baseURLSSL = os.environ['PANDA_URL_SSL']
-except:
+except Exception:
     baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
 
 baseURLCSRVSSL = "http://pandacache.cern.ch:25443/server/panda"
@@ -54,7 +54,7 @@ def _x509():
     # see X509_USER_PROXY
     try:
         return os.environ['X509_USER_PROXY']
-    except:
+    except Exception:
         pass
     # see the default place
     x509 = '/tmp/x509up_u%s' % os.getuid()
@@ -131,7 +131,7 @@ class _Curl:
             tmpFD,tmpName = tempfile.mkstemp(dir=globalTmpDir)
         else:
             tmpFD,tmpName = tempfile.mkstemp()
-        os.write(tmpFD,strData)
+        os.write(tmpFD, strData.encode())
         os.close(tmpFD)
         com += ' --config %s' % tmpName
         com += ' %s' % url
@@ -144,7 +144,7 @@ class _Curl:
             try:
                 tmpout = unquote_plus(o)
                 o = eval(tmpout)
-            except:
+            except Exception:
                 pass
         ret = (s,o)
         # remove temporary file
@@ -206,7 +206,7 @@ class _Curl:
                 else:
                     tmpout = unquote_plus(o)
                     o = eval(tmpout)
-            except:
+            except Exception:
                 pass
         ret = (s,o)
         # remove temporary file
@@ -382,7 +382,7 @@ def finishTask(jediTaskID,soft=False,verbose=False):
 
 # retry task
 def retryTask(jediTaskID,verbose=False,properErrorCode=False,newParams=None):
-    if newParams == None:
+    if newParams is None:
         newParams = {}
     # instantiate curl
     curl = _Curl()
@@ -476,7 +476,7 @@ def getDN(origString):
             distinguishedName = re.sub('\d+$','',distinguishedName)
             distinguishedName = re.sub('\.','',distinguishedName)
             distinguishedName = distinguishedName.strip()
-            if re.search(' ',distinguishedName) != None:
+            if re.search(' ',distinguishedName) is not None:
                 # look for full name
                 distinguishedName = distinguishedName.replace(' ','')
                 break
@@ -538,7 +538,7 @@ def getProxyKey(verbose=False):
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey  = _x509()
-    curl.verbose = verbose    
+    curl.verbose = verbose
     # execute
     url = baseURLSSL + '/getProxyKey'
     status,output = curl.post(url,{})
@@ -563,7 +563,7 @@ def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=Fa
     url = baseURLSSL + '/getJediTasksInTimeRange'
     data = {'timeRange': timeRange,
             'fullFlag': True}
-    if dn != None:
+    if dn is not None:
         data['dn'] = dn
     if minTaskID is not None:
         data['minTaskID'] = minTaskID
@@ -601,7 +601,7 @@ def getJediTaskDetails(taskDict,fullFlag,withTaskInfo,verbose=False):
         if tmpDict == {}:
             print("ERROR getJediTaskDetails got empty")
             return EC_Failed,None
-        # copy 
+        # copy
         for tmpKey in tmpDict:
             tmpVal = tmpDict[tmpKey]
             taskDict[tmpKey] = tmpVal
@@ -648,7 +648,7 @@ def setDebugMode(pandaID,modeOn,verbose):
         errStr = dump_log("setDebugMode", e, output)
         return EC_Failed,errStr
 
-    
+
 # set tmp dir
 def setGlobalTmpDir(tmpDir):
     global globalTmpDir
@@ -667,7 +667,7 @@ def getPandaClientVer(verbose):
     if status != 0:
         return status,output
     # check format
-    if re.search('^\d+\.\d+\.\d+$',output) == None:
+    if re.search('^\d+\.\d+\.\d+$',output) is None:
         return EC_Failed,"invalid version '%s'" % output
     # return
     return status,output
@@ -770,12 +770,12 @@ def requestEventPicking(eventPickEvtList,eventPickDataType,eventPickStreamName,
     evpFile.close()
     status,output = curl.post(url,data)
     # failed
-    if status != 0 or output != True: 
+    if status != 0 or output is not True: 
         print(output)
         errStr = "failed to request EventPicking"
         tmpLog.error(errStr)
         sys.exit(EC_Failed)
-    # return user dataset name    
+    # return user dataset name
     return True,userDatasetName
 
 
@@ -902,7 +902,7 @@ def resumeTask(jediTaskID,verbose=False):
     status,output = curl.post(url,data)
     try:
         return status, pickle.loads(output)
-    except:
+    except Exception:
         errtype, errvalue = sys.exc_info()[:2]
         errStr = "ERROR resumeTask : %s %s" % (errtype, errvalue)
         return EC_Failed,output+'\n'+errStr

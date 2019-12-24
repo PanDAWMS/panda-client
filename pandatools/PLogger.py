@@ -13,7 +13,7 @@ def setLogger(tmpLog):
 def getPandaLogger():
     # use root logger
     global rootLog
-    if rootLog == None:
+    if rootLog is None:
         rootLog = logging.getLogger('')
     # add StreamHandler if no handler
     if rootLog.handlers == []:
