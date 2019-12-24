@@ -131,10 +131,6 @@ optP.add_helpGroup(addHelp='Some options such as --inOutDsJson may SPAN several 
 # special options
 group_pathena.add_argument('--version',action='store_const',const=True,dest='version',default=False,
                 help='Displays version')
-# group_job.add_argument('--split', action='store', dest='split',  default=-1,
-#                type=int,    help='Number of sub-jobs to be generated. This option is the same as --nJobs')
-# group_job.add_argument('--nJobs', action='store', dest='nJobs',  default=-1,
-#                type=int,    help='Number of sub-jobs to be generated. This option is the same as --split')
 group_job.add_argument('--split', '--nJobs', metavar='nJobs', action='store', dest='split',  default=-1,
                 type=int,    help='Number of sub-jobs to be generated.')
 
@@ -494,10 +490,6 @@ if options.noCompile:
         tmpLog.error("--noBuild and --noCompile cannot be used simultaneously")
         sys.exit(EC_Config)
     options.noBuild = True
-
-# syntax sugar
-if options.nJobs > 0:
-    options.split = options.nJobs
 
 # files to be deleted
 delFilesOnExit = []
