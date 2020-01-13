@@ -36,12 +36,12 @@ class LocalJobsetSpec(object):
         firstJob = True
         strFormat = "%15s : %s\n"
         strOut1 =  ""
-        strOut2 =  ""        
+        strOut2 =  ""
         strOutJob = ''
         strJobID  = ''
         for jobID in jobIDs:
             strJobID += '%s,' % jobID
-        strJobID = strJobID[:-1]    
+        strJobID = strJobID[:-1]
         # loop over all jobs
         totalBuild = 0
         totalRun   = 0
@@ -55,11 +55,11 @@ class LocalJobsetSpec(object):
                 firstJob = False
                 # release
                 relStr = ''
-                if not job.releaseVar in ['','NULL','None',None]:
+                if job.releaseVar not in ['','NULL','None',None]:
                     relStr = job.releaseVar
                 # cache
                 cacheStr = ''
-                if not job.cacheVar in ['','NULL','None',None]:
+                if job.cacheVar not in ['','NULL','None',None]:
                     cacheStr = job.cacheVar
                 # common string representation
                 if self.isJEDI():
@@ -87,7 +87,7 @@ class LocalJobsetSpec(object):
             statusMap = {}
             for item in job.jobStatus.split(','):
                 match = re.search('^(\w+)\*(\d+)$',item)
-                if match == None:
+                if match is None:
                     # non compact
                     if item not in statusMap:
                         statusMap[item] = 0
@@ -100,9 +100,9 @@ class LocalJobsetSpec(object):
                         statusMap[tmpStatus] = 0
                     statusMap[tmpStatus] += tmpCount
             # merge
-            if not job.mergeJobStatus in ['NA']:
+            if job.mergeJobStatus not in ['NA']:
                 usingMerge = True
-            # get PandaIDs for each status 
+            # get PandaIDs for each status
             pandaIDstatusMap = {}
             if not self.isJEDI():
                 tmpStatusList  = job.jobStatus.split(',')
@@ -116,9 +116,9 @@ class LocalJobsetSpec(object):
                     # append for all jobs
                     if tmpStatus not in totalJobStatus:
                         totalJobStatus[tmpStatus] = 0
-                    totalJobStatus[tmpStatus] += 1    
+                    totalJobStatus[tmpStatus] += 1
                     # status of interest
-                    if not tmpStatus in self.flag_showSubstatus.split(','):
+                    if tmpStatus not in self.flag_showSubstatus.split(','):
                         continue
                     # append for individual job
                     if tmpStatus not in pandaIDstatusMap:
@@ -159,7 +159,7 @@ class LocalJobsetSpec(object):
                 #strOutJob += strFormat % ("nJobs",        nJobsStr)
                 strOutJob += strFormat % ("site",         job.site)
                 strOutJob += strFormat % ("libDS",        str(job.libDS))
-                strOutJob += strFormat % ("retryID",      job.retryID)        
+                strOutJob += strFormat % ("retryID",      job.retryID)
                 strOutJob += strFormat % ("provenanceID", job.provenanceID)
                 strOutJob += strFormat % ("jobStatus",    statusStr)
         # number of jobs
@@ -183,7 +183,7 @@ class LocalJobsetSpec(object):
         # return
         return strOut
 
-    
+
     # override __getattribute__
     def __getattribute__(self,name):
         # scan all JobIDs to get dbStatus
@@ -210,7 +210,7 @@ class LocalJobsetSpec(object):
         parentIDs = []
         for job in jobs:
             # set initial parameters
-            if self.JobsetID == None:
+            if self.JobsetID is None:
                 self.JobsetID = job.groupID
                 self.JobMap = {}
                 self.creationTime = job.creationTime
@@ -218,11 +218,11 @@ class LocalJobsetSpec(object):
                 self.taskStatus = job.taskStatus
             self.JobMap[job.JobID] = job
             # get parent/retry
-            if not job.retryJobsetID in [0,-1,'0','-1']:
-                if not job.retryJobsetID in retryIDs:
+            if job.retryJobsetID not in [0,-1,'0','-1']:
+                if job.retryJobsetID not in retryIDs:
                     retryIDs.append(job.retryJobsetID)
-            if not job.parentJobsetID in [0,-1,'0','-1']:
-                if not job.parentJobsetID in parentIDs:
+            if job.parentJobsetID not in [0,-1,'0','-1']:
+                if job.parentJobsetID not in parentIDs:
                     parentIDs.append(job.parentJobsetID)
         # set parent/retry
         retryIDs.sort()
@@ -234,8 +234,8 @@ class LocalJobsetSpec(object):
         self.parentSetID = ''
         for tmpID in parentIDs:
             self.parentSetID += '%s,' % tmpID
-        self.parentSetID = self.parentSetID[:-1]    
-        # aggregate some info    
+        self.parentSetID = self.parentSetID[:-1]
+        # aggregate some info
         pStr = ''
         sStatus = ''
         strInDS = ''
@@ -254,21 +254,21 @@ class LocalJobsetSpec(object):
             # inDS and outDS
             try:
                 for tmpItem in str(job.inDS).split(','):
-                    if not tmpItem in tmpInDSList:
+                    if tmpItem not in tmpInDSList:
                         tmpInDSList.append(tmpItem)
                         strInDS += '%s,' % tmpItem
-            except:
+            except Exception:
                 pass
             try:
                 for tmpItem in str(job.outDS).split(','):
-                    if not tmpItem in tmpOutDSList:
+                    if tmpItem not in tmpOutDSList:
                         tmpOutDSList.append(tmpItem)
                         strOutDS += '%s,' % tmpItem
-            except:
+            except Exception:
                 pass
             # set job status
             sStatus += job.jobStatus + ','
-        # set    
+        # set
         self.PandaID   = pStr[:-1]
         self.inDS      = strInDS[:-1]
         self.outDS     = strOutDS[:-1]

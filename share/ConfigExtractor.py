@@ -17,22 +17,22 @@ def _Service(str):
     try:
         svcMgr = theApp.serviceMgr()
         tmpSvcNew = getattr(svcMgr,str)
-    except:
+    except Exception:
         pass
     # get old service
     try:
         tmpSvcOld = Service(str)
-    except:
+    except Exception:
         pass
     # return old one for 12.0.6
-    if tmpSvcOld != None:
+    if tmpSvcOld is not None:
         return tmpSvcOld
     return tmpSvcNew
 
 def _Algorithm(str):
     try:
         return Algorithm(str)
-    except:
+    except Exception:
         return None
 
     
@@ -49,15 +49,15 @@ if hasattr(EventSelector,'InputCollections') and hasattr(EventSelector.InputColl
         _printConfig('Input=COLL')
         # reference
         try:
-            if EventSelector.RefName != None:
+            if EventSelector.RefName is not None:
                 _printConfig('Input=COLLREF %s' % EventSelector.RefName)
-        except:
+        except Exception:
             pass
         # query
         try:
-            if EventSelector.Query != None:
+            if EventSelector.Query is not None:
                 _printConfig('Input=COLLQUERY %s' % EventSelector.Query)
-        except:
+        except Exception:
             pass
     else:
         # normal POOL
@@ -74,11 +74,11 @@ else:
     compList = []
     try:
         compList.append(_Service( "ByteStreamInputSvc" ))
-    except:
+    except Exception:
         pass
     try:
         compList.append(Service( "ByteStreamInputSvc" ))
-    except:
+    except Exception:
         pass
     for ByteStreamInputSvc in compList:
         if (hasattr(ByteStreamInputSvc,'FullFileName') and hasattr(ByteStreamInputSvc.FullFileName,'__len__')
@@ -162,7 +162,7 @@ try:
                 # append AthSequencer
                 if tmpFullName.startswith('AthSequencer/'):
                     seqList.append(tmpConf)
-    except:
+    except Exception:
         pass
     # loop over all sequences
     for tmpAlgSequence in seqList:
@@ -185,7 +185,7 @@ try:
                         _configs.append(key)
             else:
                 _configs.append(key)
-except:
+except Exception:
     pass
 
 
@@ -216,12 +216,12 @@ if hasattr(NTupleSvc,'Output') and hasattr(NTupleSvc.Output,'__len__') and len(N
     # look for streamname 
     for item in NTupleSvc.Output:
         match = re.search("(\S+)\s+DATAFILE",item)
-        if match != None:
+        if match is not None:
             sName = item.split()[0]
             _printConfig('Output=NTUPLE %s' % sName)
             # extract name
             fmatch = re.search("DATAFILE=(\S+)\s",item)
-            if fmatch != None:
+            if fmatch is not None:
                 fName = fmatch.group(1)
                 fName = re.sub('[\"\']','',fName)
                 fName = fName.split('/')[-1]
@@ -326,7 +326,7 @@ for alg in theApp.TopAlg+_configs:
                                 continue
                         aantStream.append(sName)
                         tmpAantKey = (aName,sName,fName)
-                        if not tmpAantKey in appStList:
+                        if tmpAantKey not in appStList:
                             _printConfig('Output=AANT %s %s %s' % (aName,sName,fName))
                             _printConfig(' Name: %s'% fName)
                             appStList.append(tmpAantKey)
@@ -415,10 +415,10 @@ try:
         if metaOutName in ignoreMetaFiles:
             continue
         # print meta stream
-        if assStream != None:
+        if assStream is not None:
             _printConfig('Output=META %s %s' % (mStream.getFullName().split('/')[1],assStream))
             _printConfig(' Name: %s'% metaOutName)
-except:
+except Exception:
     pass
 if strGenStream != '':
     strGenStream = strGenStream[:-1]
@@ -437,11 +437,11 @@ THistSvc = _Service( "THistSvc" )
 if hasattr(THistSvc.Output,'__len__') and len(THistSvc.Output):
     for item in THistSvc.Output:
         sName = item.split()[0]
-        if not sName in aantStream:
+        if sName not in aantStream:
             # extract name
             fmatch = re.search("DATAFILE=(\S+)\s",item)
             fName = None
-            if fmatch != None:
+            if fmatch is not None:
                 fName = fmatch.group(1)
                 fName = re.sub('[\"\']','',fName)
                 fName = fName.split('/')[-1]
@@ -453,7 +453,7 @@ if hasattr(THistSvc.Output,'__len__') and len(THistSvc.Output):
             if strGenFName != '' and fName == strGenFName:
                 continue
             _printConfig('Output=THIST %s' % sName)
-            if fmatch != None:
+            if fmatch is not None:
                 _printConfig(' Name: %s'% fName)
 
 # ROOT outputs for interactive Athena
@@ -489,7 +489,7 @@ try:
             tmpFileBaseName = tmpStream.Stream.OutputFile.split(':')[-1]
             _printConfig('Output=MS %s %s' % (tmpStream.Name,tmpFileBaseName))
             _printConfig(' Name: %s'% tmpFileBaseName)
-except:
+except Exception:
     pass
 
 # UserDataSvc
@@ -531,5 +531,5 @@ if hasattr(AtRndmGenSvc,'ReadFromFile') and isinstance(AtRndmGenSvc.ReadFromFile
 try:
     if hasattr(SimFlags,'SeedsG4'):
         _printConfig('G4RandomSeeds')
-except:
+except Exception:
     pass

@@ -50,6 +50,8 @@ def make_arg_parse():
     optP.add_argument('--useSandbox', action='store_const', const=True, dest='useSandbox', default=False,
                       help='To send files in the run directory to remote sites which are not sent out by default ' \
                            'when --containerImage is used')
+    optP.add_argument("-3", action="store_true", dest="python3", default=False,
+                      help="Use python3")
 
     return optP
 
@@ -70,7 +72,7 @@ def construct_cli_options(options):
             continue
         newOpts[key] = val
     newOpts['noBuild'] = True
-    tmpLoadJson = tempfile.NamedTemporaryFile(delete=False)
+    tmpLoadJson = tempfile.NamedTemporaryFile(delete=False, mode='w')
     json.dump(newOpts, tmpLoadJson)
     tmpLoadJson.close()
     return tmpLoadJson.name
