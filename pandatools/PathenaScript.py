@@ -30,11 +30,9 @@ sys.argv.insert(0, 'pathena')
 
 usage = """pathena [options] <jobOption1.py> [<jobOption2.py> [...]]
 
-pathena --help' prints a summary of the options
-
   HowTo is available at https://twiki.cern.ch/twiki/bin/view/PanDA/PandaAthena"""
 
-examples = """Put a few most common examples here
+examples = """Examples:
   pathena --inDS=... --outDS=... jobO_1.py jobO_2.py
   pathena --inDS=... --outDS=... --trf "Reco_tf.py --inputAODFile %IN --outputDAODFile %OUT.pool.root ..."
   pathena --inOutDsJson=inout.json --trf "..."
@@ -127,6 +125,9 @@ group_expert  = optP.add_group('expert', 'for experts/developers only')
 
 optP.add_helpGroup(addHelp='Some options such as --inOutDsJson may SPAN several groups')
 
+
+# optional job option scripts
+group_job.add_argument('args', nargs='*', help=argparse.SUPPRESS)
 
 # special options
 group_pathena.add_argument('--version',action='store_const',const=True,dest='version',default=False,
@@ -418,6 +419,7 @@ for arg in sys.argv[1:]:
 
 # options, args = optP.parse_known_args()
 options = optP.parse_args()
+args = options.args
 
 if options.verbose:
     print(options)
