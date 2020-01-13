@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.11
+  * fixed pathena for argv
+
 1.4.10
   * fixed username extraction with \d
 

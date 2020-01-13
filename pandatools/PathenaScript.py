@@ -416,8 +416,7 @@ for arg in sys.argv[1:]:
       print("!!Warning!! option %s has been deprecated, pls dont use anymore\n" % optName)
       sys.argv.remove(arg)
 
-# options, args = optP.parse_known_args()
-options = optP.parse_args()
+options, args = optP.parse_known_args()
 
 if options.verbose:
     print(options)
