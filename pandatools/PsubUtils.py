@@ -870,6 +870,7 @@ def extract_voms_proxy_username():
             subj = line.split(':', 1)[-1].lstrip()
             user_dn = re.sub(r'(/CN=\d+)+$', '', subj.replace('/CN=proxy', ''))
             username = user_dn.split('=')[-1]
+            username = re.sub('[ |_]\d+', '', username)
             username = re.sub("[()']", '', username)
             break
     return username

@@ -1,5 +1,14 @@
 ** Release Notes
 
+current
+  * fixed pbook return
+
+1.4.11
+  * fixed pathena for argv
+
+1.4.10
+  * fixed username extraction with \d
+
 1.4.9
   * changed pbook -c to allow running scripts
   * added -3 to pathena, prun, pbook

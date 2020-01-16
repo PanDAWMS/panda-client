@@ -266,7 +266,10 @@ For more info, do help(show) for example
     if comString != '':
         exec(comString) in globals(), locals()
         # exit
-        sys.exit(0)
+        if PBookCore.func_return_value:
+            sys.exit(0)
+        else:
+            sys.exit(1)
     main_locals = locals()
     # go to interactive prompt
     code.interact(banner="\nStart pBook %s" % PandaToolsPkgInfo.release_version,
