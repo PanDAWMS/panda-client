@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * fixed pbook return
+
 1.4.11
   * fixed pathena for argv
 

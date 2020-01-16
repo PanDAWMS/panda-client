@@ -53,6 +53,10 @@ def _get_tasks_from_reqid(self, reqID, verbose=False):
     else:
         return None
 
+
+func_return_value = True
+
+
 def check_task_owner(func):
     """
     sanity check decorator of user ownership vs the task
@@ -95,6 +99,8 @@ def check_task_owner(func):
                         sys.stdout.write('Permission denied: taskID={0} is not owned by {1} \n'.format(
                                             taskid, self.username))
                         ret = False
+        global func_return_value
+        func_return_value = ret
         return ret
     return wrapper
 
