@@ -898,11 +898,15 @@ if not options.nGBPerJob in [-1,'MAX']:
         if options.nGBPerJob != 'MAX':
             options.nGBPerJob = int(options.nGBPerJob)
     except Exception:
-        tmpLog.error("nGBPerJob must be an integer or MAX")
+        tmpLog.error("--nGBPerJob must be an integer or MAX")
         sys.exit(EC_Config)
     # check negative
     if options.nGBPerJob <= 0:
-        tmpLog.error("nGBPerJob must be positive")
+        tmpLog.error("--nGBPerJob must be positive")
+        sys.exit(EC_Config)
+    # incompatible parameters
+    if options.nFilesPerJob > 0:
+        tmpLog.error("--nFilesPerJob and --nGBPerJob must be used exclusively")
         sys.exit(EC_Config)
 
 # split options are mutually exclusive

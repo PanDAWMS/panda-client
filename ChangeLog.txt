@@ -1,7 +1,8 @@
 ** Release Notes
 
-current
+1.4.12
   * fixed pbook return
+  * changed to prun to use --nGBPerJob and --nFilesPerJob exclusively
 
 1.4.11
   * fixed pathena for argv
