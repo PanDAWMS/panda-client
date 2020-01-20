@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * added possible non-option arg parsing in PathenaScript  
+  
 1.4.12
   * fixed pbook return
   * changed to prun to use --nGBPerJob and --nFilesPerJob exclusively
