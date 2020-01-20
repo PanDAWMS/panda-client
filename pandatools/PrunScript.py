@@ -36,7 +36,7 @@ usage = """prun [options]
 
   HowTo is available at https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun"""
 
-examples = """Put a few most common examples here
+examples = """Examples:
   prun --exec "echo %IN > input.txt; root.exe; root -b -q macrotest.C" --athenaTag=22.0.0 --inDS ...
   prun --exec "cpptest %IN" --bexec "make" --athenaTag=22.0.0 --inDS ...
   prun --loadJson prunConfig.json   # read all prun options from one json file
@@ -179,8 +179,6 @@ group_submit.add_argument('--maxCpuCount',action='store',dest='maxCpuCount',defa
 group_submit.add_argument('--useDirectIOSites', action='store_const', const=True, dest='useDirectIOSites', default=False,
                 help="Use only sites which use directIO to read input files")
 
-# please make more groups if needed and assign the following options accordingly.
-
 group_output.add_argument('--official',action='store_const',const=True,dest='official',default=False,
                 help='Produce official dataset')
 group_output.add_argument('--unlimitNumOutputs', action='store_const', const=True, dest='unlimitNumOutputs',  default=False,
@@ -301,10 +299,8 @@ group_input.add_argument('--forceStagedSecondary',action='store_const',const=Tru
 group_expert.add_argument('--queueData', action='store', dest='queueData', default='',
                   help="Please don't use this option. Only for developers")
 
-#? which group should --useNewCode go?
 group_submit.add_argument('--useNewCode',action='store_const',const=True,dest='useNewCode',default=False,
                 help='When task are resubmitted with the same outDS, the original souce code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries') 
-#
 group_output.add_argument('--allowTaskDuplication',action='store_const',const=True,dest='allowTaskDuplication',default=False,
                 help="As a general rule each task has a unique outDS and history of file usage is recorded per task. This option allows multiple tasks to contribute to the same outDS. Typically useful to submit a new task with the outDS which was used by another broken task. Use this option very carefully at your own risk, since file duplication happens when the second task runs on the same input which the first task successfully processed")
 group_input.add_argument('--skipFilesUsedBy', action='store',dest='skipFilesUsedBy',default='',
