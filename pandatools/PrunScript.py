@@ -315,6 +315,9 @@ group_build.add_argument('--useSandbox', action='store_const', const=True, dest=
 group_build.add_argument('--useCentralRegistry', action='store_const', const=True,
                          dest='useCentralRegistry', default=False,
                          help="Use the central container registry when --containerImage is used")
+group_build.add_argument('--notUseCentralRegistry', action='store_const', const=True,
+                         dest='notUseCentralRegistry', default=False,
+                         help="Not use the central container registry when --containerImage is used")
 group_submit.add_argument('--priority', action='store', dest='priority',  default=None, type=int,
                   help='Set priority of the task (1000 by default). The value must be between 900 and 1100. ' \
                        'Note that priorities of tasks are relevant only in ' \
@@ -1581,6 +1584,8 @@ if options.containerImage != '':
     jobParameters += "--containerImage {0} ".format(options.containerImage)
     if options.useCentralRegistry:
         jobParameters += "--useCentralRegistry "
+    elif options.notUseCentralRegistry:
+        jobParameters += "--notUseCentralRegistry "
 # set task param
 if jobParameters != '':
     taskParamMap['jobParameters'] += [
