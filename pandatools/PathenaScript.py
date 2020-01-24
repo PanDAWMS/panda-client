@@ -1307,7 +1307,7 @@ if True:
         symlinks = []
         for line in out.split('\n'):
             items = line.split()
-            if items[0].startswith('l') and items[-1].startswith('/'):
+            if len(items) > 0 and items[0].startswith('l') and items[-1].startswith('/'):
                 symlinks.append(line)
         if symlinks != []:
             tmpStr  = "Found some unresolved symlinks which may cause a problem\n"

@@ -1,7 +1,9 @@
 ** Release Notes
 
-current
-  * added possible non-option arg parsing in PathenaScript  
+1.4.13
+  * added possible non-option arg parsing in PathenaScript
+  * added --useCentralRegistry to prun
+  * added protection against empty tarball in pathena/prun
   
 1.4.12
   * fixed pbook return

@@ -312,6 +312,9 @@ group_build.add_argument('--containerImage', action='store', dest='containerImag
 group_build.add_argument('--useSandbox', action='store_const', const=True, dest='useSandbox', default=False,
                   help='To send files in the run directory to remote sites which are not sent out by default ' \
                        'when --containerImage is used')
+group_build.add_argument('--useCentralRegistry', action='store_const', const=True,
+                         dest='useCentralRegistry', default=False,
+                         help="Use the central container registry when --containerImage is used")
 group_submit.add_argument('--priority', action='store', dest='priority',  default=None, type=int,
                   help='Set priority of the task (1000 by default). The value must be between 900 and 1100. ' \
                        'Note that priorities of tasks are relevant only in ' \
@@ -1159,7 +1162,7 @@ if options.containerImage == '' or options.useSandbox:
             symlinks = []
             for line in out.split('\n'):
                 items = line.split()
-                if items[0].startswith('l') and items[-1].startswith('/'):
+                if len(items) > 0 and items[0].startswith('l') and items[-1].startswith('/'):
                     symlinks.append(line)
             if symlinks != []:
                 tmpStr  = "Found some unresolved symlinks which may cause a problem\n"
@@ -1576,6 +1579,8 @@ if options.queueData != '':
 # container
 if options.containerImage != '':
     jobParameters += "--containerImage {0} ".format(options.containerImage)
+    if options.useCentralRegistry:
+        jobParameters += "--useCentralRegistry "
 # set task param
 if jobParameters != '':
     taskParamMap['jobParameters'] += [

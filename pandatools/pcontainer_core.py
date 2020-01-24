@@ -18,6 +18,9 @@ def make_arg_parse():
                            'jediTaskID, etc to a json file')
     optP.add_argument('--containerImage', action='store', dest='containerImage', default=None,
                       help="Name of a container image")
+    optP.add_argument('--useCentralRegistry', action='store_const', const=True,
+                         dest='useCentralRegistry', default=False,
+                         help="Use the central container registry when --containerImage is used")
     optP.add_argument('--excludedSite', action='append', dest='excludedSite', default=None,
                       help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
     optP.add_argument('--site', action='store', dest='site', default=None,
