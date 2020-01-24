@@ -1583,9 +1583,9 @@ if options.queueData != '':
 if options.containerImage != '':
     jobParameters += "--containerImage {0} ".format(options.containerImage)
     if options.useCentralRegistry:
-        jobParameters += "--useCentralRegistry "
+        jobParameters += "--useCentralRegistry=True "
     elif options.notUseCentralRegistry:
-        jobParameters += "--notUseCentralRegistry "
+        jobParameters += "--useCentralRegistry=False "
 # set task param
 if jobParameters != '':
     taskParamMap['jobParameters'] += [
