@@ -125,10 +125,6 @@ group_expert  = optP.add_group('expert', 'for experts/developers only')
 
 optP.add_helpGroup(addHelp='Some options such as --inOutDsJson may SPAN several groups')
 
-
-# optional job option scripts
-group_job.add_argument('args', nargs='*', help=argparse.SUPPRESS)
-
 # special options
 group_pathena.add_argument('--version',action='store_const',const=True,dest='version',default=False,
                 help='Displays version')
@@ -417,9 +413,8 @@ for arg in sys.argv[1:]:
       print("!!Warning!! option %s has been deprecated, pls dont use anymore\n" % optName)
       sys.argv.remove(arg)
 
-# options, args = optP.parse_known_args()
-options = optP.parse_args()
-args = options.args
+# using parse_known_args for passing arguments with -
+options, args = optP.parse_known_args()
 
 if options.verbose:
     print(options)
