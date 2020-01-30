@@ -186,7 +186,7 @@ class PBookCore(object):
         return
 
     # kill and retry
-    def killAndRetry(self, taskID, newOpts={}):
+    def killAndRetry(self, taskID, newOpts=None):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # kill
@@ -220,14 +220,18 @@ class PBookCore(object):
 
     # retry
     @check_task_owner
-    def retry(self, taskID, newOpts={}):
+    def retry(self, taskID, newOpts=None):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         # set an empty map since mutable default value is used
-        if newOpts == {}:
+        if newOpts is None:
             newOpts = {}
         else:
             newOpts = copy.deepcopy(newOpts)
+        # warning for PQ
+        site = newOpts.get('site', None)
+        excludedSite = newOpts.get('excludedSite', None)
+        PsubUtils.get_warning_for_pq(site, excludedSite, tmpLog)
         # for JEDI
         status,out = Client.retryTask(  taskID,
                                         verbose=self.verbose,

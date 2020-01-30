@@ -499,6 +499,9 @@ delFilesOnExit = []
 # save current dir
 currentDir = os.path.realpath(os.getcwd())
 
+# warning for PQ
+PsubUtils.get_warning_for_pq(options.site, options.excludedSite, tmpLog)
+
 # exclude sites
 if options.excludedSite != []:
     options.excludedSite = PsubUtils.splitCommaConcatenatedItems(options.excludedSite)

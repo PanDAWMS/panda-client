@@ -466,6 +466,8 @@ curDir = os.path.realpath(os.getcwd())
 if options.outputs != '':
     options.outputs = re.sub(' ','',options.outputs)
 
+# warning for PQ
+PsubUtils.get_warning_for_pq(options.site, options.excludedSite, tmpLog)
 
 # exclude sites
 if options.excludedSite != []:

@@ -874,3 +874,12 @@ def extract_voms_proxy_username():
             username = re.sub("[()']", '', username)
             break
     return username
+
+
+# warning message when PQ is specified
+def get_warning_for_pq(site, excluded_site, tmp_log):
+    if site not in ['AUTO', None] or excluded_site:
+        tmp_log.warning("The grid queue names could change due to consolidation, migration, etc. "
+                "Please check with the command listAnalyPQ to use only online/valid queues "
+                "when site and/or excludedSite options are specified.")
+    return ''

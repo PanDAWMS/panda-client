@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.14
+  * added warning when site and/or excludedSite options are used
+
 1.4.13
   * added possible non-option arg parsing in PathenaScript
   * added --useCentralRegistry to prun
