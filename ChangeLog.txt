@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.15
+  * protection against encoding error in job functions in Client
+
 1.4.14
   * added warning when site and/or excludedSite options are used
   * using parse_known_args in pathena for passing arguments with -

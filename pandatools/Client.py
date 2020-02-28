@@ -97,7 +97,7 @@ class _Curl:
         self.verbose = False
 
     # GET method
-    def get(self,url,data,rucioAccount=False):
+    def get(self,url,data,rucioAccount=False, via_file=False):
         # make command
         com = '%s --silent --get' % self.path
         if not self.verifyHost or not url.startswith('https://'):
@@ -133,7 +133,10 @@ class _Curl:
             tmpFD,tmpName = tempfile.mkstemp()
         os.write(tmpFD, strData.encode())
         os.close(tmpFD)
+        tmpNameOut = '{0}.out'.format(tmpName)
         com += ' --config %s' % tmpName
+        if via_file:
+            com += ' -o {0}'.format(tmpNameOut)
         com += ' %s' % url
         # execute
         if self.verbose:
@@ -146,7 +149,12 @@ class _Curl:
                 o = eval(tmpout)
             except Exception:
                 pass
-        ret = (s,o)
+        if via_file:
+            with open(tmpNameOut, 'rb') as f:
+                ret = (s, f.read())
+            os.remove(tmpNameOut)
+        else:
+            ret = (s, o)
         # remove temporary file
         os.remove(tmpName)
         ret = self.convRet(ret)
@@ -156,7 +164,7 @@ class _Curl:
 
 
     # POST method
-    def post(self,url,data,rucioAccount=False, is_json=False):
+    def post(self,url,data,rucioAccount=False, is_json=False, via_file=False):
         # make command
         com = '%s --silent' % self.path
         if not self.verifyHost or not url.startswith('https://'):
@@ -192,7 +200,10 @@ class _Curl:
             tmpFD,tmpName = tempfile.mkstemp()
         os.write(tmpFD, strData.encode('utf-8'))
         os.close(tmpFD)
+        tmpNameOut = '{0}.out'.format(tmpName)
         com += ' --config %s' % tmpName
+        if via_file:
+            com += ' -o {0}'.format(tmpNameOut)
         com += ' %s' % url
         # execute
         if self.verbose:
@@ -208,7 +219,12 @@ class _Curl:
                     o = eval(tmpout)
             except Exception:
                 pass
-        ret = (s,o)
+        if via_file:
+            with open(tmpNameOut, 'rb') as f:
+                ret = (s, f.read())
+            os.remove(tmpNameOut)
+        else:
+            ret = (s, o)
         # remove temporary file
         os.remove(tmpName)
         ret = self.convRet(ret)
@@ -285,7 +301,7 @@ def submitJobs(jobs,verbose=False):
     for job in jobs:
         job.creationHost = hostname
     # serialize
-    strJobs = pickle.dumps(jobs)
+    strJobs = pickle.dumps(jobs, protocol=0)
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -294,7 +310,7 @@ def submitJobs(jobs,verbose=False):
     # execute
     url = baseURLSSL + '/submitJobs'
     data = {'jobs':strJobs}
-    status,output = curl.post(url,data)
+    status,output = curl.post(url, data, via_file=True)
     if status != 0:
         print(output)
         return status,None
@@ -306,15 +322,16 @@ def submitJobs(jobs,verbose=False):
 
 
 # get job status
-def getJobStatus(ids):
+def getJobStatus(ids, verbose=False):
     # serialize
-    strIDs = pickle.dumps(ids)
+    strIDs = pickle.dumps(ids, protocol=0)
     # instantiate curl
     curl = _Curl()
+    curl.verbose = verbose
     # execute
     url = baseURL + '/getJobStatus'
     data = {'ids':strIDs}
-    status,output = curl.post(url,data)
+    status,output = curl.post(url, data, via_file=True)
     try:
         return status, pickle_loads(output)
     except Exception as e:
@@ -325,7 +342,7 @@ def getJobStatus(ids):
 # kill jobs
 def killJobs(ids,verbose=False):
     # serialize
-    strIDs = pickle.dumps(ids)
+    strIDs = pickle.dumps(ids, protocol=0)
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -334,7 +351,7 @@ def killJobs(ids,verbose=False):
     # execute
     url = baseURLSSL + '/killJobs'
     data = {'ids':strIDs}
-    status,output = curl.post(url,data)
+    status,output = curl.post(url, data, via_file=True)
     try:
         return status, pickle_loads(output)
     except Exception as e:
@@ -614,7 +631,7 @@ def getJediTaskDetails(taskDict,fullFlag,withTaskInfo,verbose=False):
 # get full job status
 def getFullJobStatus(ids,verbose):
     # serialize
-    strIDs = pickle.dumps(ids)
+    strIDs = pickle.dumps(ids, protocol=0)
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -623,7 +640,7 @@ def getFullJobStatus(ids,verbose):
     # execute
     url = baseURLSSL + '/getFullJobStatus'
     data = {'ids':strIDs}
-    status,output = curl.post(url,data)
+    status,output = curl.post(url, data, via_file=True)
     try:
         return status, pickle_loads(output)
     except Exception as e:
