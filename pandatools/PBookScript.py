@@ -317,6 +317,7 @@ def main():
         Client.useIntrServer()
 
     # fork for Ctl-c
+    global fork_child_pid
     fork_child_pid = os.fork()
     if fork_child_pid == -1:
         print("ERROR : Failed to fork")

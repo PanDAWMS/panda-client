@@ -1,7 +1,10 @@
 ** Release Notes
 
+1.4.16
+  * fixed command history in pbook
+
 1.4.15
-  * protection against encoding error in job functions in Client
+  * protection against encoding error in job functions in Client.py
 
 1.4.14
   * added warning when site and/or excludedSite options are used
