@@ -10,8 +10,9 @@ import stat
 import json
 try:
     from urllib import urlencode, unquote_plus
+    from urlparse import urlparse
 except ImportError:
-    from urllib.parse import urlencode, unquote_plus
+    from urllib.parse import urlencode, unquote_plus, urlparse
 import struct
 try:
     import cPickle as pickle
@@ -96,6 +97,21 @@ class _Curl:
         # verbose
         self.verbose = False
 
+    # randomize IP
+    def randomize_ip(self, url):
+        # parse URL
+        parsed = urlparse(url)
+        host = parsed.hostname
+        port = parsed.port
+        if port is None:
+            if parsed.scheme == 'http':
+                port = 80
+            else:
+                port = 443
+        host_names = [socket.getfqdn(vv) for vv in set(
+            [v[-1][0] for v in socket.getaddrinfo(host, port, socket.AF_INET)])]
+        return url.replace(host, random.choice(host_names))
+
     # GET method
     def get(self,url,data,rucioAccount=False, via_file=False):
         # make command
@@ -137,7 +153,7 @@ class _Curl:
         com += ' --config %s' % tmpName
         if via_file:
             com += ' -o {0}'.format(tmpNameOut)
-        com += ' %s' % url
+        com += ' %s' % self.randomize_ip(url)
         # execute
         if self.verbose:
             print(com)
@@ -204,7 +220,7 @@ class _Curl:
         com += ' --config %s' % tmpName
         if via_file:
             com += ' -o {0}'.format(tmpNameOut)
-        com += ' %s' % url
+        com += ' %s' % self.randomize_ip(url)
         # execute
         if self.verbose:
             print(com)
@@ -253,7 +269,7 @@ class _Curl:
         # emulate PUT
         for key in data.keys():
             com += ' -F "%s=@%s"' % (key,data[key])
-        com += ' %s' % url
+        com += ' %s' % self.randomize_ip(url)
         if self.verbose:
             print(com)
         # execute

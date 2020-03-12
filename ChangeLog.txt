@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.17
+  * to randomize access to the panda server
+
 1.4.16
   * fixed command history in pbook
 
