@@ -309,6 +309,16 @@ group_submit.add_argument('--maxAttempt', action='store', dest='maxAttempt', def
                 type=int, help='Maximum number of reattempts for each job (3 by default and not larger than 50)')
 group_build.add_argument('--containerImage', action='store', dest='containerImage', default='',
                   help="Name of a container image")
+group_build.add_argument('--ctrCvmfs', action='store_const', const=True, dest='ctrCvmfs', default=False,
+                  help="Bind /cvmfs to the container, bool, default False")
+group_build.add_argument('--ctrNoX509', action='store_const', const=True, dest='ctrNoX509', default=False,
+                  help="Unset X509 environment in the container, bool, default False")
+group_build.add_argument('--ctrDatadir', action='store', dest='ctrDatadir', default='',
+                  help="Binds the job directory to datadir for I/O operations, string, default /ctrdata")
+group_build.add_argument('--ctrWorkdir', action='store', dest='ctrWorkdir', default='',
+                  help="chdir to workdir in the container, string, default /ctrdata")
+group_build.add_argument('--ctrDebug', action='store_const', const=True, dest='ctrDebug', default=False,
+                  help="Enable more verbose output from runcontainer, bool, default False")
 group_build.add_argument('--useSandbox', action='store_const', const=True, dest='useSandbox', default=False,
                   help='To send files in the run directory to remote sites which are not sent out by default ' \
                        'when --containerImage is used')
@@ -1584,6 +1594,16 @@ if options.queueData != '':
 # container
 if options.containerImage != '':
     jobParameters += "--containerImage {0} ".format(options.containerImage)
+    if options.ctrCvmfs:
+        jobParameters += "--cvmfs "
+    if options.ctrNoX509:
+        jobParameters += "--noX509 "
+    if options.ctrDatadir != '':
+        jobParameters += "--datadir {0} ".format(options.ctrDatadir)
+    if options.ctrWorkdir != '':
+        jobParameters += "--workdir {0} ".format(options.ctrWorkdir)
+    if options.ctrDebug:
+        jobParameters += "--debug "
     if options.useCentralRegistry:
         jobParameters += "--useCentralRegistry=True "
     elif options.notUseCentralRegistry:
@@ -1633,6 +1653,17 @@ else:
     # container
     if options.containerImage != '':
         jobParameters += "--containerImage {0} ".format(options.containerImage)
+        if options.ctrCvmfs:
+            jobParameters += "--cvmfs "
+        if options.ctrNoX509:
+            jobParameters += "--noX509 "
+        if options.ctrDatadir != '':
+            jobParameters += "--datadir {0} ".format(options.ctrDatadir)
+        if options.ctrWorkdir != '':
+            jobParameters += "--workdir {0} ".format(options.ctrWorkdir)
+        if options.ctrDebug:
+            jobParameters += "--debug "
+
     # set task param
     taskParamMap['buildSpec'] = {
         'prodSourceLabel':'panda',
@@ -1678,6 +1709,16 @@ if options.mergeOutput:
         jobParameters += "--useRootCore "
     if options.containerImage != '':
         jobParameters += "--containerImage {0} ".format(options.containerImage)
+        if options.ctrCvmfs:
+            jobParameters += "--cvmfs "
+        if options.ctrNoX509:
+            jobParameters += "--noX509 "
+        if options.ctrDatadir != '':
+            jobParameters += "--datadir {0} ".format(options.ctrDatadir)
+        if options.ctrWorkdir != '':
+            jobParameters += "--workdir {0} ".format(options.ctrWorkdir)
+        if options.ctrDebug:
+            jobParameters += "--debug "
     else:
         if not (options.noBuild and not options.noCompile):
             jobParameters += '-l ${LIB} '
