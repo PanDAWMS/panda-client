@@ -16,6 +16,16 @@ def make_arg_parse():
     optP.add_argument('--dumpJson', action='store', dest='dumpJson', default=None,
                       help='Dump all command-line parameters and submission result such as returnCode, returnOut, ' 
                            'jediTaskID, etc to a json file')
+    optP.add_argument('--cvmfs', action='store_const', const=True, dest='cvmfs', default=False,
+                      help="Bind /cvmfs to the container, bool, default False")
+    optP.add_argument('--noX509', action='store_const', const=True, dest='noX509', default=False,
+                      help="Unset X509 environment in the container, bool, default False")
+    optP.add_argument('--datadir', action='store', dest='datadir', default='',
+                      help="Binds the job directory to datadir for I/O operations, string, default /ctrdata")
+    optP.add_argument('--workdir', action='store', dest='workdir', default='',
+                      help="chdir to workdir in the container, string, default /ctrdata")
+    optP.add_argument('--debug', action='store_const', const=True, dest='debug', default=False,
+                      help="Enable more verbose output from runcontainer, bool, default False")
     optP.add_argument('--containerImage', action='store', dest='containerImage', default=None,
                       help="Name of a container image")
     optP.add_argument('--useCentralRegistry', action='store_const', const=True,
@@ -71,6 +81,16 @@ def construct_cli_options(options):
             continue
         if key == 'architecture':
             key = 'cmtConfig'
+        if key == 'cvmfs':
+            key = 'ctrCvmfs'
+        if key == 'noX509':
+            key = 'ctrNoX509'
+        if key == 'datadir':
+            key = 'ctrDatadir'
+        if key == 'workdir':
+            key = 'ctrWorkdir'
+        if key == 'debug':
+            key = 'ctrDebug'
         if val is None:
             continue
         newOpts[key] = val
