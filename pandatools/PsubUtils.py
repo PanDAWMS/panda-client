@@ -723,6 +723,8 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
 
 # split comma-concatenated list items
 def splitCommaConcatenatedItems(oldList):
+    if isinstance(oldList, str):
+        oldList = [oldList]
     newList = []
     for oldItem in oldList:
         temItems = oldItem.split(',')

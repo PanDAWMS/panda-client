@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.4.18
+  * updated attributes in JobSpec
+  * fixed loadJson for list
+
 1.4.17
   * to randomize access to the panda server
 

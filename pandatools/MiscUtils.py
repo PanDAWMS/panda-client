@@ -106,7 +106,7 @@ def unicodeConvert(input):
         retList = []
         for tmpItem in input:
             retList.append(unicodeConvert(tmpItem))
-            return retList
+        return retList
     elif isinstance(input, unicode):
         return input.encode('ascii', 'ignore')
     return input
