@@ -26,10 +26,10 @@ class GroupArgParser(argparse.ArgumentParser):
         help='Print individual group help (the group name is not case-sensitive), where "ALL" will print all groups together.'
         if addHelp:
            help += ' ' + addHelp
-        choices_m = self.MyList(self.groups_dict.keys() + ['ALL'])
+        choices_m = self.MyList(list(self.groups_dict.keys()) + ['ALL'])
         self.add_argument('--helpGroup', choices=choices_m, action=self.print_groupHelp, help=help)
 
-        from cStringIO import StringIO
+        from io import StringIO
         old_stdout = sys.stdout
         sys.stdout = self.briefHelp = StringIO()
         self.print_help()

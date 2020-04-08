@@ -107,6 +107,8 @@ group_output.add_argument('--mergeOutput', action='store_const', const=True, des
                 help="merge output files")
 group_output.add_argument('--destSE',action='store', dest='destSE',default='',
                 help='Destination strorage element')
+group_output.add_argument('--alrb', action='store_const', const=True, dest='alrb', default=False,
+                help='Use ALRB for container execution')
 
 # the option is shared by both groups, group_input and group_output
 action = group_input.add_argument('--inOutDsJson', action='store', dest='inOutDsJson', default='',
@@ -435,7 +437,7 @@ if options.notSkipLog:
 if options.containerImage != '':
     options.noBuild = True
     if not options.useSandbox:
-        tmpLog.warning("Files in the run directory are not sent out by default when --containerImage is used. " \
+        tmpLog.warning("Files in the run directory are not sent out by default when --containerImage is used. "
                        "Please use --useSandbox if you need those files on the grid.")
 
 # files to be deleted
@@ -1242,13 +1244,16 @@ taskParamMap['taskName'] = options.outDS
 if not options.allowTaskDuplication:
     taskParamMap['uniqueTaskName'] = True
 taskParamMap['vo'] = 'atlas'
-taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
+if options.containerImage != '' and options.alrb:
+    taskParamMap['architecture'] = ''
+else:
+    taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
 taskParamMap['transUses'] = athenaVer
 if athenaVer != '':
     taskParamMap['transHome'] = 'AnalysisTransforms'+cacheVer+nightVer
 else:
     taskParamMap['transHome'] = None
-if options.containerImage != '':
+if options.containerImage != '' and not options.alrb:
     taskParamMap['processingType'] = 'panda-client-{0}-jedi-cont'.format(PandaToolsPkgInfo.release_version)
 else:
     taskParamMap['processingType'] = 'panda-client-{0}-jedi-run'.format(PandaToolsPkgInfo.release_version)
@@ -1335,6 +1340,9 @@ if options.addNthFieldOfInFileToLFN != '':
     taskParamMap['useFileAsSourceLFN'] = True
 elif options.addNthFieldOfInDSToLFN != '':
     taskParamMap['addNthFieldToLFN'] = options.addNthFieldOfInDSToLFN
+if options.containerImage != '' and options.alrb:
+    taskParamMap['container_name'] = options.containerImage
+
 # dataset names
 outDatasetName = options.outDS
 logDatasetName = re.sub('/$','.log/',options.outDS)
@@ -1592,7 +1600,7 @@ if options.writeInputToTxt != '':
 if options.queueData != '':
     jobParameters += "--overwriteQueuedata=%s " % options.queueData
 # container
-if options.containerImage != '':
+if options.containerImage != '' and not options.alrb:
     jobParameters += "--containerImage {0} ".format(options.containerImage)
     if options.ctrCvmfs:
         jobParameters += "--cvmfs "
@@ -1651,7 +1659,7 @@ else:
     if options.queueData != '':
         jobParameters += "--overwriteQueuedata=%s " % options.queueData
     # container
-    if options.containerImage != '':
+    if options.containerImage != '' and not options.alrb:
         jobParameters += "--containerImage {0} ".format(options.containerImage)
         if options.ctrCvmfs:
             jobParameters += "--cvmfs "
@@ -1707,7 +1715,7 @@ if options.mergeOutput:
         jobParameters += "--useCMake "
     if options.useRootCore:
         jobParameters += "--useRootCore "
-    if options.containerImage != '':
+    if options.containerImage != '' and not options.alrb:
         jobParameters += "--containerImage {0} ".format(options.containerImage)
         if options.ctrCvmfs:
             jobParameters += "--cvmfs "

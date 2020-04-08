@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.19
+  * fixed help grouping for python 3
+
 1.4.18
   * updated attributes in JobSpec
   * fixed loadJson for list
