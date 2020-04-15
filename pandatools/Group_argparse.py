@@ -12,9 +12,10 @@ class GroupArgParser(argparse.ArgumentParser):
     def set_examples(self, examples):
         self.examples = examples
 
-    def add_group(self, name, desc=None):
+    def add_group(self, name, desc=None, usage=None):
         # group = argparse._ArgumentGroup(self, name, desc)
         group = self.MyArgGroup(self, name, desc)
+        group.usage = usage
         self.groups_dict[name.upper()] = group
         return group
 
@@ -84,6 +85,8 @@ class GroupArgParser(argparse.ArgumentParser):
                 formatter.add_arguments(group._group_actions)
                 formatter.end_section()
                 print(formatter.format_help())
+                if group.usage:
+                   print(group.usage)
              else:
                 raise Exception("!!!ERROR!!! Unknown group name=%s" % values)
              sys.exit(0)
