@@ -123,6 +123,15 @@ group_submit  = optP.add_group('submit', 'job submission/site/retry')
 group_evtFilter = optP.add_group('evtFilter', 'event filter such as good run and event pick')
 group_expert  = optP.add_group('expert', 'for experts/developers only')
 
+usage_containerJob="""Visit the following wiki page for examples:
+  https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
+
+Please test the job interactively first prior to submitting to the grid.
+Check the following on how to test container job interactively:
+  https://twiki.cern.ch/twiki/bin/viewauth/AtlasComputing/SingularityInAtlas
+"""
+group_containerJob = optP.add_group('containerJob', "For container-based jobs", usage=usage_containerJob)
+
 optP.add_helpGroup(addHelp='Some options such as --inOutDsJson may SPAN several groups')
 
 # special options
@@ -368,7 +377,7 @@ group_input.add_argument('--skipFilesUsedBy', action='store', dest='skipFilesUse
                 type=str, help='A comma-separated list of TaskIDs. Files used by those tasks are skipped when running a new task')
 group_submit.add_argument('--maxAttempt', action='store', dest='maxAttempt', default=-1,
                 type=int, help='Maximum number of reattempts for each job (3 by default and not larger than 50)')
-group_build.add_argument('--containerImage', action='store', dest='containerImage', default='',
+group_containerJob.add_argument('--containerImage', action='store', dest='containerImage', default='',
                 type=str, help="Name of a container image")
 group_build.add_argument("-3", action="store_true", dest="python3", default=False,
                   help="Use python3")
