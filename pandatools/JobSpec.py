@@ -11,40 +11,40 @@ reserveChangedState = False
 
 class JobSpec(object):
     # attributes
-    _attributes = ('PandaID','jobDefinitionID','schedulerID','pilotID','creationTime','creationHost',
-                   'modificationTime','modificationHost','AtlasRelease','transformation','homepackage',
-                   'prodSeriesLabel','prodSourceLabel','prodUserID','assignedPriority','currentPriority',
-                   'attemptNr','maxAttempt','jobStatus','jobName','maxCpuCount','maxCpuUnit','maxDiskCount',
-                   'maxDiskUnit','ipConnectivity','minRamCount','minRamUnit','startTime','endTime',
-                   'cpuConsumptionTime','cpuConsumptionUnit','commandToPilot','transExitCode','pilotErrorCode',
-                   'pilotErrorDiag','exeErrorCode','exeErrorDiag','supErrorCode','supErrorDiag',
-                   'ddmErrorCode','ddmErrorDiag','brokerageErrorCode','brokerageErrorDiag',
-                   'jobDispatcherErrorCode','jobDispatcherErrorDiag','taskBufferErrorCode',
-                   'taskBufferErrorDiag','computingSite','computingElement','jobParameters',
-                   'metadata','prodDBlock','dispatchDBlock','destinationDBlock','destinationSE',
-                   'nEvents','grid','cloud','cpuConversion','sourceSite','destinationSite','transferType',
-                   'taskID','cmtConfig','stateChangeTime','prodDBUpdateTime','lockedby','relocationFlag',
-                   'jobExecutionID','VO','pilotTiming','workingGroup','processingType','prodUserName',
-                   'nInputFiles','countryGroup','batchID','parentID','specialHandling','jobsetID',
-                   'coreCount','nInputDataFiles','inputFileType','inputFileProject','inputFileBytes',
-                   'nOutputDataFiles','outputFileBytes','jobMetrics','workQueue_ID','jediTaskID',
-                   'jobSubStatus','actualCoreCount','reqID','maxRSS','maxVMEM','maxSWAP','maxPSS',
-                   'avgRSS','avgVMEM','avgSWAP','avgPSS','maxWalltime','nucleus','eventService',
-                   'failedAttempt','hs06sec', 'gshare', 'hs06','totRCHAR','totWCHAR','totRBYTES',
-                   'totWBYTES','rateRCHAR','rateWCHAR','rateRBYTES','rateWBYTES','resource_type',
-                   'diskIO', 'memory_leak', 'memory_leak_x2', 'container_name'
+    _attributes = ('PandaID', 'jobDefinitionID', 'schedulerID', 'pilotID', 'creationTime', 'creationHost',
+                   'modificationTime', 'modificationHost', 'AtlasRelease', 'transformation', 'homepackage',
+                   'prodSeriesLabel', 'prodSourceLabel', 'prodUserID', 'assignedPriority', 'currentPriority',
+                   'attemptNr', 'maxAttempt', 'jobStatus', 'jobName', 'maxCpuCount', 'maxCpuUnit', 'maxDiskCount',
+                   'maxDiskUnit', 'ipConnectivity', 'minRamCount', 'minRamUnit', 'startTime', 'endTime',
+                   'cpuConsumptionTime', 'cpuConsumptionUnit', 'commandToPilot', 'transExitCode', 'pilotErrorCode',
+                   'pilotErrorDiag', 'exeErrorCode', 'exeErrorDiag', 'supErrorCode', 'supErrorDiag',
+                   'ddmErrorCode', 'ddmErrorDiag', 'brokerageErrorCode', 'brokerageErrorDiag',
+                   'jobDispatcherErrorCode', 'jobDispatcherErrorDiag', 'taskBufferErrorCode',
+                   'taskBufferErrorDiag', 'computingSite', 'computingElement', 'jobParameters',
+                   'metadata', 'prodDBlock', 'dispatchDBlock', 'destinationDBlock', 'destinationSE',
+                   'nEvents', 'grid', 'cloud', 'cpuConversion', 'sourceSite', 'destinationSite', 'transferType',
+                   'taskID', 'cmtConfig', 'stateChangeTime', 'prodDBUpdateTime', 'lockedby', 'relocationFlag',
+                   'jobExecutionID', 'VO', 'pilotTiming', 'workingGroup', 'processingType', 'prodUserName',
+                   'nInputFiles', 'countryGroup', 'batchID', 'parentID', 'specialHandling', 'jobsetID',
+                   'coreCount', 'nInputDataFiles', 'inputFileType', 'inputFileProject', 'inputFileBytes',
+                   'nOutputDataFiles', 'outputFileBytes', 'jobMetrics', 'workQueue_ID', 'jediTaskID',
+                   'jobSubStatus', 'actualCoreCount', 'reqID', 'maxRSS', 'maxVMEM', 'maxSWAP', 'maxPSS',
+                   'avgRSS', 'avgVMEM', 'avgSWAP', 'avgPSS', 'maxWalltime', 'nucleus', 'eventService',
+                   'failedAttempt', 'hs06sec', 'gshare', 'hs06', 'totRCHAR', 'totWCHAR', 'totRBYTES',
+                   'totWBYTES', 'rateRCHAR', 'rateWCHAR', 'rateRBYTES', 'rateWBYTES', 'resource_type',
+                   'diskIO', 'memory_leak', 'memory_leak_x2', 'container_name', 'job_label'
                    )
     # slots
     __slots__ = _attributes+('Files','_changedAttrs')
     # attributes which have 0 by default
-    _zeroAttrs = ('assignedPriority','currentPriority','attemptNr','maxAttempt','maxCpuCount','maxDiskCount',
-                  'minRamCount','cpuConsumptionTime','pilotErrorCode','exeErrorCode','supErrorCode','ddmErrorCode',
-                  'brokerageErrorCode','jobDispatcherErrorCode','taskBufferErrorCode','nEvents','relocationFlag',
-                  'jobExecutionID','nOutputDataFiles','outputFileBytes')
+    _zeroAttrs = ('assignedPriority', 'currentPriority', 'attemptNr', 'maxAttempt', 'maxCpuCount', 'maxDiskCount',
+                  'minRamCount', 'cpuConsumptionTime', 'pilotErrorCode', 'exeErrorCode', 'supErrorCode', 'ddmErrorCode',
+                  'brokerageErrorCode', 'jobDispatcherErrorCode', 'taskBufferErrorCode', 'nEvents', 'relocationFlag',
+                  'jobExecutionID', 'nOutputDataFiles', 'outputFileBytes')
     # attribute to be suppressed. They are in another table
     _suppAttrs = ('jobParameters','metadata')
     # mapping between sequence and attr
-    _seqAttrMap = {'PandaID':'ATLAS_PANDA.JOBSDEFINED4_PANDAID_SEQ.nextval'}
+    _seqAttrMap = {'PandaID': 'ATLAS_PANDA.JOBSDEFINED4_PANDAID_SEQ.nextval'}
     # limit length
     _limitLength = {'ddmErrorDiag'           : 500,
                     'taskBufferErrorDiag'    : 300,
