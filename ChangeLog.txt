@@ -1,4 +1,9 @@
 ** Release Notes
+
+1.4.22
+  * fixed --containerImage of pathena to let ALRB run containers on WN
+  * added --directExecInContainer to prun
+
 1.4.21
   * added JobSpec.job_label to disambiguate neutral prodsourcelabels
 

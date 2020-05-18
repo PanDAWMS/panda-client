@@ -1381,7 +1381,11 @@ taskParamMap['taskName'] = options.outDS
 if not options.allowTaskDuplication:
     taskParamMap['uniqueTaskName'] = True
 taskParamMap['vo'] = 'atlas'
-taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
+if options.containerImage == '':
+    taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
+else:
+    taskParamMap['architecture'] = ''
+    taskParamMap['container_name'] = options.containerImage
 if athenaVer != '':
     taskParamMap['transUses'] = 'Atlas-%s' % athenaVer
 else:
@@ -1598,9 +1602,6 @@ if options.shipinput:
 # event picking
 if options.eventPickEvtList != '':
     param += '--eventPickTxt=%s ' % eventPickRunEvtDat.split('/')[-1]
-# container
-if options.containerImage != '':
-    param += "--containerImage {0} ".format(options.containerImage)
 # assign
 if param != '':
     taskParamMap['jobParameters'] += [
@@ -1902,9 +1903,6 @@ else:
     # debug parameters
     if options.queueData != '':
         jobParameters += "--overwriteQueuedata=%s " % options.queueData
-    # container
-    if options.containerImage != '':
-        jobParameters += "--containerImage {0} ".format(options.containerImage)
     # set task param
     taskParamMap['buildSpec'] = {
         'prodSourceLabel':'panda',
@@ -1947,8 +1945,6 @@ if options.mergeOutput:
     jobParameters += "--useAthenaPackages "
     if AthenaUtils.useCMake():
         jobParameters += "--useCMake "
-    if options.containerImage != '':
-        jobParameters += "--containerImage {0} ".format(options.containerImage)
     jobParameters += '${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}'
     taskParamMap['mergeSpec'] = {}
     taskParamMap['mergeSpec']['useLocalIO'] = 1

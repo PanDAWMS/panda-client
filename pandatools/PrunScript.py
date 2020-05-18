@@ -116,8 +116,6 @@ group_output.add_argument('--mergeOutput', action='store_const', const=True, des
                 help="merge output files")
 group_output.add_argument('--destSE',action='store', dest='destSE',default='',
                 help='Destination strorage element')
-group_output.add_argument('--alrb', action='store_const', const=True, dest='alrb', default=False,
-                help='Use ALRB for container execution')
 
 # the option is shared by both groups, group_input and group_output
 action = group_input.add_argument('--inOutDsJson', action='store', dest='inOutDsJson', default='',
@@ -339,6 +337,12 @@ group_containerJob.add_argument('--useCentralRegistry', action='store_const', co
 group_containerJob.add_argument('--notUseCentralRegistry', action='store_const', const=True,
                          dest='notUseCentralRegistry', default=False,
                          help="Not use the central container registry when --containerImage is used")
+group_containerJob.add_argument('--alrb', action='store_const', const=True, dest='alrb', default=False,
+                                help='Use ALRB for container execution')
+group_containerJob.add_argument('--directExecInContainer', action='store_const', const=True,
+                                dest='directExecInContainer', default=False,
+                                help='Directly run the --exec string in the container ' \
+                                'instead of running through ruGen. Only work with --alrb')
 group_submit.add_argument('--priority', action='store', dest='priority',  default=None, type=int,
                   help='Set priority of the task (1000 by default). The value must be between 900 and 1100. ' \
                        'Note that priorities of tasks are relevant only in ' \
@@ -1351,8 +1355,15 @@ elif options.addNthFieldOfInDSToLFN != '':
     taskParamMap['addNthFieldToLFN'] = options.addNthFieldOfInDSToLFN
 if options.containerImage != '' and options.alrb:
     taskParamMap['container_name'] = options.containerImage
+    if options.directExecInContainer:
+        taskParamMap['multiStepExec'] = {'preprocess': {'command': '${TRF}',
+                                                        'args': '--preprocess ${TRF_ARGS}'},
+                                         'postprocess' : {'command': '${TRF}',
+                                                          'args': '--postprocess ${TRF_ARGS}'},
+                                         'containerOptions' : {'containerExec': '__run_main_exec.sh',
+                                                               'containerImage': options.containerImage}
+                                         }
 
-# dataset names
 outDatasetName = options.outDS
 logDatasetName = re.sub('/$','.log/',options.outDS)
 # log
