@@ -796,7 +796,11 @@ atexit.register(_onExit, tmpDir, delFilesOnExit, commands_get_output)
 stA,retA = AthenaUtils.getAthenaVer()
 # failed
 if not stA:
-    sys.exit(EC_CMT)
+    if options.containerImage == '':
+        sys.exit(EC_CMT)
+    # disable Athena checks when using container image without Athena runtime env
+    retA = {'workArea': os.getcwd(), 'athenaVer': '', 'groupArea': '', 'cacheVer':'', 'nightVer': '', 'cmtConfig': ''}
+
 workArea  = retA['workArea']
 athenaVer = retA['athenaVer']
 groupArea = retA['groupArea']
@@ -872,7 +876,7 @@ tmpLog.info('using CMTCONFIG=%s' % options.cmtConfig)
 # remove special characters
 sString=re.sub('[\+]','.',workArea)
 runDir = re.sub('^%s' % sString, '', currentDir)
-if runDir == currentDir and not AthenaUtils.useCMake():
+if runDir == currentDir and not AthenaUtils.useCMake() and options.containerImage == '':
     errMsg  = "You need to run pathena in a directory under %s. " % workArea
     errMsg += "If '%s' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup." % workArea
     tmpLog.error(errMsg)

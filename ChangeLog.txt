@@ -1,5 +1,10 @@
 ** Release Notes
 
+1.4.23
+  * added phpo
+  * fixed prun for preprocess/postprocess
+  * fixe pathena for --noBuild + --containerImage
+  
 1.4.22
   * fixed --containerImage of pathena to let ALRB run containers on WN
   * added --directExecInContainer to prun

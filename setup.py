@@ -155,6 +155,7 @@ setup(
                 'scripts/pcontainer',
                 'scripts/pbook',
                 'scripts/pathena',
+                'scripts/phpo',
                 ],
     data_files = [ ('etc/panda', ['templates/panda_setup.sh.template',
                                   'templates/panda_setup.csh.template',

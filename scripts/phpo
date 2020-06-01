@@ -1,0 +1,26 @@
+#!/bin/bash
+
+export LD_LIBRARY_PATH_ORIG=${LD_LIBRARY_PATH}
+export LD_LIBRARY_PATH=
+export PYTHONPATH_ORIG=${PYTHONPATH}
+export PYTHONPATH=${PANDA_PYTHONPATH}
+export PYTHONHOME_ORIG=${PYTHONHOME}
+unset PYTHONHOME
+
+# look for option for python3
+for i in "$@"
+do
+case $i in
+  -3)
+  PANDA_PY3=1
+  ;;
+  *)
+  ;;
+esac
+done
+
+if [ -z "$PANDA_PY3" ]; then
+  /usr/bin/python -u -W ignore -c "import pandatools.PhpoScript" "$@"
+else
+  /usr/bin/python3 -u -W ignore -c "import pandatools.PhpoScript" "$@"
+fi

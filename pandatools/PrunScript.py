@@ -449,6 +449,8 @@ if options.notSkipLog:
 # container stuff
 if options.containerImage != '':
     options.noBuild = True
+    if options.alrb:
+        options.useSandbox = True
     if not options.useSandbox:
         tmpLog.warning("Files in the run directory are not sent out by default when --containerImage is used. "
                        "Please use --useSandbox if you need those files on the grid.")
@@ -1360,7 +1362,11 @@ if options.containerImage != '' and options.alrb:
                                                         'args': '--preprocess ${TRF_ARGS}'},
                                          'postprocess' : {'command': '${TRF}',
                                                           'args': '--postprocess ${TRF_ARGS}'},
-                                         'containerOptions' : {'containerExec': '__run_main_exec.sh',
+                                         'containerOptions' : {'containerExec': 'echo "=== cat exec script ==="; '
+                                                                                'cat __run_main_exec.sh; '
+                                                                                'echo; '
+                                                                                'echo "=== exec script ==="; '
+                                                                                '/bin/sh __run_main_exec.sh',
                                                                'containerImage': options.containerImage}
                                          }
 
