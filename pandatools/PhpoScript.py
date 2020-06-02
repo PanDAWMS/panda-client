@@ -45,31 +45,36 @@ group_config.add_argument('--dumpJson', action='store', dest='dumpJson', default
                           help='Dump all command-line parameters and submission result '
                           'such as returnCode, returnOut, and jediTaskID to a json file')
 group_config.add_argument('--nParallelEvaluation', action='store', dest='nParallelEvaluation',default=1, type=int,
-                          help='The number of hyperparameter points being evaluated concurrently')
+                          help='The number of hyperparameter points being evaluated concurrently. 1 by default')
 group_config.add_argument('--maxPoints', action='store', dest='maxPoints',default=10, type=int,
-                          help='The max number of hyperparameter points to be evaluated in the entire search')
+                          help='The max number of hyperparameter points to be evaluated in the entire search. '
+                               '10 by default')
 group_config.add_argument('--maxEvaluationJobs', action='store', dest='maxEvaluationJobs',default=None, type=int,
-                          help='The max number of evaluation jobs in the entire search. 2*maxPoints by default')
-group_config.add_argument('--nPointsPerIteration', action='store', dest='nPointsPerIteration',default=2, type=int,
-                          help='The max number of hyperparameter points generated in each iteration')
+                          help='The max number of evaluation jobs in the entire search. 2*maxPoints by default. '
+                               'The task is terminated when all hyperparameter points are evaluated or '
+                               'the number of evaluation jobs reaches MAXEVALUATIONJOBS')
+group_config.add_argument('--nPointsPerIteration', action='store', dest='nPointsPerIteration', default=2, type=int,
+                          help='The number of hyperparameter points generated in each iteration. 2 by default')
 group_config.add_argument('--steeringContainer', action='store', dest='steeringContainer', default=None,
                           help='The container image for steering run by docker')
 group_config.add_argument('--steeringExec', action='store', dest='steeringExec',default=None,
                           help='Execution string for steering. If --steeringContainer is specified, the string '
-                               'is executed inside of the container. Otherwise, the string is passed to '
-                               'the docker command so that the container image name ')
+                               'is executed inside of the container. Otherwise, the string is used as command-line '
+                               'arguments for the docker command')
 group_config.add_argument('--evaluationContainer', action='store', dest='evaluationContainer', default=None,
                           help='The container image for evaluation')
 group_config.add_argument('--evaluationExec', action='store', dest='evaluationExec', default=None,
-                          help='Execution string to run evaluation via singularity. $PWD is mounted by default')
+                          help='Execution string to run evaluation in singularity')
 group_config.add_argument('--evaluationInput', action='store', dest='evaluationInput', default='input.json',
-                          help='Input filename for evaluation where a json-formatted hyperparameter point is put')
+                          help='Input filename for evaluation where a json-formatted hyperparameter point is placed. '
+                               'input.json by default')
 group_config.add_argument('--evaluationTrainingData', action='store', dest='evaluationTrainingData',
                           default='input_ds.json',
                           help='Input filename for evaluation where a json-formatted list of training data filenames '
-                          'is put')
+                               'is placed. input_ds.json by default. Can be omitted if the payload directly fetches '
+                               'the training data using wget or something')
 group_config.add_argument('--evaluationOutput', action='store', dest='evaluationOutput', default='output.json',
-                          help='Output filename of evaluation')
+                          help='Output filename of evaluation. output.json by default')
 group_config.add_argument('--evaluationMeta', action='store', dest='evaluationMeta', default=None,
                           help='The name of metadata file produced by evaluation')
 group_config.add_argument('--evaluationMetrics', action='store', dest='evaluationMetrics', default=None,
@@ -137,7 +142,7 @@ PsubUtils.check_proxy(options.verbose, options.vomsRoles)
 
 # check options
 #non_null_opts = ['outDS', 'evaluationContainer', 'evaluationExec', 'steeringContainer', 'steeringExec']
-non_null_opts = ['outDS', 'evaluationExec', 'steeringExec']
+non_null_opts = ['outDS', 'evaluationContainer', 'evaluationExec', 'steeringExec']
 for opt_name in non_null_opts:
     if getattr(options, opt_name) is None:
         tmpLog.error('--{0} is not specified'.format(opt_name))
