@@ -1,1 +1,1 @@
-release_version = "1.4.23"
+release_version = "1.4.24"

@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.24
+  * using preprocess/postprocess in phpo
+
 1.4.23
   * added phpo
   * fixed prun for preprocess/postprocess

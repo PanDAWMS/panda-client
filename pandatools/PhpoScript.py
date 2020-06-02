@@ -149,6 +149,15 @@ if not options.outDS.endswith('/'):
 if options.maxEvaluationJobs is None:
     options.maxEvaluationJobs = 2 * options.maxPoints
 
+# check output name
+distinguishedName = PsubUtils.getDN()
+nickName = PsubUtils.getNickname()
+if not PsubUtils.checkOutDsName(options.outDS, distinguishedName, options.official, nickName,
+                                verbose=options.verbose):
+    tmpStr = "invalid output dataset name: %s" % options.outDS
+    tmpLog.error(tmpStr)
+    sys.exit(1)
+
 # full execution string
 fullExecString = PsubUtils.convSysArgv()
 fullExecString += jsonExecStr
@@ -187,17 +196,17 @@ if options.verbose:
 if not options.noSubmit:
     if options.verbose:
         tmpLog.debug("=== uploading sandbox===")
-        os.chdir(tmpDir)
-        status,out = Client.putFile(archiveName, options.verbose, useCacheSrv=True, reuseSandbox=True)
-        os.chdir(curDir)
-        if out.startswith('NewFileName:'):
-            # found the same input sandbox to reuse
-            archiveName = out.split(':')[-1]
-        elif out != 'True':
-            # failed
-            print(out)
-            tmpLog.error("Failed with %s" % status)
-            sys.exit(1)
+    os.chdir(tmpDir)
+    status,out = Client.putFile(archiveName, options.verbose, useCacheSrv=True, reuseSandbox=True)
+    os.chdir(curDir)
+    if out.startswith('NewFileName:'):
+        # found the same input sandbox to reuse
+        archiveName = out.split(':')[-1]
+    elif out != 'True':
+        # failed
+        print(out)
+        tmpLog.error("Failed with %s" % status)
+        sys.exit(1)
 
 matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
 sourceURL = matchURL.group(1)
@@ -209,6 +218,7 @@ taskParamMap['noInput'] = True
 taskParamMap['nEventsPerJob'] = 1
 taskParamMap['nEvents'] = options.nParallelEvaluation
 taskParamMap['maxNumJobs'] = options.maxEvaluationJobs
+taskParamMap['totNumJobs'] = options.maxPoints
 taskParamMap['taskName'] = options.outDS
 taskParamMap['vo'] = 'atlas'
 taskParamMap['architecture'] = ''
@@ -229,6 +239,18 @@ if options.site is not None:
     taskParamMap['site'] = options.site
 if options.evaluationContainer is not None:
     taskParamMap['container_name'] = options.evaluationContainer
+
+taskParamMap['multiStepExec'] = {'preprocess': {'command': '${TRF}',
+                                                'args': '--preprocess ${TRF_ARGS}'},
+                                 'postprocess': {'command': '${TRF}',
+                                                 'args': '--postprocess ${TRF_ARGS}'},
+                                 'containerOptions': {'containerExec': 'echo "=== cat exec script ==="; '
+                                                                       'cat __run_main_exec.sh; '
+                                                                       'echo; '
+                                                                       'echo "=== exec script ==="; '
+                                                                       '/bin/sh __run_main_exec.sh',
+                                                      'containerImage': options.evaluationContainer}
+                                 }
 
 logDatasetName = re.sub('/$','.log/',options.outDS)
 
