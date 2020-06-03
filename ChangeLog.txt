@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.4.26
+  * to suppress CMT error for --containerImage
+  * fixed pathena to work in empty directory
+
 1.4.25
   * setting useCMake in pathena when --containerImage + --noBuild + --trf is used
 

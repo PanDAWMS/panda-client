@@ -793,7 +793,11 @@ atexit.register(_onExit, tmpDir, delFilesOnExit, commands_get_output)
 
 
 # get Athena versions
-stA,retA = AthenaUtils.getAthenaVer()
+if options.verbose or options.containerImage == '':
+    cmt_verbose = True
+else:
+    cmt_verbose = False
+stA,retA = AthenaUtils.getAthenaVer(cmt_verbose)
 # failed
 if not stA:
     if options.containerImage == '':
@@ -1297,6 +1301,8 @@ if True:
         os.chdir(tmpDir)
         # remove some athena specific files
         AthenaUtils.deleteAthenaStuff(currentDir)
+        if not os.path.exists(archiveName):
+            commands_get_status_output('tar -cf {0} -T /dev/null'.format(archiveName))
         # compress
         status,out = commands_get_status_output('gzip -f %s' % archiveName)
         if status != 0 or options.verbose:

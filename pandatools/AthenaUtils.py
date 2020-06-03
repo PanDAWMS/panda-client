@@ -65,7 +65,7 @@ def isAthRelease(cacheVer):
 
     
 # get Athena version
-def getAthenaVer():
+def getAthenaVer(verbose):
     # get logger
     tmpLog = PLogger.getPandaLogger()            
     # get project parameters
@@ -79,8 +79,9 @@ def getAthenaVer():
         # delete the tmp dir
         commands_get_output('rm -rf %s' % tmpDir)
         if len(lines)<2:
-            print(out)
-            tmpLog.error("cmt gave wrong info")
+            if verbose:
+                print(out)
+                tmpLog.error("cmt gave wrong info")
             return False,{}
     # private work area
     res = re.search('\(in ([^\)]+)\)',lines[0])
