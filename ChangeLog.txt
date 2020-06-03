@@ -1,5 +1,7 @@
 ** Release Notes
 
+1.4.25
+  * setting useCMake in pathena when --containerImage is used.
 1.4.24
   * using preprocess/postprocess in phpo
 

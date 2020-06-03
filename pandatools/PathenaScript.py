@@ -1583,7 +1583,7 @@ if (options.trf or runConfig.input.inBS) and not options.forceDirectIO:
 if options.useNextEvent:
     param += '--useNextEvent '
 # use CMake
-if AthenaUtils.useCMake():
+if AthenaUtils.useCMake() or options.containerImage != '':
     param += "--useCMake "
 # AthenaMT
 if options.nThreads > 1:
@@ -1902,7 +1902,7 @@ else:
     if options.noCompile:
         jobParameters += "--noCompile "
     # use CMake
-    if AthenaUtils.useCMake():
+    if AthenaUtils.useCMake() or options.containerImage != '':
         jobParameters += "--useCMake "
     # debug parameters
     if options.queueData != '':
@@ -1947,7 +1947,7 @@ if options.mergeOutput:
         jobParameters += '-a {0} '.format(archiveName)
         jobParameters += "--sourceURL ${SURL} "
     jobParameters += "--useAthenaPackages "
-    if AthenaUtils.useCMake():
+    if AthenaUtils.useCMake() or options.containerImage != '':
         jobParameters += "--useCMake "
     jobParameters += '${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}'
     taskParamMap['mergeSpec'] = {}
