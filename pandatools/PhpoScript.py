@@ -52,9 +52,15 @@ group_config.add_argument('--maxPoints', action='store', dest='maxPoints',defaul
 group_config.add_argument('--maxEvaluationJobs', action='store', dest='maxEvaluationJobs',default=None, type=int,
                           help='The max number of evaluation jobs in the entire search. 2*maxPoints by default. '
                                'The task is terminated when all hyperparameter points are evaluated or '
-                               'the number of evaluation jobs reaches MAXEVALUATIONJOBS')
+                               'the number of evaluation jobs reaches maxEvaluationJobs')
 group_config.add_argument('--nPointsPerIteration', action='store', dest='nPointsPerIteration', default=2, type=int,
-                          help='The number of hyperparameter points generated in each iteration. 2 by default')
+                          help='The max number of hyperparameter points generated in each iteration. 2 by default '
+                               'Simply speaking, the steering container is executed maxPoints/nPointsPerIteration '
+                               'times when minUnevaluatedPoints is 0. The number of new points is '
+                               'nPointsPerIteration-minUnevaluatedPoints')
+group_config.add_argument('--minUnevaluatedPoints', action='store', dest='minUnevaluatedPoints', default=None, type=int,
+                          help='The next iteration is triggered to generate new hyperparameter points when the number '
+                               'of unevaluated hyperparameter points goes below minUnevaluatedPoints. 0 by default')
 group_config.add_argument('--steeringContainer', action='store', dest='steeringContainer', default=None,
                           help='The container image for steering run by docker')
 group_config.add_argument('--steeringExec', action='store', dest='steeringExec',default=None,
@@ -274,6 +280,8 @@ taskParamMap['hpoRequestData'] = {'sandbox': options.steeringContainer,
                                   'max_points': options.maxPoints,
                                   'num_points_per_generation': options.nPointsPerIteration,
                               }
+if options.minUnevaluatedPoints is not None:
+    taskParamMap['hpoRequestData']['min_unevaluated_points'] = options.minUnevaluatedPoints
 
 taskParamMap['jobParameters'] = [
     {'type':'constant',
