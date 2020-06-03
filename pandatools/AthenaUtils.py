@@ -65,7 +65,7 @@ def isAthRelease(cacheVer):
 
     
 # get Athena version
-def getAthenaVer(verbose):
+def getAthenaVer(verbose=True):
     # get logger
     tmpLog = PLogger.getPandaLogger()            
     # get project parameters
