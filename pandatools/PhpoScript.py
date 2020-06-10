@@ -67,6 +67,9 @@ group_config.add_argument('--steeringExec', action='store', dest='steeringExec',
                           help='Execution string for steering. If --steeringContainer is specified, the string '
                                'is executed inside of the container. Otherwise, the string is used as command-line '
                                'arguments for the docker command')
+group_config.add_argument('--searchSpaceFile', action='store', dest='searchSpaceFile', default=None,
+                          help='External json filename to define the search space. '
+                               'None by default')
 group_config.add_argument('--evaluationContainer', action='store', dest='evaluationContainer', default=None,
                           help='The container image for evaluation')
 group_config.add_argument('--evaluationExec', action='store', dest='evaluationExec', default=None,
@@ -279,9 +282,14 @@ taskParamMap['hpoRequestData'] = {'sandbox': options.steeringContainer,
                                   'output_json': 'output.json',
                                   'max_points': options.maxPoints,
                                   'num_points_per_generation': options.nPointsPerIteration,
+                                  'num_points_per_generation': options.nPointsPerIteration,
                               }
 if options.minUnevaluatedPoints is not None:
     taskParamMap['hpoRequestData']['min_unevaluated_points'] = options.minUnevaluatedPoints
+
+if options.searchSpaceFile is not None:
+    with open(options.searchSpaceFile) as json_file:
+        taskParamMap['hpoRequestData']['opt_space'] = json.load(json_file)
 
 taskParamMap['jobParameters'] = [
     {'type':'constant',
