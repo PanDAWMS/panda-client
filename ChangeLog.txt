@@ -1,5 +1,11 @@
 ** Release Notes
 
+1.4.28
+  * added --searchSpaceFile to phpo
+
+1.4.27
+  * bug fix
+
 1.4.26
   * to suppress CMT error for --containerImage
   * fixed pathena to work in empty directory
