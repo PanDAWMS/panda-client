@@ -282,7 +282,6 @@ taskParamMap['hpoRequestData'] = {'sandbox': options.steeringContainer,
                                   'output_json': 'output.json',
                                   'max_points': options.maxPoints,
                                   'num_points_per_generation': options.nPointsPerIteration,
-                                  'num_points_per_generation': options.nPointsPerIteration,
                               }
 if options.minUnevaluatedPoints is not None:
     taskParamMap['hpoRequestData']['min_unevaluated_points'] = options.minUnevaluatedPoints
