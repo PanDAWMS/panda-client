@@ -302,7 +302,7 @@ taskParamMap['jobParameters'] = [
     ]
 
 if options.trainingDS is not None:
-    taskParamMap['jobParameters'].append([
+    taskParamMap['jobParameters'] += [
         {'type': 'constant',
         'value': '--writeInputToTxt IN_DATA:{0}'.format(options.evaluationTrainingData)
          },
@@ -315,17 +315,17 @@ if options.trainingDS is not None:
         {'type': 'constant',
         'value': '--inMap "{\'IN_DATA\': ${IN_DATA/T}}"'
         },
-        ])
+        ]
 
 if options.evaluationMeta is not None:
-    taskParamMap['jobParameters'].append([
+    taskParamMap['jobParameters'] += [
         {'type': 'constant',
         'value': '--outMetaFile={0}'.format(options.evaluationMeta),
         },
-        ])
+        ]
 
 if options.evaluationMetrics is not None:
-    taskParamMap['jobParameters'].append([
+    taskParamMap['jobParameters'] += [
         {'type': 'template',
         'param_type': 'output',
         'value': '$JEDITASKID.metrics.${SN}.tgz',
@@ -335,7 +335,7 @@ if options.evaluationMetrics is not None:
         {'type': 'constant',
         'value': '--outMetricsFile=${{OUTPUT0}}^{0}'.format(options.evaluationMetrics),
         },
-        ])
+        ]
 
 if options.noSubmit:
     if options.noSubmit:

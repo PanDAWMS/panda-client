@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.29
+  * fixed --evaluationMetrics in phpo
+
 1.4.28
   * added --searchSpaceFile to phpo
 
