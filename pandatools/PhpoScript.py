@@ -88,6 +88,21 @@ group_config.add_argument('--evaluationMeta', action='store', dest='evaluationMe
                           help='The name of metadata file produced by evaluation')
 group_config.add_argument('--evaluationMetrics', action='store', dest='evaluationMetrics', default=None,
                           help='The name of metrics file produced by evaluation')
+group_config.add_argument('--checkPointToSave', action='store', dest='checkPointToSave', default=None,
+                          help='A comma-separated list of files and/or directories to be periodically saved ' \
+                          'to a tarball for checkpointing. Note that those files and directories must be placed ' \
+                          'in the working directory. None by default')
+group_config.add_argument('--checkPointToLoad', action='store', dest='checkPointToLoad', default=None,
+                          help='The name of the saved tarball for checkpointing. The tarball is given to '\
+                          'the evaluation container when the training is resumed, if this option is specified. '
+                          'Otherwise, the tarball is automatically extracted in the working directories')
+group_config.add_argument('--alrbArgs', action='store', dest='alrbArgs', default=None,
+                          help='Additional arguments for ALRB to run the evaluation container. ' \
+                          '"setupATLAS -c --help" shows available ALRB arguments. For example, ' \
+                          '--alrbArgs "--nocvmfs --nohome" to skip mounting /cvmfs and $HOME. ' \
+                          'This option is mainly for experts who know how the system and the container ' \
+                          'communicates with each other and how additional ALRB arguments affect '\
+                          'the consequence')
 group_config.add_argument('-v', action='store_const', const=True, dest='verbose', default=False,
                           help='Verbose')
 
@@ -265,6 +280,8 @@ taskParamMap['multiStepExec'] = {'preprocess': {'command': '${TRF}',
                                                                        '/bin/sh __run_main_exec.sh',
                                                       'containerImage': options.evaluationContainer}
                                  }
+if options.alrbArgs is not None:
+    taskParamMap['multiStepExec']['containerOptions']['execArgs'] = options.alrbArgs
 
 logDatasetName = re.sub('/$','.log/',options.outDS)
 
@@ -300,6 +317,20 @@ taskParamMap['jobParameters'] = [
      'value': '-a {0} --sourceURL {1}'.format(archiveName, sourceURL)
      },
     ]
+
+if options.checkPointToSave is not None:
+    taskParamMap['jobParameters'] += [
+        {'type': 'constant',
+         'value': '--checkPointToSave {0}'.format(options.checkPointToSave)
+        },
+        ]
+
+if options.checkPointToLoad is not None:
+    taskParamMap['jobParameters'] += [
+        {'type': 'constant',
+         'value': '--checkPointToLoad {0}'.format(options.checkPointToLoad)
+        },
+        ]
 
 if options.trainingDS is not None:
     taskParamMap['jobParameters'] += [

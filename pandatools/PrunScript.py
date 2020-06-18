@@ -319,30 +319,48 @@ group_submit.add_argument('--maxAttempt', action='store', dest='maxAttempt', def
 group_containerJob.add_argument('--containerImage', action='store', dest='containerImage', default='',
                   help="Name of a container image")
 group_containerJob.add_argument('--ctrCvmfs', action='store_const', const=True, dest='ctrCvmfs', default=False,
-                  help="Bind /cvmfs to the container, bool, default False")
+                                help=argparse.SUPPRESS)
+                                #help="Bind /cvmfs to the container, bool, default False")
 group_containerJob.add_argument('--ctrNoX509', action='store_const', const=True, dest='ctrNoX509', default=False,
-                  help="Unset X509 environment in the container, bool, default False")
+                                help=argparse.SUPPRESS)
+                                #help="Unset X509 environment in the container, bool, default False")
 group_containerJob.add_argument('--ctrDatadir', action='store', dest='ctrDatadir', default='',
-                  help="Binds the job directory to datadir for I/O operations, string, default /ctrdata")
+                                help=argparse.SUPPRESS)
+                                #help="Binds the job directory to datadir for I/O operations, string, default /ctrdata")
 group_containerJob.add_argument('--ctrWorkdir', action='store', dest='ctrWorkdir', default='',
-                  help="chdir to workdir in the container, string, default /ctrdata")
+                                help=argparse.SUPPRESS)
+                                #help="chdir to workdir in the container, string, default /ctrdata")
 group_containerJob.add_argument('--ctrDebug', action='store_const', const=True, dest='ctrDebug', default=False,
-                  help="Enable more verbose output from runcontainer, bool, default False")
+                                help=argparse.SUPPRESS)
+                                #help="Enable more verbose output from runcontainer, bool, default False")
 group_containerJob.add_argument('--useSandbox', action='store_const', const=True, dest='useSandbox', default=False,
-                  help='To send files in the run directory to remote sites which are not sent out by default ' \
-                       'when --containerImage is used')
+                                help=argparse.SUPPRESS)
+                                #help='To send files in the run directory to remote sites which are not sent out by default ' \
+                                #'when --containerImage is used')
 group_containerJob.add_argument('--useCentralRegistry', action='store_const', const=True,
-                         dest='useCentralRegistry', default=False,
-                         help="Use the central container registry when --containerImage is used")
+                                dest='useCentralRegistry', default=False,
+                                help=argparse.SUPPRESS)
+                                #help="Use the central container registry when --containerImage is used")
 group_containerJob.add_argument('--notUseCentralRegistry', action='store_const', const=True,
-                         dest='notUseCentralRegistry', default=False,
-                         help="Not use the central container registry when --containerImage is used")
+                                dest='notUseCentralRegistry', default=False,
+                                help=argparse.SUPPRESS)
+                                #help="Not use the central container registry when --containerImage is used")
 group_containerJob.add_argument('--alrb', action='store_const', const=True, dest='alrb', default=False,
                                 help='Use ALRB for container execution')
-group_containerJob.add_argument('--directExecInContainer', action='store_const', const=True,
-                                dest='directExecInContainer', default=False,
-                                help='Directly run the --exec string in the container ' \
-                                'instead of running through ruGen. Only work with --alrb')
+group_containerJob.add_argument('--wrapExecInContainer', action='store_const', const=False,
+                                dest='directExecInContainer', default=True,
+                                help='Execute the --exec string through runGen in the container')
+group_containerJob.add_argument('--alrbArgs', action='store', dest='alrbArgs', default=None,
+                                help='Additional arguments for ALRB to run the container. ' \
+                                     '"setupATLAS -c --help" shows available ALRB arguments. For example, ' \
+                                     '--alrbArgs "--nocvmfs	--nohome" to skip mounting /cvmfs and $HOME. ' \
+                                     'This option is mainly for experts who know how the system and the container ' \
+                                     'communicates with each other and how additional ALRB arguments affect '\
+                                     'the consequence')
+group_containerJob.add_argument('--oldContMode', action='store_const', const=True, dest='oldContMode', default=False,
+                                help='Use runcontainer for container execution. Note that this option will be ' \
+                                     'deleted near future. Try the new ARLB scheme as soon as possible and report ' \
+                                     'if there is a problem')
 group_submit.add_argument('--priority', action='store', dest='priority',  default=None, type=int,
                   help='Set priority of the task (1000 by default). The value must be between 900 and 1100. ' \
                        'Note that priorities of tasks are relevant only in ' \
@@ -445,6 +463,14 @@ if options.noCompile:
 # not skip log files in inDS
 if options.notSkipLog:
     options.useLogAsInput = True
+
+# old container execution mode
+if options.oldContMode:
+    options.alrb = False
+
+# use runGen
+if options.useAthenaPackages and options.alrb:
+    options.directExecInContainer = True
 
 # container stuff
 if options.containerImage != '':
@@ -1369,6 +1395,8 @@ if options.containerImage != '' and options.alrb:
                                                                                 '/bin/sh __run_main_exec.sh',
                                                                'containerImage': options.containerImage}
                                          }
+        if options.alrbArgs is not None:
+            taskParamMap['multiStepExec']['containerOptions']['execArgs'] = options.alrbArgs
 
 outDatasetName = options.outDS
 logDatasetName = re.sub('/$','.log/',options.outDS)

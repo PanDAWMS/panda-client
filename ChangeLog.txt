@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.4.30
+  * added --oldContMode and --alrbArgs to prun
+  * added --checkPointToSave and --checkPointToLoad to phpo
+
 1.4.29
   * fixed --evaluationMetrics in phpo
 
