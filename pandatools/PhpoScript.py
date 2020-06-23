@@ -96,6 +96,9 @@ group_config.add_argument('--checkPointToLoad', action='store', dest='checkPoint
                           help='The name of the saved tarball for checkpointing. The tarball is given to '\
                           'the evaluation container when the training is resumed, if this option is specified. '
                           'Otherwise, the tarball is automatically extracted in the working directories')
+group_config.add_argument('--checkPointInterval', action='store', dest='checkPointInterval', default=None, type=int,
+                          help='Frequency to check files for checkpointing in minute. '
+                               '5 by default')
 group_config.add_argument('--alrbArgs', action='store', dest='alrbArgs', default=None,
                           help='Additional arguments for ALRB to run the evaluation container. ' \
                           '"setupATLAS -c --help" shows available ALRB arguments. For example, ' \
@@ -265,7 +268,10 @@ if options.workingGroup is not None:
     taskParamMap['workingGroup'] = options.workingGroup
 taskParamMap['coreCount'] = 1
 if options.site is not None:
-    taskParamMap['site'] = options.site
+    if ',' in options.site:
+        taskParamMap['includedSite'] = PsubUtils.splitCommaConcatenatedItems([options.site])
+    else:
+        taskParamMap['site'] = options.site
 if options.evaluationContainer is not None:
     taskParamMap['container_name'] = options.evaluationContainer
 
@@ -323,6 +329,12 @@ if options.checkPointToSave is not None:
         {'type': 'constant',
          'value': '--checkPointToSave {0}'.format(options.checkPointToSave)
         },
+        ]
+    if options.options.checkPointInterval is not None:
+        taskParamMap['jobParameters'] += [
+            {'type': 'constant',
+             'value': '--checkPointInterval {0}'.format(options.checkPointInterval)
+             },
         ]
 
 if options.checkPointToLoad is not None:

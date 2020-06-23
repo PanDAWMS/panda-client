@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.4.31
+  * protection against long site parameter in phpo
+  * added --checkPointInterval to phpo
+
 1.4.30
   * added --oldContMode and --alrbArgs to prun
   * added --checkPointToSave and --checkPointToLoad to phpo
