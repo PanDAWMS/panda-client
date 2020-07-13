@@ -379,6 +379,8 @@ group_submit.add_argument('--maxAttempt', action='store', dest='maxAttempt', def
                 type=int, help='Maximum number of reattempts for each job (3 by default and not larger than 50)')
 group_containerJob.add_argument('--containerImage', action='store', dest='containerImage', default='',
                 type=str, help="Name of a container image")
+group_containerJob.add_argument('--architecture', action='store', dest='architecture', default='',
+                type=str, help="Architecture or flag of the processor to run the container image")
 group_build.add_argument("-3", action="store_true", dest="python3", default=False,
                   help="Use python3")
 
@@ -1096,6 +1098,17 @@ else:
     # warning if no output
     if not oneOut:
         tmpLog.warning("argument of --trf doesn't contain any %OUT")
+    # check for maxEvents and skipEvents
+    if options.nEventsPerJob > 0 and options.nEventsPerJob < options.nEventsPerFile:
+        if '%SKIPEVENTS' not in jobO:
+            tmpLog.warning("Argument of --trf doesn't contain %SKIPEVENTS. All jobs with the same input file "
+                           "may process the same events unless first events are skipped by using a trf parameter "
+                           "like skipEvents or something")
+        if 'maxEvents' not in jobO:
+            tmpLog.warning("Argument of --trf doesn't contain maxEvents or something equivalent. Each job may process all events "
+                           "in the input file. Note that --nEventsPerJob doesn't automatically append maxEvents "
+                           "to the argument. Please ignore this message if you limit the number of events "
+                           "in each job by using another trf parameter")
 
 # no output jobs
 tmpOutKeys = list(runConfig.output)
@@ -1394,7 +1407,7 @@ taskParamMap['vo'] = 'atlas'
 if options.containerImage == '':
     taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
 else:
-    taskParamMap['architecture'] = ''
+    taskParamMap['architecture'] = options.architecture
     taskParamMap['container_name'] = options.containerImage
 if athenaVer != '':
     taskParamMap['transUses'] = 'Atlas-%s' % athenaVer

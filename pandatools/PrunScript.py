@@ -318,6 +318,8 @@ group_submit.add_argument('--maxAttempt', action='store', dest='maxAttempt', def
                 type=int, help='Maximum number of reattempts for each job (3 by default and not larger than 50)')
 group_containerJob.add_argument('--containerImage', action='store', dest='containerImage', default='',
                   help="Name of a container image")
+group_containerJob.add_argument('--architecture', action='store', dest='architecture', default='',
+                                help="Architecture or flag of the processor to run the container image")
 group_containerJob.add_argument('--ctrCvmfs', action='store_const', const=True, dest='ctrCvmfs', default=False,
                                 help=argparse.SUPPRESS)
                                 #help="Bind /cvmfs to the container, bool, default False")
@@ -1286,7 +1288,7 @@ if not options.allowTaskDuplication:
     taskParamMap['uniqueTaskName'] = True
 taskParamMap['vo'] = 'atlas'
 if options.containerImage != '' and options.alrb:
-    taskParamMap['architecture'] = ''
+    taskParamMap['architecture'] = options.architecture
 else:
     taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
 taskParamMap['transUses'] = athenaVer

@@ -106,6 +106,8 @@ group_config.add_argument('--alrbArgs', action='store', dest='alrbArgs', default
                           'This option is mainly for experts who know how the system and the container ' \
                           'communicates with each other and how additional ALRB arguments affect '\
                           'the consequence')
+group_config.add_argument('--architecture', action='store', dest='architecture', default='',
+                          help="Architecture or flag of the processor to run the evaluation container image")
 group_config.add_argument('-v', action='store_const', const=True, dest='verbose', default=False,
                           help='Verbose')
 
@@ -253,7 +255,7 @@ taskParamMap['maxNumJobs'] = options.maxEvaluationJobs
 taskParamMap['totNumJobs'] = options.maxPoints
 taskParamMap['taskName'] = options.outDS
 taskParamMap['vo'] = 'atlas'
-taskParamMap['architecture'] = ''
+taskParamMap['architecture'] = options.architecture
 taskParamMap['hpoWorkflow'] = True
 taskParamMap['transUses'] = ''
 taskParamMap['transHome'] = ''

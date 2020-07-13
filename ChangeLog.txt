@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.32
+  * added --architecture
+
 1.4.31
   * protection against long site parameter in phpo
   * added --checkPointInterval to phpo
