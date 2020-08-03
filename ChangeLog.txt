@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.4.33
+  * set --noBuild in pathena when --containerImage is used
+  * fixed --trf + --noOutput in pathena
+
 1.4.32
   * added --architecture
 

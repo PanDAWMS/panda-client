@@ -104,7 +104,7 @@ removedOpts = [  # list of deprecated options w.r.t version 0.4.9
   "--useOldStyleOutput", 
   "--useShortLivedReplicas", 
   "--useSiteGroup", 
-  "--useTagInTRF", 
+  "--useTagInTRF",
   "-l"
 ]
 
@@ -497,6 +497,10 @@ if options.noCompile:
     if options.noBuild:
         tmpLog.error("--noBuild and --noCompile cannot be used simultaneously")
         sys.exit(EC_Config)
+    options.noBuild = True
+
+# set noBuild for container
+if options.containerImage != '':
     options.noBuild = True
 
 # files to be deleted
@@ -1881,8 +1885,9 @@ else:
     tmpJobO = jobO
     # output : basenames are in outMap['IROOT'] trough extOutFile
     tmpOutMap = []
-    for tmpName,tmpLFN in outMap['IROOT']:
-        tmpJobO = tmpJobO.replace('%OUT.' + tmpName,tmpName)
+    if 'IROOT' in outMap:
+        for tmpName,tmpLFN in outMap['IROOT']:
+            tmpJobO = tmpJobO.replace('%OUT.' + tmpName,tmpName)
     # replace DBR
     tmpJobO = re.sub('%DB=[^ \'\";]+','${DBR}',tmpJobO)
 # set jobO parameter
