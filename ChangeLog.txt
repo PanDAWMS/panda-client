@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.34
+  * using ALRB for container execution in prun by default
+
 1.4.33
   * set --noBuild in pathena when --containerImage is used
   * fixed --trf + --noOutput in pathena

@@ -347,7 +347,7 @@ group_containerJob.add_argument('--notUseCentralRegistry', action='store_const',
                                 dest='notUseCentralRegistry', default=False,
                                 help=argparse.SUPPRESS)
                                 #help="Not use the central container registry when --containerImage is used")
-group_containerJob.add_argument('--alrb', action='store_const', const=True, dest='alrb', default=False,
+group_containerJob.add_argument('--alrb', action='store_const', const=True, dest='alrb', default=True,
                                 help='Use ALRB for container execution')
 group_containerJob.add_argument('--wrapExecInContainer', action='store_const', const=False,
                                 dest='directExecInContainer', default=True,
