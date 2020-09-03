@@ -503,6 +503,12 @@ if options.noCompile:
 if options.containerImage != '':
     options.noBuild = True
 
+# use cmtconfig as architecture and vice-versa
+if options.cmtConfig and not options.architecture:
+    options.architecture = options.cmtConfig
+elif not options.cmtConfig and options.architecture:
+    options.cmtConfig = options.architecture
+
 # files to be deleted
 delFilesOnExit = []
 

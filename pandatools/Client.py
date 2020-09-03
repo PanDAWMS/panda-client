@@ -540,6 +540,8 @@ def useIntrServer():
     baseURL = 'http://aipanda059.cern.ch:25080/server/panda'
     global baseURLSSL
     baseURLSSL = 'https://aipanda059.cern.ch:25443/server/panda'
+    global baseURLCSRVSSL
+    baseURLCSRVSSL = baseURLSSL
 
 
 # set cache server

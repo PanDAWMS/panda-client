@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.35
+  * --cmtConfig = --architecture
+
 1.4.34
   * using ALRB for container execution in prun by default
 

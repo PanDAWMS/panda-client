@@ -470,6 +470,12 @@ if options.notSkipLog:
 if options.oldContMode:
     options.alrb = False
 
+# use cmtconfig as architecture and vice-versa
+if options.cmtConfig and not options.architecture:
+    options.architecture = options.cmtConfig
+elif not options.cmtConfig and options.architecture:
+    options.cmtConfig = options.architecture
+
 # use runGen
 if options.useAthenaPackages and options.alrb:
     options.directExecInContainer = True
