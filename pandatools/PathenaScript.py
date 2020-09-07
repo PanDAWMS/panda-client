@@ -288,6 +288,8 @@ action = group_job.add_argument('--nThreads', action='store', dest='nThreads', d
 group_submit.shareWithMe(action)
 group_input.add_argument('--forceStaged', action='store_const', const=True, dest='forceStaged', default=False,
                 help='Force files from primary DS to be staged to local disk, even if direct-access is possible')
+group_input.add_argument('--avoidVP', action='store_const', const=True, dest='avoidVP', default=False,
+                help='Not to use sites where virtual placement is enabled')
 group_submit.add_argument('--maxCpuCount', action='store', dest='maxCpuCount', default=0, type=int,
                 help='Required CPU count in seconds. Mainly to extend time limit for looping job detection')
 group_output.add_argument('--official', action='store_const', const=True, dest='official',  default=False,
@@ -1922,6 +1924,10 @@ if options.useAMIEventLevelSplit == True:
 # force stage-in
 if options.forceStaged:
     taskParamMap['useLocalIO'] = 1
+
+# avoid VP
+if options.avoidVP:
+    taskParamMap['avoidVP'] = True
 
 # build step
 if options.noBuild and not options.noCompile:

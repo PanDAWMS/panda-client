@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.36
+  * added --avoidVP
+
 1.4.35
   * --cmtConfig = --architecture
 

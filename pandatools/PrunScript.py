@@ -305,6 +305,8 @@ group_input.add_argument('--forceStaged',action='store_const',const=True,dest='f
                 help='Force files from primary DS to be staged to local disk, even if direct-access is possible')
 group_input.add_argument('--forceStagedSecondary',action='store_const',const=True,dest='forceStagedSecondary',default=False,
                 help='Force files from secondary DSs to be staged to local disk, even if direct-access is possible')
+group_input.add_argument('--avoidVP', action='store_const', const=True, dest='avoidVP', default=False,
+                help='Not to use sites where virtual placement is enabled')
 group_expert.add_argument('--queueData', action='store', dest='queueData', default='',
                   help="Please don't use this option. Only for developers")
 
@@ -1689,6 +1691,10 @@ if jobParameters != '':
 # force stage-in
 if options.forceStaged or options.forceStagedSecondary:
     taskParamMap['useLocalIO'] = 1
+
+# avoid VP
+if options.avoidVP:
+    taskParamMap['avoidVP'] = True
 
 # build step
 if options.noBuild and not options.noCompile:
