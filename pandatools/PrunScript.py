@@ -1663,6 +1663,9 @@ if options.useRootCore:
 # root
 if options.rootVer != '':
     jobParameters += "--rootVer %s " % options.rootVer
+# cmt config
+if options.cmtConfig not in ['', 'NULL', None]:
+    jobParameters += "--cmtConfig %s " % options.cmtConfig
 # write input to txt
 if options.writeInputToTxt != '':
     jobParameters += "--writeInputToTxt %s " % options.writeInputToTxt
@@ -1783,6 +1786,8 @@ if options.mergeOutput:
         jobParameters += '-j "{0}" '.format(options.mergeScript)
     if options.rootVer != '':
         jobParameters += "--rootVer %s " % options.rootVer
+    if options.cmtConfig not in ['', 'NULL', None]:
+        jobParameters += "--cmtConfig %s " % options.cmtConfig
     if options.useAthenaPackages:
         jobParameters += "--useAthenaPackages "
     if AthenaUtils.useCMake():

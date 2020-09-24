@@ -1,5 +1,11 @@
 ** Release Notes
 
+1.4.38
+  * fixed --rootVer + --useAthenaPackage
+
+1.4.37
+  * protection against unknown athenaTag
+
 1.4.36
   * added --avoidVP
 
