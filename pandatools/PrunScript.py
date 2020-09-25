@@ -226,7 +226,7 @@ group_build.add_argument('--maxFileSize',action='store',dest='maxFileSize',defau
 group_build.add_argument('--athenaTag',action='store',dest='athenaTag',default='',
                 help='Tags to setup Athena on remote WNs, e.g., --athenaTag=AtlasProduction,14.2.24.3')
 group_build.add_argument('--rootVer',action='store',dest='rootVer',default='',
-                help='Specify a ROOT version which is not included in Athena. This option can not be used together with --noBuild, e.g., --rootVer=5.28/00' )
+                help='Specify a ROOT version which is not included in Athena, e.g., --rootVer=5.28/00' )
 group_build.add_argument('--workDir',action='store',dest='workDir',default='.',
                 help='All files under WORKDIR will be transfered to WNs (default=./)')
 group_build.add_argument('--extFile',action='store',dest='extFile',default='',
@@ -618,11 +618,13 @@ if options.eventPickEvtList != '':
 
 # check rootVer
 if options.rootVer != '':
-    if options.noBuild and not options.noCompile:
-        tmpLog.error("--rootVer cannot be used together with --noBuild since ROOT is prepared in the build step")
-        sys.exit(EC_Config)
-    # change / to .
-    options.rootVer = re.sub('/','.',options.rootVer)
+    if options.useAthenaPackages or options.athenaTag:
+        tmpLog.warning("--rootVer is ignored when --athenaTag or --useAthenaPackages is used, "
+                       "not to break the runtime environment by superseding the root version")
+        options.rootVer = ''
+    else:
+        # change / to .
+        options.rootVer = re.sub('/','.',options.rootVer)
 
 # check writeInputToTxt
 if options.writeInputToTxt != '':

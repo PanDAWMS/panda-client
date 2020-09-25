@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.39
+  * to ignore --rootVer when --useAthenaPackage/athenaTag
+
 1.4.38
   * fixed --rootVer + --useAthenaPackage
 
