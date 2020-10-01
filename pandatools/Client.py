@@ -25,6 +25,7 @@ import tempfile
 from . import MiscUtils
 from .MiscUtils import commands_get_status_output, commands_get_output, pickle_loads
 from . import PLogger
+from . import openidc_utils
 
 # configuration
 try:
@@ -88,14 +89,36 @@ class _Curl:
         # path to curl
         self.path = 'curl --user-agent "dqcurl" '
         # verification of the host certificate
-        self.verifyHost = True
+        if 'PANDA_VERIFY_HOST' in os.environ and os.environ['PANDA_VERIFY_HOST'] == 'off':
+            self.verifyHost = False
+        else:
+            self.verifyHost = True
         # request a compressed response
         self.compress = True
         # SSL cert/key
         self.sslCert = ''
         self.sslKey  = ''
+        # auth mode
+        self.idToken = None
+        if 'PANDA_AUTH' in os.environ and os.environ['PANDA_AUTH'] == 'oidc':
+            self.authMode = 'oidc'
+        else:
+            self.authMode = 'voms'
         # verbose
         self.verbose = False
+
+    # get token
+    def getToken(self):
+        tmp_log = PLogger.getPandaLogger()
+        oidc = openidc_utils.OpenIdConnect_Utils(os.environ['PANDA_CONFIG_ROOT'], tmp_log, self.verbose)
+        parsed = urlparse(baseURLSSL)
+        auth_url = '{0}://{1}:{2}/auth/config.json'.format(parsed.scheme, parsed.hostname, parsed.port)
+        s, o = oidc.run_device_authorization_flow(auth_url)
+        if not s:
+            tmp_log.error(o)
+            return False
+        self.idToken = o
+        return True
 
     # randomize IP
     def randomize_ip(self, url):
@@ -124,11 +147,15 @@ class _Curl:
                 com += ' --capath %s' % tmp_x509_CApath
         if self.compress:
             com += ' --compressed'
-        if self.sslCert != '':
-            com += ' --cert %s' % self.sslCert
-            com += ' --cacert %s' % self.sslCert
-        if self.sslKey != '':
-            com += ' --key %s' % self.sslKey
+        if self.authMode == 'oidc':
+            self.getToken()
+            com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
+        else:
+            if self.sslCert != '':
+                com += ' --cert %s' % self.sslCert
+                com += ' --cacert %s' % self.sslCert
+            if self.sslKey != '':
+                com += ' --key %s' % self.sslKey
         # max time of 10 min
         com += ' -m 600'
         # add rucio account info
@@ -191,11 +218,15 @@ class _Curl:
                 com += ' --capath %s' % tmp_x509_CApath
         if self.compress:
             com += ' --compressed'
-        if self.sslCert != '':
-            com += ' --cert %s' % self.sslCert
-            com += ' --cacert %s' % self.sslCert
-        if self.sslKey != '':
-            com += ' --key %s' % self.sslKey
+        if self.authMode == 'oidc':
+            self.getToken()
+            com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
+        else:
+            if self.sslCert != '':
+                com += ' --cert %s' % self.sslCert
+                com += ' --cacert %s' % self.sslCert
+            if self.sslKey != '':
+                com += ' --key %s' % self.sslKey
         # max time of 10 min
         com += ' -m 600'
         # add rucio account info
@@ -261,11 +292,15 @@ class _Curl:
                 com += ' --capath %s' % tmp_x509_CApath
         if self.compress:
             com += ' --compressed'
-        if self.sslCert != '':
-            com += ' --cert %s' % self.sslCert
-            com += ' --cacert %s' % self.sslCert
-        if self.sslKey != '':
-            com += ' --key %s' % self.sslKey
+        if self.authMode == 'oidc':
+            self.getToken()
+            com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
+        else:
+            if self.sslCert != '':
+                com += ' --cert %s' % self.sslCert
+                com += ' --cacert %s' % self.sslCert
+            if self.sslKey != '':
+                com += ' --key %s' % self.sslKey
         # emulate PUT
         for key in data.keys():
             com += ' -F "%s=@%s"' % (key,data[key])

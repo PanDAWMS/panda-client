@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.40
+  * added OIDC support
+  
 1.4.39
   * to ignore --rootVer when --useAthenaPackage/athenaTag
 
