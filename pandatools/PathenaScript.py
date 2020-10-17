@@ -154,6 +154,8 @@ group_build.add_argument('--athenaTag',action='store',dest='athenaTag',default='
                 help='Use differnet version of Athena on remote WN. By defualt the same version which you are locally using is set up on WN. e.g., --athenaTag=AtlasProduction,14.2.24.3')
 group_input.add_argument('--inDS',  action='store', dest='inDS',  default='',
                 type=str, help='Input dataset names. wildcard and/or comma can be used to concatenate multiple datasets')
+group_input.add_argument('--notExpandInDS', action='store_const', const=True, dest='notExpandInDS',default=False,
+                         help='Allow jobs to use files across dataset boundaries in input dataset container')
 group_input.add_argument('--inDsTxt',action='store',dest='inDsTxt',default='',
                 type=str, help='a text file which contains the list of datasets to run over. newlines are replaced by commas and the result is set to --inDS. lines starting with # are ignored')
 action = group_input.add_argument('--inOutDsJson', action='store', dest='inOutDsJson', default='',
@@ -1655,6 +1657,8 @@ if options.inDS != '':
                'expand':True,
                'exclude':'\.log\.tgz(\.\d+)*$',
                }
+    if options.notExpandInDS:
+        del tmpDict['expand']
     if options.inputType != '':
         tmpDict['include'] = options.inputType
     if options.filelist != []:

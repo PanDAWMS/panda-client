@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.4.41
+  * added --notExpandaInDS to pathena/prun
+  * introduced PANDAMON_URL
+
 1.4.40
   * added OIDC support
   

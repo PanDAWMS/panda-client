@@ -106,6 +106,8 @@ group_prun.add_argument('--version',action='store_const',const=True,dest='versio
                   help='Displays version')
 group_input.add_argument('--inDS',action='store',dest='inDS',default='',
                   help='Name of an input dataset or dataset container')
+group_input.add_argument('--notExpandInDS', action='store_const', const=True, dest='notExpandInDS',default=False,
+                         help='Allow jobs to use files across dataset boundaries in input dataset container')
 group_input.add_argument('--inDsTxt',action='store',dest='inDsTxt',default='',
                   help='A text file which contains the list of datasets to run over. Newlines are replaced by commas and the result is set to --inDS. Lines starting with # are ignored')
 group_output.add_argument('--outDS',action='store',dest='outDS',default='',
@@ -1534,7 +1536,7 @@ if options.inDS != '':
                }
     if options.useLogAsInput:
         del tmpDict['exclude']
-    if options.loadXML is None:
+    if options.loadXML is None and not options.notExpandInDS:
         tmpDict['expand'] = True
     if options.nSkipFiles != 0:
         tmpDict['offset'] = options.nSkipFiles

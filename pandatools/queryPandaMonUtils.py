@@ -1,3 +1,4 @@
+import os
 import time
 import datetime
 import json
@@ -12,6 +13,10 @@ except ImportError:
     from urllib import urlencode
     from urllib2 import urlopen, Request, HTTPError, URLError
 
+try:
+    baseMonURL = os.environ['PANDAMON_URL']
+except Exception:
+    baseMonURL = 'https://bigpanda.cern.ch'
 
 HEADERS = {'Accept': 'application/json', 'Content-Type':'application/json'}
 
@@ -41,7 +46,7 @@ def query_tasks(jeditaskid=None, username=None, limit=10000, taskname=None, stat
         parmas['extra'] = 'metastruct'
     if sync:
         parmas['timestamp'] = timestamp
-    url = 'https://bigpanda.cern.ch/tasks/?{0}'.format(urlencode(parmas))
+    url = baseMonURL + '/tasks/?{0}'.format(urlencode(parmas))
     if verbose:
         sys.stderr.write('query url = {0}\n'.format(url))
         sys.stderr.write('headers   = {0}\n'.format(json.dumps(HEADERS)))
@@ -61,6 +66,8 @@ def query_tasks(jeditaskid=None, username=None, limit=10000, taskname=None, stat
         if verbose:
             sys.stderr.write('resp code = {0}\n'.format(rec))
         res = rep.read().decode('utf-8')
+        if verbose:
+            sys.stderr.write('data = {0}\n'.format(res))
         ret = json.loads(res)
         return timestamp, url, ret
     except Exception as e:
