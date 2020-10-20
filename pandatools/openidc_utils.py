@@ -1,5 +1,6 @@
 import os
 import sys
+import ssl
 import uuid
 import json
 import time
@@ -132,7 +133,8 @@ class OpenIdConnect_Utils:
             if self.verbose:
                 self.log_stream.debug('fetching {0}'.format(url))
             try:
-                conn = urlopen(url)
+                context = ssl._create_unverified_context()
+                conn = urlopen(url, context=context)
                 text = conn.read()
                 if self.verbose:
                     self.log_stream.debug(text)
@@ -192,12 +194,12 @@ class OpenIdConnect_Utils:
         # get auth config
         s, o = self.fetch_page(auth_config_url)
         if not s:
-            return False, "Failed to get Auth configuration"
+            return False, "Failed to get Auth configuration: {0}".format(o)
         auth_config = o
         # get endpoint config
         s, o = self.fetch_page(auth_config['oidc_config_url'])
         if not s:
-            return False, "Failed to get endpoint configuration"
+            return False, "Failed to get endpoint configuration: {0}".format(o)
         endpoint_config = o
         # refresh token
         if refresh_token_string is not None:

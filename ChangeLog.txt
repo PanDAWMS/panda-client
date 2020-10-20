@@ -1,7 +1,10 @@
 ** Release Notes
 
+1.4.43
+  * disabled host cert check in device code flow
+
 1.4.42
-  * For OIDC with Indigo IAM
+  * for OIDC with Indigo IAM
 
 1.4.41
   * added --notExpandaInDS to pathena/prun
