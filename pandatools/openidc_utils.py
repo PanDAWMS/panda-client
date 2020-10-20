@@ -1,4 +1,5 @@
 import os
+import sys
 import uuid
 import json
 import time
@@ -13,6 +14,7 @@ except ImportError:
     from urllib.request import urlopen, Request
     from urllib.parse import urlencode
     from urllib.error import HTTPError
+    raw_input = input
 
 
 TOKEN_BASENAME = '.token'
@@ -53,11 +55,20 @@ class OpenIdConnect_Utils:
             return False, str(e)
 
     # get ID token
-    def get_id_token(self, token_endpoint, client_id, device_code, interval, expires_in):
+    def get_id_token(self, token_endpoint, client_id, client_secret, device_code, interval, expires_in):
+        self.log_stream.info('Ready to get ID token?')
+        while True:
+            sys.stdout.write("[y/n] ")
+            choice = raw_input().lower()
+            if choice == 'y':
+                break
+            elif choice == 'n':
+                sys.exit(0)
         if self.verbose:
             self.log_stream.debug('getting ID token')
         startTime = datetime.datetime.utcnow()
         data = {'client_id': client_id,
+                'client_secret': client_secret,
                 'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
                 'device_code': device_code}
         rdata = urlencode(data).encode()
@@ -203,8 +214,12 @@ class OpenIdConnect_Utils:
         # get ID token
         self.log_stream.info(("Please go to {0} and sign in. "
                          "Waiting until authentication is completed").format(o['verification_uri_complete']))
+        if 'interval' in o:
+            interval = o['interval']
+        else:
+            interval = 5
         s, o = self.get_id_token(endpoint_config['token_endpoint'], auth_config['client_id'],
-                            o['device_code'], o['interval'], o['expires_in'])
+                                 auth_config['client_secret'], o['device_code'], interval, o['expires_in'])
         if not s:
             return False, "Failed to get ID token: " + o
         self.log_stream.info('All set')

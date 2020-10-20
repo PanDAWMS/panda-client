@@ -63,7 +63,10 @@ def _x509():
     if os.access(x509,os.R_OK):
         return x509
     # no valid proxy certificate
-    print("No valid grid proxy certificate found")
+    if 'PANDA_AUTH' in os.environ and os.environ['PANDA_AUTH'] == 'oidc':
+        pass
+    else:
+        print("No valid grid proxy certificate found")
     return ''
 
 
@@ -100,8 +103,10 @@ class _Curl:
         self.sslKey  = ''
         # auth mode
         self.idToken = None
+        self.authVO = None
         if 'PANDA_AUTH' in os.environ and os.environ['PANDA_AUTH'] == 'oidc':
             self.authMode = 'oidc'
+            self.authVO = os.environ['PANDA_AUTH_VO']
         else:
             self.authMode = 'voms'
         # verbose
@@ -112,7 +117,8 @@ class _Curl:
         tmp_log = PLogger.getPandaLogger()
         oidc = openidc_utils.OpenIdConnect_Utils(os.environ['PANDA_CONFIG_ROOT'], tmp_log, self.verbose)
         parsed = urlparse(baseURLSSL)
-        auth_url = '{0}://{1}:{2}/auth/config.json'.format(parsed.scheme, parsed.hostname, parsed.port)
+        auth_url = '{0}://{1}:{2}/auth/{3}_auth_config.json'.format(parsed.scheme, parsed.hostname, parsed.port,
+                                                               self.authVO)
         s, o = oidc.run_device_authorization_flow(auth_url)
         if not s:
             tmp_log.error(o)

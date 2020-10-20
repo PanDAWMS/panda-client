@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.42
+  * For OIDC with Indigo IAM
+
 1.4.41
   * added --notExpandaInDS to pathena/prun
   * introduced PANDAMON_URL
