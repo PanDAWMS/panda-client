@@ -64,7 +64,7 @@ class OpenIdConnect_Utils:
             if choice == 'y':
                 break
             elif choice == 'n':
-                sys.exit(0)
+                return False, "aborted"
         if self.verbose:
             self.log_stream.debug('getting ID token')
         startTime = datetime.datetime.utcnow()
@@ -194,12 +194,12 @@ class OpenIdConnect_Utils:
         # get auth config
         s, o = self.fetch_page(auth_config_url)
         if not s:
-            return False, "Failed to get Auth configuration: {0}".format(o)
+            return False, "Failed to get Auth configuration: " + o
         auth_config = o
         # get endpoint config
         s, o = self.fetch_page(auth_config['oidc_config_url'])
         if not s:
-            return False, "Failed to get endpoint configuration: {0}".format(o)
+            return False, "Failed to get endpoint configuration: " + o
         endpoint_config = o
         # refresh token
         if refresh_token_string is not None:

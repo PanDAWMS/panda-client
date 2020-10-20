@@ -122,7 +122,7 @@ class _Curl:
         s, o = oidc.run_device_authorization_flow(auth_url)
         if not s:
             tmp_log.error(o)
-            return False
+            sys.exit(EC_Failed)
         self.idToken = o
         return True
 
