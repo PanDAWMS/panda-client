@@ -27,6 +27,8 @@ class OpenIdConnect_Utils:
     # constructor
     def __init__(self, token_dir, log_stream, verbose=False):
         self.token_dir = token_dir
+        if not os.path.exists(token_dir):
+            os.makedirs(token_dir)
         self.log_stream = log_stream
         self.verbose = verbose
 
