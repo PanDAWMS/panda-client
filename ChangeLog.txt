@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.45
+  * fixed OIDC stuff for python3
+
 1.4.43
   * disabled host cert check in device code flow
 

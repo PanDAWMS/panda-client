@@ -80,7 +80,7 @@ class OpenIdConnect_Utils:
         while datetime.datetime.utcnow() - startTime < datetime.timedelta(seconds=expires_in):
             try:
                 conn = urlopen(req)
-                text = conn.read()
+                text = conn.read().decode()
                 if self.verbose:
                     self.log_stream.debug(text)
                 id_token = json.loads(text)['id_token']
@@ -129,25 +129,30 @@ class OpenIdConnect_Utils:
     # fetch page
     def fetch_page(self, url):
         path = os.path.join(self.token_dir, CACHE_PREFIX + str(uuid.uuid5(uuid.NAMESPACE_URL, str(url))))
-        if not os.path.exists(path) or \
-                datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(path)) > \
+        if os.path.exists(path) and \
+                datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(path)) < \
                 datetime.timedelta(hours=1):
-            if self.verbose:
-                self.log_stream.debug('fetching {0}'.format(url))
             try:
-                context = ssl._create_unverified_context()
-                conn = urlopen(url, context=context)
-                text = conn.read()
-                if self.verbose:
-                    self.log_stream.debug(text)
-                with open(path, 'w') as f:
-                    f.write(text)
-            except HTTPError as e:
-                return False, 'code={0}. reason={1}. description={2}'.format(e.code, e.reason, e.read())
+                with open(path) as f:
+                    return True, json.load(f)
             except Exception as e:
-                return False, str(e)
-        with open(path) as f:
-            return True, json.load(f)
+                self.log_stream.debug('cached {0} is corrupted: {1}'.format(os.path.basename(url), str(e)))
+        if self.verbose:
+            self.log_stream.debug('fetching {0}'.format(url))
+        try:
+            context = ssl._create_unverified_context()
+            conn = urlopen(url, context=context)
+            text = conn.read().decode()
+            if self.verbose:
+                self.log_stream.debug(text)
+            with open(path, 'w') as f:
+                f.write(text)
+            with open(path) as f:
+                return True, json.load(f)
+        except HTTPError as e:
+            return False, 'code={0}. reason={1}. description={2}'.format(e.code, e.reason, e.read())
+        except Exception as e:
+            return False, str(e)
 
     # check token expiry
     def check_token_expiry(self):
