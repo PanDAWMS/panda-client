@@ -856,7 +856,7 @@ def requestEventPicking(eventPickEvtList,eventPickDataType,eventPickStreamName,
 
 
 # submit task
-def insertTaskParams(taskParams,verbose,properErrorCode=False):
+def insertTaskParams(taskParams,verbose=False,properErrorCode=False):
     """Insert task parameters
 
        args:
@@ -865,7 +865,7 @@ def insertTaskParams(taskParams,verbose,properErrorCode=False):
            status code
                  0: communication succeeded to the panda server
                  255: communication failure
-           tuple of return code and message from the server
+           tuple of return code, message from the server, and taskID if successful
                  0: request is processed
                  1: duplication in DEFT
                  2: duplication in JEDI
@@ -885,10 +885,18 @@ def insertTaskParams(taskParams,verbose,properErrorCode=False):
             'properErrorCode':properErrorCode}
     status,output = curl.post(url,data)
     try:
-        return status, pickle_loads(output)
+        loaded_output = list(pickle_loads(output))
+        # extract taskID
+        try:
+            m = re.search('jediTaskID=(\d+)', loaded_output[-1])
+            taskID = int(m.group(1))
+        except Exception:
+            taskID = None
+        loaded_output.append(taskID)
+        return status, loaded_output
     except Exception as e:
         errStr = dump_log("insertTaskParams", e, output)
-        return EC_Failed,output+'\n'+errStr
+        return EC_Failed, output+'\n'+errStr
 
 
 # get PanDA IDs with TaskID
