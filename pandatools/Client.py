@@ -1054,3 +1054,22 @@ def getUserJobMetadata(task_id, verbose=False):
     except Exception as e:
         errStr = dump_log("getUserJobMetadata", e, output)
         return EC_Failed, errStr
+
+
+# hello
+def hello(verbose=False):
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/isAlive'
+    try:
+        status,output = curl.post(url, {})
+        if status != 0:
+            return "Not good. " + output
+        return True, "Ready"
+        return "OK"
+    except Exception as e:
+        return "Too bad. {}".format(str(e))
