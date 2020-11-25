@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.46
+  * fixed for AtlasStats
+
 1.4.45
   * fixed OIDC stuff for python3
 

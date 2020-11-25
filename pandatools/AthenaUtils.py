@@ -101,6 +101,7 @@ def getAthenaVer(verbose=True):
         if res is not None:
             items = line.split()
             if items[0].startswith('Athena') or items[0].startswith('Analysis') or \
+                    items[0].startswith('Atlas') or \
                     items[0] in ['AthDerivations','AnalysisBase','AthSimulation','AthDerivation', 'AthAnalysis',
                                  'AthGeneration']:
                 isGitBase = True
