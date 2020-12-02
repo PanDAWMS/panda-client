@@ -183,9 +183,8 @@ if options.maxEvaluationJobs is None:
     options.maxEvaluationJobs = 2 * options.maxPoints
 
 # check output name
-distinguishedName = PsubUtils.getDN()
 nickName = PsubUtils.getNickname()
-if not PsubUtils.checkOutDsName(options.outDS, distinguishedName, options.official, nickName,
+if not PsubUtils.checkOutDsName(options.outDS, options.official, nickName,
                                 verbose=options.verbose):
     tmpStr = "invalid output dataset name: %s" % options.outDS
     tmpLog.error(tmpStr)

@@ -256,6 +256,8 @@ group_build.add_argument('--tmpDir',action='store',dest='tmpDir',default='',
                 help='Temporary directory where an archive file is created')
 group_build.add_argument('--voms', action='store', dest='vomsRoles',  default=None, 
                 help="generate proxy with paticular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot")
+group_build.add_argument('--vo', action='store', dest='vo',  default=None,
+                         help="virtual orgnaiztion name")
 group_submit.add_argument('--noEmail', action='store_const', const=True, dest='noEmail',  default=False,
                 help='Suppress email notification')
 group_prun.add_argument('--update', action='store_const', const=True, dest='update',  default=False,
@@ -956,9 +958,6 @@ if options.reusableSecondary == '':
 else:
     options.reusableSecondary = options.reusableSecondary.split(',')
 
-# get DN
-distinguishedName = PsubUtils.getDN()
-
 # get nickname
 nickName = PsubUtils.getNickname()
 
@@ -1202,9 +1201,9 @@ if options.containerImage == '' or options.useSandbox:
                         print('skip self-archiving for %s' % tmpFile)
                     continue
                 if os.path.islink(tmpFile):
-                    status,out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -uh '%s' -f '%s'" % (tmpFile,archiveFullName))
+                    status,out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rh '%s' -f '%s'" % (tmpFile,archiveFullName))
                 else:
-                    status,out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -uf '%s' '%s'" % (archiveFullName,tmpFile))
+                    status,out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rf '%s' '%s'" % (archiveFullName,tmpFile))
                 if options.verbose:
                     print(tmpFile)
                 if status != 0 or out != '':
@@ -1270,7 +1269,11 @@ if options.containerImage == '' or options.useSandbox:
     if not options.noSubmit:
         # upload sources via HTTP POST
         tmpLog.info("upload source files")
-        status,out = Client.putFile(archiveName,options.verbose,useCacheSrv=True,reuseSandbox=True)
+        if options.vo is None:
+            use_cache_srv = True
+        else:
+            use_cache_srv = False
+        status,out = Client.putFile(archiveName,options.verbose,useCacheSrv=use_cache_srv,reuseSandbox=True)
         if out.startswith('NewFileName:'):
             # found the same input sandbox to reuse
             archiveName = out.split(':')[-1]
@@ -1304,7 +1307,10 @@ taskParamMap = {}
 taskParamMap['taskName'] = options.outDS
 if not options.allowTaskDuplication:
     taskParamMap['uniqueTaskName'] = True
-taskParamMap['vo'] = 'atlas'
+if options.vo is None:
+    taskParamMap['vo'] = 'atlas'
+else:
+    taskParamMap['vo'] = options.vo
 if options.containerImage != '' and options.alrb:
     taskParamMap['architecture'] = options.architecture
 else:
@@ -1858,7 +1864,7 @@ for iSubmission, ioItem in enumerate(ioList):
     tmpStr = ''
     taskID = None
     # check outDS format
-    if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,
+    if not PsubUtils.checkOutDsName(options.outDS,options.official,nickName,
                                     options.mergeOutput, options.verbose):
         tmpStr = "invalid output datasetname:%s" % options.outDS
         tmpLog.error(tmpStr)

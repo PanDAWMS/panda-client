@@ -85,6 +85,11 @@ def _x509_CApath():
 globalTmpDir = ''
 
 
+# use OIDC
+def use_oidc():
+    return 'PANDA_AUTH' in os.environ and os.environ['PANDA_AUTH'] == 'oidc'
+
+
 # curl class
 class _Curl:
     # constructor
@@ -104,7 +109,7 @@ class _Curl:
         # auth mode
         self.idToken = None
         self.authVO = None
-        if 'PANDA_AUTH' in os.environ and os.environ['PANDA_AUTH'] == 'oidc':
+        if use_oidc():
             self.authMode = 'oidc'
             self.authVO = os.environ['PANDA_AUTH_VO']
         else:
@@ -112,19 +117,35 @@ class _Curl:
         # verbose
         self.verbose = False
 
-    # get token
-    def getToken(self):
-        tmp_log = PLogger.getPandaLogger()
-        oidc = openidc_utils.OpenIdConnect_Utils(os.environ['PANDA_CONFIG_ROOT'], tmp_log, self.verbose)
+    # run auth flow
+    def get_oidc(self, tmp_log):
         parsed = urlparse(baseURLSSL)
         auth_url = '{0}://{1}:{2}/auth/{3}_auth_config.json'.format(parsed.scheme, parsed.hostname, parsed.port,
-                                                               self.authVO)
-        s, o = oidc.run_device_authorization_flow(auth_url)
+                                                                    self.authVO)
+        oidc = openidc_utils.OpenIdConnect_Utils(auth_url, log_stream=tmp_log, verbose=self.verbose)
+        return oidc
+
+    # get ID token
+    def get_id_token(self):
+        tmp_log = PLogger.getPandaLogger()
+        oidc = self.get_oidc(tmp_log)
+        s, o = oidc.run_device_authorization_flow()
         if not s:
             tmp_log.error(o)
             sys.exit(EC_Failed)
         self.idToken = o
         return True
+
+    # get token
+    def get_token_info(self):
+        tmp_log = PLogger.getPandaLogger()
+        oidc = self.get_oidc(tmp_log)
+        s, o = oidc.run_device_authorization_flow()
+        if not s:
+            tmp_log.error(o)
+            return False, None
+        s, o, token_info = oidc.check_token()
+        return token_info
 
     # randomize IP
     def randomize_ip(self, url):
@@ -154,7 +175,7 @@ class _Curl:
         if self.compress:
             com += ' --compressed'
         if self.authMode == 'oidc':
-            self.getToken()
+            self.get_id_token()
             com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
         else:
             if self.sslCert != '':
@@ -225,7 +246,7 @@ class _Curl:
         if self.compress:
             com += ' --compressed'
         if self.authMode == 'oidc':
-            self.getToken()
+            self.get_id_token()
             com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
         else:
             if self.sslCert != '':
@@ -299,7 +320,7 @@ class _Curl:
         if self.compress:
             com += ' --compressed'
         if self.authMode == 'oidc':
-            self.getToken()
+            self.get_id_token()
             com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
         else:
             if self.sslCert != '':
@@ -1066,6 +1087,7 @@ def getUserJobMetadata(task_id, verbose=False):
 
 # hello
 def hello(verbose=False):
+    tmp_log = PLogger.getPandaLogger()
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1076,8 +1098,18 @@ def hello(verbose=False):
     try:
         status,output = curl.post(url, {})
         if status != 0:
-            return "Not good. " + output
-        return True, "Ready"
-        return "OK"
+            tmp_log.error("Not good. " + output)
+        else:
+            tmp_log.info("OK")
     except Exception as e:
-        return "Too bad. {}".format(str(e))
+        tmp_log.error("Too bad. {}".format(str(e)))
+
+
+# get user name from token
+def get_user_name_from_token():
+    curl = _Curl()
+    token_info = curl.get_token_info()
+    try:
+        return token_info['preferred_username'], token_info['groups']
+    except Exception:
+        return None, None

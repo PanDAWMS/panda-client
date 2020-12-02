@@ -759,9 +759,6 @@ if options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
 # check grid-proxy
 PsubUtils.check_proxy(options.verbose, options.vomsRoles)
 
-# get DN
-distinguishedName = PsubUtils.getDN(options.verbose)
-
 # get nickname
 nickName = PsubUtils.getNickname(options.verbose)
 
@@ -2031,7 +2028,7 @@ for iSubmission, ioItem in enumerate(ioList):
                                                        ioItem['outDS'], iSubmission)
     taskID = None
     # check outDS format
-    if not PsubUtils.checkOutDsName(options.outDS,distinguishedName,options.official,nickName,
+    if not PsubUtils.checkOutDsName(options.outDS,options.official,nickName,
                                     options.mergeOutput, options.verbose):
         tmpLog.error("invalid output datasetname:%s" % options.outDS)
         sys.exit(EC_Config)

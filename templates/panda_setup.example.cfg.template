@@ -1,0 +1,20 @@
+[main]
+
+# base HTTPS URL of PanDA server
+PANDA_URL_SSL = https://ai-idds-01.cern.ch:25443/server/panda
+
+# base HTTP URL of PanDA server
+PANDA_URL = http://ai-idds-01.cern.ch:25080/server/panda
+
+# Virtual organization name
+PANDA_AUTH_VO = sphenix
+
+# Authentication mechanism
+PANDA_AUTH = oidc
+
+
+
+# !!!!! DO NOT CHANGE THE CODE BELOW !!!!!
+PANDA_INSTALL_SCRIPTS = @@install_scripts@@
+PANDA_INSTALL_PURELIB = @@install_purelib@@
+PANDA_INSTALL_DIR = @@install_dir@@

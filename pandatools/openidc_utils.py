@@ -25,8 +25,11 @@ CACHE_PREFIX = '.page_cache_'
 class OpenIdConnect_Utils:
 
     # constructor
-    def __init__(self, token_dir, log_stream, verbose=False):
-        self.token_dir = token_dir
+    def __init__(self, auth_config_url, token_dir=None, log_stream=None, verbose=False):
+        self.auth_config_url = auth_config_url
+        if token_dir is None:
+            token_dir = os.environ['PANDA_CONFIG_ROOT']
+        self.token_dir = os.path.expanduser(token_dir)
         if not os.path.exists(token_dir):
             os.makedirs(token_dir)
         self.log_stream = log_stream
@@ -155,7 +158,7 @@ class OpenIdConnect_Utils:
             return False, str(e)
 
     # check token expiry
-    def check_token_expiry(self):
+    def check_token(self):
         token_file = self.get_token_path()
         if os.path.exists(token_file):
             with open(token_file) as f:
@@ -178,28 +181,28 @@ class OpenIdConnect_Utils:
                         if 'refresh_token' in data:
                             if self.verbose:
                                 self.log_stream.debug('to refresh token')
-                            return False, data['refresh_token']
+                            return False, data['refresh_token'], dec
                     else:
                         # return valid token
                         if self.verbose:
                             self.log_stream.debug('valid token is available')
-                        return True, data['id_token']
+                        return True, data['id_token'], dec
                 except Exception as e:
                     self.log_stream.error('failed to decode cached token with {0}'.format(e))
         if self.verbose:
             self.log_stream.debug('cached token unavailable')
-        return False, None
+        return False, None, None
 
     # run device authorization flow
-    def run_device_authorization_flow(self, auth_config_url):
+    def run_device_authorization_flow(self):
         # check toke expiry
-        s, o = self.check_token_expiry()
+        s, o, dec = self.check_token()
         if s:
             # still valid
             return True, o
         refresh_token_string = o
         # get auth config
-        s, o = self.fetch_page(auth_config_url)
+        s, o = self.fetch_page(self.auth_config_url)
         if not s:
             return False, "Failed to get Auth configuration: " + o
         auth_config = o

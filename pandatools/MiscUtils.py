@@ -148,7 +148,7 @@ def commands_get_output(com):
 # decorator to run with the original environment
 def run_with_original_env(func):
     def new_func(*args, **kwargs):
-        if 'LD_LIBRARY_PATH_ORIG' in os.environ:
+        if 'LD_LIBRARY_PATH_ORIG' in os.environ and 'LD_LIBRARY_PATH' in os.environ:
             os.environ['LD_LIBRARY_PATH_RESERVE'] = os.environ['LD_LIBRARY_PATH']
             os.environ['LD_LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH_ORIG']
         if 'PYTHONPATH_ORIG' in os.environ:

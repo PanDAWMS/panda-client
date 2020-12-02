@@ -61,16 +61,25 @@ def get_proxy_info(force, verbose):
     if force or cacheVomsInfo is None:
         # get logger
         tmpLog = PLogger.getPandaLogger()
-        # check grid-proxy
-        gridSrc = Client._getGridSrc()
-        com = '%s voms-proxy-info --all --e' % gridSrc
-        if verbose:
-            tmpLog.debug(com)
-        status,out = commands_get_status_output_with_env(com)
-        if verbose:
-            tmpLog.debug(status % 255)
-            tmpLog.debug(out)
-        cacheVomsInfo = status,out
+        if not Client.use_oidc():
+            # check grid-proxy
+            gridSrc = Client._getGridSrc()
+            com = '%s voms-proxy-info --all --e' % gridSrc
+            if verbose:
+                tmpLog.debug(com)
+            status,out = commands_get_status_output_with_env(com)
+            if verbose:
+                tmpLog.debug(status % 255)
+                tmpLog.debug(out)
+            cacheVomsInfo = status,out
+        else:
+            # OIDC
+            uid, groups = Client.get_user_name_from_token()
+            if uid is None:
+                status = 1
+            else:
+                status = 0
+            cacheVomsInfo = (status, (uid, groups))
     return cacheVomsInfo
 
 
@@ -87,13 +96,13 @@ def check_proxy(verbose, voms_role, refresh_info=False, generate_new=True):
             role = voms_role.split(':')[-1]
             if role in tmpItem:
                 return True
-    if not generate_new:
+    if not generate_new or Client.use_oidc():
         return False
     # generate proxy
     import getpass
     tmpLog = PLogger.getPandaLogger()
     tmpLog.info("Need to generate a grid proxy")
-    gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:').replace('$', '\$')
+    gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:\n').replace('$', '\$')
     gridSrc = Client._getGridSrc()
     com = '%s echo "%s" | voms-proxy-init -pwstdin ' % (gridSrc, gridPassPhrase)
     if voms_role is None:
@@ -115,6 +124,10 @@ def getDN(verbose=False):
     shortName = ''
     distinguishedName = ''
     status, output = get_proxy_info(False, verbose)
+    # OIDC
+    if Client.use_oidc():
+        return output[0]
+    # X509
     for line in output.split('\n'):
         if not line.startswith('identity'):
             continue
@@ -154,6 +167,10 @@ def getDN(verbose=False):
 def getNickname(verbose=False):
     nickName = ''
     status, output = get_proxy_info(False, verbose)
+    # OIDC
+    if Client.use_oidc():
+        return output[0]
+    # X509
     for line in output.split('\n'):
         if line.startswith('attribute'):
             match = re.search('nickname =\s*([^\s]+)\s*\(atlas\)',line)
@@ -184,7 +201,7 @@ def setRucioAccount(account,appid,forceSet):
 
 
 # check name of output dataset
-def checkOutDsName(outDS,distinguishedName,official,nickName='',mergeOutput=False,verbose=False):
+def checkOutDsName(outDS,official,nickName='',mergeOutput=False,verbose=False):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     # check NG chars for SE
@@ -234,27 +251,15 @@ def checkOutDsName(outDS,distinguishedName,official,nickName='',mergeOutput=Fals
         tmpLog.error(errStr)
         return False
     # check output dataset format
-    matStrO = '^user' + '\d{2}' + '\.' + distinguishedName + '\.'
     matStrN = '^user\.'+nickName+'\.'
-    if re.match(matStrO,outDS) is None and (nickName == '' or re.match(matStrN,outDS) is None):
+    if nickName == '' or re.match(matStrN,outDS) is None:
         if nickName == '':
             errStr = "Could not get nickname from voms proxy\n"
         else:
-            outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
             outDsPrefixN = 'user.%s' % nickName
             errStr  = "outDS must be '%s.<user-controlled string...>'\n" % outDsPrefixN
             errStr += "        e.g., %s.test1234" % outDsPrefixN
         tmpLog.error(errStr)
-        return False
-    # check convention
-    if re.match(matStrO,outDS) is not None:
-        outDsPrefixO = 'user%s.%s' % (time.strftime('%y',time.gmtime()),distinguishedName)
-        tmpStr  = "You are still using the old naming convention for --outDS (%s.XYZ), " % outDsPrefixO
-        tmpStr += "which is not allowed any more. "
-        tmpStr += "Please use user.nickname.XYZ instead. If you don't know your nickname, "
-        tmpStr += "see https://savannah.cern.ch/forum/forum.php?forum_id=1259"
-        print('')
-        tmpLog.error(tmpStr)
         return False
     # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
     maxLength = 200
