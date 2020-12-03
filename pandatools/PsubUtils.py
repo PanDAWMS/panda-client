@@ -872,6 +872,8 @@ def get_os_information():
 def extract_voms_proxy_username():
     username = None
     status, output = get_proxy_info(False, False)
+    if Client.use_oidc():
+        return output[0]
     for line in output.split('\n'):
         if line.startswith('subject'):
             subj = line.split(':', 1)[-1].lstrip()

@@ -45,7 +45,11 @@ if not os.path.exists(pconfDir):
 historyFile = '%s/.history' % pconfDir
 # history file
 if os.path.exists(historyFile):
-    readline.read_history_file(historyFile)
+    try:
+        # except for macOS X
+        readline.read_history_file(historyFile)
+    except Exception:
+        pass
 readline.set_history_length(1024)
 
 # set dummy CMTSITE
@@ -300,6 +304,9 @@ def main():
                       help=argparse.SUPPRESS)
     parser.add_argument('--intrSrv',action='store_const',const=True, dest='intrSrv',default=False,
                       help=argparse.SUPPRESS)
+    # option for jupyter notebook
+    parser.add_argument('--prompt_with_newline', action='store_const', const=True, dest='prompt_with_newline',
+                        default=False, help=argparse.SUPPRESS)
 
     options,args = parser.parse_known_args()
 
@@ -327,6 +334,8 @@ def main():
         # instantiate core
         if options.verbose:
             print(options)
+        if options.prompt_with_newline:
+            sys.ps1 = ">>> \n"
         pbookCore = PBookCore.PBookCore(verbose=options.verbose)
 
         # CUI

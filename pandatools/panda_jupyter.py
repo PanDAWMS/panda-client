@@ -71,6 +71,7 @@ def setup():
 # magic commands
 
 GETPASS_STRINGS = ['Enter GRID pass phrase for this identity:']
+RAWINPUT_STRINGS = ['>>> \n']
 
 
 def _execute(command):
@@ -80,15 +81,33 @@ def _execute(command):
             nextline = p.stdout.readline()
             if nextline == '' and p.poll() is not None:
                 break
-            sys.stdout.write(nextline)
-            sys.stdout.flush()
-            # need to call getpass since jupyter notebook doesn't pass stdin from subprocess
+            # check if uses getpass or raw_input
+            is_getpass = False
+            is_raw_input = False
             for one_str in GETPASS_STRINGS:
                 if one_str in nextline:
-                    pwd = getpass.getpass() + '\n'
-                    p.stdin.write(pwd)
-                    p.stdin.flush()
+                    is_getpass = True
                     break
+            for one_str in RAWINPUT_STRINGS:
+                if one_str == nextline:
+                    is_raw_input = True
+                    break
+            if not is_raw_input:
+                sys.stdout.write(nextline)
+                sys.stdout.flush()
+            # need to call getpass or input since jupyter notebook doesn't pass stdin from subprocess
+            st = None
+            if is_getpass:
+                st = getpass.getpass()
+                p.stdin.write(st)
+                p.stdin.flush()
+            elif is_raw_input:
+                st = input('\n' + one_str.strip())
+            # feed stdin
+            if st is not None:
+                p.stdin.write(st + '\n')
+                p.stdin.flush()
+
         output = p.communicate()[0]
         exit_code = p.returncode
         if exit_code == 0:
@@ -99,25 +118,25 @@ def _execute(command):
 
 @register_line_magic
 def pathena(line):
-    _execute('pathena ' + line)
+    _execute('pathena ' + line + ' -3')
     return
 
 
 @register_line_magic
 def prun(line):
-    _execute('prun ' + line)
+    _execute('prun ' + line + ' -3')
     return
 
 
 @register_line_magic
 def phpo(line):
-    _execute('phpo ' + line)
+    _execute('phpo ' + line + ' -3')
     return
 
 
 @register_line_magic
 def pbook(line):
-    _execute('pbook ' + line)
+    _execute('pbook ' + line + ' --prompt_with_newline')
     return
 
 
