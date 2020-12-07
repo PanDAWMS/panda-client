@@ -305,8 +305,9 @@ class PBookCore(object):
         elif some_ids == 'fin':
             superstatus = '|'.join(localSpecs.task_final_superstatus_list)
         # print
-        sys.stderr.write('Showing only max {limit} tasks in last {days} days. One can set days=N to see tasks in last N days, and limit=M to see at most M latest tasks \n'
-                            .format(days=days, limit=limit))
+        if format != 'json':
+            sys.stderr.write('Showing only max {limit} tasks in last {days} days. One can set days=N to see tasks in last N days, and limit=M to see at most M latest tasks \n'
+                             .format(days=days, limit=limit))
         # query
         ts, url, data = queryPandaMonUtils.query_tasks( username=username, limit=limit, reqid=reqid,
                                                         status=status, superstatus=superstatus,
@@ -322,7 +323,7 @@ class PBookCore(object):
             print(_tmpts.head_dict['standard'])
         # print tasks
         if format == 'json':
-            print(json.dumps(data, sort_keys=True, indent=4))
+            return data
         elif format == 'plain':
             for task in data:
                 taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)

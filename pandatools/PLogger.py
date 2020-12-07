@@ -1,3 +1,5 @@
+import os
+import sys
 import logging
 
 
@@ -25,3 +27,17 @@ def getPandaLogger():
         rootLog.addHandler(console)
     # return
     return rootLog
+
+
+# disable logging
+def disable_logging():
+    if rootLog:
+        rootLog.propagate = False
+    sys.stdout = open(os.devnull, 'w')
+
+
+# enable logging
+def enable_logging():
+    if rootLog:
+        rootLog.propagate = True
+    sys.stdout = sys.__stdout__
