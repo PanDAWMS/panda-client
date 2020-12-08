@@ -6,6 +6,9 @@ PANDA_URL_SSL = https://ai-idds-01.cern.ch:25443/server/panda
 # base HTTP URL of PanDA server
 PANDA_URL = http://ai-idds-01.cern.ch:25080/server/panda
 
+# URL of PanDA monitor
+PANDAMON_URL = https://panda-doma.cern.ch
+
 # Virtual organization name
 PANDA_AUTH_VO = sphenix
 

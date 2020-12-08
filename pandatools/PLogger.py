@@ -31,13 +31,19 @@ def getPandaLogger():
 
 # disable logging
 def disable_logging():
-    if rootLog:
-        rootLog.propagate = False
+    global rootLog
+    if not rootLog:
+        rootLog = logging.getLogger('')
+    rootLog.disabled = True
+    # keep orignal stdout mainly for jupyter
+    sys.__stdout__ = sys.stdout
     sys.stdout = open(os.devnull, 'w')
 
 
 # enable logging
 def enable_logging():
+    global rootLog
     if rootLog:
-        rootLog.propagate = True
+        rootLog.disabled = False
+    sys.stdout.close()
     sys.stdout = sys.__stdout__

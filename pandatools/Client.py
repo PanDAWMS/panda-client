@@ -1110,6 +1110,6 @@ def get_user_name_from_token():
     curl = _Curl()
     token_info = curl.get_token_info()
     try:
-        return token_info['preferred_username'], token_info['groups']
+        return token_info['name'], token_info['groups']
     except Exception:
         return None, None

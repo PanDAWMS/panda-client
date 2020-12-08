@@ -65,6 +65,10 @@ def setup():
         panda_env["PANDA_URL"] = section['PANDA_URL']
     except Exception:
         pass
+    try:
+        panda_env["PANDAMON_URL"] = section['PANDAMON_URL']
+    except Exception:
+        pass
     os.environ.update(panda_env)
 
 

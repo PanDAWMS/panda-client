@@ -84,22 +84,24 @@ class PandaAPI(object):
         return Client.retryTask(task_id, verbose, True, new_parameters)
 
     # get tasks
-    def get_tasks(self, task_ids=None, limit=1000, days=14, status=None):
+    def get_tasks(self, task_ids=None, limit=1000, days=14, status=None, username=None):
         """get a list of task dictionaries
            args:
               task_ids: a list of task IDs, or None to get recent tasks
               limit: the max number of tasks to fetch from the server
               days: tasks for last N days to fetch
               status: filtering with task status
+              username: user name of the tasks, or None to get own tasks
            returns:
               a list of task dictionaries
         """
         if not self.pbook:
             self.pbook = PBookCore.PBookCore()
-        return self.pbook.show(task_ids, task_ids, limit=limit, days=days, format='json', status=status)
+        return self.pbook.show(task_ids, limit=limit, days=days, format='json', status=status,
+                               username=username)
 
     # show tasks
-    def show_tasks(self, task_ids=None, limit=1000, days=14, format='standard', status=None):
+    def show_tasks(self, task_ids=None, limit=1000, days=14, format='standard', status=None, username=None):
         """show tasks
            args:
               task_ids: a list of task IDs, or None to get recent tasks
@@ -107,12 +109,13 @@ class PandaAPI(object):
               days: tasks for last N days to fetch
               format: standard, long, or plain
               status: filtering with task status
+              username: user name of the tasks, or None to get own tasks
            returns:
               None
         """
         if not self.pbook:
             self.pbook = PBookCore.PBookCore()
-        self.pbook.show(task_ids, task_ids, limit=limit, days=days, format=format, status=status)
+        self.pbook.show(task_ids, limit=limit, days=days, format=format, status=status, username=username)
 
     # submit a task
     def submit_task(self, task_params, verbose=False):
