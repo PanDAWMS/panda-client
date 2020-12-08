@@ -64,7 +64,7 @@ class OpenIdConnect_Utils:
     def get_id_token(self, token_endpoint, client_id, client_secret, device_code, interval, expires_in):
         self.log_stream.info('Ready to get ID token?')
         while True:
-            sys.stdout.write("[y/n] ")
+            sys.stdout.write("[y/n] \n")
             choice = raw_input().lower()
             if choice == 'y':
                 break
