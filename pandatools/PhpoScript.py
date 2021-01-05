@@ -68,7 +68,9 @@ group_config.add_argument('--steeringExec', action='store', dest='steeringExec',
                                'arguments for the docker command')
 group_config.add_argument('--searchSpaceFile', action='store', dest='searchSpaceFile', default=None,
                           help='External json filename to define the search space. '
-                               'None by default')
+                               'None by default. '
+                               'If this option is used together with --segmentSpecFile and only one search space is '
+                               'defined the search space is cloned for each segment')
 group_config.add_argument('--evaluationContainer', action='store', dest='evaluationContainer', default=None,
                           help='The container image for evaluation')
 group_config.add_argument('--evaluationExec', action='store', dest='evaluationExec', default=None,
@@ -107,6 +109,12 @@ group_config.add_argument('--alrbArgs', action='store', dest='alrbArgs', default
                                'the consequence')
 group_config.add_argument('--architecture', action='store', dest='architecture', default='',
                           help="Architecture or flag of the processor to run the evaluation container image")
+group_config.add_argument('--segmentSpecFile', action='store', dest='segmentSpecFile', default=None,
+                          help='External json filename to define segments for segmented training which has one model '
+                               'for each segment. The file contains '
+                               "contains a list of dictionaries {'name': arbitrary_unique_segment_name, "
+                               "'files': [name_of_file_used_for_the_segment_in_the_training_dataset, ... ]}. "
+                               'None by default')
 group_config.add_argument('-v', action='store_const', const=True, dest='verbose', default=False,
                           help='Verbose')
 
@@ -377,11 +385,44 @@ if options.evaluationMeta is not None:
          },
     ]
 
+if options.segmentSpecFile is not None:
+    taskParamMap['segmentedWork'] = True
+
+    with open(options.segmentSpecFile) as f:
+        # read segments
+        segments = json.load(f)
+        # search space
+        if 'opt_space' in taskParamMap['hpoRequestData'] and \
+                isinstance(taskParamMap['hpoRequestData']['opt_space'], dict):
+            space = taskParamMap['hpoRequestData']['opt_space']
+            taskParamMap['hpoRequestData']['opt_space'] = []
+        else:
+            space = None
+        # set model ID to each segment
+        for i in range(len(segments)):
+            segments[i].update({'id': i})
+            # make clone of search space if needed
+            if space is not None:
+                copy_space = copy.deepcopy(space)
+                copy_space.update({'id': i})
+                taskParamMap['hpoRequestData']['opt_space'].append(copy_space)
+        taskParamMap['segmentSpecs'] = segments
+
+    taskParamMap['jobParameters'] += [
+        {'type': 'constant',
+         'value': '--segmentID=${SEGMENT_ID}',
+         },
+    ]
+
+
 if options.evaluationMetrics is not None:
+    lfn = '$JEDITASKID.metrics.${SN}.tgz'
+    if options.segmentSpecFile is not None:
+        lfn = '${MIDDLENAME}.' + lfn
     taskParamMap['jobParameters'] += [
         {'type': 'template',
          'param_type': 'output',
-         'value': '$JEDITASKID.metrics.${SN}.tgz',
+         'value': lfn,
          'dataset': options.outDS,
          'hidden': True,
          },
