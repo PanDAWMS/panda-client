@@ -136,6 +136,17 @@ class PandaAPI(object):
         """
         return Client.insertTaskParams(task_params, verbose=verbose, properErrorCode=True)
 
+    # get metadata of all jobs in a task
+    def get_job_metadata(self, task_id, output_json_filename):
+        """get metadata of all jobs in a task
+           args:
+              task_id: task ID
+              output_json_filename: output json filename
+        """
+        if not self.pbook:
+            self.pbook = PBookCore.PBookCore()
+        return self.pbook.getUserJobMetadata(task_id, output_json_filename)
+
     # execute xyz
     def execute_xyz(self, command_name, module_name, args, console_log=True):
         dump_file = None
