@@ -633,7 +633,8 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
                'DBR'       : 'DB',
                'SKIPEVENTS': 'SKIPEVENTS',
                'FIRSTEVENT': None,
-               'MAXEVENTS' : None
+               'MAXEVENTS' : None,
+               'SEGMENT_NAME': None
                }
     # replace %XYZ with ${XYZ}
     if includeIO:

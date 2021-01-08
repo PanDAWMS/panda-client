@@ -110,10 +110,10 @@ group_config.add_argument('--alrbArgs', action='store', dest='alrbArgs', default
 group_config.add_argument('--architecture', action='store', dest='architecture', default='',
                           help="Architecture or flag of the processor to run the evaluation container image")
 group_config.add_argument('--segmentSpecFile', action='store', dest='segmentSpecFile', default=None,
-                          help='External json filename to define segments for segmented training which has one model '
-                               'for each segment. The file contains '
+                          help='External json filename to define segments for segmented HPO which has one model '
+                               'for each segment to be optimized independently. The file '
                                "contains a list of dictionaries {'name': arbitrary_unique_segment_name, "
-                               "'files': [name_of_file_used_for_the_segment_in_the_training_dataset, ... ]}. "
+                               "'files': [filename_used_for_the_segment_in_the_training_dataset, ... ]}. "
                                'None by default')
 group_config.add_argument('-v', action='store_const', const=True, dest='verbose', default=False,
                           help='Verbose')
@@ -333,12 +333,27 @@ if options.searchSpaceFile is not None:
 
 taskParamMap['jobParameters'] = [
     {'type': 'constant',
-     'value': '-o {0} -j "" -p "{1}" --inSampleFile {2}'.format(options.evaluationOutput,
-                                                                quote(options.evaluationExec),
-                                                                options.evaluationInput)
+     'value': '-o {0} -j "" --inSampleFile {1}'.format(options.evaluationOutput,
+                                                       options.evaluationInput)
      },
     {'type': 'constant',
      'value': '-a {0} --sourceURL {1}'.format(archiveName, sourceURL)
+     },
+]
+
+taskParamMap['jobParameters'] += [
+    {'type': 'constant',
+     'value': '-p "',
+     'padding': False,
+     },
+]
+taskParamMap['jobParameters'] += PsubUtils.convertParamStrToJediParam(options.evaluationExec, {}, '',
+                                                                      True, False,
+                                                                      includeIO=False)
+
+taskParamMap['jobParameters'] += [
+    {'type': 'constant',
+     'value': '"',
      },
 ]
 
