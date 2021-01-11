@@ -418,9 +418,10 @@ if options.segmentSpecFile is not None:
             segments[i].update({'id': i})
             # make clone of search space if needed
             if space is not None:
-                copy_space = copy.deepcopy(space)
-                copy_space.update({'id': i})
-                taskParamMap['hpoRequestData']['opt_space'].append(copy_space)
+                new_space = dict()
+                new_space['model_id'] = i
+                new_space['search_space'] = copy.deepcopy(space)
+                taskParamMap['hpoRequestData']['opt_space'].append(new_space)
         taskParamMap['segmentSpecs'] = segments
 
     taskParamMap['jobParameters'] += [

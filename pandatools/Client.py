@@ -399,8 +399,19 @@ def submitJobs(jobs,verbose=False):
         return EC_Failed,None
 
 
-# get job status
+# get job statuses
 def getJobStatus(ids, verbose=False):
+    """Get status of jobs
+
+       args:
+           ids: a list of PanDA IDs
+           verbose: True to see verbose messages
+       returns:
+           status code
+                 0: communication succeeded to the panda server
+                 255: communication failure
+           a list of job specs, or None if failed
+    """
     # serialize
     strIDs = pickle.dumps(ids, protocol=0)
     # instantiate curl
@@ -419,6 +430,17 @@ def getJobStatus(ids, verbose=False):
 
 # kill jobs
 def killJobs(ids,verbose=False):
+    """Kill jobs
+
+       args:
+           ids: a list of PanDA IDs
+           verbose: True to see verbose messages
+       returns:
+           status code
+                 0: communication succeeded to the panda server
+                 255: communication failure
+           a list of server responses, or None if failed
+    """
     # serialize
     strIDs = pickle.dumps(ids, protocol=0)
     # instantiate curl
@@ -439,6 +461,23 @@ def killJobs(ids,verbose=False):
 
 # kill task
 def killTask(jediTaskID,verbose=False):
+    """Kill a task
+       args:
+          jediTaskID: jediTaskID of the task to be killed
+          verbose: True to see debug messages
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          tuple of return code and diagnostic message, or None if failed
+             0: request is registered
+             1: server error
+             2: task not found
+             3: permission denied
+             4: irrelevant task status
+           100: non SSL connection
+           101: irrelevant taskID
+    """
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -457,6 +496,24 @@ def killTask(jediTaskID,verbose=False):
 
 # finish task
 def finishTask(jediTaskID,soft=False,verbose=False):
+    """finish a task
+       args:
+          jediTaskID: jediTaskID of the task to finish
+          soft: True to wait until running jobs are done
+          verbose: True to see debug messages
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          tuple of return code and diagnostic message, or None if failed
+             0: request is registered
+             1: server error
+             2: task not found
+             3: permission denied
+             4: irrelevant task status
+           100: non SSL connection
+           101: irrelevant taskID
+    """
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -477,6 +534,25 @@ def finishTask(jediTaskID,soft=False,verbose=False):
 
 # retry task
 def retryTask(jediTaskID,verbose=False,properErrorCode=False,newParams=None):
+    """retry a task
+       args:
+          jediTaskID: jediTaskID of the task to retry
+          verbose: True to see debug messages
+          newParams: a dictionary of task parameters to overwrite
+          properErrorCode: True to get a detailed error code
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          tuple of return code and diagnostic message, or None if failed
+             0: request is registered
+             1: server error
+             2: task not found
+             3: permission denied
+             4: irrelevant task status
+           100: non SSL connection
+           101: irrelevant taskID
+    """
     if newParams is None:
         newParams = {}
     # instantiate curl
@@ -501,6 +577,18 @@ def retryTask(jediTaskID,verbose=False,properErrorCode=False,newParams=None):
 
 # put file
 def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
+    """Upload a file with the size limit on 10 MB
+       args:
+          file: filename to be uploaded
+          verbose: True to see debug messages
+          useCacheSrv: True to use a dedicated cache server separated from the PanDA server
+          reuseSandbox: True to avoid uploading the same sandbox files
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          diagnostic message
+    """
     # size check for noBuild
     sizeLimit = 10*1024*1024
     fileSize = os.stat(file)[stat.ST_SIZE]
@@ -709,7 +797,18 @@ def getJediTaskDetails(taskDict,fullFlag,withTaskInfo,verbose=False):
 
 
 # get full job status
-def getFullJobStatus(ids,verbose):
+def getFullJobStatus(ids, verbose=False):
+    """Get detailed status of jobs
+
+       args:
+           ids: a list of PanDA IDs
+           verbose: True to see verbose messages
+       returns:
+           status code
+                 0: communication succeeded to the panda server
+                 255: communication failure
+           a list of job specs, or None if failed
+    """
     # serialize
     strIDs = pickle.dumps(ids, protocol=0)
     # instantiate curl
@@ -882,11 +981,13 @@ def insertTaskParams(taskParams,verbose=False,properErrorCode=False):
 
        args:
            taskParams: a dictionary of task parameters
+           verbose: True to see verbose messages
+           properErrorCode: True to get a detailed error code
        returns:
            status code
                  0: communication succeeded to the panda server
                  255: communication failure
-           tuple of return code, message from the server, and taskID if successful
+           tuple of return code, message from the server, and taskID if successful, or error message if failed
                  0: request is processed
                  1: duplication in DEFT
                  2: duplication in JEDI
@@ -930,7 +1031,7 @@ def getPandaIDsWithTaskID(jediTaskID,verbose=False):
            status code
                  0: communication succeeded to the panda server
                  255: communication failure
-           the list of PanDA IDs
+           the list of PanDA IDs, or error message if failed
     """
     # instantiate curl
     curl = _Curl()
@@ -952,11 +1053,12 @@ def reactivateTask(jediTaskID,verbose=False):
 
        args:
            jediTaskID: jediTaskID of the task to be reactivated
+           verbose: True to see verbose messages
        returns:
            status code
                  0: communication succeeded to the panda server
                  255: communication failure
-           return: a tupple of return code and message
+           return: a tupple of return code and message, or error message if failed
                  0: unknown task
                  1: succeeded
                  None: database error
@@ -978,15 +1080,16 @@ def reactivateTask(jediTaskID,verbose=False):
 
 # resume task
 def resumeTask(jediTaskID,verbose=False):
-    """resume task
+    """Resume task
 
        args:
            jediTaskID: jediTaskID of the task to be resumed
+           verbose: True to see verbose messages
        returns:
            status code
                  0: communication succeeded to the panda server
                  255: communication failure
-           return: a tupple of return code and message
+           return: a tupple of return code and message, or error message if failed
                  0: request is registered
                  1: server error
                  2: task not found
@@ -1018,11 +1121,12 @@ def getTaskStatus(jediTaskID,verbose=False):
 
        args:
            jediTaskID: jediTaskID of the task to get lit of PanDA IDs
+           verbose: True to see verbose messages
        returns:
            status code
                  0: communication succeeded to the panda server
                  255: communication failure
-           the status string
+           the status string, or error message if failed
     """
     # instantiate curl
     curl = _Curl()
@@ -1040,7 +1144,7 @@ def getTaskStatus(jediTaskID,verbose=False):
 
 # get taskParamsMap with TaskID
 def getTaskParamsMap(jediTaskID):
-    """Get task status
+    """Get task parameters
 
        args:
            jediTaskID: jediTaskID of the task to get taskParamsMap
@@ -1048,7 +1152,7 @@ def getTaskParamsMap(jediTaskID):
            status code
                  0: communication succeeded to the panda server
                  255: communication failure
-           return: a tuple of return code and taskParamsMap
+           return: a tuple of return code and taskParamsMap, or error message if failed
                  1: logical error
                  0: success
                  None: database error
@@ -1066,9 +1170,18 @@ def getTaskParamsMap(jediTaskID):
         return EC_Failed,output+'\n'+errStr
 
 
-
 # get user job metadata
 def getUserJobMetadata(task_id, verbose=False):
+    """Get metadata of all jobs in a task
+       args:
+          jediTaskID: jediTaskID of the task
+          verbose: True to see verbose message
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          a list of job metadata dictionaries, or error message if failed
+    """
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -1087,6 +1200,15 @@ def getUserJobMetadata(task_id, verbose=False):
 
 # hello
 def hello(verbose=False):
+    """Health check with the PanDA server
+       args:
+          verbose: True to see verbose message
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          diagnostic message
+    """
     tmp_log = PLogger.getPandaLogger()
     # instantiate curl
     curl = _Curl()
@@ -1098,15 +1220,26 @@ def hello(verbose=False):
     try:
         status,output = curl.post(url, {})
         if status != 0:
-            tmp_log.error("Not good. " + output)
+            msg = "Not good. " + output
+            tmp_log.error(msg)
+            return EC_Failed
         else:
-            tmp_log.info("OK")
+            msg = "OK"
+            tmp_log.info(msg)
+            return EC_Failed,
     except Exception as e:
-        tmp_log.error("Too bad. {}".format(str(e)))
+        msg = "Too bad. {}".format(str(e))
+        tmp_log.error(msg)
+        return EC_Failed
 
 
 # get user name from token
 def get_user_name_from_token():
+    """Extract user name and groups from ID token
+
+       returns:
+          a tuple of username and groups
+    """
     curl = _Curl()
     token_info = curl.get_token_info()
     try:
