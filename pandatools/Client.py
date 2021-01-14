@@ -26,6 +26,7 @@ from . import MiscUtils
 from .MiscUtils import commands_get_status_output, commands_get_output, pickle_loads
 from . import PLogger
 from . import openidc_utils
+from . import idds_common
 
 # configuration
 try:
@@ -1222,15 +1223,15 @@ def hello(verbose=False):
         if status != 0:
             msg = "Not good. " + output
             tmp_log.error(msg)
-            return EC_Failed
+            return EC_Failed, msg
         else:
             msg = "OK"
             tmp_log.info(msg)
-            return EC_Failed,
+            return 0, msg
     except Exception as e:
         msg = "Too bad. {}".format(str(e))
         tmp_log.error(msg)
-        return EC_Failed
+        return EC_Failed, msg
 
 
 # get user name from token
@@ -1246,3 +1247,42 @@ def get_user_name_from_token():
         return token_info['name'], token_info['groups']
     except Exception:
         return None, None
+
+
+# call idds command
+def call_idds_command(command_name, args=None, kwargs=None, verbose=False):
+    """Call an iDDS command through PanDA
+       args:
+          command_name: command name
+          args: a list of positional arguments
+          kwargs: a dictionary of keyword arguments
+          verbose: True to see verbose message
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          response from iDDS, or diagnostic message if failed
+    """
+    tmp_log = PLogger.getPandaLogger()
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/relay_idds_command'
+    try:
+        data = dict()
+        data['command_name'] = command_name
+        if args:
+            data['args'] = json.dumps(args, cls=idds_common.EnumEncoder)
+        if kwargs:
+            data['kwargs'] = json.dumps(kwargs, cls=idds_common.EnumEncoder)
+        status, output = curl.post(url, data)
+        if status != 0:
+            return EC_Failed, output
+        else:
+            return 0, json.loads(output)
+    except Exception as e:
+        msg = "Failed with {}".format(str(e))
+        return EC_Failed, msg
