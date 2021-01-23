@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.48
+  * added Jupyter Lab support
+
 1.4.47
   * fixed side effect in 1.4.46
 
