@@ -387,6 +387,9 @@ group_containerJob.add_argument('--architecture', action='store', dest='architec
                 type=str, help="Architecture or flag of the processor to run the container image")
 group_build.add_argument("-3", action="store_true", dest="python3", default=False,
                   help="Use python3")
+group_input.add_argument('--respectLB', action='store_const', const=True, dest='respectLB', default=False,
+                         help='To generate jobs repecting lumiblock boundaries')
+
 
 # athena options
 group_job.add_argument('-c',action='store',dest='singleLine',type=str,default='',metavar='COMMAND',
@@ -1494,6 +1497,8 @@ elif options.nThreads > 1:
 if options.skipFilesUsedBy != '':
     taskParamMap['skipFilesUsedBy'] = options.skipFilesUsedBy
 taskParamMap['respectSplitRule'] = True
+if options.respectLB:
+    taskParamMap['respectLB'] = True
 if options.maxAttempt > 0 and options.maxAttempt <= 50:
     taskParamMap['maxAttempt'] = options.maxAttempt
 if options.osMatching:

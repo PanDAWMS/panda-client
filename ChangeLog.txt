@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.49
+  * added --respectLB to pathena/prun
+
 1.4.48
   * added Jupyter Lab support
 

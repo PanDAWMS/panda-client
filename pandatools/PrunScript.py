@@ -109,7 +109,9 @@ group_input.add_argument('--inDS',action='store',dest='inDS',default='',
 group_input.add_argument('--notExpandInDS', action='store_const', const=True, dest='notExpandInDS',default=False,
                          help='Allow jobs to use files across dataset boundaries in input dataset container')
 group_input.add_argument('--inDsTxt',action='store',dest='inDsTxt',default='',
-                  help='A text file which contains the list of datasets to run over. Newlines are replaced by commas and the result is set to --inDS. Lines starting with # are ignored')
+                         help='A text file which contains the list of datasets to run over. Newlines are replaced by commas and the result is set to --inDS. Lines starting with # are ignored')
+group_input.add_argument('--respectLB', action='store_const', const=True, dest='respectLB', default=False,
+                         help='To generate jobs repecting lumiblock boundaries')
 group_output.add_argument('--outDS',action='store',dest='outDS',default='',
                 help='Name of an output dataset. OUTDS will contain all output files')
 group_output.add_argument('--outputs',action='store',dest='outputs',default='',
@@ -1366,6 +1368,8 @@ if options.skipScout:
     taskParamMap['skipScout'] = True
 if options.respectSplitRule:
     taskParamMap['respectSplitRule'] = True
+if options.respectLB:
+    taskParamMap['respectLB'] = True
 if options.osMatching:
     taskParamMap['osMatching'] = True
 taskParamMap['osInfo'] = PsubUtils.get_os_information()
