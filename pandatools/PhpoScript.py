@@ -115,7 +115,8 @@ group_config.add_argument('--segmentSpecFile', action='store', dest='segmentSpec
                                "contains a list of dictionaries {'name': arbitrary_unique_segment_name, "
                                "'files': [filename_used_for_the_segment_in_the_training_dataset, ... ]}. "
                                "It is possible to specify 'datasets' instead of 'files' in those dictionaries "
-                               "if the training dataset has constituent datasets. "
+                               "if the training dataset has constituent datasets and "
+                               "is partitioned with dataset boundaries. "
                                'None by default')
 group_config.add_argument('-v', action='store_const', const=True, dest='verbose', default=False,
                           help='Verbose')
