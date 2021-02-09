@@ -16,12 +16,11 @@ def getPandaLogger():
     # use root logger
     global rootLog
     if rootLog is None:
-        rootLog = logging.getLogger('')
+        rootLog = logging.getLogger('panda-client')
     # add StreamHandler if no handler
     if rootLog.handlers == []:
         rootLog.setLevel(logging.DEBUG)
-        console = logging.StreamHandler()
-        #formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        console = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter('%(levelname)s : %(message)s')
         console.setFormatter(formatter)
         rootLog.addHandler(console)
