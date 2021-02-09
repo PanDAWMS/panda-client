@@ -32,5 +32,13 @@ del IddsApiInteface
 
 
 def get_api(dumper=None, verbose=False):
+    """Get an API object to access iDDS through PanDA
+
+       args:
+           dumper: function object to json-serialize data
+           verbose: True to see verbose messages
+       return:
+           an API object
+    """
     api.setup(dumper, verbose)
     return api
