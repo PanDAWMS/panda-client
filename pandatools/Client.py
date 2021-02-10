@@ -177,6 +177,7 @@ class _Curl:
         if self.authMode == 'oidc':
             self.get_id_token()
             com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
+            com += ' -H "Origin: {0}"'.format(self.authVO)
         else:
             if self.sslCert != '':
                 com += ' --cert %s' % self.sslCert
@@ -248,6 +249,7 @@ class _Curl:
         if self.authMode == 'oidc':
             self.get_id_token()
             com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
+            com += ' -H "Origin: {0}"'.format(self.authVO)
         else:
             if self.sslCert != '':
                 com += ' --cert %s' % self.sslCert
@@ -322,6 +324,7 @@ class _Curl:
         if self.authMode == 'oidc':
             self.get_id_token()
             com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
+            com += ' -H "Origin: {0}"'.format(self.authVO)
         else:
             if self.sslCert != '':
                 com += ' --cert %s' % self.sslCert
@@ -1218,8 +1221,12 @@ def hello(verbose=False):
     # execute
     url = baseURLSSL + '/isAlive'
     try:
-        status,output = curl.post(url, {})
+        status, output = curl.post(url, {})
         if status != 0:
+            msg = "Not good. " + output
+            tmp_log.error(msg)
+            return EC_Failed, msg
+        elif output != "alive=yes":
             msg = "Not good. " + output
             tmp_log.error(msg)
             return EC_Failed, msg
