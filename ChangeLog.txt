@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.53
+  * to escape double quotes in passphrase
+
 1.4.49
   * added --respectLB to pathena/prun
 

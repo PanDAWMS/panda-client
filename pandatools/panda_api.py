@@ -240,6 +240,19 @@ class PandaAPI(object):
         """
         return self.execute_xyz('phpo', 'pandatools.PhpoScript', args, console_log)
 
+    # hello
+    def hello(self, verbose=False):
+        """Health check with the PanDA server
+           args:
+              verbose: True to see verbose message
+           returns:
+              status code
+                 0: communication succeeded to the panda server
+               255: communication failure
+              diagnostic message
+        """
+        return Client.hello(verbose)
+
 
 pandaAPI = PandaAPI()
 del PandaAPI

@@ -102,15 +102,18 @@ def check_proxy(verbose, voms_role, refresh_info=False, generate_new=True):
     import getpass
     tmpLog = PLogger.getPandaLogger()
     tmpLog.info("Need to generate a grid proxy")
-    gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:\n').replace('$', '\$')
+    gridPassPhrase = getpass.getpass('Enter GRID pass phrase for this identity:\n').replace('$', '\$').replace('"', r'\"')
     gridSrc = Client._getGridSrc()
     com = '%s echo "%s" | voms-proxy-init -pwstdin ' % (gridSrc, gridPassPhrase)
+    com_msg = '%s echo "*****" | voms-proxy-init -pwstdin ' % gridSrc
     if voms_role is None:
         com += '-voms atlas'
+        com_msg += '-voms atlas'
     else:
         com += '-voms %s' % voms_role
+        com_msg += '-voms %s' % voms_role
     if verbose:
-        tmpLog.debug(re.sub(gridPassPhrase, "*****", com))
+        tmpLog.debug(com_msg)
     status, output = commands_get_status_output_with_env(com)
     if status != 0:
         tmpLog.error(output)
