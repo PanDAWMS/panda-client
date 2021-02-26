@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.56
+  * added --dumpTaskParams to prun
+
 1.4.53
   * to escape double quotes in passphrase
 

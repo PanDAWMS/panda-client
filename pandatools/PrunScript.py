@@ -307,6 +307,8 @@ group_config.add_argument('--loadJson', action='store', dest='loadJson',default=
                   help='Read command-line parameters from a json file which contains a dict of {parameter: value}')
 group_config.add_argument('--dumpJson', action='store', dest='dumpJson', default=None,
                   help='Dump all command-line parameters and submission result such as returnCode, returnOut, jediTaskID, and bulkSeqNumber if --bulkSubmission is used, to a json file')
+group_config.add_argument('--dumpTaskParams', action='store', dest='dumpTaskParams', default=None,
+                  help='Dump task parameters to a json file')
 group_input.add_argument('--forceStaged',action='store_const',const=True,dest='forceStaged',default=False,
                 help='Force files from primary DS to be staged to local disk, even if direct-access is possible')
 group_input.add_argument('--forceStagedSecondary',action='store_const',const=True,dest='forceStagedSecondary',default=False,
@@ -1885,6 +1887,9 @@ for iSubmission, ioItem in enumerate(ioList):
             tmpKeys.sort()
             for tmpKey in tmpKeys:
                 print('%s : %s' % (tmpKey, newTaskParamMap[tmpKey]))
+    if options.dumpTaskParams is not None:
+        with open(options.dumpTaskParams, 'w') as f:
+            json.dump(newTaskParamMap, f)
     if not options.noSubmit and exitCode == 0:
         tmpLog.info("submit {0}".format(options.outDS))
         status,tmpOut = Client.insertTaskParams(newTaskParamMap, options.verbose, True)
