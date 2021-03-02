@@ -67,10 +67,12 @@ group_config.add_argument('--steeringExec', action='store', dest='steeringExec',
                                'is executed inside of the container. Otherwise, the string is used as command-line '
                                'arguments for the docker command')
 group_config.add_argument('--searchSpaceFile', action='store', dest='searchSpaceFile', default=None,
-                          help='External json filename to define the search space. '
+                          help='External json filename to define the search space which is described as a dictionary. '
                                'None by default. '
-                               'If this option is used together with --segmentSpecFile and only one search space is '
-                               'defined the search space is cloned for each segment')
+                               'If this option is used together with --segmentSpecFile the json file contains a list '
+                               'of search space dictionaries. It is possible to contain only one search space '
+                               'dictionary if all segments use the same search space. In this case the search space '
+                               'dictionary is cloned for every segment')
 group_config.add_argument('--evaluationContainer', action='store', dest='evaluationContainer', default=None,
                           help='The container image for evaluation')
 group_config.add_argument('--evaluationExec', action='store', dest='evaluationExec', default=None,
