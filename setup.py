@@ -144,11 +144,17 @@ setup(
     name="panda-client",
     version=release_version,
     description=' PanDA Client Package',
-    long_description='''This package contains PanDA Client Components''',
+    long_description='''This package contains PanDA Client Tools''',
     license='GPL',
-    author='Panda Team',
-    author_email='hn-atlas-panda-pathena@cern.ch',
-    url='https://twiki.cern.ch/twiki/bin/view/Atlas/PanDA',
+    author='PanDA Team',
+    author_email='atlas-adc-panda@cern.ch',
+    url='https://panda-wms.readthedocs.io/en/latest/',
+
+    # optional pip dependencies
+    extras_require={
+        'jupyter': ['pandas', 'jupyter-dash'],
+    },
+
     packages = [ 'pandatools',
                  ],
     scripts = [ 'scripts/prun', 

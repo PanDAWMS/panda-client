@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.57
+  * added GUI example
+
 1.4.56
   * added --dumpTaskParams to prun
 

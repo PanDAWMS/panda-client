@@ -276,6 +276,7 @@ taskParamMap['processingType'] = 'panda-client-{0}-jedi-hpo'.format(PandaToolsPk
 taskParamMap['prodSourceLabel'] = 'user'
 taskParamMap['useLocalIO'] = 1
 taskParamMap['cliParams'] = fullExecString
+taskParamMap['skipScout'] = True
 if options.noEmail:
     taskParamMap['noEmail'] = True
 if options.workingGroup is not None:
