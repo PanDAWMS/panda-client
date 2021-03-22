@@ -756,7 +756,7 @@ def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=Fa
         data['dn'] = dn
     if minTaskID is not None:
         data['minTaskID'] = minTaskID
-    status,output = curl.post(url,data)
+    status,output = curl.post(url, data, via_file=True)
     if status!=0:
         print(output)
         return status, None
