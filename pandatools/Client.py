@@ -741,7 +741,7 @@ def getProxyKey(verbose=False):
 
 
 # get JobIDs and jediTasks in a time range
-def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=False):
+def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=False, task_type='user'):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -750,7 +750,8 @@ def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=Fa
     # execute
     url = baseURLSSL + '/getJediTasksInTimeRange'
     data = {'timeRange': timeRange,
-            'fullFlag': True}
+            'fullFlag': True,
+            'task_type': task_type}
     if dn is not None:
         data['dn'] = dn
     if minTaskID is not None:
