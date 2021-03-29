@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.61
+  * added PANDA_USE_NATIVE_HTTPLIB
+
 1.4.57
   * added GUI example
 

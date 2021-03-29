@@ -74,12 +74,12 @@ def get_proxy_info(force, verbose):
             cacheVomsInfo = status,out
         else:
             # OIDC
-            uid, groups = Client.get_user_name_from_token()
+            uid, groups, nickname = Client.get_user_name_from_token()
             if uid is None:
                 status = 1
             else:
                 status = 0
-            cacheVomsInfo = (status, (uid, groups))
+            cacheVomsInfo = (status, (uid, groups, nickname))
     return cacheVomsInfo
 
 
@@ -172,7 +172,7 @@ def getNickname(verbose=False):
     status, output = get_proxy_info(False, verbose)
     # OIDC
     if Client.use_oidc():
-        return output[0]
+        return output[2]
     # X509
     for line in output.split('\n'):
         if line.startswith('attribute'):

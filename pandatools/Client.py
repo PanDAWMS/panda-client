@@ -6,13 +6,19 @@ client methods
 import os
 import re
 import sys
+import ssl
 import stat
 import json
+import string
+import traceback
 try:
     from urllib import urlencode, unquote_plus
     from urlparse import urlparse
+    from urllib2 import urlopen, Request, HTTPError
 except ImportError:
     from urllib.parse import urlencode, unquote_plus, urlparse
+    from urllib.request import urlopen, Request
+    from urllib.error import HTTPError
 import struct
 try:
     import cPickle as pickle
@@ -361,8 +367,78 @@ class _Curl:
         return ret
 
 
+class _NativeCurl(_Curl):
+
+    def http_method(self, url, data, header, rdata=None):
+        try:
+            url = self.randomize_ip(url)
+            if header is None:
+                header = {}
+            if self.authMode == 'oidc':
+                self.get_id_token()
+                header['Authorization'] = 'Bearer {0}'.format(self.idToken)
+                header['Origin'] = self.authVO
+            if rdata is None:
+                rdata = urlencode(data).encode()
+            req = Request(url, rdata, headers=header)
+            context = ssl._create_unverified_context()
+            if self.sslCert and self.sslKey:
+                context.load_cert_chain(certfile=self.sslCert, keyfile=self.sslKey)
+            if self.verbose:
+                print('url = {}'.format(url))
+                print('header = {}'.format(str(header)))
+                print('data = {}'.format(str(data)))
+            conn = urlopen(req, context=context)
+            code = conn.getcode()
+            if code == 200:
+                code = 0
+            text = conn.read()
+            if self.verbose:
+                print(code, text)
+            return code, text
+        except Exception as e:
+            print (traceback.format_exc())
+            return 1, str(e)
+
+    # GET method
+    def get(self, url, data, rucioAccount=False, via_file=False):
+        url = '{}?{}'.format(url, urlencode(data))
+        return self.http_method(url, {}, {})
+
+    # POST method
+    def post(self,url,data,rucioAccount=False, is_json=False, via_file=False):
+        code, text = self.http_method(url, data, {})
+        if is_json and code == 0:
+            text = json.loads(text)
+        return code, text
+
+    # PUT method
+    def put(self, url, data):
+        boundary = ''.join(random.choice(string.ascii_letters) for ii in range(30 + 1))
+        body = b''
+        for k in data:
+            lines = ['--' + boundary,
+                     'Content-Disposition: form-data; name="%s"; filename="%s"' % (k, data[k]),
+                     'Content-Type: application/octet-stream',
+                     '']
+            body += '\r\n'.join(lines).encode()
+            body += b'\r\n'
+            body += open(data[k], 'rb').read()
+            body += b'\r\n'
+        lines = ['--%s--' % boundary, '']
+        body += '\r\n'.join(lines).encode()
+        headers = {'content-type': 'multipart/form-data; boundary=' + boundary,
+                   'content-length': str(len(body))}
+        return self.http_method(url, None, headers, body)
+
+
+if 'PANDA_USE_NATIVE_HTTPLIB' in os.environ:
+    _Curl = _NativeCurl
+
+
 # dump log
 def dump_log(func_name, exception_obj, output):
+    print(traceback.format_exc())
     print(output)
     err_str = "{} failed : {}".format(func_name, str(exception_obj))
     tmp_log = PLogger.getPandaLogger()
@@ -621,6 +697,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
         url = baseURLSSL + '/checkSandboxFile'
         data = {'fileSize':fileSize,'checkSum':checkSum}
         status,output = curl.post(url,data)
+        output = output.decode()
         if status != 0:
             return EC_Failed,'ERROR: Could not check Sandbox duplication with %s' % status
         elif output.startswith('FOUND:'):
@@ -636,7 +713,8 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
     else:
         url = baseURLSSL + '/putFile'
     data = {'file':file}
-    return curl.put(url,data)
+    s,o = curl.put(url,data)
+    return s, o.decode()
 
 
 # get grid source file
@@ -863,6 +941,7 @@ def getPandaClientVer(verbose):
     # execute
     url = baseURL + '/getPandaClientVer'
     status,output = curl.get(url,{})
+    output = output.decode()
     # failed
     if status != 0:
         return status,output
@@ -1251,7 +1330,7 @@ def get_user_name_from_token():
     curl = _Curl()
     token_info = curl.get_token_info()
     try:
-        return token_info['name'], token_info['groups']
+        return token_info['name'], token_info['groups'], token_info['preferred_username']
     except Exception:
         return None, None
 

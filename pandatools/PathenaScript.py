@@ -293,7 +293,9 @@ group_input.add_argument('--forceStaged', action='store_const', const=True, dest
 group_input.add_argument('--avoidVP', action='store_const', const=True, dest='avoidVP', default=False,
                 help='Not to use sites where virtual placement is enabled')
 group_submit.add_argument('--maxCpuCount', action='store', dest='maxCpuCount', default=0, type=int,
-                help='Required CPU count in seconds. Mainly to extend time limit for looping job detection')
+                help=argparse.SUPPRESS)
+group_expert.add_argument('--noLoopingCheck', action='store_const', const=True, dest='noLoopingCheck', default=False,
+                help="Disable looping job check")
 group_output.add_argument('--official', action='store_const', const=True, dest='official',  default=False,
                 help='Produce official dataset')
 action = group_job.add_argument('--unlimitNumOutputs', action='store_const', const=True, dest='unlimitNumOutputs',  default=False,
@@ -1483,6 +1485,8 @@ if options.useNewCode:
     taskParamMap['fixedSandbox'] = archiveName
 if options.maxCpuCount > 0:
     taskParamMap['walltime'] = -options.maxCpuCount
+if options.noLoopingCheck:
+    taskParamMap['noLoopingCheck'] = True
 if options.maxWalltime > 0:
     taskParamMap['maxWalltime'] = options.maxWalltime
 if options.cpuTimePerEvent > 0:

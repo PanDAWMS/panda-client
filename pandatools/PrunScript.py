@@ -187,8 +187,10 @@ group_submit.add_argument('--memory',action='store',dest='memory',default=-1,typ
                 help='Required memory size in MB. e.g., for 1GB --memory 1024')
 group_submit.add_argument('--nCore', action='store', dest='nCore', default=-1, type=int,
                 help='The number of CPU cores. Note that the system distinguishes only nCore=1 and nCore>1. This means that even if you set nCore=2 jobs can go to sites with nCore=8 and your application must use the 8 cores there. The number of available cores is defined in an environment variable, $ATHENA_PROC_NUMBER, on WNs. Your application must check the env variable when starting up to dynamically change the number of cores')
-group_submit.add_argument('--maxCpuCount',action='store',dest='maxCpuCount',default=-1,type=int,
-                help='Required CPU count in seconds. Mainly to extend time limit for looping job detection')
+group_submit.add_argument('--maxCpuCount', action='store', dest='maxCpuCount', default=0, type=int,
+                help=argparse.SUPPRESS)
+group_expert.add_argument('--noLoopingCheck', action='store_const', const=True, dest='noLoopingCheck', default=False,
+                help="Disable looping job check")
 group_submit.add_argument('--useDirectIOSites', action='store_const', const=True, dest='useDirectIOSites', default=False,
                 help="Use only sites which use directIO to read input files")
 
@@ -1386,6 +1388,8 @@ if options.useNewCode:
     taskParamMap['fixedSandbox'] = archiveName
 if options.maxCpuCount > 0:
     taskParamMap['walltime'] = -options.maxCpuCount
+if options.noLoopingCheck:
+    taskParamMap['noLoopingCheck'] = True
 if options.maxWalltime > 0:
     taskParamMap['maxWalltime'] = options.maxWalltime
 if options.cpuTimePerEvent > 0:
