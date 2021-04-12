@@ -1,20 +1,30 @@
 [main]
 
 # base HTTPS URL of PanDA server
-PANDA_URL_SSL = https://ai-idds-01.cern.ch:25443/server/panda
+#PANDA_URL_SSL = https://ai-idds-01.cern.ch:25443/server/panda
 
 # base HTTP URL of PanDA server
-PANDA_URL = http://ai-idds-01.cern.ch:25080/server/panda
+#PANDA_URL = http://ai-idds-01.cern.ch:25080/server/panda
 
 # URL of PanDA monitor
-PANDAMON_URL = https://panda-doma.cern.ch
+#PANDAMON_URL = https://panda-doma.cern.ch
 
 # Virtual organization name
-PANDA_AUTH_VO = sphenix
+#PANDA_AUTH_VO = sphenix
 
-# Authentication mechanism
-PANDA_AUTH = oidc
+# Use native httplib instead of curl for HTTP operations
+#PANDA_USE_NATIVE_HTTPLIB = 1
 
+# Authentication mechanism (oidc, x509, or x509_no_grid)
+#PANDA_AUTH = oidc
+
+# Grid proxy file path (required only when PANDA_AUTH = x509_no_grid)
+#X509_USER_PROXY = /Users/hage/x509up_u12345
+
+
+
+# Grid nickname (required only when PANDA_AUTH = x509_no_grid)
+#PANDA_NICKNAME = your_nickname
 
 
 # !!!!! DO NOT CHANGE THE CODE BELOW !!!!!
