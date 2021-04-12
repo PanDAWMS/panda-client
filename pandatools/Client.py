@@ -96,6 +96,11 @@ def use_oidc():
     return 'PANDA_AUTH' in os.environ and os.environ['PANDA_AUTH'] == 'oidc'
 
 
+# use X509 without grid middleware
+def use_x509_no_grid():
+    return 'PANDA_AUTH' in os.environ and os.environ['PANDA_AUTH'] == 'x509_no_grid'
+
+
 # curl class
 class _Curl:
     # constructor
@@ -1302,6 +1307,7 @@ def hello(verbose=False):
     url = baseURLSSL + '/isAlive'
     try:
         status, output = curl.post(url, {})
+        output = output.decode()
         if status != 0:
             msg = "Not good. " + output
             tmp_log.error(msg)
@@ -1314,6 +1320,49 @@ def hello(verbose=False):
             msg = "OK"
             tmp_log.info(msg)
             return 0, msg
+    except Exception as e:
+        msg = "Too bad. {}".format(str(e))
+        tmp_log.error(msg)
+        return EC_Failed, msg
+
+
+# get certificate attributes
+def get_cert_attributes(verbose=False):
+    """Get certificate attributes from the PanDA server
+       args:
+          verbose: True to see verbose message
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          a dictionary of attributes or diagnostic message
+    """
+    tmp_log = PLogger.getPandaLogger()
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/getAttr'
+    try:
+        status, output = curl.post(url, {})
+        output = output.decode()
+        if status != 0:
+            msg = "Not good. " + output
+            tmp_log.error(msg)
+            return EC_Failed, msg
+        else:
+            d = dict()
+            for l in output.split('\n'):
+                if ':' not in l:
+                    continue
+                print(l)
+                if not l.startswith('GRST_CRED'):
+                    continue
+                items = l.split(':')
+                d[items[0].strip()] = items[1].strip()
+            return 0, d
     except Exception as e:
         msg = "Too bad. {}".format(str(e))
         tmp_log.error(msg)

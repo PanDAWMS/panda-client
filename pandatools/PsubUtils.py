@@ -61,7 +61,16 @@ def get_proxy_info(force, verbose):
     if force or cacheVomsInfo is None:
         # get logger
         tmpLog = PLogger.getPandaLogger()
-        if not Client.use_oidc():
+        if Client.use_x509_no_grid():
+            if 'PANDA_NICKNAME' not in os.environ:
+                status = 1
+                nickname = ''
+                tmpLog.error('PANDA_NICKNAME is not defined')
+            else:
+                status = 0
+                nickname = os.environ['PANDA_NICKNAME']
+            cacheVomsInfo = (status, (nickname,))
+        elif not Client.use_oidc():
             # check grid-proxy
             gridSrc = Client._getGridSrc()
             com = '%s voms-proxy-info --all --e' % gridSrc
@@ -96,7 +105,7 @@ def check_proxy(verbose, voms_role, refresh_info=False, generate_new=True):
             role = voms_role.split(':')[-1]
             if role in tmpItem:
                 return True
-    if not generate_new or Client.use_oidc():
+    if not generate_new or Client.use_oidc() or Client.use_x509_no_grid():
         return False
     # generate proxy
     import getpass
@@ -122,49 +131,6 @@ def check_proxy(verbose, voms_role, refresh_info=False, generate_new=True):
     return check_proxy(verbose, voms_role, refresh_info=True, generate_new=False)
 
 
-# get DN
-def getDN(verbose=False):
-    shortName = ''
-    distinguishedName = ''
-    status, output = get_proxy_info(False, verbose)
-    # OIDC
-    if Client.use_oidc():
-        return output[0]
-    # X509
-    for line in output.split('\n'):
-        if not line.startswith('identity'):
-            continue
-        for item in line.split('/'):
-            if not item.startswith('CN='):
-                continue
-            distinguishedName = re.sub('^CN=','',item)
-            distinguishedName = re.sub('\d+$','',distinguishedName)
-            distinguishedName = re.sub('\.','',distinguishedName)
-            distinguishedName = re.sub('\(','',distinguishedName)
-            distinguishedName = re.sub('\)','',distinguishedName)
-            distinguishedName = distinguishedName.strip()
-            if re.search(' ',distinguishedName) is not None:
-                # look for full name
-                distinguishedName = distinguishedName.replace(' ','')
-                break
-            elif shortName == '':
-                # keep short name
-                shortName = distinguishedName
-            distinguishedName = ''
-    # use short name
-    if distinguishedName == '':
-        distinguishedName = shortName
-    # remove _
-    distinguishedName = re.sub('_$','',distinguishedName)
-    # remove ' & "
-    distinguishedName = re.sub('[\'\"]','',distinguishedName)
-    # check
-    if distinguishedName == '':
-        # get logger
-        tmpLog = PLogger.getPandaLogger()
-        tmpLog.error('could not get DistinguishedName from %s' % output)
-    return distinguishedName
-
 
 # get nickname
 def getNickname(verbose=False):
@@ -173,6 +139,9 @@ def getNickname(verbose=False):
     # OIDC
     if Client.use_oidc():
         return output[2]
+    # x509 without grid
+    if Client.use_x509_no_grid():
+        return output[0]
     # X509
     for line in output.split('\n'):
         if line.startswith('attribute'):

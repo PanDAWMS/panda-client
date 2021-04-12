@@ -47,28 +47,22 @@ def setup():
     panda_env = {'PANDA_CONFIG_ROOT': '~/.pathena',
                  'PANDA_SYS': panda_install_dir,
                  "PANDA_PYTHONPATH": panda_install_purelib,
-                 "PANDA_VERIFY_HOST": "off"
+                 "PANDA_VERIFY_HOST": "off",
+                 "PANDA_JUPYTER": "1",
                  }
-    try:
-        panda_env['PANDA_AUTH'] = section['PANDA_AUTH']
-    except Exception:
-        pass
-    try:
-        panda_env["PANDA_AUTH_VO"] = section['PANDA_AUTH_VO']
-    except Exception:
-        pass
-    try:
-        panda_env["PANDA_URL_SSL"] = section['PANDA_URL_SSL']
-    except Exception:
-        pass
-    try:
-        panda_env["PANDA_URL"] = section['PANDA_URL']
-    except Exception:
-        pass
-    try:
-        panda_env["PANDAMON_URL"] = section['PANDAMON_URL']
-    except Exception:
-        pass
+    for i in ['PANDA_AUTH',
+              'PANDA_AUTH_VO',
+              'PANDA_URL_SSL',
+              'PANDA_URL',
+              'PANDAMON_URL',
+              'X509_USER_PROXY',
+              'PANDA_USE_NATIVE_HTTPLIB',
+              'PANDA_NICKNAME',
+              ]:
+        try:
+            panda_env[i] = section[i]
+        except Exception:
+            pass
     os.environ.update(panda_env)
 
 
