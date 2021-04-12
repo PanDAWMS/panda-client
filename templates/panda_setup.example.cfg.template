@@ -21,8 +21,6 @@
 # Grid proxy file path (required only when PANDA_AUTH = x509_no_grid)
 #X509_USER_PROXY = /Users/hage/x509up_u12345
 
-
-
 # Grid nickname (required only when PANDA_AUTH = x509_no_grid)
 #PANDA_NICKNAME = your_nickname
 
