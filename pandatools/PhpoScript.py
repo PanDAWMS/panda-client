@@ -46,10 +46,12 @@ group_config.add_argument('--dumpJson', action='store', dest='dumpJson', default
 group_config.add_argument('--nParallelEvaluation', action='store', dest='nParallelEvaluation', default=1, type=int,
                           help='The number of hyperparameter points being evaluated concurrently. 1 by default')
 group_config.add_argument('--maxPoints', action='store', dest='maxPoints', default=10, type=int,
-                          help='The max number of hyperparameter points to be evaluated in the entire search. '
+                          help='The max number of hyperparameter points to be evaluated in the entire search '
+                               '(for each segment in segmented HPO). '
                                '10 by default')
 group_config.add_argument('--maxEvaluationJobs', action='store', dest='maxEvaluationJobs', default=None, type=int,
-                          help='The max number of evaluation jobs in the entire search. 2*maxPoints by default. '
+                          help='The max number of evaluation jobs in the entire search '
+                               '(for each segment in segmented HPO). 2*maxPoints by default. '
                                'The task is terminated when all hyperparameter points are evaluated or '
                                'the number of evaluation jobs reaches maxEvaluationJobs')
 group_config.add_argument('--nPointsPerIteration', action='store', dest='nPointsPerIteration', default=2, type=int,
@@ -429,6 +431,10 @@ if options.segmentSpecFile is not None:
                 new_space['search_space'] = copy.deepcopy(space)
                 taskParamMap['hpoRequestData']['opt_space'].append(new_space)
         taskParamMap['segmentSpecs'] = segments
+        # multiply by num of segments
+        taskParamMap['maxNumJobs'] *= len(segments)
+        taskParamMap['totNumJobs'] *= len(segments)
+        taskParamMap['hpoRequestData']['max_points'] *= len(segments)
 
     taskParamMap['jobParameters'] += [
         {'type': 'constant',
