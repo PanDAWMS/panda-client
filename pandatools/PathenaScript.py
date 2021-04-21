@@ -1616,7 +1616,7 @@ if options.trf:
 if options.generalInput:
     param += '--generalInput '
 # use local access for TRF and BS
-if (options.trf or runConfig.input.inBS) and not options.forceDirectIO:
+if runConfig.input.inBS and not options.forceDirectIO:
     param += '--useLocalIO '
 # use theApp.nextEvent
 if options.useNextEvent:
@@ -1924,7 +1924,7 @@ taskParamMap['jobParameters'] += [
     ]
 
 # use local IO for trf
-if (options.trf or runConfig.input.inBS) and not options.forceDirectIO:
+if runConfig.input.inBS and not options.forceDirectIO:
     taskParamMap['useLocalIO'] = 1
 
 # use AMI to get the number of events per file

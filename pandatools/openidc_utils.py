@@ -44,7 +44,7 @@ class OpenIdConnect_Utils:
         if self.verbose:
             self.log_stream.debug('getting device code')
         data = {'client_id': client_id,
-                'scope': "openid profile email offline_access",
+                'scope': "openid profile email offline_access iam",
                 'audience': audience}
         rdata = urlencode(data).encode()
         req = Request(device_auth_endpoint, rdata)

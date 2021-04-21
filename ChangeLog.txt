@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.64
+  * not to enforce directIO when --trf in pathena
+
 1.4.63
   * changed definition of --maxPoints and --maxEvaluationJobs to be per segment
 
