@@ -453,6 +453,7 @@ if options.evaluationMetrics is not None:
          'value': lfn,
          'dataset': options.outDS,
          'hidden': True,
+         'allowNoOutput': True,
          },
         {'type': 'constant',
          'value': '--outMetricsFile=${{OUTPUT0}}^{0}'.format(options.evaluationMetrics),

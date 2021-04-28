@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.65
+  * to allow master, latest, and timestamp in --athenaTag
+
 1.4.64
   * not to enforce directIO when --trf in pathena
 

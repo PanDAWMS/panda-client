@@ -762,65 +762,7 @@ if options.useAthenaPackages:
         runDir = runDir[1:]
     runDir = runDir+'/'
 elif options.athenaTag != '':
-    # get list of Athena projects
-    listProjects = Client.getCachePrefixes(options.verbose)
-    items = options.athenaTag.split(',')
-    usingNightlies = False
-    for item in items:
-        # releases
-        match = re.search('^(\d+\.\d+\.\d+)',item)
-        if match is not None:
-            athenaVer = 'Atlas-%s' % match.group(1)
-            # cache
-            cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
-            if cmatch is not None:
-                cacheVer += '_%s' % cmatch.group(1)
-            else:
-                cacheVer += '_%s' % match.group(1)
-            continue
-        else:
-            # nightlies
-            match = re.search('^(\d+\.\d+\.X|\d+\.X\.\d+)$',item)
-            if match is not None:
-                athenaVer = 'Atlas-%s' % match.group(1)
-                continue
-        # project
-        if item.startswith('Atlas') or item in listProjects + ['Athena', 'AthAthDerivation'] \
-                or item.startswith('Athena'):
-            # ignore AtlasOffline
-            if item not in ['AtlasOffline']:
-                cacheVer = '-'+item+cacheVer
-            continue
-        # nightlies
-        if item.startswith('rel_'):
-            usingNightlies = True
-            if 'dev' in items:
-                athenaVer = 'Atlas-dev'
-            elif 'devval' in items:
-                athenaVer = 'Atlas-devval'
-            cacheVer  = '-AtlasOffline_%s' % item
-            continue
-        # CMTCONFIG
-        if item in ['32','64']:
-            tmpLog.error("%s in --athenaTag is unsupported. Please use --cmtConfig instead" % item)
-            sys.exit(EC_Config)
-        tmpLog.error("unknown tag %s in --athenaTag" % item)
-        sys.exit(EC_Config)
-    # check cache
-    if re.search('^-.+_.+$',cacheVer) is None:
-        if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) is not None:
-            # use AtlasProduction
-            cacheVer = '-AtlasProduction'+cacheVer
-        elif 'AthAnalysisBase' in cacheVer or 'AthAnalysis' in cacheVer:
-            # AthAnalysis
-            cacheVer  = cacheVer + '_%s' % athenaVer
-            athenaVer = ''
-        else:
-            # unknown
-            cacheVer = ''
-    # use dev nightlies
-    if usingNightlies and athenaVer == '':
-        athenaVer = 'Atlas-dev'
+    athenaVer, cacheVer, nightVer = AthenaUtils.parse_athena_tag(options.athenaTag, options.verbose, tmpLog)
 
 # set CMTCONFIG
 options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)

@@ -824,66 +824,14 @@ if not stA:
     retA = {'workArea': os.getcwd(), 'athenaVer': '', 'groupArea': '', 'cacheVer':'', 'nightVer': '', 'cmtConfig': ''}
 
 workArea  = retA['workArea']
-athenaVer = retA['athenaVer']
+athenaVer = 'Atlas-%s' % retA['athenaVer']
 groupArea = retA['groupArea']
 cacheVer  = retA['cacheVer']
 nightVer  = retA['nightVer']
 
 # overwrite with athenaTag
 if options.athenaTag != '':
-    athenaVer = ''
-    cacheVer  = ''
-    nightVer  = ''
-    # get list of Athena projects
-    listProjects = Client.getCachePrefixes(options.verbose)
-    items = options.athenaTag.split(',')
-    usingNightlies = False
-    for item in items:
-        # releases
-        match = re.search('^(\d+\.\d+\.\d+)',item)
-        if match is not None:
-            athenaVer = match.group(1)
-            # cache
-            cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
-            if cmatch is not None:
-                cacheVer += '_%s' % cmatch.group(1)
-        else:
-            # nightlies
-            match = re.search('^(\d+\.\d+\.X|\d+\.X\.\d+)$',item)
-            if match is not None:
-                athenaVer = 'Atlas-%s' % match.group(1)
-        # project
-        if item.startswith('Atlas') or item in listProjects:
-            # ignore AtlasOffline
-            if item in ['AtlasOffline']:
-                continue
-            cacheVer = '-'+item+cacheVer
-        # nightlies
-        if item.startswith('rel_'):
-            usingNightlies = True
-            if 'dev' in items:
-                athenaVer = 'Atlas-dev'
-            elif 'devval' in items:
-                athenaVer = 'Atlas-devval'
-            cacheVer  = '-AtlasOffline_%s' % item
-        # CMTCONFIG
-        if item in ['32','64']:
-            tmpLog.warning("%s in --athenaTag is unsupported. Please use --cmtConfig instead" % item)
-    # check cache
-    if re.search('^-.+_.+$',cacheVer) is None:
-        if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) is not None:
-            # use AtlasProduction
-            cacheVer = '-AtlasProduction'+cacheVer
-        elif 'AthAnalysisBase' in cacheVer or 'AthAnalysis' in cacheVer:
-            # AthAnalysis
-            cacheVer  = cacheVer + '_%s' % athenaVer
-            athenaVer = ''
-        else:
-            # unknown
-            cacheVer = ''
-    # use dev nightlies
-    if usingNightlies and athenaVer == '':
-        athenaVer = 'Atlas-dev'
+    athenaVer, cacheVer, nightVer = AthenaUtils.parse_athena_tag(options.athenaTag, options.verbose, tmpLog)
 
 # set CMTCONFIG
 options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig,verbose=options.verbose)
@@ -1425,10 +1373,7 @@ if options.containerImage == '':
 else:
     taskParamMap['architecture'] = options.architecture
     taskParamMap['container_name'] = options.containerImage
-if athenaVer != '':
-    taskParamMap['transUses'] = 'Atlas-%s' % athenaVer
-else:
-    taskParamMap['transUses'] = athenaVer
+taskParamMap['transUses'] = athenaVer
 taskParamMap['transHome'] = 'AnalysisTransforms'+cacheVer+nightVer
 taskParamMap['processingType'] = 'panda-client-{0}-jedi-athena'.format(PandaToolsPkgInfo.release_version)
 if options.trf:
@@ -1616,7 +1561,7 @@ if options.trf:
 if options.generalInput:
     param += '--generalInput '
 # use local access for TRF and BS
-if runConfig.input.inBS and not options.forceDirectIO:
+if (options.trf or runConfig.input.inBS) and not options.forceDirectIO:
     param += '--useLocalIO '
 # use theApp.nextEvent
 if options.useNextEvent:
@@ -1924,7 +1869,7 @@ taskParamMap['jobParameters'] += [
     ]
 
 # use local IO for trf
-if runConfig.input.inBS and not options.forceDirectIO:
+if (options.trf or runConfig.input.inBS) and not options.forceDirectIO:
     taskParamMap['useLocalIO'] = 1
 
 # use AMI to get the number of events per file
