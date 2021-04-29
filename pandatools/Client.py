@@ -9,6 +9,7 @@ import sys
 import ssl
 import stat
 import json
+import gzip
 import string
 import traceback
 try:
@@ -246,7 +247,7 @@ class _Curl:
 
 
     # POST method
-    def post(self,url,data,rucioAccount=False, is_json=False, via_file=False):
+    def post(self,url,data,rucioAccount=False, is_json=False, via_file=False, compress_body=False):
         # make command
         com = '%s --silent' % self.path
         if not self.verifyHost or not url.startswith('https://'):
@@ -267,6 +268,8 @@ class _Curl:
                 com += ' --cacert %s' % self.sslCert
             if self.sslKey != '':
                 com += ' --key %s' % self.sslKey
+        if compress_body:
+            com += ' -H "Content-Type: application/json"'
         # max time of 10 min
         com += ' -m 600'
         # add rucio account info
@@ -276,26 +279,39 @@ class _Curl:
             if 'RUCIO_APPID' in os.environ:
                 data['appid'] = os.environ['RUCIO_APPID']
             data['client_version'] = '2.4.1'
-        # data
-        strData = ''
-        for key in data.keys():
-            strData += 'data="%s"\n' % urlencode({key:data[key]})
         # write data to temporary config file
         if globalTmpDir != '':
-            tmpFD,tmpName = tempfile.mkstemp(dir=globalTmpDir)
+            tmpFD, tmpName = tempfile.mkstemp(dir=globalTmpDir)
         else:
-            tmpFD,tmpName = tempfile.mkstemp()
-        os.write(tmpFD, strData.encode('utf-8'))
-        os.close(tmpFD)
+            tmpFD, tmpName = tempfile.mkstemp()
+        # data
+        strData = ''
+        if not compress_body:
+            for key in data.keys():
+                strData += 'data="%s"\n' % urlencode({key:data[key]})
+            os.write(tmpFD, strData.encode('utf-8'))
+        else:
+            f = os.fdopen(tmpFD, "wb")
+            with gzip.GzipFile(fileobj=f) as f_gzip:
+                f_gzip.write(json.dumps(data).encode())
+            f.close()
+        try:
+            os.close(tmpFD)
+        except Exception:
+            pass
         tmpNameOut = '{0}.out'.format(tmpName)
-        com += ' --config %s' % tmpName
+        if not compress_body:
+            com += ' --config %s' % tmpName
+        else:
+            com += ' --data-binary @{}'.format(tmpName)
         if via_file:
             com += ' -o {0}'.format(tmpNameOut)
         com += ' %s' % self.randomize_ip(url)
         # execute
         if self.verbose:
             print(com)
-            print(strData[:-1])
+            for key in data:
+                print('{}={}'.format(key, data[key]))
         s,o = commands_get_status_output(com)
         if o != '\x00':
             try:
@@ -374,7 +390,7 @@ class _Curl:
 
 class _NativeCurl(_Curl):
 
-    def http_method(self, url, data, header, rdata=None):
+    def http_method(self, url, data, header, rdata=None, compress_body=False):
         try:
             url = self.randomize_ip(url)
             if header is None:
@@ -383,8 +399,13 @@ class _NativeCurl(_Curl):
                 self.get_id_token()
                 header['Authorization'] = 'Bearer {0}'.format(self.idToken)
                 header['Origin'] = self.authVO
+            if compress_body:
+                header['Content-Type'] = 'application/json'
             if rdata is None:
-                rdata = urlencode(data).encode()
+                if not compress_body:
+                    rdata = urlencode(data).encode()
+                else:
+                    rdata = gzip.compress(json.dumps(data).encode())
             req = Request(url, rdata, headers=header)
             context = ssl._create_unverified_context()
             if self.sslCert and self.sslKey:
@@ -411,8 +432,11 @@ class _NativeCurl(_Curl):
         return self.http_method(url, {}, {})
 
     # POST method
-    def post(self,url,data,rucioAccount=False, is_json=False, via_file=False):
-        code, text = self.http_method(url, data, {})
+    def post(self,url,data,rucioAccount=False, is_json=False, via_file=False, compress_body=False):
+        if not compress_body:
+            code, text = self.http_method(url, data, {})
+        else:
+            code, text = self.http_method(url, data, {}, compress_body=True)
         if is_json and code == 0:
             text = json.loads(text)
         return code, text
@@ -1385,7 +1409,7 @@ def get_user_name_from_token():
 
 
 # call idds command
-def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose=False):
+def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose=False, compress=False):
     """Call an iDDS command through PanDA
        args:
           command_name: command name
@@ -1393,6 +1417,7 @@ def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose
           kwargs: a dictionary of keyword arguments
           dumper: function object for json.dump
           verbose: True to see verbose message
+          compress: True to compress request body
        returns:
           status code
              0: communication succeeded to the panda server
@@ -1420,11 +1445,12 @@ def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose
                 data['kwargs'] = json.dumps(kwargs)
             else:
                 data['kwargs'] = dumper(kwargs)
-        status, output = curl.post(url, data)
+        status, output = curl.post(url, data, compress_body=compress)
         if status != 0:
             return EC_Failed, output
         else:
             return 0, json.loads(output)
     except Exception as e:
         msg = "Failed with {}".format(str(e))
+        print (traceback.format_exc())
         return EC_Failed, msg
