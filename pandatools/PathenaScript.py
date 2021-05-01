@@ -165,20 +165,28 @@ group_input.add_argument('--minDS',  action='store', dest='minDS',  default='',
                 type=str, help='Dataset name for minimum bias stream')
 group_job.add_argument('--nMin',  action='store', dest='nMin',  default=-1,
                 type=int, help='Number of minimum bias files per sub job')
+group_input.add_argument('--notExpandMinDS', action='store_const', const=True, dest='notExpandMinDS',default=False,
+                         help='Allow jobs to use files across dataset boundaries in minimum bias dataset container')
 group_input.add_argument('--lowMinDS',  action='store', dest='lowMinDS',  default='',
                 type=str, help='Dataset name for low pT minimum bias stream')
 group_job.add_argument('--nLowMin',  action='store', dest='nLowMin',  default=-1,
                 type=int, help='Number of low pT minimum bias files per job')
+group_input.add_argument('--notExpandLowMinDS', action='store_const', const=True, dest='notExpandLowMinDS',default=False,
+                         help='Allow jobs to use files across dataset boundaries in low minimum bias dataset container')
 group_input.add_argument('--highMinDS',  action='store', dest='highMinDS',  default='',
                 type=str, help='Dataset name for high pT minimum bias stream')
 group_job.add_argument('--nHighMin',  action='store', dest='nHighMin',  default=-1,
                 type=int, help='Number of high pT minimum bias files per job')
+group_input.add_argument('--notExpandHighMinDS', action='store_const', const=True, dest='notExpandHighMinDS',default=False,
+                         help='Allow jobs to use files across dataset boundaries in high minimum bias dataset container')
 group_input.add_argument('--randomMin',action='store_const',const=True,dest='randomMin',default=False,
                 help='randomize files in minimum bias dataset')
 group_input.add_argument('--cavDS',  action='store', dest='cavDS',  default='',
                 type=str, help='Dataset name for cavern stream')
 group_job.add_argument('--nCav',  action='store', dest='nCav',  default=-1,
                 type=int, help='Number of cavern files per job')
+group_input.add_argument('--notExpandCavDS', action='store_const', const=True, dest='notExpandCavDS',default=False,
+                         help='Allow jobs to use files across dataset boundaries in cavern dataset container')
 group_input.add_argument('--randomCav',action='store_const',const=True,dest='randomCav',default=False,
                 help='randomize files in cavern dataset')
 group_evtFilter.add_argument('--goodRunListXML', action='store', dest='goodRunListXML', default='',
@@ -1687,24 +1695,35 @@ if options.dbRelease != '':
 # minimum bias
 minBiasStream = ''
 if options.minDS != '':
+    if options.notExpandMinDS:
+        expand_flag = False
+    else:
+        expand_flag = True
     dictItem = MiscUtils.makeJediJobParam('${MININ}',options.minDS,'input',hidden=True,
-                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nMin,useNumFilesAsRatio=True,
                                           randomAtt=options.randomMin,reusableAtt=options.sameSecRetry)
     taskParamMap['jobParameters'] += dictItem
     inputMap['MININ'] = options.minDS
     minBiasStream += 'MININ,'
 if options.lowMinDS != '':
+    if options.notExpandLowMinDS:
+        expand_flag = False
+    else:
+        expand_flag = True
     dictItem = MiscUtils.makeJediJobParam('${LOMBIN}',options.lowMinDS,'input',hidden=True,
-                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nLowMin,useNumFilesAsRatio=True,
                                           randomAtt=options.randomMin,reusableAtt=options.sameSecRetry)
-    taskParamMap['jobParameters'] += dictItem
     inputMap['LOMBIN'] = options.lowMinDS
     minBiasStream += 'LOMBIN,'
 if options.highMinDS != '':
+    if options.notExpandHighMinDS:
+        expand_flag = False
+    else:
+        expand_flag = True
     dictItem = MiscUtils.makeJediJobParam('${HIMBIN}',options.highMinDS,'input',hidden=True,
-                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nHighMin,useNumFilesAsRatio=True,
                                           randomAtt=options.randomMin,reusableAtt=options.sameSecRetry)
     taskParamMap['jobParameters'] += dictItem
@@ -1720,8 +1739,12 @@ if minBiasStream != '':
 
 # cavern
 if options.cavDS != '':
+    if options.notExpandCavDS:
+        expand_flag = False
+    else:
+        expand_flag = True
     dictItem = MiscUtils.makeJediJobParam('-n "${CAVIN/T}"',options.cavDS,'input',
-                                          expand=True,exclude='\.log\.tgz(\.\d+)*$',
+                                          expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nCav,useNumFilesAsRatio=True,
                                           randomAtt=options.randomCav,reusableAtt=options.sameSecRetry)
     taskParamMap['jobParameters'] += dictItem

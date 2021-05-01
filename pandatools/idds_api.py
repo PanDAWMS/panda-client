@@ -36,7 +36,7 @@ api = IddsApiInteface()
 del IddsApiInteface
 
 
-def get_api(dumper=None, verbose=False, idds_host=None, compress=False):
+def get_api(dumper=None, verbose=False, idds_host=None, compress=True):
     """Get an API object to access iDDS through PanDA
 
        args:
