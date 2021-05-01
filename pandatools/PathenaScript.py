@@ -1702,10 +1702,12 @@ if options.minDS != '':
     dictItem = MiscUtils.makeJediJobParam('${MININ}',options.minDS,'input',hidden=True,
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nMin,useNumFilesAsRatio=True,
-                                          randomAtt=options.randomMin,reusableAtt=options.sameSecRetry)
+                                          randomAtt=options.randomMin)
     taskParamMap['jobParameters'] += dictItem
     inputMap['MININ'] = options.minDS
     minBiasStream += 'MININ,'
+    if options.sameSecRetry:
+        taskParamMap['reuseSecOnDemand'] = True
 if options.lowMinDS != '':
     if options.notExpandLowMinDS:
         expand_flag = False
@@ -1714,9 +1716,11 @@ if options.lowMinDS != '':
     dictItem = MiscUtils.makeJediJobParam('${LOMBIN}',options.lowMinDS,'input',hidden=True,
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nLowMin,useNumFilesAsRatio=True,
-                                          randomAtt=options.randomMin,reusableAtt=options.sameSecRetry)
+                                          randomAtt=options.randomMin)
     inputMap['LOMBIN'] = options.lowMinDS
     minBiasStream += 'LOMBIN,'
+    if options.sameSecRetry:
+        taskParamMap['reuseSecOnDemand'] = True
 if options.highMinDS != '':
     if options.notExpandHighMinDS:
         expand_flag = False
@@ -1725,10 +1729,12 @@ if options.highMinDS != '':
     dictItem = MiscUtils.makeJediJobParam('${HIMBIN}',options.highMinDS,'input',hidden=True,
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nHighMin,useNumFilesAsRatio=True,
-                                          randomAtt=options.randomMin,reusableAtt=options.sameSecRetry)
+                                          randomAtt=options.randomMin)
     taskParamMap['jobParameters'] += dictItem
     inputMap['HIMBIN'] = options.highMinDS
     minBiasStream += 'HIMBIN,'
+    if options.sameSecRetry:
+        taskParamMap['reuseSecOnDemand'] = True
 minBiasStream = minBiasStream[:-1]
 if minBiasStream != '':
     dictItem = {'type':'constant',
@@ -1746,37 +1752,41 @@ if options.cavDS != '':
     dictItem = MiscUtils.makeJediJobParam('-n "${CAVIN/T}"',options.cavDS,'input',
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nCav,useNumFilesAsRatio=True,
-                                          randomAtt=options.randomCav,reusableAtt=options.sameSecRetry)
+                                          randomAtt=options.randomCav)
     taskParamMap['jobParameters'] += dictItem
     inputMap['CAVIN'] = options.cavDS
-
+    if options.sameSecRetry:
+        taskParamMap['reuseSecOnDemand'] = True
 
 # beam halo
 beamHaloStream = ''
 if options.beamHaloDS != '':
     dictItem = MiscUtils.makeJediJobParam('${BHIN}',options.beamHaloDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamHalo,useNumFilesAsRatio=True,
-                                          reusableAtt=options.sameSecRetry)
+                                          nFilesPerJob=options.nBeamHalo,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BHIN'] = options.beamHaloDS
     beamHaloStream += 'BHIN,'
+    if options.sameSecRetry:
+        taskParamMap['reuseSecOnDemand'] = True
 if options.beamHaloADS != '':
     dictItem = MiscUtils.makeJediJobParam('${BHAIN}',options.beamHaloADS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamHaloA,useNumFilesAsRatio=True,
-                                          reusableAtt=options.sameSecRetry)
+                                          nFilesPerJob=options.nBeamHaloA,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BHAIN'] = options.beamHaloADS
     beamHaloStream += 'BHAIN,'
+    if options.sameSecRetry:
+        taskParamMap['reuseSecOnDemand'] = True
 if options.beamHaloCDS != '':
     dictItem = MiscUtils.makeJediJobParam('${BHCIN}',options.beamHaloCDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamHaloC,useNumFilesAsRatio=True,
-                                          reusableAtt=options.sameSecRetry)
+                                          nFilesPerJob=options.nBeamHaloC,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BHCIN'] = options.beamHaloCDS
     beamHaloStream += 'BHCIN,'
+    if options.sameSecRetry:
+        taskParamMap['reuseSecOnDemand'] = True
 beamHaloStream = beamHaloStream[:-1]
 if beamHaloStream != '':
     dictItem = {'type':'constant',
@@ -1790,32 +1800,28 @@ beamGasStream = ''
 if options.beamGasDS != '':
     dictItem = MiscUtils.makeJediJobParam('${BGIN}',options.beamGasDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamGas,useNumFilesAsRatio=True,
-                                          reusableAtt=options.sameSecRetry)
+                                          nFilesPerJob=options.nBeamGas,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BGIN'] = options.beamGasDS
     beamGasStream += 'BGIN,'
 if options.beamGasHDS != '':
     dictItem = MiscUtils.makeJediJobParam('${BGHIN}',options.beamGasHDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamGasH,useNumFilesAsRatio=True,
-                                          reusableAtt=options.sameSecRetry)
+                                          nFilesPerJob=options.nBeamGasH,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BGHIN'] = options.beamGasHDS
     beamGasStream += 'BGHIN,'
 if options.beamGasCDS != '':
     dictItem = MiscUtils.makeJediJobParam('${BGCIN}',options.beamGasCDS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamGasC,useNumFilesAsRatio=True,
-                                          reusableAtt=options.sameSecRetry)
+                                          nFilesPerJob=options.nBeamGasC,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BGCIN'] = options.beamGasHDS
     beamGasStream += 'BGCIN,'
 if options.beamGasODS != '':
     dictItem = MiscUtils.makeJediJobParam('${BGOIN}',options.beamGasODS,'input',hidden=True,
                                           expand=True,exclude='\.log\.tgz(\.\d+)*$',
-                                          nFilesPerJob=options.nBeamGasO,useNumFilesAsRatio=True,
-                                          reusableAtt=options.sameSecRetry)
+                                          nFilesPerJob=options.nBeamGasO,useNumFilesAsRatio=True)
     taskParamMap['jobParameters'] += dictItem
     inputMap['BGOIN'] = options.beamGasODS
     beamGasStream += 'BGOIN,'
