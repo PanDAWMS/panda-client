@@ -1717,6 +1717,7 @@ if options.lowMinDS != '':
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nLowMin,useNumFilesAsRatio=True,
                                           randomAtt=options.randomMin)
+    taskParamMap['jobParameters'] += dictItem
     inputMap['LOMBIN'] = options.lowMinDS
     minBiasStream += 'LOMBIN,'
     if options.sameSecRetry:

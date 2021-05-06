@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.68
+  * fixed --lowMinDS
+
 1.4.65
   * to allow master, latest, and timestamp in --athenaTag
 
