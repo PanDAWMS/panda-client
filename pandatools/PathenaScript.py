@@ -229,6 +229,8 @@ group_output.add_argument('--appendStrToExtStream',action='store_const',const=Tr
                 help='append the first part of filenames to extra stream names for --individualOutDS. E.g., if this option is used together with --individualOutDS, %%OUT.AOD.pool.root will be contained in an EXT0_AOD dataset instead of an EXT0 dataset')
 group_output.add_argument('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
                 help="merge output files")
+group_output.add_argument('--mergeLog', action='store_const', const=True, dest='mergeLog', default=False,
+                help="merge log files. relevant only with --mergeOutput")
 action = group_job.add_argument('--mergeScript',action='store',dest='mergeScript',default='',type=str,
                 help='Specify user-defied script or execution string for output merging')
 group_output.shareWithMe(action)
@@ -1480,12 +1482,24 @@ taskParamMap['log'] = {'dataset': logDatasetName,
                        'param_type':'log',
                        'value':'{0}.$JEDITASKID.${{SN}}.log.tgz'.format(logDatasetName[:-1])
                        }
+
 if options.addNthFieldOfInFileToLFN != '':
     loglfn  = '{0}.{1}'.format(*logDatasetName.split('.')[:2])
     loglfn += '${MIDDLENAME}.$JEDITASKID._${SN}.log.tgz'
     taskParamMap['log']['value'] = loglfn
 if options.spaceToken != '':
     taskParamMap['log']['token'] = options.spaceToken
+if options.mergeOutput and options.mergeLog:
+    # log merge
+    mLogDatasetName = re.sub(r'\.log/', r'.merge_log/', logDatasetName)
+    mLFN = re.sub(r'\.log\.tgz', r'.merge_log.tgz', taskParamMap['log']['value'])
+    data = copy.deepcopy(taskParamMap['log'])
+    data.update({'dataset': mLogDatasetName,
+                 'container': mLogDatasetName,
+                 'param_type': 'output',
+                 'mergeOnly': True,
+                 'value': mLFN})
+    taskParamMap['log_merge'] = data
 
 # make job parameters
 taskParamMap['jobParameters'] = []
@@ -1970,7 +1984,11 @@ if options.mergeOutput:
     jobParameters += "--useAthenaPackages "
     if AthenaUtils.useCMake() or options.containerImage != '':
         jobParameters += "--useCMake "
-    jobParameters += '${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}'
+    jobParameters += '${TRN_OUTPUT:OUTPUT} '
+    if options.mergeLog:
+        jobParameters += '${TRN_LOG_MERGE:LOG_MERGE}'
+    else:
+        jobParameters += '${TRN_LOG:LOG}'
     taskParamMap['mergeSpec'] = {}
     taskParamMap['mergeSpec']['useLocalIO'] = 1
     taskParamMap['mergeSpec']['jobParameters'] = jobParameters

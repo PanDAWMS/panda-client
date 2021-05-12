@@ -118,6 +118,8 @@ group_output.add_argument('--outputs',action='store',dest='outputs',default='',
                 help='Names of output files. Comma separated. e.g., --outputs out1.dat,out2.txt. You can specify a suffix for each output container like <datasetNameSuffix>:<outputFileName>. e.g., --outputs AAA:out1.dat,BBB:out2.txt. In this case output container names are outDS_AAA/ and outDS_BBB/ instead of outDS_out1.dat/ and outDS_out2.txt/')
 group_output.add_argument('--mergeOutput', action='store_const', const=True, dest='mergeOutput', default=False,
                 help="merge output files")
+group_output.add_argument('--mergeLog', action='store_const', const=True, dest='mergeLog', default=False,
+                help="merge log files. relevant only with --mergeOutput")
 group_output.add_argument('--destSE',action='store', dest='destSE',default='',
                 help='Destination strorage element')
 
@@ -1391,6 +1393,17 @@ if options.addNthFieldOfInFileToLFN != '':
     taskParamMap['log']['value'] = loglfn
 if options.spaceToken != '':
     taskParamMap['log']['token'] = options.spaceToken
+if options.mergeOutput and options.mergeLog:
+    # log merge
+    mLogDatasetName = re.sub(r'\.log/', r'.merge_log/', logDatasetName)
+    mLFN = re.sub(r'\.log\.tgz', '.merge_log.tgz', taskParamMap['log']['value'])
+    data = copy.deepcopy(taskParamMap['log'])
+    data.update({'dataset': mLogDatasetName,
+                 'container': mLogDatasetName,
+                 'param_type': 'output',
+                 'mergeOnly': True,
+                 'value': mLFN})
+    taskParamMap['log_merge'] = data
 
 # job parameters
 taskParamMap['jobParameters'] = [
@@ -1774,7 +1787,11 @@ if options.mergeOutput:
         else:
             jobParameters += '-a {0} '.format(archiveName)
             jobParameters += "--sourceURL ${SURL} "
-    jobParameters += '${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}'
+    jobParameters += '${TRN_OUTPUT:OUTPUT} '
+    if options.mergeLog:
+        jobParameters += '${TRN_LOG_MERGE:LOG_MERGE}'
+    else:
+        jobParameters += '${TRN_LOG:LOG}'
     taskParamMap['mergeSpec'] = {}
     taskParamMap['mergeSpec']['useLocalIO'] = 1
     taskParamMap['mergeSpec']['jobParameters'] = jobParameters

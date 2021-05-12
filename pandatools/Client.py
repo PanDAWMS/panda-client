@@ -1409,7 +1409,8 @@ def get_user_name_from_token():
 
 
 # call idds command
-def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose=False, compress=False):
+def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose=False, compress=False,
+                      manager=False):
     """Call an iDDS command through PanDA
        args:
           command_name: command name
@@ -1418,6 +1419,7 @@ def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose
           dumper: function object for json.dump
           verbose: True to see verbose message
           compress: True to compress request body
+          manager: True to use ClientManager
        returns:
           status code
              0: communication succeeded to the panda server
@@ -1445,6 +1447,8 @@ def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose
                 data['kwargs'] = json.dumps(kwargs)
             else:
                 data['kwargs'] = dumper(kwargs)
+        if manager:
+            data['manager'] = True
         status, output = curl.post(url, data, compress_body=compress)
         if status != 0:
             return EC_Failed, output

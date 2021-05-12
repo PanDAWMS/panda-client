@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.4.69
+  * added --mergeLog to pathena/prun
+  * added manage to iDDS API
+
 1.4.68
   * fixed --lowMinDS
 
