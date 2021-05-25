@@ -595,13 +595,15 @@ def readDsFromFile(txtName):
 def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,usePfnList=False,includeIO=True):
     # list of place holders for input
     inList = ['IN','CAVIN','MININ','LOMBIN','HIMBIN','BHIN','BGIN','BGHIN','BGCIN','BGOIN']
+    # place holder for seq_number
+    seqHolder = 'SEQNUMBER'
     # place holder for output
     outHolder = 'SN'
     # place holders with extension
-    digExList = ['RNDMSEED','FIRSTEVENT']
+    digExList = ['SEQNUMBER', 'FIRSTEVENT']
     allExList = digExList + ['DBR']
     # mapping of client and JEDI place holders
-    holders = {'RNDMSEED'  : 'RNDM',
+    holders = {'SEQNUMBER' : 'RNDM',
                'DBR'       : 'DB',
                'SKIPEVENTS': 'SKIPEVENTS',
                'FIRSTEVENT': None,
@@ -668,6 +670,16 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
                 if not usePfnList or tmpHolder not in ['IN']:
                     tmpDict['param_type'] = 'input'
                     tmpDict['dataset'] = inputMap[tmpHolder]
+            elif tmpHolder == seqHolder:
+                tmpDict = {'type':'template'}
+                tmpDict['value'] = tmpItem
+                tmpDict['param_type'] = 'pseudo_input'
+                tmpDict['dataset'] = 'seq_number'
+                if tmpHolder in extensionMap:
+                    try:
+                        tmpDict['offset'] = long(extensionMap[tmpHolder])
+                    except Exception:
+                        pass
             elif tmpHolder == outHolder:
                 tmpDict = {'type':'template'}
                 tmpDict['value'] = tmpItem

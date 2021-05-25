@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.70
+  * changed %RNDM to be reproducible in retries
+
 1.4.69
   * added --mergeLog to pathena/prun
   * added manage to iDDS API
