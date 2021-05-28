@@ -102,6 +102,13 @@ def use_x509_no_grid():
     return 'PANDA_AUTH' in os.environ and os.environ['PANDA_AUTH'] == 'x509_no_grid'
 
 
+# string decode for python 2 and 3
+def str_decode(data):
+    if hasattr(data, 'decode'):
+        return data.decode()
+    return data
+
+
 # curl class
 class _Curl:
     # constructor
@@ -725,8 +732,8 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
         # check duplication
         url = baseURLSSL + '/checkSandboxFile'
         data = {'fileSize':fileSize,'checkSum':checkSum}
-        status,output = curl.post(url,data)
-        output = output.decode()
+        status, output = curl.post(url,data)
+        output = str_decode(output)
         if status != 0:
             return EC_Failed,'ERROR: Could not check Sandbox duplication with %s' % status
         elif output.startswith('FOUND:'):
@@ -743,7 +750,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
         url = baseURLSSL + '/putFile'
     data = {'file':file}
     s,o = curl.put(url,data)
-    return s, o.decode()
+    return s, str_decode(o)
 
 
 # get grid source file
@@ -970,7 +977,7 @@ def getPandaClientVer(verbose):
     # execute
     url = baseURL + '/getPandaClientVer'
     status,output = curl.get(url,{})
-    output = output.decode()
+    output = str_decode(output)
     # failed
     if status != 0:
         return status,output
@@ -1331,7 +1338,7 @@ def hello(verbose=False):
     url = baseURLSSL + '/isAlive'
     try:
         status, output = curl.post(url, {})
-        output = output.decode()
+        output = str_decode(output)
         if status != 0:
             msg = "Not good. " + output
             tmp_log.error(msg)
@@ -1371,7 +1378,7 @@ def get_cert_attributes(verbose=False):
     url = baseURLSSL + '/getAttr'
     try:
         status, output = curl.post(url, {})
-        output = output.decode()
+        output = str_decode(output)
         if status != 0:
             msg = "Not good. " + output
             tmp_log.error(msg)

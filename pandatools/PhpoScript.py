@@ -4,7 +4,6 @@ import re
 import os
 import copy
 import atexit
-import types
 
 from pandatools.Group_argparse import GroupArgParser
 from pandatools import PLogger
@@ -17,6 +16,11 @@ try:
     from urllib import quote
 except ImportError:
     from urllib.parse import quote
+
+try:
+    unicode
+except Exception:
+    unicode = str
 
 # tweak sys.argv
 sys.argv.pop(0)
@@ -165,11 +169,16 @@ if options.loadJson is not None:
         for k in json_options:
             if k in option_names:
                 v = json_options[k]
+                if isinstance(v, (str, unicode)):
+                    try:
+                        v = int(v)
+                    except Exception:
+                        pass
                 setattr(options, k, v)
                 if v is True:
                     jsonExecStr += ' --{0}'.format(k)
                 else:
-                    if isinstance(v, types.StringType):
+                    if isinstance(v, (str, unicode)):
                         jsonExecStr += " --{0}='{1}'".format(k, v)
                     else:
                         jsonExecStr += " --{0}={1}".format(k, v)

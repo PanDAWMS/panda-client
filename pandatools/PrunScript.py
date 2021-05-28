@@ -14,6 +14,11 @@ import json
 import copy
 from pandatools.MiscUtils import commands_get_output, commands_get_status_output
 
+try:
+    unicode
+except Exception:
+    unicode = str
+
 # default cloud/site
 defaultCloud = None
 defaultSite  = 'AUTO'
@@ -415,6 +420,11 @@ if options.loadJson is not None:
     loadOpts = MiscUtils.decodeJSON(options.loadJson)
     for k in loadOpts:
         v = loadOpts[k]
+        if isinstance(v, (str, unicode)):
+            try:
+                v = int(v)
+            except Exception:
+                pass
         origK = k
         if k == 'exec':
             k = 'jobParams'
@@ -426,7 +436,7 @@ if options.loadJson is not None:
         if v is True:
             jsonExecStr += ' --{0}'.format(origK)
         else:
-            if isinstance(v, types.StringType):
+            if isinstance(v, (str, unicode)):
                 jsonExecStr += " --{0}='{1}'".format(origK, v)
             else:
                 jsonExecStr += " --{0}={1}".format(origK, v)

@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.71
+  * protection against wrong types in --loadJson
+
 1.4.70
   * changed %RNDM to be reproducible in retries
 

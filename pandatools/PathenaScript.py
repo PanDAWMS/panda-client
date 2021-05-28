@@ -7,9 +7,13 @@ import atexit
 import argparse
 from pandatools.Group_argparse import GroupArgParser
 import random
-import types
 import pickle
 import json
+
+try:
+    unicode
+except Exception:
+    unicode = str
 
 ####################################################################
 
@@ -456,6 +460,11 @@ if options.loadJson is not None:
     loadOpts = MiscUtils.decodeJSON(options.loadJson)
     for k in loadOpts:
         v = loadOpts[k]
+        if isinstance(v, (str, unicode)):
+            try:
+                v = int(v)
+            except Exception:
+                pass
         origK = k
         if k == 'athena_args':
             args = v
@@ -468,7 +477,7 @@ if options.loadJson is not None:
         if v is True:
             jsonExecStr += ' --{0}'.format(origK)
         else:
-            if isinstance(v, types.StringType):
+            if isinstance(v, (str, unicode)):
                 jsonExecStr += " --{0}='{1}'".format(origK, v)
             else:
                 jsonExecStr += " --{0}={1}".format(origK, v)
