@@ -1095,13 +1095,14 @@ def requestEventPicking(eventPickEvtList,eventPickDataType,eventPickStreamName,
 
 
 # submit task
-def insertTaskParams(taskParams,verbose=False,properErrorCode=False):
+def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
     """Insert task parameters
 
        args:
            taskParams: a dictionary of task parameters
            verbose: True to see verbose messages
            properErrorCode: True to get a detailed error code
+           parent_tid: ID of the parent task
        returns:
            status code
                  0: communication succeeded to the panda server
@@ -1124,6 +1125,8 @@ def insertTaskParams(taskParams,verbose=False,properErrorCode=False):
     url = baseURLSSL + '/insertTaskParams'
     data = {'taskParams':taskParamsStr,
             'properErrorCode':properErrorCode}
+    if parent_tid:
+        data['parent_tid'] = parent_tid
     status,output = curl.post(url,data)
     try:
         loaded_output = list(pickle_loads(output))

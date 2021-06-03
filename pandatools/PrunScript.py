@@ -318,6 +318,9 @@ group_config.add_argument('--dumpJson', action='store', dest='dumpJson', default
                   help='Dump all command-line parameters and submission result such as returnCode, returnOut, jediTaskID, and bulkSeqNumber if --bulkSubmission is used, to a json file')
 group_config.add_argument('--dumpTaskParams', action='store', dest='dumpTaskParams', default=None,
                   help='Dump task parameters to a json file')
+group_config.add_argument('--parentTaskID', '--parentTaskID', action='store', dest='parentTaskID',  default=None,
+                          type=int,
+                          help='Set taskID of the paranet task to execute the task while the parent is still running')
 group_input.add_argument('--forceStaged',action='store_const',const=True,dest='forceStaged',default=False,
                 help='Force files from primary DS to be staged to local disk, even if direct-access is possible')
 group_input.add_argument('--forceStagedSecondary',action='store_const',const=True,dest='forceStagedSecondary',default=False,
@@ -579,6 +582,10 @@ options.allowNoOutput = options.allowNoOutput.split(',')
 # read datasets from file
 if options.inDsTxt != '':
     options.inDS = PsubUtils.readDsFromFile(options.inDsTxt)
+
+# not expand inDS when setting parent
+if options.parentTaskID:
+    options.notExpandInDS = True
 
 # bulk submission
 ioList = []
@@ -1331,6 +1338,8 @@ if options.respectLB:
 if options.osMatching:
     taskParamMap['osMatching'] = True
 taskParamMap['osInfo'] = PsubUtils.get_os_information()
+if options.parentTaskID:
+    taskParamMap['noWaitParent'] = True
 if options.disableAutoRetry:
     taskParamMap['disableAutoRetry'] = 1
 if options.workingGroup is not None:
@@ -1865,7 +1874,8 @@ for iSubmission, ioItem in enumerate(ioList):
             json.dump(newTaskParamMap, f)
     if not options.noSubmit and exitCode == 0:
         tmpLog.info("submit {0}".format(options.outDS))
-        status,tmpOut = Client.insertTaskParams(newTaskParamMap, options.verbose, True)
+        status,tmpOut = Client.insertTaskParams(newTaskParamMap, options.verbose, properErrorCode=True,
+                                                parent_tid=options.parentTaskID)
         # result
         if status != 0:
             tmpStr = "task submission failed with {0}".format(status)
