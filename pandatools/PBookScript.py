@@ -9,6 +9,7 @@ import code
 import atexit
 import signal
 import tempfile
+import builtins
 
 from pandatools.MiscUtils import commands_get_output
 try:
@@ -103,7 +104,7 @@ def intmain(pbookCore,comString):
                     func = main_locals[arg[0]]
                 else:
                     func = arg[0]
-                print(func.__doc__)
+                builtins.help(func)
                 return
             except Exception:
                 print("Unknown command : {0}".format(str(arg[0])))
@@ -119,6 +120,7 @@ The following commands are available:
     finish
     killAndRetry
     getUserJobMetadata
+    recover_lost_files
 
 For more info, do help(show) for example
 """
@@ -238,7 +240,7 @@ For more info, do help(show) for example
     # kill and retry
     def killAndRetry(taskIDs, newOpts=None):
         """
-        Kill JobID and then retry failed/cancelled sub-jobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). Concerning newOpts, see help(retry)
+        Kill running sub-jobs and then retry failed/cancelled sub-jobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). Concerning newOpts, see help(retry)
 
          example:
            >>> killAndRetry(123)
@@ -262,9 +264,20 @@ For more info, do help(show) for example
         Get user metadata of successful jobs in a task and write them in a json file
 
          example:
-           >>> getUserJobMetadata(123, 'meta.json')
+           >>> getUserJobMetadata(123, 'output.json')
         """
         pbookCore.getUserJobMetadata(taskID, outputFileName)
+
+    # recover lost files
+    def recover_lost_files(taskID, test_mode=False):
+        """
+        Send a request to recove lost files produced by a task. Set test_mode=True for testing
+
+        example:
+          >>> recover_lost_files(123)
+          >>> recover_lost_files(123, test_mode=True)
+        """
+        pbookCore.recover_lost_files(taskID, test_mode)
 
     # execute command in the batch mode
     if comString != '':

@@ -250,6 +250,28 @@ class PBookCore(object):
         tmpLog.info(tmpDiag)
         return True
 
+    # recover lost files
+    @check_task_owner
+    def recover_lost_files(self, taskID, test_mode=False):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # kill JEDI task
+        tmpLog.info('Sending recovery request ...')
+        status, output = Client.send_file_recovery_request(taskID, test_mode, self.verbose)
+        # communication error
+        if status != 0:
+            tmpLog.error(output)
+            tmpLog.error('Communication failure with the server')
+            return False
+        tmpStat, tmpDiag = output
+        if not tmpStat:
+            tmpLog.error(tmpDiag)
+            tmpLog.error('request was not received')
+            return False
+        # done
+        tmpLog.info(tmpDiag)
+        return True
+
     # get job metadata
     def getUserJobMetadata(self, taskID, output_filename):
         # get logger

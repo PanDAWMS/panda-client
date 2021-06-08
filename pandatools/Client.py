@@ -1468,3 +1468,44 @@ def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose
         msg = "Failed with {}".format(str(e))
         print (traceback.format_exc())
         return EC_Failed, msg
+
+
+# send file recovery request
+def send_file_recovery_request(task_id, dry_run=False, verbose=False):
+    """Send a file recovery request
+       args:
+          task_id: task ID
+          dry_run: True to run in the dry run mode
+          verbose: True to see verbose message
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          a tuple of (True/False and diagnostic message). True if the request was accepted
+    """
+    tmp_log = PLogger.getPandaLogger()
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    output = None
+    url = baseURLSSL + '/put_file_recovery_request'
+    try:
+        data = {'jediTaskID': task_id}
+        if dry_run:
+            data['dryRun'] = True
+        status, output = curl.post(url, data)
+        if status != 0:
+            output = str_decode(output)
+            tmp_log.error(output)
+            return EC_Failed, output
+        else:
+            return 0, json.loads(output)
+    except Exception as e:
+        msg = '{}.'.format(str(e))
+        if output:
+            msg += ' raw output="{}"'.format(str(output))
+        tmp_log.error(msg)
+        return EC_Failed, msg
