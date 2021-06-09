@@ -9,7 +9,6 @@ import code
 import atexit
 import signal
 import tempfile
-import builtins
 
 from pandatools.MiscUtils import commands_get_output
 try:
@@ -89,6 +88,8 @@ sys.path = [tmpDir]+sys.path
 
 from pandatools import PBookCore    # noqa: E402
 
+orig_help = help
+
 
 # main for interactive session
 def intmain(pbookCore,comString):
@@ -104,7 +105,7 @@ def intmain(pbookCore,comString):
                     func = main_locals[arg[0]]
                 else:
                     func = arg[0]
-                builtins.help(func)
+                orig_help(func)
                 return
             except Exception:
                 print("Unknown command : {0}".format(str(arg[0])))

@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.74
+  * fixed the 1.4.73 change
+
 1.4.73
   * added recover_lost_files in pbook
 
