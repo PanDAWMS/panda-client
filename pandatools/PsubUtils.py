@@ -786,7 +786,9 @@ def checkTaskParam(taskParamMap,unlimitNumOutputs):
     maxLengthCont = 132
     maxNumOutputs = 10
     nOutputs = 0
-    for tmpDict in taskParamMap['jobParameters']+[taskParamMap['log']]:
+    dict_list = taskParamMap['jobParameters']+[taskParamMap['log']] if 'log' in taskParamMap \
+        else taskParamMap['jobParameters']
+    for tmpDict in dict_list:
         if tmpDict['type'] == 'template' and tmpDict['param_type'] in ['output','log']:
             if tmpDict['param_type'] == 'output':
                 nOutputs += 1

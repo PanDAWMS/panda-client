@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.75
+  * added --noSeparateLog to prun
+
 1.4.74
   * fixed the 1.4.73 change
 

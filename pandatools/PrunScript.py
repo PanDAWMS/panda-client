@@ -127,6 +127,8 @@ group_output.add_argument('--mergeLog', action='store_const', const=True, dest='
                 help="merge log files. relevant only with --mergeOutput")
 group_output.add_argument('--destSE',action='store', dest='destSE',default='',
                 help='Destination strorage element')
+group_output.add_argument('--noSeparateLog', action='store_const', const=True, dest='noSeparateLog', default=False,
+                          help="Set this option when jobs don't produce log files")
 
 # the option is shared by both groups, group_input and group_output
 action = group_input.add_argument('--inOutDsJson', action='store', dest='inOutDsJson', default='',
@@ -1368,7 +1370,10 @@ taskParamMap['respectSplitRule'] = True
 if options.maxAttempt >0 and options.maxAttempt <= 50:
     taskParamMap['maxAttempt'] = options.maxAttempt
 # source URL
-matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
+if options.vo is None:
+    matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
+else:
+    matchURL = re.search("(http.*://[^/]+)/", Client.baseURLSSL)
 if matchURL is not None:
     taskParamMap['sourceURL'] = matchURL.group(1)
 # XML config
@@ -1400,29 +1405,30 @@ if options.containerImage != '' and options.alrb:
 outDatasetName = options.outDS
 logDatasetName = re.sub('/$','.log/',options.outDS)
 # log
-taskParamMap['log'] = {'dataset': logDatasetName,
-                       'container': logDatasetName,
-                       'type':'template',
-                       'param_type':'log',
-                       'value':'{0}.$JEDITASKID.${{SN}}.log.tgz'.format(logDatasetName[:-1])
-                       }
-if options.addNthFieldOfInFileToLFN != '':
-    loglfn  = '{0}.{1}'.format(*logDatasetName.split('.')[:2])
-    loglfn += '${MIDDLENAME}.$JEDITASKID._${SN}.log.tgz'
-    taskParamMap['log']['value'] = loglfn
-if options.spaceToken != '':
-    taskParamMap['log']['token'] = options.spaceToken
-if options.mergeOutput and options.mergeLog:
-    # log merge
-    mLogDatasetName = re.sub(r'\.log/', r'.merge_log/', logDatasetName)
-    mLFN = re.sub(r'\.log\.tgz', '.merge_log.tgz', taskParamMap['log']['value'])
-    data = copy.deepcopy(taskParamMap['log'])
-    data.update({'dataset': mLogDatasetName,
-                 'container': mLogDatasetName,
-                 'param_type': 'output',
-                 'mergeOnly': True,
-                 'value': mLFN})
-    taskParamMap['log_merge'] = data
+if not options.noSeparateLog:
+    taskParamMap['log'] = {'dataset': logDatasetName,
+                           'container': logDatasetName,
+                           'type':'template',
+                           'param_type':'log',
+                           'value':'{0}.$JEDITASKID.${{SN}}.log.tgz'.format(logDatasetName[:-1])
+                           }
+    if options.addNthFieldOfInFileToLFN != '':
+        loglfn  = '{0}.{1}'.format(*logDatasetName.split('.')[:2])
+        loglfn += '${MIDDLENAME}.$JEDITASKID._${SN}.log.tgz'
+        taskParamMap['log']['value'] = loglfn
+    if options.spaceToken != '':
+        taskParamMap['log']['token'] = options.spaceToken
+    if options.mergeOutput and options.mergeLog:
+        # log merge
+        mLogDatasetName = re.sub(r'\.log/', r'.merge_log/', logDatasetName)
+        mLFN = re.sub(r'\.log\.tgz', '.merge_log.tgz', taskParamMap['log']['value'])
+        data = copy.deepcopy(taskParamMap['log'])
+        data.update({'dataset': mLogDatasetName,
+                     'container': mLogDatasetName,
+                     'param_type': 'output',
+                     'mergeOnly': True,
+                     'value': mLFN})
+        taskParamMap['log_merge'] = data
 
 # job parameters
 taskParamMap['jobParameters'] = [
