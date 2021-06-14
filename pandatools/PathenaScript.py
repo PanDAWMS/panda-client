@@ -400,7 +400,11 @@ group_submit.add_argument('--maxAttempt', action='store', dest='maxAttempt', def
 group_containerJob.add_argument('--containerImage', action='store', dest='containerImage', default='',
                 type=str, help="Name of a container image")
 group_containerJob.add_argument('--architecture', action='store', dest='architecture', default='',
-                type=str, help="Architecture or flag of the processor to run the container image")
+                                help="CPU and/or GPU requirements. #CPU_spec&GPU_spec where CPU or GPU spec can be "
+                                     "omitted. CPU_spec = architecture<-vendor<-instruction set>>, "
+                                     "GPU_spec = vendor<-model>. A wildcards can be used if there is no special "
+                                     "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
+                                     "CPU with avx2 support and nvidia GPU")
 group_build.add_argument("-3", action="store_true", dest="python3", default=False,
                   help="Use python3")
 group_input.add_argument('--respectLB', action='store_const', const=True, dest='respectLB', default=False,
@@ -533,12 +537,6 @@ if options.noCompile:
 # set noBuild for container
 if options.containerImage != '':
     options.noBuild = True
-
-# use cmtconfig as architecture and vice-versa
-if options.cmtConfig and not options.architecture:
-    options.architecture = options.cmtConfig
-elif not options.cmtConfig and options.architecture:
-    options.cmtConfig = options.architecture
 
 # files to be deleted
 delFilesOnExit = []
@@ -1396,6 +1394,9 @@ if not options.allowTaskDuplication:
 taskParamMap['vo'] = 'atlas'
 if options.containerImage == '':
     taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
+    if options.architecture:
+        taskParamMap['architecture'] = (taskParamMap['architecture'] if taskParamMap['architecture'] else '') \
+                                       + options.architecture
 else:
     taskParamMap['architecture'] = options.architecture
     taskParamMap['container_name'] = options.containerImage

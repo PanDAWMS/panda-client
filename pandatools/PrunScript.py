@@ -343,7 +343,11 @@ group_submit.add_argument('--maxAttempt', action='store', dest='maxAttempt', def
 group_containerJob.add_argument('--containerImage', action='store', dest='containerImage', default='',
                   help="Name of a container image")
 group_containerJob.add_argument('--architecture', action='store', dest='architecture', default='',
-                                help="Architecture or flag of the processor to run the container image")
+                                help="CPU and/or GPU requirements. #CPU_spec&GPU_spec where CPU or GPU spec can be "
+                                     "omitted. CPU_spec = architecture<-vendor<-instruction set>>, "
+                                     "GPU_spec = vendor<-model>. A wildcards can be used if there is no special "
+                                     "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
+                                     "CPU with avx2 support and nvidia GPU")
 group_containerJob.add_argument('--ctrCvmfs', action='store_const', const=True, dest='ctrCvmfs', default=False,
                                 help=argparse.SUPPRESS)
                                 #help="Bind /cvmfs to the container, bool, default False")
@@ -498,12 +502,6 @@ if options.notSkipLog:
 # old container execution mode
 if options.oldContMode:
     options.alrb = False
-
-# use cmtconfig as architecture and vice-versa
-if options.cmtConfig and not options.architecture:
-    options.architecture = options.cmtConfig
-elif not options.cmtConfig and options.architecture:
-    options.cmtConfig = options.architecture
 
 # use runGen
 if options.useAthenaPackages and options.alrb:
@@ -1284,6 +1282,9 @@ if options.containerImage != '' and options.alrb:
     taskParamMap['architecture'] = options.architecture
 else:
     taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
+    if options.architecture:
+        taskParamMap['architecture'] = (taskParamMap['architecture'] if taskParamMap['architecture'] else '') \
+                                       + options.architecture
 taskParamMap['transUses'] = athenaVer
 if athenaVer != '':
     taskParamMap['transHome'] = 'AnalysisTransforms'+cacheVer+nightVer

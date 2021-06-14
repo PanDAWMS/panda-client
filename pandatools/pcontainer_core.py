@@ -37,8 +37,12 @@ def make_arg_parse():
                       help='Site name where jobs are sent. If omitted, jobs are automatically sent to sites '
                            'where input is available. A comma-separated list of sites can be specified '
                            '(e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list')
-    optP.add_argument('--architecture', action='store', dest='cmtConfig', default=None, metavar='ARCHITECTURE',
-                      help='description string for HW requirements')
+    optP.add_argument('--architecture', action='store', dest='architecture', default='',
+                      help="CPU and/or GPU requirements. #CPU_spec&GPU_spec where CPU or GPU spec can be "
+                           "omitted. CPU_spec = architecture<-vendor<-instruction set>>, "
+                           "GPU_spec = vendor<-model>. A wildcards can be used if there is no special "
+                           "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
+                           "CPU with avx2 support and nvidia GPU")
     optP.add_argument('--noSubmit', action='store_const', const=True, dest='noSubmit', default=None,
                       help=argparse.SUPPRESS)
     optP.add_argument('--outDS', action='store', dest='outDS', default=None,

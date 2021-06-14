@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.76
+  * changed --architecture to follow https://its.cern.ch/jira/browse/CRIC-173
+
 1.4.75
   * added --noSeparateLog to prun
 
