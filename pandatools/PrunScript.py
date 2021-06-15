@@ -784,7 +784,7 @@ elif options.athenaTag != '':
     athenaVer, cacheVer, nightVer = AthenaUtils.parse_athena_tag(options.athenaTag, options.verbose, tmpLog)
 
 # set CMTCONFIG
-options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer,cacheVer,nightVer,options.cmtConfig)
+options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer, cacheVer, nightVer, options.cmtConfig, options.verbose)
 
 # check CMTCONFIG
 if not AthenaUtils.checkCmtConfig(cmtConfig,options.cmtConfig,options.noBuild):

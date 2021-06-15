@@ -1371,7 +1371,7 @@ def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbo
             tmpLog.error('environment variable CMTCONFIG is undefined')
             sys.exit(EC_Config)
     # get default cmtconfig according to Atlas release
-    if athenaVer is not None:
+    if athenaVer:
         # remove prefix
         verStr = re.sub('^[^-]+-','',athenaVer)
         # get cmtconfig list
