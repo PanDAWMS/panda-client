@@ -1601,9 +1601,6 @@ if options.trf:
 # general input format
 if options.generalInput:
     param += '--generalInput '
-# use local access for TRF and BS
-if (options.trf or runConfig.input.inBS) and not options.forceDirectIO:
-    param += '--useLocalIO '
 # use theApp.nextEvent
 if options.useNextEvent:
     param += '--useNextEvent '
@@ -1931,17 +1928,13 @@ taskParamMap['jobParameters'] += [
      },
     ]
 
-# use local IO for trf
-if (options.trf or runConfig.input.inBS) and not options.forceDirectIO:
+# use local IO for trf or BS
+if options.forceStaged or ((options.trf or runConfig.input.inBS) and not options.forceDirectIO):
     taskParamMap['useLocalIO'] = 1
 
 # use AMI to get the number of events per file
 if options.useAMIEventLevelSplit == True:
     taskParamMap['getNumEventsInMetadata'] = True
-
-# force stage-in
-if options.forceStaged:
-    taskParamMap['useLocalIO'] = 1
 
 # avoid VP
 if options.avoidVP:
