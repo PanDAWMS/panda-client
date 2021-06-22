@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.78
+  * added --maxLoopCount to phpo
+
 1.4.77
   * removed --useLocalIO from job params
 

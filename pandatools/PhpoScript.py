@@ -58,6 +58,9 @@ group_config.add_argument('--maxEvaluationJobs', action='store', dest='maxEvalua
                                '(for each segment in segmented HPO). 2*maxPoints by default. '
                                'The task is terminated when all hyperparameter points are evaluated or '
                                'the number of evaluation jobs reaches maxEvaluationJobs')
+group_config.add_argument('--maxPointsPerEvaluationJob', action='store', dest='maxPointsPerEvaluationJob',
+                          default=None, type=int,
+                          help='The max number of hyperparameter points taken in each evaluation job')
 group_config.add_argument('--nPointsPerIteration', action='store', dest='nPointsPerIteration', default=2, type=int,
                           help='The max number of hyperparameter points generated in each iteration. 2 by default '
                                'Simply speaking, the steering container is executed maxPoints/nPointsPerIteration '
@@ -455,7 +458,6 @@ if options.segmentSpecFile is not None:
          },
     ]
 
-
 if options.evaluationMetrics is not None:
     lfn = '$JEDITASKID.metrics.${SN}.tgz'
     if options.segmentSpecFile is not None:
@@ -470,6 +472,13 @@ if options.evaluationMetrics is not None:
          },
         {'type': 'constant',
          'value': '--outMetricsFile=${{OUTPUT0}}^{0}'.format(options.evaluationMetrics),
+         },
+    ]
+
+if options.maxPointsPerEvaluationJob:
+    taskParamMap['jobParameters'] += [
+        {'type': 'constant',
+         'value': '--maxLoopCount={}'.format(options.maxPointsPerEvaluationJob),
          },
     ]
 
