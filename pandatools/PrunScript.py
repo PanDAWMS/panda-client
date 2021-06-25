@@ -113,6 +113,8 @@ group_input.add_argument('--inDS',action='store',dest='inDS',default='',
                   help='Name of an input dataset or dataset container')
 group_input.add_argument('--notExpandInDS', action='store_const', const=True, dest='notExpandInDS',default=False,
                          help='Allow jobs to use files across dataset boundaries in input dataset container')
+group_input.add_argument('--notExpandSecDSs', action='store_const', const=True, dest='notExpandSecDSs',default=False,
+                         help='Use files across dataset boundaries in secondary dataset containers')
 group_input.add_argument('--inDsTxt',action='store',dest='inDsTxt',default='',
                          help='A text file which contains the list of datasets to run over. Newlines are replaced by commas and the result is set to --inDS. Lines starting with # are ignored')
 group_input.add_argument('--respectLB', action='store_const', const=True, dest='respectLB', default=False,
@@ -1623,7 +1625,7 @@ if options.secondaryDSs != {}:
         tmpMap = options.secondaryDSs[tmpDsName]
         # make template item
         streamName = tmpMap['streamName']
-        if options.loadXML is None:
+        if options.loadXML is None and not options.notExpandSecDSs:
             expandFlag = True
         else:
             expandFlag = False

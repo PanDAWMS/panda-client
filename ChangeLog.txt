@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.79
+  * added --notExpandSecDSs to prun
+
 1.4.78
   * added --maxLoopCount to phpo
 
