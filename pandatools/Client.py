@@ -1509,3 +1509,40 @@ def send_file_recovery_request(task_id, dry_run=False, verbose=False):
             msg += ' raw output="{}"'.format(str(output))
         tmp_log.error(msg)
         return EC_Failed, msg
+
+
+# send workflow request
+def send_workflow_request(params, verbose=False):
+    """Send a workflow request
+       args:
+          params: a workflow request dictionary
+          verbose: True to see verbose message
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          a tuple of (True/False and diagnostic message). True if the request was accepted
+    """
+    tmp_log = PLogger.getPandaLogger()
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    output = None
+    url = baseURLSSL + '/put_workflow_request'
+    try:
+        data = {'data': json.dumps(params)}
+        status, output = curl.post(url, data, compress_body=True, is_json=True)
+        if status != 0:
+            tmp_log.error(output)
+            return EC_Failed, output
+        else:
+            return 0, output
+    except Exception as e:
+        msg = '{}.'.format(str(e))
+        if output:
+            msg += ' raw output="{}"'.format(str(output))
+        tmp_log.error(msg)
+        return EC_Failed, msg

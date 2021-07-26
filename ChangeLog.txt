@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.80
+  * added --outDiskCount to pathena and prun
+
 1.4.79
   * added --notExpandSecDSs to prun
 

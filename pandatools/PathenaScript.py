@@ -34,7 +34,7 @@ sys.argv.insert(0, 'pathena')
 
 usage = """pathena [options] <jobOption1.py> [<jobOption2.py> [...]]
 
-  HowTo is available at https://twiki.cern.ch/twiki/bin/view/PanDA/PandaAthena"""
+  HowTo is available at https://panda-wms.readthedocs.io/en/latest/client/pathena.html"""
 
 examples = """Examples:
   pathena --inDS=... --outDS=... jobO_1.py jobO_2.py
@@ -297,6 +297,11 @@ group_job.add_argument('--useAMIAutoConf',action='store_const',const=True,dest='
                 help='Use AMI for AutoConfiguration')
 group_submit.add_argument('--memory', action='store', dest='memory',  default=-1,
                 type=int,    help='Required memory size in MB. e.g., for 1GB --memory 1024')
+group_submit.add_argument('--outDiskCount', action='store', dest='outDiskCount', default=None, type=int,
+                          help="Expected output size in kB per 1 MB of input. The system automatically calculates this "
+                               "value using successful jobs and the value contains a safety offset (100kB). "
+                               "Use this option to disable it when jobs cannot have enough input files "
+                               "due to the offset")
 group_submit.add_argument('--nCore', action='store', dest='nCore', default=-1,
                 type=int,    help='The number of CPU cores. Note that the system distinguishes only nCore=1 and nCore>1. This means that even if you set nCore=2 jobs can go to sites with nCore=8 and your application must use the 8 cores there. The number of available cores is defined in an environment variable, $ATHENA_PROC_NUMBER, on WNs. Your application must check the env variable when starting up to dynamically change the number of cores')
 action = group_job.add_argument('--nThreads', action='store', dest='nThreads', default=-1,
@@ -1466,6 +1471,9 @@ if options.cpuTimePerEvent > 0:
     taskParamMap['cpuTimeUnit'] = 'HS06sPerEvent'
 if options.memory > 0:
     taskParamMap['ramCount'] = options.memory
+if options.outDiskCount is not None:
+    taskParamMap['outDiskCount'] = options.outDiskCount
+    taskParamMap['outDiskUnit'] = 'kBFixed'
 if options.nCore > 1:
     taskParamMap['coreCount'] = options.nCore
 elif options.nThreads > 1:

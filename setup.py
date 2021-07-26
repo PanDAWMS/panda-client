@@ -162,6 +162,7 @@ setup(
                 'scripts/pbook',
                 'scripts/pathena',
                 'scripts/phpo',
+                'scripts/pflow',
                 ],
     data_files = [ ('etc/panda', ['templates/panda_setup.sh.template',
                                   'templates/panda_setup.csh.template',

@@ -171,7 +171,7 @@ option_names = set(vars(options).keys())
 
 jsonExecStr = ''
 if options.loadJson is not None:
-    with open(options.loadJson) as f:
+    with open(os.path.expanduser(options.loadJson)) as f:
         json_options = json.load(f)
         for k in json_options:
             if k in option_names:
@@ -521,5 +521,5 @@ dumpItem['jediTaskID'] = taskID
 
 # dump
 if options.dumpJson is not None:
-    with open(options.dumpJson, 'w') as f:
+    with open(os.path.expanduser(options.dumpJson), 'w') as f:
         json.dump(dumpItem, f)

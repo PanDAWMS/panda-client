@@ -168,9 +168,14 @@ class PandaAPI(object):
                 PLogger.disable_logging()
             # run
             if command_name in self.command_body:
-                self.command_body[command_name].reload()
+                if hasattr(self.command_body[command_name], 'main'):
+                    getattr(self.command_body[command_name], 'main')()
+                else:
+                    self.command_body[command_name].reload()
             else:
                 self.command_body[command_name] = importlib.import_module(module_name)
+                if hasattr(self.command_body[command_name], 'main'):
+                    getattr(self.command_body[command_name], 'main')()
             stat = True
         except SystemExit as e:
             if e.code == 0:
