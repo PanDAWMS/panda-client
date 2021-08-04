@@ -28,11 +28,8 @@ def main(get_taskparams=False, ext_args=None):
 
     # error code
     EC_Config    = 10
-    EC_Dataset   = 40
     EC_Post      = 50
     EC_Archive   = 60
-    EC_Split     = 70
-    EC_MyProxy   = 80
     EC_Submit    = 90
 
     # tweak sys.argv
@@ -230,6 +227,9 @@ def main(get_taskparams=False, ext_args=None):
                     help='Skip N files in the input dataset')
     group_job.add_argument('--exec',action='store',dest='jobParams',default='',
                     help='execution string. e.g., --exec "./myscript arg1 arg2"')
+    group_output.add_argument('--execWithRealFileNames', action='store_const', const=True, dest='execWithRealFileNames',
+                              default=False,
+                              help='Run the execution string with real output filenames')
     group_job.add_argument('--nFilesPerJob',action='store',dest='nFilesPerJob',default=None,type=int,
                     help='Number of files on which each sub-job runs (default 50). Note that this is the number of files per sub-job in the primary dataset even if --secondaryDSs is used')
     group_job.add_argument('--nJobs',action='store',dest='nJobs',default=-1,type=int,
@@ -1474,7 +1474,6 @@ def main(get_taskparams=False, ext_args=None):
              },
             ]
 
-
     # build
     if options.containerImage == '' or options.useSandbox:
         if options.noBuild and not options.noCompile:
@@ -1685,6 +1684,9 @@ def main(get_taskparams=False, ext_args=None):
     # debug parameters
     if options.queueData != '':
         jobParameters += "--overwriteQueuedata=%s " % options.queueData
+    # exec string with real output filenames
+    if options.execWithRealFileNames:
+        jobParameters += "--execWithRealFileNames "
     # container
     if options.containerImage != '' and not options.alrb:
         jobParameters += "--containerImage {0} ".format(options.containerImage)

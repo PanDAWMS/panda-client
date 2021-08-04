@@ -38,6 +38,7 @@ def main():
     group_config = optP.add_group('config', 'single configuration file to set multiple options')
     group_submit = optP.add_group('submit', 'job submission/site/retry')
     group_expert = optP.add_group('expert', 'for experts/developers only')
+    group_build = optP.add_group('build', 'build/compile the package and env setup')
 
     optP.add_helpGroup()
 
@@ -49,6 +50,10 @@ def main():
                               help='Name of the main CWL file to describe the workflow')
     group_output.add_argument('--yaml', action='store', dest='yaml', default=None, required=True,
                               help='Name of the yaml file for workflow parameters')
+
+    group_build.add_argument('--useAthenaPackages', action='store_const', const=True, dest='useAthenaPackages',
+                             default=False,
+                             help='One or more tasks in the workflow uses locally-built Athena packages')
 
     group_output.add_argument('--outDS', action='store', dest='outDS', default=None, required=True,
                               help='Name of the dataset for output and log files')
@@ -135,24 +140,30 @@ def main():
     matchURL = re.search("(http.*://[^/]+)/", Client.baseURLCSRVSSL)
     sourceURL = matchURL.group(1)
 
-    # making task params with dummy exec
-    prun_exec_str = '--exec __dummy_exec_str__ --containerImage __dummy_container__ --outDS {}'.format(options.outDS)
-    if options.noSubmit:
-        prun_exec_str += ' --noSubmit'
-    if options.verbose:
-        prun_exec_str += ' -v'
-    taskParamMap = PrunScript.main(get_taskparams=True, ext_args=shlex.split(prun_exec_str))
-    del taskParamMap['noInput']
-    del taskParamMap['nEvents']
-    del taskParamMap['nEventsPerJob']
-
-    params = {'taskParams': taskParamMap,
+    params = {'taskParams': {},
               'sourceURL': sourceURL,
               'sandbox': archiveName,
               'workflowSpecFile': options.cwl,
               'workflowInputFile': options.yaml,
               'outDS': options.outDS
               }
+
+    # making task params with dummy exec
+    task_type_args = {'container': '--containerImage __dummy_container__'}
+    if options.useAthenaPackages:
+        task_type_args['athena'] = '--useAthenaPackages'
+    for task_type in task_type_args:
+        prun_exec_str = '--exec __dummy_exec_str__ --outDS {} {}'.format(options.outDS, task_type_args[task_type])
+        if options.noSubmit:
+            prun_exec_str += ' --noSubmit'
+        if options.verbose:
+            prun_exec_str += ' -v'
+        taskParamMap = PrunScript.main(get_taskparams=True, ext_args=shlex.split(prun_exec_str))
+        del taskParamMap['noInput']
+        del taskParamMap['nEvents']
+        del taskParamMap['nEventsPerJob']
+
+        params['taskParams'][task_type] = taskParamMap
 
     if options.noSubmit:
         if options.noSubmit:

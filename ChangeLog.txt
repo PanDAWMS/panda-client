@@ -1,5 +1,9 @@
 ** Release Notes
 
+current
+  * added --execWithRealFileNames to prun
+  * added --useAthenaPackages to pflow
+
 1.4.80
   * added --outDiskCount to pathena and prun
 
