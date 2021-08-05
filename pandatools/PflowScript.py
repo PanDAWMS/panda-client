@@ -71,6 +71,8 @@ def main():
 
     group_expert.add_argument('--intrSrv', action='store_const', const=True, dest='intrSrv', default=False,
                               help="Please don't use this option. Only for developers to use the intr panda server")
+    group_expert.add_argument('--relayHost', action='store', dest='relayHost', default=None,
+                              help="Please don't use this option. Only for developers to use the relay host")
 
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -178,7 +180,7 @@ def main():
         sys.exit(0)
 
     tmpLog.info("submit {0}".format(options.outDS))
-    tmpStat, tmpOut = Client.send_workflow_request(params, options.verbose)
+    tmpStat, tmpOut = Client.send_workflow_request(params, options.relayHost, options.verbose)
     # result
     exitCode = None
     if tmpStat != 0:

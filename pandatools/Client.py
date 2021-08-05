@@ -1512,10 +1512,11 @@ def send_file_recovery_request(task_id, dry_run=False, verbose=False):
 
 
 # send workflow request
-def send_workflow_request(params, verbose=False):
+def send_workflow_request(params, relay_host=None, verbose=False):
     """Send a workflow request
        args:
           params: a workflow request dictionary
+          relay_host: relay hostname to send request
           verbose: True to see verbose message
        returns:
           status code
@@ -1531,7 +1532,11 @@ def send_workflow_request(params, verbose=False):
     curl.verbose = verbose
     # execute
     output = None
-    url = baseURLSSL + '/put_workflow_request'
+    if relay_host:
+        url = 'https://{}:25443/server/panda'.format(relay_host)
+    else:
+        url = baseURLSSL
+    url += '/put_workflow_request'
     try:
         data = {'data': json.dumps(params)}
         status, output = curl.post(url, data, compress_body=True, is_json=True)
