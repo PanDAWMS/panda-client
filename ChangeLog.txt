@@ -1,6 +1,6 @@
 ** Release Notes
 
-current
+1.4.81
   * added --execWithRealFileNames to prun
   * added --useAthenaPackages and --relayHost to pflow
 

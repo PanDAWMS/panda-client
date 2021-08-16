@@ -147,6 +147,7 @@ def main():
               'sandbox': archiveName,
               'workflowSpecFile': options.cwl,
               'workflowInputFile': options.yaml,
+              'language': 'cwl',
               'outDS': options.outDS
               }
 
