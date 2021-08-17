@@ -19,8 +19,9 @@ try:
 except Exception:
     unicode = str
 
+
 # main
-def main(get_taskparams=False, ext_args=None, no_sandbox=False):
+def main(get_taskparams=False, ext_args=None, dry_mode=False):
     # default cloud/site
     defaultCloud = None
     defaultSite  = 'AUTO'
@@ -716,7 +717,8 @@ def main(get_taskparams=False, ext_args=None, no_sandbox=False):
 
     # avoid gathering up the home dir
     if 'HOME' in os.environ and not options.useHomeDir and not options.useAthenaPackages \
-           and os.path.realpath(os.path.expanduser(os.environ['HOME'])) == options.workDir:
+            and os.path.realpath(os.path.expanduser(os.environ['HOME'])) == options.workDir \
+            and not dry_mode:
         tmpStr  = 'prun is executed just under the HOME directoy '
         tmpStr += 'and is going to send all files under the dir including ~/Mail/* and ~/private/*. '
         tmpStr += 'Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)'
@@ -978,7 +980,7 @@ def main(get_taskparams=False, ext_args=None, no_sandbox=False):
     # archive sources and send it to HTTP-reachable location
 
     # create archive
-    if (options.containerImage == '' or options.useSandbox) and not no_sandbox:
+    if (options.containerImage == '' or options.useSandbox) and not dry_mode:
         if options.inTarBall == '':
             # copy RootCore packages
             if options.useRootCore:
@@ -1475,7 +1477,7 @@ def main(get_taskparams=False, ext_args=None, no_sandbox=False):
             ]
 
     # build
-    if options.containerImage == '' or options.useSandbox:
+    if (options.containerImage == '' or options.useSandbox) and not dry_mode:
         if options.noBuild and not options.noCompile:
             taskParamMap['jobParameters'] += [
                 {'type':'constant',
@@ -1721,7 +1723,7 @@ def main(get_taskparams=False, ext_args=None, no_sandbox=False):
         taskParamMap['avoidVP'] = True
 
     # build step
-    if options.noBuild and not options.noCompile:
+    if (options.noBuild and not options.noCompile) or dry_mode:
         pass
     else:
         jobParameters = '-i ${IN} -o ${OUT} --sourceURL ${SURL} '
@@ -1873,7 +1875,7 @@ def main(get_taskparams=False, ext_args=None, no_sandbox=False):
         tmpStr = ''
         taskID = None
         # check outDS format
-        if not PsubUtils.checkOutDsName(options.outDS,options.official,nickName,
+        if not dry_mode and not PsubUtils.checkOutDsName(options.outDS,options.official,nickName,
                                         options.mergeOutput, options.verbose):
             tmpStr = "invalid output datasetname:%s" % options.outDS
             tmpLog.error(tmpStr)
