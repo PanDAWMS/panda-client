@@ -8,7 +8,7 @@ import distutils
 sys.path.insert(0,'.')
 
 # get release version
-from pandatools import PandaToolsPkgInfo
+from pandaclient import PandaToolsPkgInfo
 release_version = PandaToolsPkgInfo.release_version
 
 from setuptools import setup
@@ -118,20 +118,21 @@ class install_data_panda (install_data_org):
         # install
         self.data_files = new_data_files
         install_data_org.run(self)
-        # post install
-        target = os.path.join(self.install_purelib, 'taskbuffer')
-        if not os.path.exists(target):
-            os.symlink('pandatools',
-                       os.path.join(self.install_purelib, 'taskbuffer'))
-        target = os.path.join(self.install_purelib, 'pandaserver')
-        if not os.path.exists(target):
-            os.makedirs(target)
-        target_init = os.path.join(target, '__init__.py')
-        with open(target_init, 'w'):
-            pass
-        target = os.path.join(target, 'taskbuffer')
-        if not os.path.exists(target):
-            os.symlink('../pandatools', target)
+        # post install only for client installation
+        if not os.path.exists(os.path.join(self.install_purelib, 'pandacommon')):
+            target = os.path.join(self.install_purelib, 'taskbuffer')
+            if not os.path.exists(target):
+                os.symlink('pandaclient',
+                           os.path.join(self.install_purelib, 'taskbuffer'))
+            target = os.path.join(self.install_purelib, 'pandaserver')
+            if not os.path.exists(target):
+                os.makedirs(target)
+            target_init = os.path.join(target, '__init__.py')
+            with open(target_init, 'w'):
+                pass
+            target = os.path.join(target, 'taskbuffer')
+            if not os.path.exists(target):
+                os.symlink('../pandaclient', target)
         # delete
         for autoGenFile in autoGenFiles:
             try:
@@ -155,7 +156,7 @@ setup(
         'jupyter': ['pandas', 'jupyter-dash'],
     },
 
-    packages = [ 'pandatools',
+    packages = [ 'pandaclient',
                  ],
     scripts = [ 'scripts/prun', 
                 'scripts/pcontainer',

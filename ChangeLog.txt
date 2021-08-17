@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * renamed pandatools to pandaclient
+
 1.4.81
   * added --execWithRealFileNames to prun
   * added --useAthenaPackages and --relayHost to pflow

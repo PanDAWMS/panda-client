@@ -215,7 +215,7 @@ class PandaAPI(object):
                status: True if succeeded. Otherwise, False
                a dictionary: Task submission attributes including jediTaskID
         """
-        return self.execute_xyz('prun', 'pandatools.PrunScript', args, console_log)
+        return self.execute_xyz('prun', 'pandaclient.PrunScript', args, console_log)
 
     # execute pathena
     def execute_pathena(self, args, console_log=True):
@@ -229,7 +229,7 @@ class PandaAPI(object):
                status: True if succeeded. Otherwise, False
                a dictionary: Task submission attributes including jediTaskID
         """
-        return self.execute_xyz('pathena', 'pandatools.PathenaScript', args, console_log)
+        return self.execute_xyz('pathena', 'pandaclient.PathenaScript', args, console_log)
 
     # execute phpo
     def execute_phpo(self, args, console_log=True):
@@ -243,7 +243,7 @@ class PandaAPI(object):
                status: True if succeeded. Otherwise, False
                a dictionary: Task submission attributes including jediTaskID
         """
-        return self.execute_xyz('phpo', 'pandatools.PhpoScript', args, console_log)
+        return self.execute_xyz('phpo', 'pandaclient.PhpoScript', args, console_log)
 
     # hello
     def hello(self, verbose=False):

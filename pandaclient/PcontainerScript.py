@@ -1,7 +1,7 @@
 import os
 import sys
 
-from pandatools import pcontainer_core
+from pandaclient import pcontainer_core
 
 os.environ['PANDA_EXEC_STRING'] = 'pcontainer'
 

@@ -4,13 +4,13 @@ import os
 import shlex
 import atexit
 
-from pandatools.Group_argparse import GroupArgParser
-from pandatools import PLogger
-from pandatools import PandaToolsPkgInfo
-from pandatools import MiscUtils
-from pandatools import Client
-from pandatools import PsubUtils
-from pandatools import PrunScript
+from pandaclient.Group_argparse import GroupArgParser
+from pandaclient import PLogger
+from pandaclient import PandaToolsPkgInfo
+from pandaclient import MiscUtils
+from pandaclient import Client
+from pandaclient import PsubUtils
+from pandaclient import PrunScript
 
 try:
     from urllib import quote

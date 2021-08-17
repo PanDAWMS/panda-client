@@ -14,9 +14,9 @@ from . import Client
 # from . import BookConfig
 from . import PLogger
 from . import PsubUtils
-from pandatools import queryPandaMonUtils
-from pandatools import localSpecs
-from pandatools import PsubUtils
+from pandaclient import queryPandaMonUtils
+from pandaclient import localSpecs
+from pandaclient import PsubUtils
 
 
 def is_reqid(id):

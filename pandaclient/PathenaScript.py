@@ -5,7 +5,7 @@ import copy
 import shutil
 import atexit
 import argparse
-from pandatools.Group_argparse import GroupArgParser
+from pandaclient.Group_argparse import GroupArgParser
 import random
 import pickle
 import json
@@ -448,8 +448,8 @@ group_job.add_argument('--maxWalltime', action='store', dest='maxWalltime', defa
   help='Max walltime for each job in hours. Note that this option works only ' \
                      'when the nevents metadata of input files are available in rucio')
 
-from pandatools import MiscUtils
-from pandatools.MiscUtils import commands_get_output, commands_get_status_output, commands_get_status_output_with_env
+from pandaclient import MiscUtils
+from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, commands_get_status_output_with_env
 
 # parse options
 # check against the removed options first
@@ -499,15 +499,15 @@ if options.loadJson is not None:
         print('')
 
 # display version
-from pandatools import PandaToolsPkgInfo
+from pandaclient import PandaToolsPkgInfo
 if options.version:
     print("Version: %s" % PandaToolsPkgInfo.release_version)
     sys.exit(0)
 
-from pandatools import Client
-from pandatools import PsubUtils
-from pandatools import AthenaUtils
-from pandatools import PLogger
+from pandaclient import Client
+from pandaclient import PsubUtils
+from pandaclient import AthenaUtils
+from pandaclient import PLogger
 
 # update panda-client
 if options.update:

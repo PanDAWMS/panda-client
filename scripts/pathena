@@ -20,7 +20,7 @@ esac
 done
 
 if [ -z "$PANDA_PY3" ]; then
-  /usr/bin/python -u -W ignore -c "import pandatools.PathenaScript" "$@"
+  /usr/bin/python -u -W ignore -c "import pandaclient.PathenaScript" "$@"
 else
-  /usr/bin/python3 -u -W ignore -c "import pandatools.PathenaScript" "$@"
+  /usr/bin/python3 -u -W ignore -c "import pandaclient.PathenaScript" "$@"
 fi

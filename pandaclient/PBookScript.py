@@ -10,7 +10,7 @@ import atexit
 import signal
 import tempfile
 
-from pandatools.MiscUtils import commands_get_output
+from pandaclient.MiscUtils import commands_get_output
 try:
     long()
 except Exception:
@@ -31,8 +31,8 @@ else:
 import argparse
 import readline
 
-from pandatools import Client
-from pandatools import PandaToolsPkgInfo
+from pandaclient import Client
+from pandaclient import PandaToolsPkgInfo
 
 # readline support
 readline.parse_and_bind('tab: complete')
@@ -79,14 +79,14 @@ atexit.register(_onExit,tmpDir,historyFile)
 for path in sys.path:
     if path == '':
         path = '.'
-    if os.path.exists(path) and os.path.isdir(path) and 'pandatools' in os.listdir(path) \
-           and os.path.exists('%s/pandatools/__init__.py' % path):
+    if os.path.exists(path) and os.path.isdir(path) and 'pandaclient' in os.listdir(path) \
+           and os.path.exists('%s/pandaclient/__init__.py' % path):
         # make symlink for module name
-        os.symlink('%s/pandatools' % path,'%s/taskbuffer' % tmpDir)
+        os.symlink('%s/pandaclient' % path,'%s/taskbuffer' % tmpDir)
         break
 sys.path = [tmpDir]+sys.path
 
-from pandatools import PBookCore    # noqa: E402
+from pandaclient import PBookCore    # noqa: E402
 
 orig_help = help
 

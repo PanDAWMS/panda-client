@@ -4,7 +4,7 @@ import sys
 import shutil
 import atexit
 import argparse
-from pandatools.Group_argparse import GroupArgParser
+from pandaclient.Group_argparse import GroupArgParser
 try:
     from urllib import quote
 except ImportError:
@@ -12,7 +12,7 @@ except ImportError:
 import types
 import json
 import copy
-from pandatools.MiscUtils import commands_get_output, commands_get_status_output
+from pandaclient.MiscUtils import commands_get_output, commands_get_status_output
 
 try:
     unicode
@@ -20,7 +20,7 @@ except Exception:
     unicode = str
 
 # main
-def main(get_taskparams=False, ext_args=None):
+def main(get_taskparams=False, ext_args=None, no_sandbox=False):
     # default cloud/site
     defaultCloud = None
     defaultSite  = 'AUTO'
@@ -415,7 +415,7 @@ def main(get_taskparams=False, ext_args=None):
     group_build.add_argument("-3", action="store_true", dest="python3", default=False,
                       help="Use python3")
 
-    from pandatools import MiscUtils
+    from pandaclient import MiscUtils
 
     # parse options
 
@@ -464,15 +464,15 @@ def main(get_taskparams=False, ext_args=None):
             print('')
 
     # display version
-    from pandatools import PandaToolsPkgInfo
+    from pandaclient import PandaToolsPkgInfo
     if options.version:
         print("Version: %s" % PandaToolsPkgInfo.release_version)
         sys.exit(0)
 
-    from pandatools import Client
-    from pandatools import PsubUtils
-    from pandatools import AthenaUtils
-    from pandatools import PLogger
+    from pandaclient import Client
+    from pandaclient import PsubUtils
+    from pandaclient import AthenaUtils
+    from pandaclient import PLogger
 
     # update panda-client
     if options.update:
@@ -531,7 +531,7 @@ def main(get_taskparams=False, ext_args=None):
     # load submission configuration from xml file (if provided)
     xconfig = None
     if options.loadXML is not None:
-        from pandatools import ParseJobXML
+        from pandaclient import ParseJobXML
         xconfig = ParseJobXML.dom_parser(options.loadXML)
         tmpLog.info('dump XML config')
         xconfig.dump(options.verbose)
@@ -978,7 +978,7 @@ def main(get_taskparams=False, ext_args=None):
     # archive sources and send it to HTTP-reachable location
 
     # create archive
-    if options.containerImage == '' or options.useSandbox:
+    if (options.containerImage == '' or options.useSandbox) and not no_sandbox:
         if options.inTarBall == '':
             # copy RootCore packages
             if options.useRootCore:

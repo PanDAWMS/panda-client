@@ -20,7 +20,7 @@ esac
 done
 
 if [ -z "$PANDA_PY3" ]; then
-  /usr/bin/python -u -W ignore -c 'import pandatools.PBookScript as pbook; pbook.main()' "$@"
+  /usr/bin/python -u -W ignore -c 'import pandaclient.PBookScript as pbook; pbook.main()' "$@"
 else
-  /usr/bin/python3 -u -W ignore -c 'import pandatools.PBookScript as pbook; pbook.main()' "$@"
+  /usr/bin/python3 -u -W ignore -c 'import pandaclient.PBookScript as pbook; pbook.main()' "$@"
 fi
