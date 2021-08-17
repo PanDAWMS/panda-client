@@ -701,7 +701,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                        "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option.")
 
     # check grid-proxy
-    PsubUtils.check_proxy(options.verbose, options.vomsRoles)
+    if not dry_mode:
+        PsubUtils.check_proxy(options.verbose, options.vomsRoles)
 
     # convert in/outTarBall to full path
     if options.inTarBall != '':
@@ -937,7 +938,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         options.reusableSecondary = options.reusableSecondary.split(',')
 
     # get nickname
-    nickName = PsubUtils.getNickname()
+    if not dry_mode:
+        nickName = PsubUtils.getNickname()
+    else:
+        nickName = 'dummy'
 
     if nickName == '':
         sys.exit(EC_Config)
