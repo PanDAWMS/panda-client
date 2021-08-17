@@ -984,6 +984,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     # archive sources and send it to HTTP-reachable location
 
     # create archive
+    archiveName = None
     if (options.containerImage == '' or options.useSandbox) and not dry_mode:
         if options.inTarBall == '':
             # copy RootCore packages
@@ -1481,7 +1482,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             ]
 
     # build
-    if (options.containerImage == '' or options.useSandbox) and not dry_mode:
+    if options.containerImage == '' or options.useSandbox:
         if options.noBuild and not options.noCompile:
             taskParamMap['jobParameters'] += [
                 {'type':'constant',
@@ -1727,7 +1728,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         taskParamMap['avoidVP'] = True
 
     # build step
-    if (options.noBuild and not options.noCompile) or dry_mode:
+    if options.noBuild and not options.noCompile:
         pass
     else:
         jobParameters = '-i ${IN} -o ${OUT} --sourceURL ${SURL} '
