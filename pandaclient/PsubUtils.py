@@ -261,13 +261,15 @@ def checkOutDsName(outDS,official,nickName='',mergeOutput=False,verbose=False):
 
 
 # convert sys.argv to string
-def convSysArgv():
+def convSysArgv(argv=None):
+    if argv is None:
+        argv = sys.argv
     # job params
     if 'PANDA_EXEC_STRING' in os.environ:
         paramStr = os.environ['PANDA_EXEC_STRING']
     else:
-        paramStr = sys.argv[0].split('/')[-1]
-    for item in sys.argv[1:]:
+        paramStr = argv[0].split('/')[-1]
+    for item in argv[1:]:
         # remove option
         match = re.search('(^-[^=]+=)(.+)',item)
         noSpace = False

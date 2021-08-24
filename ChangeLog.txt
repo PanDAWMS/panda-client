@@ -1,6 +1,9 @@
 ** Release Notes
 
 current
+  * to allow phpo in workflow
+
+1.4.82
   * renamed pandatools to pandaclient
 
 1.4.81

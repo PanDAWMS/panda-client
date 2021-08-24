@@ -115,7 +115,7 @@ def main():
         tmpLog.debug("making sandbox")
     archiveName = 'jobO.%s.tar.gz' % MiscUtils.wrappedUuidGen()
     archiveFullName = os.path.join(tmpDir, archiveName)
-    extensions = ['cwl', 'yaml']
+    extensions = ['cwl', 'yaml', 'json']
     find_opt = ' -o '.join(['-name "*.{0}"'.format(e) for e in extensions])
     tmpOut = MiscUtils.commands_get_output('find . {0} | tar cvfz {1} --files-from - '.format(find_opt, archiveFullName))
 
