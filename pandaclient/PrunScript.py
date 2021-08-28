@@ -963,7 +963,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             tmpLog.error("--nGBPerJob must be positive")
             sys.exit(EC_Config)
         # incompatible parameters
-        if options.nFilesPerJob > 0:
+        if options.nFilesPerJob is not None and options.nFilesPerJob > 0:
             tmpLog.error("--nFilesPerJob and --nGBPerJob must be used exclusively")
             sys.exit(EC_Config)
 

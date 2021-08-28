@@ -190,7 +190,9 @@ setup(
                                         'share/ConfigExtractor.py',
                                         ]
                     ),
-                                     
+                   ('etc/panda/share/cwl', ['share/cwl/prun.cwl',
+                                            ]
+                    ),
                    ],
     cmdclass={
         'install': install_panda,

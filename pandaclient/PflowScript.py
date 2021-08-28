@@ -11,6 +11,7 @@ from pandaclient import MiscUtils
 from pandaclient import Client
 from pandaclient import PsubUtils
 from pandaclient import PrunScript
+from pandaclient import pflow_checker
 
 try:
     from urllib import quote
@@ -39,6 +40,8 @@ def main():
     group_submit = optP.add_group('submit', 'job submission/site/retry')
     group_expert = optP.add_group('expert', 'for experts/developers only')
     group_build = optP.add_group('build', 'build/compile the package and env setup')
+    group_check = optP.add_group('check', 'check workflow description')
+
 
     optP.add_helpGroup()
 
@@ -46,6 +49,11 @@ def main():
                               help='Displays version')
     group_config.add_argument('-v', action='store_const', const=True, dest='verbose', default=False,
                               help='Verbose')
+    group_check.add_argument('--check', action='store_const', const=True, dest='checkOnly', default=False,
+                              help='Check workflow description locally')
+    group_check.add_argument('--debug', action='store_const', const=True, dest='debugCheck', default=False,
+                              help='verbose mode when checking workflow description locally')
+
     group_output.add_argument('--cwl', action='store', dest='cwl', default=None, required=True,
                               help='Name of the main CWL file to describe the workflow')
     group_output.add_argument('--yaml', action='store', dest='yaml', default=None, required=True,
@@ -82,6 +90,10 @@ def main():
 
     if options.version:
         print("Version: %s" % PandaToolsPkgInfo.release_version)
+        sys.exit(0)
+
+    if options.checkOnly:
+        pflow_checker.check(options.cwl, options.yaml, options.outDS, options.debugCheck, tmpLog)
         sys.exit(0)
 
     # check grid-proxy

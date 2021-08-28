@@ -12,7 +12,7 @@ def setLogger(tmpLog):
 
 
 # return logger
-def getPandaLogger():
+def getPandaLogger(use_stdout=True):
     # use root logger
     global rootLog
     if rootLog is None:
@@ -20,7 +20,10 @@ def getPandaLogger():
     # add StreamHandler if no handler
     if rootLog.handlers == []:
         rootLog.setLevel(logging.DEBUG)
-        console = logging.StreamHandler(sys.stdout)
+        if use_stdout:
+            console = logging.StreamHandler(sys.stdout)
+        else:
+            console = logging.StreamHandler(sys.stderr)
         formatter = logging.Formatter('%(levelname)s : %(message)s')
         console.setFormatter(formatter)
         rootLog.addHandler(console)
