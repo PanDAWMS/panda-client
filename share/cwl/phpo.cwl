@@ -4,27 +4,18 @@ baseCommand: python
 stdout: cwl.output.json
 
 inputs:
-  opt_exec: string
   opt_args: string
-  opt_inDS:
+  opt_trainingDS:
     type:
       - "null"
       - string
       - string[]
-  opt_inDsType:
+  opt_trainingDsType:
     type:
       - "null"
       - string
       - string[]
-  opt_secondaryDSs:
-    type:
-      - "null"
-      - string
-      - string[]
-  opt_secondaryDsTypes:
-    type:
-      - "null"
-      - string[]
+
 outputs:
   outDS:
     type:
@@ -34,22 +25,24 @@ arguments:
   - prefix: '-c'
     valueFrom: |
       try:
-          import json, sys, shlex, os, traceback, ast, base64
+          import json, sys, shlex, os, traceback, ast, base64, glob, shutil
           from pandaclient import PLogger
           log_stream = PLogger.getPandaLogger(False)
-          from pandaclient import PrunScript
+          from pandaclient import PhpoScript
           outDS = os.environ['WORKFLOW_OUTPUT_BASE'] + '_<suffix>'
+          srcDir = os.environ['WORKFLOW_HOME']
+          for srcFile in glob.glob(os.path.join(srcDir, '*.json')):
+              shutil.copy(srcFile, os.getcwd())
           args = r"""$(inputs.opt_args)"""
           args = args.split()
-          args += ['--exec', r"""$(inputs.opt_exec)"""]
           args += ['--outDS', outDS]
           outputs = []
-          inDS = r"""$(inputs.opt_inDS)"""
+          inDS = r"""$(inputs.opt_trainingDS)"""
           try:
               inDS = ast.literal_eval(inDS)
           except Exception:
               inDS = [inDS]
-          inDsType = r"""$(inputs.opt_inDsType)"""
+          inDsType = r"""$(inputs.opt_trainingDsType)"""
           if inDsType == 'null':
               inDsType = None
               inDsType = [None] * len(inDS)
@@ -67,47 +60,13 @@ arguments:
               else:
                   newInDS = tmpDsStr
               newInDsList.append(newInDS)
-          secondaryDSs = r"""$(inputs.opt_secondaryDSs)"""
-          if secondaryDSs == 'null':
-              newSecDsList = None
-          else:
-              try:
-                   secondaryDSs = ast.literal_eval(secondaryDSs)
-              except Exception:
-                   secondaryDSs = [secondaryDSs]
-              secondaryDsTypes = r"""$(inputs.opt_secondaryDsTypes)"""
-              if secondaryDsTypes == 'null':
-                  secondaryDsTypes = [None] * len(secondaryDSs)
-              else:
-                  try:
-                      secondaryDsTypes = ast.literal_eval(secondaryDsTypes)
-                  except Exception:
-                      secondaryDsTypes = [secondaryDsTypes]
-              newSecDsList = []
-              for secDsStr, secDsType in zip(secondaryDSs, secondaryDsTypes):
-                  inputs = secDsStr.split(',')
-                  if len(inputs) > 1:
-                      newSecDS = 'UNRESOLVED'
-                      for input in inputs:
-                          if secDsType and secDsType in input:
-                              newSecDS = input
-                              break
-                  else:
-                      newSecDS = secDsStr
-                  newSecDsList.append(newSecDS)
           # use <br> for \n since \n is sometimes converted to n when python is executed through cwl-runner
           msg_str = '<br>'
-          msg_str += '     type: prun<br>'
+          msg_str += '     type: phpo<br>'
           argStr = ' '.join(shlex.quote(x.strip()) for x in args)
-          secDsIdx = 1
-          if newSecDsList:
-              for secDsStr in newSecDsList:
-                  argStr = argStr.replace('%%{}%%'.format(secDsIdx), secDsStr)
           msg_str += '     args: {}<br>'.format(argStr)
-          msg_str += '    input: {}<br>'.format(', '.join(newInDsList))
-          if newSecDsList:
-              msg_str += '         : {}<br>'.format(newSecDsList)
-          task_params = PrunScript.main(True, args, True)
+          msg_str += ' training: {}<br>'.format(', '.join(newInDsList))
+          task_params = PhpoScript.main(True, args, True)
           for item in task_params['jobParameters']:
               if item["type"] == "template" and item["param_type"] == "output":
                   outputs.append(item["dataset"])

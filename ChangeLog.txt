@@ -3,6 +3,7 @@
 current
   * to allow phpo in workflow
   * added --check to pflow
+  * added phpo.cwl
 
 1.4.82
   * renamed pandatools to pandaclient

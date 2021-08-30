@@ -191,6 +191,7 @@ setup(
                                         ]
                     ),
                    ('etc/panda/share/cwl', ['share/cwl/prun.cwl',
+                                            'share/cwl/phpo.cwl',
                                             ]
                     ),
                    ],

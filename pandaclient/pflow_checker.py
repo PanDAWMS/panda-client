@@ -24,7 +24,8 @@ def check(cwl_file, yaml_file, output_name, verbose, log_stream):
 
     # run cwl-runner
     new_env = os.environ.copy()
-    new_env['WORKFLOW_OUTPUT_BASE'] =output_name
+    new_env['WORKFLOW_OUTPUT_BASE'] = output_name
+    new_env['WORKFLOW_HOME'] = os.getcwd()
     proc = subprocess.Popen(['cwl-runner', '--disable-color', '--preserve-entire-environment', cwl_file, yaml_file],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             universal_newlines=True,
