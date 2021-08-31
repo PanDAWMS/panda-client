@@ -29,6 +29,7 @@ arguments:
           from pandaclient import PLogger
           log_stream = PLogger.getPandaLogger(False)
           from pandaclient import PhpoScript
+          from pandaclient.pflow_checker import make_message, encode_message, emphasize_single_message
           outDS = os.environ['WORKFLOW_OUTPUT_BASE'] + '_<suffix>'
           srcDir = os.environ['WORKFLOW_HOME']
           for srcFile in glob.glob(os.path.join(srcDir, '*.json')):
@@ -60,21 +61,29 @@ arguments:
               else:
                   newInDS = tmpDsStr
               newInDsList.append(newInDS)
-          # use <br> for \n since \n is sometimes converted to n when python is executed through cwl-runner
-          msg_str = '<br>'
-          msg_str += '     type: phpo<br>'
+          # dump
+          msg_str = ''
+          msg_str = make_message('     type: phpo', msg_str)
           argStr = ' '.join(shlex.quote(x.strip()) for x in args)
-          msg_str += '     args: {}<br>'.format(argStr)
-          msg_str += ' training: {}<br>'.format(', '.join(newInDsList))
+          msg_str = make_message('     args: {}'.format(argStr), msg_str)
+          msg_str = make_message(' training: {}'.format(', '.join(newInDsList)), msg_str)
           task_params = PhpoScript.main(True, args, True)
           for item in task_params['jobParameters']:
               if item["type"] == "template" and item["param_type"] == "output":
                   outputs.append(item["dataset"])
           str_outputs = ','.join(outputs)
           x = {"outDS": str_outputs}
-          msg_str += '   output: {}<br>'.format(str_outputs)
-          log_stream.info('<base64>:' + base64.b64encode(msg_str.encode()).decode())
+          msg_str = make_message('   output: {}'.format(str_outputs), msg_str)
+          log_stream.info(encode_message(msg_str))
+          # check
+          invalid = False
+          if newInDsList and 'UNRESOLVED' in newInDsList:
+              log_stream.error(emphasize_single_message('Traning data was UNRESOLVED. '
+                                                        'Check opt_trainingDS and/or opt_trainingDsType'))
+              invalid = True
           print(json.dumps(x))
+          if invalid:
+              sys.exit(2)
       except Exception as e:
           log_stream.error(str(e) + traceback.format_exc())
           sys.exit(1)

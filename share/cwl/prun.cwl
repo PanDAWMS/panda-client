@@ -34,10 +34,11 @@ arguments:
   - prefix: '-c'
     valueFrom: |
       try:
-          import json, sys, shlex, os, traceback, ast, base64
+          import json, sys, shlex, os, traceback, ast, base64, re
           from pandaclient import PLogger
           log_stream = PLogger.getPandaLogger(False)
           from pandaclient import PrunScript
+          from pandaclient.pflow_checker import make_message, encode_message, emphasize_single_message
           outDS = os.environ['WORKFLOW_OUTPUT_BASE'] + '_<suffix>'
           args = r"""$(inputs.opt_args)"""
           args = args.split()
@@ -95,27 +96,43 @@ arguments:
                   else:
                       newSecDS = secDsStr
                   newSecDsList.append(newSecDS)
-          # use <br> for \n since \n is sometimes converted to n when python is executed through cwl-runner
-          msg_str = '<br>'
-          msg_str += '     type: prun<br>'
+          # dump
+          msg_str = ''
+          msg_str = make_message('     type: prun', msg_str)
           argStr = ' '.join(shlex.quote(x.strip()) for x in args)
-          secDsIdx = 1
           if newSecDsList:
+              secDsIdx = 1
               for secDsStr in newSecDsList:
-                  argStr = argStr.replace('%%{}%%'.format(secDsIdx), secDsStr)
-          msg_str += '     args: {}<br>'.format(argStr)
-          msg_str += '    input: {}<br>'.format(', '.join(newInDsList))
+                  argStr = argStr.replace('%%DS{}%%'.format(secDsIdx), secDsStr)
+                  secDsIdx += 1
+          msg_str = make_message('     args: {}'.format(argStr), msg_str)
+          msg_str = make_message('    input: {}'.format(', '.join(newInDsList)), msg_str)
           if newSecDsList:
-              msg_str += '         : {}<br>'.format(newSecDsList)
+              msg_str = make_message('         : {}<br>'.format(newSecDsList), msg_str)
           task_params = PrunScript.main(True, args, True)
           for item in task_params['jobParameters']:
               if item["type"] == "template" and item["param_type"] == "output":
                   outputs.append(item["dataset"])
           str_outputs = ','.join(outputs)
           x = {"outDS": str_outputs}
-          msg_str += '   output: {}<br>'.format(str_outputs)
-          log_stream.info('<base64>:' + base64.b64encode(msg_str.encode()).decode())
+          msg_str = make_message('   output: {}'.format(str_outputs), msg_str)
+          log_stream.info(encode_message(msg_str))
+          # check
+          invalid = False
+          if newInDsList and 'UNRESOLVED' in newInDsList:
+              log_stream.error(emphasize_single_message('Input was UNRESOLVED. Check opt_inDS and/or opt_inDsType'))
+              invalid = True
+          if newSecDsList and 'UNRESOLVED' in newSecDsList:
+              log_stream.error(emphasize_single_message('Secondary input was UNRESOLVED. '
+                                                        'Check optSecondaryDSs and/or optSecondaryDsTypes'))
+              invalid = True
+          tmpM = re.search('%%DS\d+%%', argStr)
+          if tmpM:
+              log_stream.error(emphasize_single_message('Unresolved placeholder {} in opt_args'.format(tmpM.group(0))))
+              invalid = True
           print(json.dumps(x))
+          if invalid:
+              sys.exit(2)
       except Exception as e:
           log_stream.error(str(e) + traceback.format_exc())
           sys.exit(1)

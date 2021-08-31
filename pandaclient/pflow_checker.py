@@ -5,6 +5,7 @@ import glob
 import base64
 
 
+# check workflow description
 def check(cwl_file, yaml_file, output_name, verbose, log_stream):
     # create dummy yaml if empty since cwl-runner doesn't like it
     tmp_yaml = None
@@ -18,7 +19,8 @@ def check(cwl_file, yaml_file, output_name, verbose, log_stream):
     linked_cwl = []
     for tmp_cwl in glob.glob(os.path.join(os.environ['PANDA_SYS'], 'etc/panda/share/cwl/*.cwl')):
         tmp_base = os.path.basename(tmp_cwl)
-        os.symlink(tmp_cwl, tmp_base)
+        if not os.path.exists(tmp_base):
+            os.symlink(tmp_cwl, tmp_base)
         linked_cwl.append(tmp_base)
 
 
@@ -37,9 +39,10 @@ def check(cwl_file, yaml_file, output_name, verbose, log_stream):
             print(line)
             continue
         # decode base64-encoded raw message
-        if line.startswith('INFO : <base64>:'):
+        if ':::<base64>:::' in line:
+            msg_level = line.split()[0]
             line = line.split(':')[-1]
-            line = 'INFO : {}'.format(base64.b64decode(line.encode()).replace('<br>', '\n'))
+            line = '{} : {}'.format(msg_level, base64.b64decode(line.encode()).replace('<br>', '\n'))
         tags = line.split()
         if not tags:
             continue
@@ -56,7 +59,7 @@ def check(cwl_file, yaml_file, output_name, verbose, log_stream):
     if proc.returncode != 0:
         err_str = 'Failed to parse the workflow description'
         if not verbose:
-            err_str += '. --debug would give more info'
+            err_str += '. --debug might give more info if the error message is unclear'
         log_stream.error(err_str)
     else:
         log_stream.info('Successfully verified the workflow description')
@@ -68,3 +71,20 @@ def check(cwl_file, yaml_file, output_name, verbose, log_stream):
     for tmp_base in linked_cwl:
         os.remove(tmp_base)
 
+
+# construct message using <br> since \n is sometimes converted to n when python is executed through cwl-runner
+def make_message(new_msg, old_msg=None):
+    if old_msg is None:
+        old_msg = ''
+    return "{}{}<br>".format(old_msg, new_msg)
+
+
+# encode message
+def encode_message(msg_str):
+    return ':::<base64>:::' + base64.b64encode(msg_str.encode()).decode()
+
+
+# emphasize a single message
+def emphasize_single_message(msg_str):
+    msg_str = make_message(msg_str)
+    return encode_message(msg_str)

@@ -1,6 +1,6 @@
 ** Release Notes
 
-current
+1.4.83
   * to allow phpo in workflow
   * added --check to pflow
   * added phpo.cwl
