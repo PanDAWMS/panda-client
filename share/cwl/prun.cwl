@@ -34,7 +34,11 @@ arguments:
   - prefix: '-c'
     valueFrom: |
       try:
-          import json, sys, shlex, os, traceback, ast, base64, re
+          import json, sys, os, traceback, ast, base64, re
+          try:
+              from pipes import quote
+          except Exception:
+              from shlex import quote
           from pandaclient import PLogger
           log_stream = PLogger.getPandaLogger(False)
           from pandaclient import PrunScript
@@ -99,7 +103,7 @@ arguments:
           # dump
           msg_str = ''
           msg_str = make_message('     type: prun', msg_str)
-          argStr = ' '.join(shlex.quote(x.strip()) for x in args)
+          argStr = ' '.join(quote(x.strip()) for x in args)
           if newSecDsList:
               secDsIdx = 1
               for secDsStr in newSecDsList:

@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.84
+  * fixed pflow --check for python 2
+
 1.4.83
   * to allow phpo in workflow
   * added --check to pflow

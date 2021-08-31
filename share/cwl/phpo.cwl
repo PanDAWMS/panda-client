@@ -25,7 +25,11 @@ arguments:
   - prefix: '-c'
     valueFrom: |
       try:
-          import json, sys, shlex, os, traceback, ast, base64, glob, shutil
+          import json, sys, os, traceback, ast, base64, glob, shutil
+          try:
+              from pipes import quote
+          except Exception:
+              from shlex import quote
           from pandaclient import PLogger
           log_stream = PLogger.getPandaLogger(False)
           from pandaclient import PhpoScript
@@ -64,7 +68,7 @@ arguments:
           # dump
           msg_str = ''
           msg_str = make_message('     type: phpo', msg_str)
-          argStr = ' '.join(shlex.quote(x.strip()) for x in args)
+          argStr = ' '.join(quote(x.strip()) for x in args)
           msg_str = make_message('     args: {}'.format(argStr), msg_str)
           msg_str = make_message(' training: {}'.format(', '.join(newInDsList)), msg_str)
           task_params = PhpoScript.main(True, args, True)
