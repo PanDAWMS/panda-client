@@ -12,7 +12,7 @@ def check(cwl_file, yaml_file, output_name, verbose, log_stream):
     if not os.path.getsize(yaml_file):
         tmp_yaml = tempfile.NamedTemporaryFile(delete=False)
         yaml_file = tmp_yaml.name
-        tmp_yaml.write('a: \n')
+        tmp_yaml.write('a: \n'.encode())
         tmp_yaml.close()
 
     # links to common CWL files since cwl-runner doesn't respect XDG_DATA_DIRS or XDG_DATA_HOME
@@ -22,7 +22,6 @@ def check(cwl_file, yaml_file, output_name, verbose, log_stream):
         if not os.path.exists(tmp_base):
             os.symlink(tmp_cwl, tmp_base)
         linked_cwl.append(tmp_base)
-
 
     # run cwl-runner
     new_env = os.environ.copy()
@@ -42,7 +41,7 @@ def check(cwl_file, yaml_file, output_name, verbose, log_stream):
         if ':::<base64>:::' in line:
             msg_level = line.split()[0]
             line = line.split(':')[-1]
-            line = '{} : {}'.format(msg_level, base64.b64decode(line.encode()).replace('<br>', '\n'))
+            line = '{} : {}'.format(msg_level, base64.b64decode(line.encode()).decode().replace('<br>', '\n'))
         tags = line.split()
         if not tags:
             continue
