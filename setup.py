@@ -124,6 +124,9 @@ class install_data_panda (install_data_org):
             if not os.path.exists(target):
                 os.symlink('pandaclient',
                            os.path.join(self.install_purelib, 'taskbuffer'))
+            target = os.path.join(self.install_purelib, 'pandatools')
+            if not os.path.exists(target):
+                os.symlink('pandaclient', target)
             target = os.path.join(self.install_purelib, 'pandaserver')
             if not os.path.exists(target):
                 os.makedirs(target)

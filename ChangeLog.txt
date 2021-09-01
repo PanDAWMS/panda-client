@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.85
+  * making pandatools symlink for backward-compatibility
+
 1.4.84
   * fixed pflow --check for python 2
 

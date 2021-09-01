@@ -160,7 +160,8 @@ def main():
               'workflowSpecFile': options.cwl,
               'workflowInputFile': options.yaml,
               'language': 'cwl',
-              'outDS': options.outDS
+              'outDS': options.outDS,
+              'base_platform': os.environ.get('ALRB_USER_PLATFORM', 'centos7')
               }
 
     # making task params with dummy exec
