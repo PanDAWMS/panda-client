@@ -92,10 +92,6 @@ def main():
         print("Version: %s" % PandaToolsPkgInfo.release_version)
         sys.exit(0)
 
-    if options.checkOnly:
-        pflow_checker.check(options.cwl, options.yaml, options.outDS, options.debugCheck, tmpLog)
-        sys.exit(0)
-
     # check grid-proxy
     PsubUtils.check_proxy(options.verbose, options.vomsRoles)
 
@@ -174,7 +170,11 @@ def main():
             prun_exec_str += ' --noSubmit'
         if options.verbose:
             prun_exec_str += ' -v'
-        taskParamMap = PrunScript.main(get_taskparams=True, ext_args=shlex.split(prun_exec_str))
+        arg_dict = {'get_taskparams': True,
+                    'ext_args': shlex.split(prun_exec_str)}
+        if options.checkOnly:
+            arg_dict['dry_mode'] = True
+        taskParamMap = PrunScript.main(**arg_dict)
         del taskParamMap['noInput']
         del taskParamMap['nEvents']
         del taskParamMap['nEventsPerJob']
@@ -193,19 +193,37 @@ def main():
                     print('%s : %s' % (tmpKey, taskParamMap[tmpKey]))
         sys.exit(0)
 
-    tmpLog.info("submit {0}".format(options.outDS))
-    tmpStat, tmpOut = Client.send_workflow_request(params, options.relayHost, options.verbose)
+    data = {'relay_host': options.relayHost, 'verbose': options.verbose}
+    if not options.checkOnly:
+        action_type = 'submit'
+    else:
+        action_type = 'check'
+        data['check'] = True
+
+    # action
+    tmpLog.info("{} workflow {}".format(action_type, options.outDS))
+    tmpStat, tmpOut = Client.send_workflow_request(params, **data)
+
     # result
     exitCode = None
     if tmpStat != 0:
-        tmpStr = "task submission failed with {0}".format(tmpStat)
+        tmpStr = "workflow {} failed with {}".format(action_type, tmpStat)
         tmpLog.error(tmpStr)
         exitCode = 1
     if tmpOut[0]:
-        tmpStr = tmpOut[1]
-        tmpLog.info(tmpStr)
+        if not options.checkOnly:
+            tmpStr = tmpOut[1]
+            tmpLog.info(tmpStr)
+        else:
+            check_stat = tmpOut[1]['status']
+            check_log = 'check log from the server\n' + tmpOut[1]['log']
+            tmpLog.info(check_log)
+            if check_stat:
+                tmpLog.info('successfully verified workflow description')
+            else:
+                tmpLog.error('workflow description is corrupted')
     else:
-        tmpStr = "task submission failed. {0}".format(tmpOut[1])
+        tmpStr = "workflow {} failed. {}".format(action_type, tmpOut[1])
         tmpLog.error(tmpStr)
         exitCode = 1
     return exitCode

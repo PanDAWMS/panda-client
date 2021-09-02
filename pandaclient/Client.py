@@ -1512,11 +1512,12 @@ def send_file_recovery_request(task_id, dry_run=False, verbose=False):
 
 
 # send workflow request
-def send_workflow_request(params, relay_host=None, verbose=False):
+def send_workflow_request(params, relay_host=None, check=False, verbose=False):
     """Send a workflow request
        args:
           params: a workflow request dictionary
           relay_host: relay hostname to send request
+          check: only check the workflow description
           verbose: True to see verbose message
        returns:
           status code
@@ -1539,6 +1540,8 @@ def send_workflow_request(params, relay_host=None, verbose=False):
     url += '/put_workflow_request'
     try:
         data = {'data': json.dumps(params)}
+        if check:
+            data['check'] = True
         status, output = curl.post(url, data, compress_body=True, is_json=True)
         if status != 0:
             tmp_log.error(output)

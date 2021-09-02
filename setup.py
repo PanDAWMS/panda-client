@@ -166,7 +166,7 @@ setup(
                 'scripts/pbook',
                 'scripts/pathena',
                 'scripts/phpo',
-                'scripts/pflow',
+                'scripts/pchain',
                 ],
     data_files = [ ('etc/panda', ['templates/panda_setup.sh.template',
                                   'templates/panda_setup.csh.template',
@@ -192,10 +192,6 @@ setup(
                    ('etc/panda/share', ['share/FakeAppMgr.py',
                                         'share/ConfigExtractor.py',
                                         ]
-                    ),
-                   ('etc/panda/share/cwl', ['share/cwl/prun.cwl',
-                                            'share/cwl/phpo.cwl',
-                                            ]
                     ),
                    ],
     cmdclass={

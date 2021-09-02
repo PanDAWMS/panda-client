@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.4.86
+  * pflow -> pchain
+  * server-side check for pchain
+
 1.4.85
   * making pandatools symlink for backward-compatibility
 
