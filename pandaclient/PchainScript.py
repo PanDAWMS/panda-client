@@ -216,7 +216,7 @@ def main():
             tmpLog.info(tmpStr)
         else:
             check_stat = tmpOut[1]['status']
-            check_log = 'check log from the server\n' + tmpOut[1]['log']
+            check_log = 'messages from the server\n' + tmpOut[1]['log']
             tmpLog.info(check_log)
             if check_stat:
                 tmpLog.info('successfully verified workflow description')
