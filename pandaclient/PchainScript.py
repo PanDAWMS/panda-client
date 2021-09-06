@@ -11,7 +11,6 @@ from pandaclient import MiscUtils
 from pandaclient import Client
 from pandaclient import PsubUtils
 from pandaclient import PrunScript
-from pandaclient import pflow_checker
 
 try:
     from urllib import quote
