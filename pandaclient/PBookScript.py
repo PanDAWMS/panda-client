@@ -210,7 +210,13 @@ For more info, do help(show) for example
     # retry
     def retry(taskIDs, newOpts=None):
         """
-        Retry failed/cancelled subJobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). This means that you need to have the same runtime env (such as Athena version, run dir, source files) as the previous submission. One can use newOpts which is a map of options and new arguments like {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'} to overwrite task parameters. The list of changeable parameters is site,excludedSite,includedSite,nFilesPerJob,nGBPerJob,nFiles,nEvents. If input files were used or are being used by other jobs for the same output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs.
+        Retry failed/cancelled subJobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID).
+        This means that you need to have the same runtime env (such as Athena version, run dir, source files)
+        as the previous submission. One can use newOpts which is a map of options and new arguments like
+        {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'} to overwrite task parameters. The list of changeable
+        parameters is site, excludedSite, includedSite, nFilesPerJob, nGBPerJob, nFiles, nEvents, loopingCheck,
+        nMaxFilesPerJob, ramCount. If input files were used or are being used by other jobs for the same output
+        dataset container, those file are skipped to avoid job duplication when retrying failed subjobs.
 
          example:
            >>> retry(123)

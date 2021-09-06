@@ -1,8 +1,11 @@
 ** Release Notes
 
+1.4.87
+  * improved doc of pbook.retry
+
 1.4.86
   * pflow -> pchain
-  * server-side check for pchain
+  * moved the check function of pchain to server-side
 
 1.4.85
   * making pandatools symlink for backward-compatibility
