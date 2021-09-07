@@ -19,7 +19,7 @@
   * added phpo.cwl
 
 1.4.82
-  * renamed pandatools to pandaclient
+  * renamed pandatools to pandaclient to avoid name conflict when installed on the server-side
 
 1.4.81
   * added --execWithRealFileNames to prun
