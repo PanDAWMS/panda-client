@@ -8,7 +8,7 @@
   * moved the check function of pchain to server-side
 
 1.4.85
-  * making pandatools symlink for backward-compatibility
+  * making pandatools symlink for backward-compatibility when being installed standalone
 
 1.4.84
   * fixed pflow --check for python 2
