@@ -122,6 +122,12 @@ The following commands are available:
     killAndRetry
     getUserJobMetadata
     recover_lost_files
+    show_workflow
+    kill_workflow
+    retry_workflow
+    finish_workflow
+    pause_workflow
+    resume_workflow
 
 For more info, do help(show) for example
 """
@@ -285,6 +291,66 @@ For more info, do help(show) for example
           >>> recover_lost_files(123, test_mode=True)
         """
         pbookCore.recover_lost_files(taskID, test_mode)
+
+    # finish a workflow
+    def finish_workflow(request_id):
+        """
+        Send a request to finish a workflow
+
+        """
+        status, output = pbookCore.execute_workflow_command('finish', request_id)
+        if output:
+            print(output[0][-1])
+
+    # kill a workflow
+    def kill_workflow(request_id):
+        """
+        Send a request to kill a workflow
+
+        """
+        status, output = pbookCore.execute_workflow_command('abort', request_id)
+        if output:
+            print(output[0][-1])
+
+    # pause a workflow
+    def pause_workflow(request_id):
+        """
+        Send a request to pause a workflow
+
+        """
+        status, output = pbookCore.execute_workflow_command('suspend', request_id)
+        if output:
+            print(output[0][-1])
+
+    # resume a workflow
+    def kill_workflow(request_id):
+        """
+        Send a request to resume a workflow
+
+        """
+        status, output = pbookCore.execute_workflow_command('resume', request_id)
+        if output:
+            print(output[0][-1])
+
+    # retry a workflow
+    def retry_workflow(request_id):
+        """
+        Send a request to retry a workflow
+
+        """
+        status, output = pbookCore.execute_workflow_command('retry', request_id)
+        if output:
+            print(output[0][-1])
+
+    # show a workflow
+    def show_workflow(request_id):
+        """
+        Show a workflow
+
+        """
+        status, output = pbookCore.execute_workflow_command('get_status', request_id)
+        if output:
+            print(output)
 
     # execute command in the batch mode
     if comString != '':

@@ -9,11 +9,8 @@ try:
 except Exception:
     long = int
 
-# from . import PdbUtils
 from . import Client
-# from . import BookConfig
 from . import PLogger
-from . import PsubUtils
 from pandaclient import queryPandaMonUtils
 from pandaclient import localSpecs
 from pandaclient import PsubUtils
@@ -362,3 +359,19 @@ class PBookCore(object):
             for task in data:
                 taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)
                 taskspec.print_standard()
+
+    # execute workflow command
+    def execute_workflow_command(self, command_name, request_id):
+        tmpLog = PLogger.getPandaLogger()
+        tmpLog.info('executing {}'.format(command_name))
+        status, output = Client.call_idds_user_workflow_command(command_name, {'request_id': request_id},
+                                                                self.verbose)
+        if status != 0:
+            tmpLog.error(output)
+            tmpLog.error("Failed to execute {}".format(command_name))
+            return False, None
+        if not output[0]:
+            tmpLog.error(output[-1])
+            tmpLog.error("Failed to execute {}".format(command_name))
+            return False, None
+        return True, output[-1]

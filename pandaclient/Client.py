@@ -1470,6 +1470,42 @@ def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose
         return EC_Failed, msg
 
 
+# call idds user workflow command
+def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False):
+    """Call an iDDS workflow user command
+       args:
+          command_name: command name
+          kwargs: a dictionary of keyword arguments
+          verbose: True to see verbose message
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          a tuple of (True, response from iDDS), or (False, diagnostic message) if failed
+    """
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/execute_idds_workflow_command'
+    try:
+        data = dict()
+        data['command_name'] = command_name
+        if kwargs:
+            data['kwargs'] = json.dumps(kwargs)
+        status, output = curl.post(url, data)
+        if status != 0:
+            return EC_Failed, output
+        else:
+            return 0, json.loads(output)
+    except Exception as e:
+        msg = "Failed with {}".format(str(e))
+        print (traceback.format_exc())
+        return EC_Failed, msg
+
+
 # send file recovery request
 def send_file_recovery_request(task_id, dry_run=False, verbose=False):
     """Send a file recovery request

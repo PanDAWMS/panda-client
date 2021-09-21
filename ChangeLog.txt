@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.88
+  * added *_workflow commands to pbook
+
 1.4.87
   * improved doc of pbook.retry
 
