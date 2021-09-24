@@ -191,6 +191,7 @@ setup(
                     ),
                    ('etc/panda/share', ['share/FakeAppMgr.py',
                                         'share/ConfigExtractor.py',
+                                        'share/functions.sh'
                                         ]
                     ),
                    ],

@@ -27,9 +27,9 @@ except Exception:
 def main():
     # tweak sys.argv
     sys.argv.pop(0)
-    sys.argv.insert(0, 'pflow')
+    sys.argv.insert(0, 'pchain')
 
-    usage = """pflow [options]
+    usage = """pchain [options]
     """
 
     optP = GroupArgParser(usage=usage, conflict_handler="resolve")
@@ -84,12 +84,13 @@ def main():
     # get logger
     tmpLog = PLogger.getPandaLogger()
 
-    options = optP.parse_args()
-    option_names = set(vars(options).keys())
-
-    if options.version:
+    # show version
+    if '--version' in sys.argv:
         print("Version: %s" % PandaToolsPkgInfo.release_version)
         sys.exit(0)
+
+    # parse args
+    options = optP.parse_args()
 
     # check grid-proxy
     PsubUtils.check_proxy(options.verbose, options.vomsRoles)
