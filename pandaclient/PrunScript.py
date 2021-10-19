@@ -1459,27 +1459,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
          'value': '-r {0}'.format(runDir),
          },
         ]
-    if options.loadXML is None:
-        taskParamMap['jobParameters'] += [
-            {'type':'constant',
-             'value': '-p "',
-             'padding':False,
-             },
-            ]
-        taskParamMap['jobParameters'] += PsubUtils.convertParamStrToJediParam(options.jobParams,{},'',
-                                                                              True,False,
-                                                                              includeIO=False)
-        taskParamMap['jobParameters'] += [
-            {'type':'constant',
-             'value': '"',
-             },
-            ]
-    else:
-        taskParamMap['jobParameters'] += [
-            {'type':'constant',
-             'value': '-p "{0}"'.format(options.jobParams),
-             },
-            ]
+
+    # delimiter
+    taskParamMap['jobParameters'] += [
+        {'type': 'constant',
+         'value': '__delimiter__',
+         'hidden': True
+         },
+        ]
 
     # build
     if options.containerImage == '' or options.useSandbox:
@@ -1604,12 +1591,38 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                     taskParamMap['nEventsPerRange'] = options.nEvents // 20
                     if taskParamMap['nEventsPerRange'] <= 0:
                         taskParamMap['nEventsPerRange'] = 1
+        elif options.nEventsPerJob > 0:
+            taskParamMap['nEvents'] = options.nEventsPerJob * max(1, options.nJobs)
+            taskParamMap['nEventsPerJob'] = options.nEventsPerJob
         else:
             if options.nJobs > 0:
                 taskParamMap['nEvents'] = options.nJobs
             else:
                 taskParamMap['nEvents'] = 1
             taskParamMap['nEventsPerJob'] = 1
+
+    # exec string
+    if options.loadXML is None:
+        taskParamMap['jobParameters'] += [
+            {'type':'constant',
+             'value': '-p "',
+             'padding':False,
+             },
+            ]
+        taskParamMap['jobParameters'] += PsubUtils.convertParamStrToJediParam(options.jobParams,{},'',
+                                                                              True,False,
+                                                                              includeIO=False)
+        taskParamMap['jobParameters'] += [
+            {'type':'constant',
+             'value': '"',
+             },
+            ]
+    else:
+        taskParamMap['jobParameters'] += [
+            {'type':'constant',
+             'value': '-p "{0}"'.format(options.jobParams),
+             },
+            ]
 
     # param for DBR
     if options.dbRelease != '':

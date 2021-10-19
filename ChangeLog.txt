@@ -1,5 +1,9 @@
 ** Release Notes
 
+current
+  * added a delimiter in prun's jobParameters
+  * changed job parameter order in prun
+
 1.4.90
   * changed p* commands to work with conda, venv, etc
 
