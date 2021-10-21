@@ -1,6 +1,6 @@
 ** Release Notes
 
-current
+1.4.91
   * added a delimiter in prun's jobParameters
   * changed job parameter order in prun
 
