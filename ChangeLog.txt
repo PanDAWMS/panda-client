@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * using 80 and 443
+
 1.4.91
   * added a delimiter in prun's jobParameters
   * changed job parameter order in prun
