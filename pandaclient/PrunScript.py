@@ -1297,7 +1297,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     if options.containerImage != '' and options.alrb:
         taskParamMap['architecture'] = options.architecture
     else:
-        taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
+        taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig,
+                                                                   architecture=options.architecture)
         if options.architecture:
             taskParamMap['architecture'] = (taskParamMap['architecture'] if taskParamMap['architecture'] else '') \
                                            + options.architecture

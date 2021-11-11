@@ -1325,12 +1325,13 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
 
 
 # get CMTCONFIG + IMG
-def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None, verbose=False):
+def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None, verbose=False, architecture=None):
     retVal = getCmtConfig(athenaVer, cacheVer, nightVer, cmtConfig, verbose)
     if 'ALRB_USER_PLATFORM' in os.environ:
         if retVal is None:
             retVal = ''
-        retVal = retVal + '@' + os.environ['ALRB_USER_PLATFORM']
+        if architecture and '@' not in architecture:
+            retVal = retVal + '@' + os.environ['ALRB_USER_PLATFORM']
     return retVal
 
 

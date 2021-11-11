@@ -1398,7 +1398,8 @@ if not options.allowTaskDuplication:
     taskParamMap['uniqueTaskName'] = True
 taskParamMap['vo'] = 'atlas'
 if options.containerImage == '':
-    taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig)
+    taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig,
+                                                               architecture=options.architecture)
     if options.architecture:
         taskParamMap['architecture'] = (taskParamMap['architecture'] if taskParamMap['architecture'] else '') \
                                        + options.architecture

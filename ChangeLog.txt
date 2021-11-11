@@ -1,7 +1,9 @@
 ** Release Notes
 
 current
-  * using 80 and 443
+  * using 80 and 443 to access the panda server
+  * protection against @ in --architecture
+  * removed the iam scpe when getting ID tokens
 
 1.4.91
   * added a delimiter in prun's jobParameters
