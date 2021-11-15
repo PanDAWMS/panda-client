@@ -154,6 +154,7 @@ setup(
     author='PanDA Team',
     author_email='atlas-adc-panda@cern.ch',
     url='https://panda-wms.readthedocs.io/en/latest/',
+    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*',
 
     # optional pip dependencies
     extras_require={
