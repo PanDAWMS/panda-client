@@ -3,7 +3,6 @@ import sys
 import os
 import re
 import site
-import distutils
 
 sys.path.insert(0,'.')
 
@@ -13,6 +12,8 @@ release_version = PandaToolsPkgInfo.release_version
 
 from setuptools import setup
 from setuptools.command.install import install as install_org
+# import distutils after setuptools to tweak sys.modules so that the distutils module in setuptools is used
+import distutils
 from distutils.command.install_data import install_data as install_data_org
 
 
