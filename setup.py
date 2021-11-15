@@ -144,12 +144,15 @@ class install_data_panda (install_data_org):
             except Exception:
                 pass
 
+with open('README.md', 'r', encoding='utf-8') as description_file:
+    long_description = description_file.read()
 
 setup(
     name="panda-client",
     version=release_version,
-    description=' PanDA Client Package',
-    long_description='''This package contains PanDA Client Tools''',
+    description='PanDA Client Package',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     license='GPL',
     author='PanDA Team',
     author_email='atlas-adc-panda@cern.ch',
