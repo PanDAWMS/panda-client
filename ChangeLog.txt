@@ -2,6 +2,7 @@
 
 current
   * add secret functions to pbook
+  * --useSecrets in prun
 
 1.4.92
   * using 80 and 443 to access the panda server

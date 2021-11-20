@@ -333,6 +333,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     group_config.add_argument('--parentTaskID', '--parentTaskID', action='store', dest='parentTaskID',  default=None,
                               type=int,
                               help='Set taskID of the paranet task to execute the task while the parent is still running')
+    group_config.add_argument('--useSecrets', action='store_const', const=True, dest='useSecrets',default=False,
+                              help='Use secrets')
     group_input.add_argument('--forceStaged',action='store_const',const=True,dest='forceStaged',default=False,
                     help='Force files from primary DS to be staged to local disk, even if direct-access is possible')
     group_input.add_argument('--forceStagedSecondary',action='store_const',const=True,dest='forceStagedSecondary',default=False,
@@ -1390,6 +1392,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     taskParamMap['respectSplitRule'] = True
     if options.maxAttempt >0 and options.maxAttempt <= 50:
         taskParamMap['maxAttempt'] = options.maxAttempt
+    if options.useSecrets:
+        taskParamMap['useSecrets'] = True
     # source URL
     if options.vo is None:
         matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
