@@ -119,8 +119,8 @@ The following commands are available:
     kill
     retry
     finish
-    killAndRetry
-    getUserJobMetadata
+    kill_and_retry
+    get_user_job_metadata
     recover_lost_files
     show_workflow
     kill_workflow
@@ -128,6 +128,10 @@ The following commands are available:
     finish_workflow
     pause_workflow
     resume_workflow
+    set_secret
+    list_secrets
+    delete_secret
+    delete_all_secrets
 
 For more info, do help(show) for example
 """
@@ -252,14 +256,6 @@ For more info, do help(show) for example
 
     # kill and retry
     def killAndRetry(taskIDs, newOpts=None):
-        """
-        Kill running sub-jobs and then retry failed/cancelled sub-jobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). Concerning newOpts, see help(retry)
-
-         example:
-           >>> killAndRetry(123)
-           >>> killAndRetry([123, 345, 567])
-           >>> killAndRetry(789, newOpts={'excludedSite':'siteA,siteB'})
-        """
         if newOpts is None:
             newOpts = {}
         if isinstance(taskIDs, (list, tuple)):
@@ -271,15 +267,31 @@ For more info, do help(show) for example
             ret = None
         return ret
 
+    # kill and retry
+    def kill_and_retry(taskIDs, newOpts=None):
+        """
+        Kill running sub-jobs and then retry failed/cancelled sub-jobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). Concerning newOpts, see help(retry)
+
+         example:
+           >>> kill_and_retry(123)
+           >>> kill_and_retry([123, 345, 567])
+           >>> kill_and_retry(789, newOpts={'excludedSite':'siteA,siteB'})
+        """
+        return killAndRetry(taskIDs, newOpts)
+
     # get user job metadata
     def getUserJobMetadata(taskID, outputFileName):
+        pbookCore.getUserJobMetadata(taskID, outputFileName)
+
+    # get user job metadata
+    def get_user_job_metadata(taskID, outputFileName):
         """
         Get user metadata of successful jobs in a task and write them in a json file
 
          example:
            >>> getUserJobMetadata(123, 'output.json')
         """
-        pbookCore.getUserJobMetadata(taskID, outputFileName)
+        getUserJobMetadata(taskID, outputFileName)
 
     # recover lost files
     def recover_lost_files(taskID, test_mode=False):
@@ -351,6 +363,38 @@ For more info, do help(show) for example
         status, output = pbookCore.execute_workflow_command('get_status', request_id)
         if output:
             print(output)
+
+    # set a secret
+    def set_secret(key, value):
+        """
+        Set a set of secret key-value strings
+
+        """
+        pbookCore.set_secret(key, value)
+
+    # delete a secret
+    def delete_secret(key):
+        """
+        Delete a secret
+
+        """
+        pbookCore.set_secret(key, None)
+
+    # delete all secrets
+    def delete_all_secrets():
+        """
+        Delete all secrets
+
+        """
+        pbookCore.set_secret(None, None)
+
+    # list secrets
+    def list_secrets():
+        """
+        List secrets
+
+        """
+        pbookCore.list_secrets()
 
     # execute command in the batch mode
     if comString != '':

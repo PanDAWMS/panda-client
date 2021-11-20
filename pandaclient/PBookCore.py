@@ -375,3 +375,49 @@ class PBookCore(object):
             tmpLog.error("Failed to execute {}".format(command_name))
             return False, None
         return True, output[-1]
+
+    # set secret
+    def set_secret(self, key, value):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        status, output = Client.set_user_secert(key, value, verbose=self.verbose)
+        if status != 0:
+            tmpLog.error(output)
+            tmpLog.error("Failed to set secret")
+            return False
+        status, msg = output
+        if status:
+            tmpLog.info(msg)
+        else:
+            tmpLog.error(msg)
+        # return
+        return status
+
+    # list secrets
+    def list_secrets(self):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        status, output = Client.get_user_secerts(verbose=self.verbose)
+        if status != 0:
+            tmpLog.error(output)
+            tmpLog.error("Failed to get secrets")
+            return False
+        status, data = output
+        if status:
+            if data:
+                msg = '\n'
+                keys = list(data.keys())
+                big_key = len(max(keys, key=len))
+                template = '{{:{}s}}: {{}}\n'.format(big_key+1)
+                msg += template.format('Key', 'Value')
+                msg += template.format('-'*big_key, '-'*20)
+                keys.sort()
+                for k in keys:
+                    msg += template.format(k, data[k])
+            else:
+                msg = "No secrets"
+            print(msg)
+        else:
+            tmpLog.error(data)
+        # return
+        return status

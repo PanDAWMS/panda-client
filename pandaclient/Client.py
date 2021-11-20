@@ -1590,3 +1590,81 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
             msg += ' raw output="{}"'.format(str(output))
         tmp_log.error(msg)
         return EC_Failed, msg
+
+
+# set user secret
+def set_user_secert(key, value, verbose=False):
+    """Set a user secret
+       args:
+          key: secret name. None to delete all secrets
+          value: secret value. None to delete the secret
+          verbose: True to see verbose message
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          a tuple of (True/False and diagnostic message). True if the request was accepted
+    """
+    tmp_log = PLogger.getPandaLogger()
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/set_user_secret'
+    try:
+        data = dict()
+        if key:
+            data['key'] = key
+            if value:
+                data['value'] = value
+        status, output = curl.post(url, data)
+        if status != 0:
+            tmp_log.error(output)
+            return EC_Failed, output
+        else:
+            return 0, json.loads(output)
+    except Exception as e:
+        msg = '{}.'.format(str(e))
+        if output:
+            msg += ' raw output="{}"'.format(str(output))
+        tmp_log.error(msg)
+        return EC_Failed, msg
+
+
+# get user secret
+def get_user_secerts(verbose=False):
+    """Get user secrets
+       args:
+          verbose: True to see verbose message
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          a tuple of (True/False and a dict of secrets). True if the request was accepted
+    """
+    tmp_log = PLogger.getPandaLogger()
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/get_user_secrets'
+    try:
+        status, output = curl.post(url, {})
+        if status != 0:
+            tmp_log.error(output)
+            return EC_Failed, output
+        else:
+            output = json.loads(output)
+            if not output[0]:
+                return 0, output
+            return 0, (output[0], json.loads(output[1]))
+    except Exception as e:
+        msg = '{}.'.format(str(e))
+        if output:
+            msg += ' raw output="{}"'.format(str(output))
+        tmp_log.error(msg)
+        return EC_Failed, msg

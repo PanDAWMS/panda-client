@@ -3,6 +3,7 @@ import sys
 import os
 import re
 import site
+from io import open
 
 sys.path.insert(0,'.')
 

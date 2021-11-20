@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * add secret functions to pbook
+
 1.4.92
   * using 80 and 443 to access the panda server
   * protection against @ in --architecture
