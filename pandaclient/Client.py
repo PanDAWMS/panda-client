@@ -1661,6 +1661,8 @@ def get_user_secerts(verbose=False):
             output = json.loads(output)
             if not output[0]:
                 return 0, output
+            if not output[1]:
+                return 0, (output[0], {})
             return 0, (output[0], json.loads(output[1]))
     except Exception as e:
         msg = '{}.'.format(str(e))
