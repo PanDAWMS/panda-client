@@ -218,23 +218,26 @@ For more info, do help(show) for example
         return ret
 
     # retry
-    def retry(taskIDs, newOpts=None):
+    def retry(taskIDs, newOpts=None, **kwargs):
         """
         Retry failed/cancelled subJobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID).
         This means that you need to have the same runtime env (such as Athena version, run dir, source files)
         as the previous submission. One can use newOpts which is a map of options and new arguments like
         {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'} to overwrite task parameters. The list of changeable
         parameters is site, excludedSite, includedSite, nFilesPerJob, nGBPerJob, nFiles, nEvents, loopingCheck,
-        nMaxFilesPerJob, ramCount. If input files were used or are being used by other jobs for the same output
-        dataset container, those file are skipped to avoid job duplication when retrying failed subjobs.
+        nMaxFilesPerJob, ramCount, avoidVP. It is also possible to specify those parameters as named arguments
+        in the retry call, e.g. nFilesPerJob=10, excludedSite='ABC,XYZ'.
+        If input files were used or are being used by other jobs for the same
+        output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs.
 
          example:
            >>> retry(123)
            >>> retry([123, 345, 567])
            >>> retry(789, newOpts={'excludedSite':'siteA,siteB'})
+           >>> retry(789, excludedSite='siteA,siteB')
         """
         if newOpts is None:
-            newOpts = {}
+            newOpts = kwargs
         if isinstance(taskIDs, (list, tuple)):
             ret = list_parallel_exec(lambda taskID: pbookCore.retry(taskID, newOpts=newOpts), taskIDs)
         elif isinstance(taskIDs, (int, long)):
@@ -268,7 +271,7 @@ For more info, do help(show) for example
         return ret
 
     # kill and retry
-    def kill_and_retry(taskIDs, newOpts=None):
+    def kill_and_retry(taskIDs, newOpts=None, **kwargs):
         """
         Kill running sub-jobs and then retry failed/cancelled sub-jobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). Concerning newOpts, see help(retry)
 
@@ -276,7 +279,10 @@ For more info, do help(show) for example
            >>> kill_and_retry(123)
            >>> kill_and_retry([123, 345, 567])
            >>> kill_and_retry(789, newOpts={'excludedSite':'siteA,siteB'})
+           >>> kill_and_retry(789, excludedSite='siteA,siteB')
         """
+        if newOpts is None:
+            newOpts = kwargs
         return killAndRetry(taskIDs, newOpts)
 
     # get user job metadata

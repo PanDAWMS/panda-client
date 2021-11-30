@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.94
+  * to allow named arguments in pbook.retry()
+
 1.4.93
   * add secret functions to pbook
   * --useSecrets in prun
