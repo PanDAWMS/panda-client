@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.95
+  * using 25080 for http
+
 1.4.94
   * to allow named arguments in pbook.retry()
 

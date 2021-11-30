@@ -38,7 +38,7 @@ from . import openidc_utils
 try:
     baseURL = os.environ['PANDA_URL']
 except Exception:
-    baseURL = 'http://pandaserver.cern.ch/server/panda'
+    baseURL = 'http://pandaserver.cern.ch:25080/server/panda'
 try:
     baseURLSSL = os.environ['PANDA_URL_SSL']
 except Exception:
