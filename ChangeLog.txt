@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * --intrSrv in pchain
+
 1.4.95
   * using 25080 for http
 

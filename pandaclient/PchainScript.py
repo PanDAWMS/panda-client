@@ -103,10 +103,6 @@ def main():
         tmpLog.error(tmpStr)
         sys.exit(1)
 
-    # use INTR server
-    if options.intrSrv:
-        Client.useIntrServer()
-
     # create tmp dir
     curDir = os.getcwd()
     tmpDir = os.path.join(curDir, MiscUtils.wrappedUuidGen())
@@ -199,6 +195,10 @@ def main():
     else:
         action_type = 'check'
         data['check'] = True
+
+    # set to use INTR server just before taking action so that sandbox files go to the regular place
+    if options.intrSrv:
+        Client.useIntrServer()
 
     # action
     tmpLog.info("{} workflow {}".format(action_type, options.outDS))
