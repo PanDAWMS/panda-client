@@ -341,7 +341,7 @@ For more info, do help(show) for example
             print(output[0][-1])
 
     # resume a workflow
-    def kill_workflow(request_id):
+    def resume_workflow(request_id):
         """
         Send a request to resume a workflow
 
