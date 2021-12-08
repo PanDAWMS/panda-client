@@ -21,7 +21,7 @@ function exec_p_command () {
 
     # check virtual env
     if [[ -z "$PANDA_PYTHON_EXEC" ]]; then
-        if [[ -v VIRTUAL_ENV ]]; then
+        if [[ -n "$VIRTUAL_ENV" ]]; then
             if [[ -z "$PANDA_PY3" ]]; then
                 PANDA_PYTHON_EXEC=${VIRTUAL_ENV}/bin/python
                 if [ ! -f "$PANDA_PYTHON_EXEC" ]; then
@@ -38,7 +38,7 @@ function exec_p_command () {
 
     # check conda
     if [[ -z "$PANDA_PYTHON_EXEC" ]]; then
-        if [[ -v CONDA_PREFIX ]]; then
+        if [[ -n "$CONDA_PREFIX" ]]; then
             if [[ -z "$PANDA_PY3" ]]; then
                 PANDA_PYTHON_EXEC=${CONDA_PREFIX}/bin/python
                 if [ ! -f  "$PANDA_PYTHON_EXEC" ]; then

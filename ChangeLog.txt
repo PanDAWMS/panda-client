@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.98
+  * fixed share/function for old bash in SL6
+
 1.4.97
   * typo
 
