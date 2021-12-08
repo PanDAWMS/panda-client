@@ -1,8 +1,9 @@
 ** Release Notes
 
-current
+1.4.96
   * --intrSrv in pchain
   * fixed kill_workflow in pbook
+  * fixed architecture in prun
 
 1.4.95
   * using 25080 for http
