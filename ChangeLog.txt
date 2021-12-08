@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.4.97
+  * typo
+
 1.4.96
   * --intrSrv in pchain
   * fixed kill_workflow in pbook
