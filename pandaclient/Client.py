@@ -1420,16 +1420,17 @@ def get_user_name_from_token():
 
 # call idds command
 def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose=False, compress=False,
-                      manager=False):
+                      manager=False, loader=None):
     """Call an iDDS command through PanDA
        args:
           command_name: command name
           args: a list of positional arguments
           kwargs: a dictionary of keyword arguments
-          dumper: function object for json.dump
+          dumper: function object for json.dumps
           verbose: True to see verbose message
           compress: True to compress request body
           manager: True to use ClientManager
+          loader: function object for json.loads
        returns:
           status code
              0: communication succeeded to the panda server
@@ -1463,7 +1464,10 @@ def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose
         if status != 0:
             return EC_Failed, output
         else:
-            return 0, json.loads(output)
+            if loader:
+                return 0, loader(output)
+            else:
+                return 0, json.loads(output)
     except Exception as e:
         msg = "Failed with {}".format(str(e))
         print (traceback.format_exc())
