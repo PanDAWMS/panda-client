@@ -30,12 +30,16 @@ jobs:
       # Check-out feedstock
       - uses: actions/checkout@v2
         with:
+          token: ${{ secrets.PAT_GITHUB }}
           repository: ${{ github.repository_owner	}}/${{ github.event.repository.name }}-feedstock
           path: dst
 
       # Generate meta.yaml
       - name: Generate meta.yaml
         run: |
+          cd dst
+          git remote add upstream https://github.com/conda-forge/${REPO_NAME}-feedstock.git
+          cd -
           PACKAGE_NAME=`echo $REPO_NAME | sed -e 's/-//g'`
           cd src/${PACKAGE_NAME}
           VERSION=`python -c 'exec(open("PandaToolsPkgInfo.py").read());print (release_version)'`
@@ -46,6 +50,21 @@ jobs:
           wget https://github.com/${OWNER_NAME}/${REPO_NAME}/archive/refs/tags/${VERSION}.tar.gz -q -O dummy.tar.gz
           SHA256SUM=`sha256sum dummy.tar.gz`
           SHA256SUM=${SHA256SUM% *}
-          echo $SHA256SUM
-          sed -e "s/___PACKAGE_VERSION___/${VERSION}/g" src/templates/conda_meta.yml.template | sed -e "s/___SHA256SUM___/${SHA256SUM}/g" > dst/recipe/meta.yaml
+          echo SHA256SUM=$SHA256SUM
+          sed -e "s/___PACKAGE_VERSION___/${VERSION}/g" src/templates/conda_meta.yml.template \
+            | sed -e "s/___SHA256SUM___/${SHA256SUM}/g" > dst/recipe/meta.yaml
 
+      - name: Push the changes
+        run: |
+          cd dst
+          git diff
+          git config --global user.name 'Tadashi Maeno'
+          git config --global user.email 'tmaeno@bnl.gov'
+          git commit -am "${VERSION} github action"
+          git push
+
+      - name: Request pull request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create -f
