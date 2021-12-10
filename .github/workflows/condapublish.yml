@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Publish on Condor-forge
+name: Publish on Conda-forge
 
 # Controls when the workflow will run
 on:
@@ -67,4 +67,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          cd dst
           gh pr create -f
