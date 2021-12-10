@@ -69,7 +69,7 @@ jobs:
 
       - name: Request pull request
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_GITHUB }}
         run: |
           cd dst
           gh pr create -t "${REPO_NAME} ${VERSION} github action" -b "automatic pull request"
