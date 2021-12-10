@@ -1,0 +1,51 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Publish on Condor-forge
+
+# Controls when the workflow will run
+on:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  publish:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # variables
+    env:
+      REPO_NAME: ${{ github.event.repository.name }}
+      OWNER_NAME: ${{ github.repository_owner }}
+      
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Check-out src repository
+      - uses: actions/checkout@v2
+        with:
+          path: src
+          
+      # Check-out feedstock
+      - uses: actions/checkout@v2
+        with:
+          repository: ${{ github.repository_owner	}}/${{ github.event.repository.name }}-feedstock
+          path: dst
+
+      # Generate meta.yaml
+      - name: Generate meta.yaml
+        run: |
+          PACKAGE_NAME=`echo $REPO_NAME | sed -e 's/-//g'`
+          cd src/${PACKAGE_NAME}
+          VERSION=`python -c 'exec(open("PandaToolsPkgInfo.py").read());print (release_version)'`
+          cd -
+          echo REPO_NAME=$REPO_NAME
+          echo PACKAGE_NAME=$PACKAGE_NAME
+          echo VERSION=$VERSION
+          wget https://github.com/${OWNER_NAME}/${REPO_NAME}/archive/refs/tags/${VERSION}.tar.gz -q -O dummy.tar.gz
+          SHA256SUM=`sha256sum dummy.tar.gz`
+          SHA256SUM=${SHA256SUM% *}
+          echo $SHA256SUM
+          sed -e "s/___PACKAGE_VERSION___/${VERSION}/g" src/templates/conda_meta.yml.template | sed -e "s/___SHA256SUM___/${SHA256SUM}/g" > dst/recipe/meta.yaml
+
