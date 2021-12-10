@@ -36,7 +36,7 @@ jobs:
           repository: ${{ github.repository_owner	}}/${{ github.event.repository.name }}-feedstock
           path: dst
 
-      # Generate and push meta.yaml
+      # Generate meta.yaml
       - name: Generate and push meta.yaml
         run: |
           cd dst
@@ -47,14 +47,19 @@ jobs:
           VERSION=`python -c 'exec(open("PandaToolsPkgInfo.py").read());print (release_version)'`
           cd -
           echo REPO_NAME=$REPO_NAME
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
           echo PACKAGE_NAME=$PACKAGE_NAME
           echo VERSION=$VERSION
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
           wget https://github.com/${OWNER_NAME}/${REPO_NAME}/archive/refs/tags/${VERSION}.tar.gz -q -O dummy.tar.gz
           SHA256SUM=`sha256sum dummy.tar.gz`
           SHA256SUM=${SHA256SUM% *}
           echo SHA256SUM=$SHA256SUM
           sed -e "s/___PACKAGE_VERSION___/${VERSION}/g" src/templates/conda_meta.yml.template \
             | sed -e "s/___SHA256SUM___/${SHA256SUM}/g" > dst/recipe/meta.yaml
+
+      - name: Push the change
+        run: |
           cd dst
           git diff
           git config --global user.name 'Tadashi Maeno'
@@ -67,4 +72,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd dst
-          gh pr create -f
+          gh pr create -t "${REPO_NAME} ${VERSION} github action" -b "automatic pull request"
