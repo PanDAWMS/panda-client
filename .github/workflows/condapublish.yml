@@ -55,6 +55,7 @@ jobs:
           echo SHA256SUM=$SHA256SUM
           sed -e "s/___PACKAGE_VERSION___/${VERSION}/g" src/templates/conda_meta.yml.template \
             | sed -e "s/___SHA256SUM___/${SHA256SUM}/g" > dst/recipe/meta.yaml
+          cd dst
           git diff
           git config --global user.name 'Tadashi Maeno'
           git config --global user.email 'tmaeno@bnl.gov'
