@@ -1,0 +1,38 @@
+{% set name = "panda-client" %}
+{% set version = "___PACKAGE_VERSION___" %}
+
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/PanDAWMS/{{ name }}/archive/refs/tags/___PACKAGE_VERSION___.tar.gz
+  sha256: ___SHA256SUM___
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - pip
+    - python >=3.6
+  run:
+    - python >=3.6
+
+test:
+  imports:
+    - pandatools
+
+about:
+  home: https://panda-wms.readthedocs.io/en/latest/
+  summary: PanDA Client Package
+  license: Apache-2.0
+  license_file: LICENSE
+
+extra:
+  recipe-maintainers:
+    - wguanicedew
+    - yesw2000
