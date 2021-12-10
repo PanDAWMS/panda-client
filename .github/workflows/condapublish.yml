@@ -5,7 +5,9 @@ name: Publish on Conda-forge
 # Controls when the workflow will run
 on:
 
-  # Allows you to run this workflow manually from the Actions tab
+  release:
+    types: [ published ]
+
   workflow_dispatch:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
@@ -34,8 +36,8 @@ jobs:
           repository: ${{ github.repository_owner	}}/${{ github.event.repository.name }}-feedstock
           path: dst
 
-      # Generate meta.yaml
-      - name: Generate meta.yaml
+      # Generate and push meta.yaml
+      - name: Generate and push meta.yaml
         run: |
           cd dst
           git remote add upstream https://github.com/conda-forge/${REPO_NAME}-feedstock.git
@@ -53,10 +55,6 @@ jobs:
           echo SHA256SUM=$SHA256SUM
           sed -e "s/___PACKAGE_VERSION___/${VERSION}/g" src/templates/conda_meta.yml.template \
             | sed -e "s/___SHA256SUM___/${SHA256SUM}/g" > dst/recipe/meta.yaml
-
-      - name: Push the changes
-        run: |
-          cd dst
           git diff
           git config --global user.name 'Tadashi Maeno'
           git config --global user.email 'tmaeno@bnl.gov'
