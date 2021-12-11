@@ -36,12 +36,18 @@ jobs:
           repository: ${{ github.repository_owner	}}/${{ github.event.repository.name }}-feedstock
           path: dst
 
-      # Generate meta.yaml
-      - name: Generate and push meta.yaml
+      # Re-sync
+      - name: Re-sync
         run: |
           cd dst
           git remote add upstream https://github.com/conda-forge/${REPO_NAME}-feedstock.git
-          cd -
+          git fetch upstream
+          git checkout master
+          git merge upstream/master
+
+      # Generate meta.yaml
+      - name: Generate and push meta.yaml
+        run: |
           PACKAGE_NAME=`echo $REPO_NAME | sed -e 's/-//g'`
           cd src/${PACKAGE_NAME}
           VERSION=`python -c 'exec(open("PandaToolsPkgInfo.py").read());print (release_version)'`
@@ -61,14 +67,15 @@ jobs:
       - name: Push the change
         run: |
           cd dst
-          git diff
+          # use personal info since github-actions/github-actions@github.com doesn't work for forked repos
           git config --global user.name 'Tadashi Maeno'
           git config --global user.email 'tmaeno@bnl.gov'
-          git commit -am "${VERSION} github action"
+          git diff --quiet && git diff --staged --quiet || git commit -am "${VERSION} github action"
           git push
 
       - name: Request pull request
         env:
+          # use PAT instead of GITHUB_TOKEN since the latter cannot submit a PR
           GITHUB_TOKEN: ${{ secrets.PAT_GITHUB }}
         run: |
           cd dst
