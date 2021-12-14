@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           token: ${{ secrets.PAT_GITHUB }}
-          repository: ${{ github.repository_owner	}}/${{ github.event.repository.name }}-feedstock
+          repository: ${{ github.repository_owner }}/${{ github.event.repository.name }}-feedstock
           path: dst
 
       # Re-sync
@@ -61,7 +61,7 @@ jobs:
           SHA256SUM=`sha256sum dummy.tar.gz`
           SHA256SUM=${SHA256SUM% *}
           echo SHA256SUM=$SHA256SUM
-          sed -e "s/___PACKAGE_VERSION___/${VERSION}/g" src/templates/conda_meta.yml.template \
+          sed -e "s/___PACKAGE_VERSION___/${VERSION}/g" src/templates/conda_meta.yaml.template \
             | sed -e "s/___SHA256SUM___/${SHA256SUM}/g" > dst/recipe/meta.yaml
 
       - name: Push the change
