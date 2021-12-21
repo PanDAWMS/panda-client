@@ -371,12 +371,12 @@ For more info, do help(show) for example
             print(output)
 
     # set a secret
-    def set_secret(key, value):
+    def set_secret(key, value, is_file=False):
         """
-        Set a set of secret key-value strings
+        Define a pair of secret key-value strings. The value can be a file path to upload a secret file when is_file=True
 
         """
-        pbookCore.set_secret(key, value)
+        pbookCore.set_secret(key, value, is_file)
 
     # delete a secret
     def delete_secret(key):
@@ -395,12 +395,12 @@ For more info, do help(show) for example
         pbookCore.set_secret(None, None)
 
     # list secrets
-    def list_secrets():
+    def list_secrets(full=False):
         """
-        List secrets
+        List secrets. Value strings are truncated by default. full=True to see entire strings
 
         """
-        pbookCore.list_secrets()
+        pbookCore.list_secrets(full)
 
     # execute command in the batch mode
     if comString != '':

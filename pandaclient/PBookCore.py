@@ -1,8 +1,9 @@
 import json
-import datetime
+import base64
 import time
 import copy
 import sys
+import re
 
 try:
     long()
@@ -377,9 +378,18 @@ class PBookCore(object):
         return True, output[-1]
 
     # set secret
-    def set_secret(self, key, value):
+    def set_secret(self, key, value, is_file=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
+        if is_file:
+            with open(value, 'rb') as f:
+                value = base64.b64encode(f.read()).encode()
+            # add prefix
+            key = '___file___:'+format(key)
+        size_limit = 1000
+        if value and len(value) > size_limit * 1024:
+            tmpLog.error("The value length exceeds the limit ({0} kB)".format(size_limit))
+            return False
         status, output = Client.set_user_secert(key, value, verbose=self.verbose)
         if status != 0:
             tmpLog.error(output)
@@ -394,7 +404,7 @@ class PBookCore(object):
         return status
 
     # list secrets
-    def list_secrets(self):
+    def list_secrets(self, full=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         status, output = Client.get_user_secerts(verbose=self.verbose)
@@ -405,15 +415,23 @@ class PBookCore(object):
         status, data = output
         if status:
             if data:
+                prefix = '^___[a-z]+___:'
                 msg = '\n'
-                keys = list(data.keys())
+                keys = [re.sub(prefix, '', k) for k in data.keys()]
                 big_key = len(max(keys, key=len))
                 template = '{{:{}s}}: {{}}\n'.format(big_key+1)
                 msg += template.format('Key', 'Value')
                 msg += template.format('-'*big_key, '-'*20)
                 keys.sort()
-                for k in keys:
-                    msg += template.format(k, data[k])
+                max_len = 50
+                for k in data:
+                    value = data[k]
+                    # hide prefix
+                    if re.search(prefix, k):
+                        k = re.sub(prefix, '', k)
+                    if not full and len(value) > max_len:
+                        value = value[:max_len] + '...'
+                    msg += template.format(k, value)
             else:
                 msg = "No secrets"
             print(msg)
