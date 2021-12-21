@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.0
+  * added is_file to set_secret in pbook
+
 1.4.99
   * loader in iDDS API
 
