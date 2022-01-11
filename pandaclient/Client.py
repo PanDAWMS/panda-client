@@ -139,7 +139,11 @@ class _Curl:
     # run auth flow
     def get_oidc(self, tmp_log):
         parsed = urlparse(baseURLSSL)
-        auth_url = '{0}://{1}:{2}/auth/{3}_auth_config.json'.format(parsed.scheme, parsed.hostname, parsed.port,
+        if parsed.port:
+            auth_url = '{0}://{1}:{2}/auth/{3}_auth_config.json'.format(parsed.scheme, parsed.hostname, parsed.port,
+                                                                        self.authVO)
+        else:
+            auth_url = '{0}://{1}/auth/{3}_auth_config.json'.format(parsed.scheme, parsed.hostname, parsed.port,
                                                                     self.authVO)
         oidc = openidc_utils.OpenIdConnect_Utils(auth_url, log_stream=tmp_log, verbose=self.verbose)
         return oidc

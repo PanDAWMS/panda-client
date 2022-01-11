@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.1
+  * fixed OIDC for new ATLAS panda server URL
+
 1.5.0
   * added is_file to set_secret in pbook
 
