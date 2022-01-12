@@ -1333,7 +1333,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         taskParamMap['includedSite'] = None
     if options.priority is not None:
         taskParamMap['currentPriority'] = options.priority
-    if options.nFiles != 0:
+    if options.nFiles > 0:
         taskParamMap['nFiles'] = options.nFiles
     if options.nFilesPerJob is not None:
         taskParamMap['nFilesPerJob'] = options.nFilesPerJob

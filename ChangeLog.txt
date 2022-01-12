@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * made --nFiles=-1 work in prun
+
 1.5.1
   * fixed OIDC for new ATLAS panda server URL
 

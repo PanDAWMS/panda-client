@@ -161,7 +161,7 @@ def main():
     if options.useAthenaPackages:
         task_type_args['athena'] = '--useAthenaPackages'
     for task_type in task_type_args:
-        prun_exec_str = '--exec __dummy_exec_str__ --outDS {} {}'.format(options.outDS, task_type_args[task_type])
+        prun_exec_str = '--exec __dummy_exec_str__ --outDS {0} {1}'.format(options.outDS, task_type_args[task_type])
         if options.noSubmit:
             prun_exec_str += ' --noSubmit'
         if options.verbose:
@@ -201,13 +201,13 @@ def main():
         Client.useIntrServer()
 
     # action
-    tmpLog.info("{} workflow {}".format(action_type, options.outDS))
+    tmpLog.info("{0} workflow {1}".format(action_type, options.outDS))
     tmpStat, tmpOut = Client.send_workflow_request(params, **data)
 
     # result
     exitCode = None
     if tmpStat != 0:
-        tmpStr = "workflow {} failed with {}".format(action_type, tmpStat)
+        tmpStr = "workflow {0} failed with {1}".format(action_type, tmpStat)
         tmpLog.error(tmpStr)
         exitCode = 1
     if tmpOut[0]:
@@ -223,7 +223,7 @@ def main():
             else:
                 tmpLog.error('workflow description is corrupted')
     else:
-        tmpStr = "workflow {} failed. {}".format(action_type, tmpOut[1])
+        tmpStr = "workflow {0} failed. {1}".format(action_type, tmpOut[1])
         tmpLog.error(tmpStr)
         exitCode = 1
     return exitCode
