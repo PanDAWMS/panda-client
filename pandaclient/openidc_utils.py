@@ -171,13 +171,13 @@ class OpenIdConnect_Utils:
                     enc = data['id_token'].split('.')[1]
                     enc += '=' * (-len(enc) % 4)
                     dec = json.loads(base64.urlsafe_b64decode(enc.encode()))
-                    exp_time = datetime.datetime.fromtimestamp(dec['exp'])
-                    delta = exp_time - datetime.datetime.now()
+                    exp_time = datetime.datetime.utcfromtimestamp(dec['exp'])
+                    delta = exp_time - datetime.datetime.utcnow()
                     if self.verbose:
-                        self.log_stream.debug('token expiration time : {0}'.\
+                        self.log_stream.debug('token expiration time : {0} UTC'.\
                                               format(exp_time.strftime("%Y-%m-%d %H:%M:%S")))
                     # check expiration time
-                    if delta < datetime.timedelta(minutes=10):
+                    if delta < datetime.timedelta(minutes=5):
                         # return refresh token
                         if 'refresh_token' in data:
                             if self.verbose:
@@ -219,6 +219,9 @@ class OpenIdConnect_Utils:
             # refreshed
             if s:
                 return True, o
+            else:
+                if self.verbose:
+                    self.log_stream.debug('failed to refresh token: {0}'.format(o))
         # get device code
         s, o = self.get_device_code(endpoint_config['device_authorization_endpoint'], auth_config['client_id'],
                                     auth_config['audience'])

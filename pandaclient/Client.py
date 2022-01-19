@@ -105,7 +105,10 @@ def use_x509_no_grid():
 # string decode for python 2 and 3
 def str_decode(data):
     if hasattr(data, 'decode'):
-        return data.decode()
+        try:
+            return data.decode()
+        except Exception:
+            return data.decode('utf-8')
     return data
 
 
@@ -1395,6 +1398,7 @@ def get_cert_attributes(verbose=False):
             for l in output.split('\n'):
                 if ':' not in l:
                     continue
+                l = l.encode('utf-8')
                 print(l)
                 if not l.startswith('GRST_CRED'):
                     continue
@@ -1404,6 +1408,7 @@ def get_cert_attributes(verbose=False):
     except Exception as e:
         msg = "Too bad. {}".format(str(e))
         tmp_log.error(msg)
+        print(traceback.format_exc())
         return EC_Failed, msg
 
 

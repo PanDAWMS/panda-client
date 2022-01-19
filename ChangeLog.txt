@@ -1,7 +1,9 @@
 ** Release Notes
 
-current
+1.5.2
   * made --nFiles=-1 work in prun
+  * more messages for OIDC
+  * reduced frequency of token refresh
 
 1.5.1
   * fixed OIDC for new ATLAS panda server URL
