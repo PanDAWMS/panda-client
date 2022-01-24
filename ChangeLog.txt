@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.3
+  * using pandacache:443
+
 1.5.2
   * made --nFiles=-1 work in prun
   * more messages for OIDC

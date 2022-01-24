@@ -44,7 +44,7 @@ try:
 except Exception:
     baseURLSSL = 'https://pandaserver.cern.ch/server/panda'
 
-baseURLCSRVSSL = "http://pandacache.cern.ch:25443/server/panda"
+baseURLCSRVSSL = "https://pandacache.cern.ch/server/panda"
 
 # exit code
 EC_Failed = 255
@@ -53,9 +53,12 @@ EC_Failed = 255
 maxCpuCountLimit = 1000000000
 
 # resolve panda cache server's name
-netloc = baseURLCSRVSSL.split('/')[2]
-tmp_host = random.choice(socket.getaddrinfo(*netloc.split(':')))
-baseURLCSRVSSL = "https://%s:%s/server/panda" % (socket.getfqdn(tmp_host[-1][0]), tmp_host[-1][1])
+netloc = urlparse(baseURLCSRVSSL)
+tmp_host = socket.getfqdn(random.choice(socket.getaddrinfo(netloc.hostname, netloc.port))[-1][0])
+if netloc.port:
+    baseURLCSRVSSL = '%s://%s:%s%s' % (netloc.scheme, tmp_host, netloc.port, netloc.path)
+else:
+    baseURLCSRVSSL = '%s://%s%s' % (netloc.scheme, tmp_host, netloc.path)
 
 
 # look for a grid proxy certificate
