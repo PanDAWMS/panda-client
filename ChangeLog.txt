@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * fixed --debugMode
+
 1.5.3
   * using pandacache:443
 

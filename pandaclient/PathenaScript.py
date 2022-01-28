@@ -1486,6 +1486,8 @@ if options.respectLB:
     taskParamMap['respectLB'] = True
 if options.maxAttempt > 0 and options.maxAttempt <= 50:
     taskParamMap['maxAttempt'] = options.maxAttempt
+if options.debugMode:
+    taskParamMap['debugMode'] = True
 if options.osMatching:
     taskParamMap['osMatching'] = True
 taskParamMap['osInfo'] = PsubUtils.get_os_information()

@@ -1394,6 +1394,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         taskParamMap['maxAttempt'] = options.maxAttempt
     if options.useSecrets:
         taskParamMap['useSecrets'] = True
+    if options.debugMode:
+        taskParamMap['debugMode'] = True
     # source URL
     if options.vo is None:
         matchURL = re.search("(http.*://[^/]+)/",Client.baseURLCSRVSSL)
