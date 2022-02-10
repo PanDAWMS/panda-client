@@ -1,9 +1,11 @@
 setenv PATH @@install_scripts@@:$PATH
-if ($?PYTHONPATH) then 
-    setenv PYTHONPATH @@install_purelib@@:$PYTHONPATH
-else 
-    setenv PYTHONPATH @@install_purelib@@
-endif 
+
 setenv PANDA_CONFIG_ROOT ~/.pathena
 setenv PANDA_SYS @@install_dir@@
-setenv PANDA_PYTHONPATH @@install_purelib@@
+setenv PANDA_PYTHONPATH `bash ${PANDA_SYS}/etc/panda/site_path.sh`
+
+if ($?PYTHONPATH) then
+    setenv PYTHONPATH ${PANDA_PYTHONPATH}:$PYTHONPATH
+else
+    setenv PYTHONPATH ${PANDA_PYTHONPATH}
+endif

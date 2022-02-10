@@ -1,6 +1,7 @@
 ** Release Notes
 
-current
+1.5.4
+  * to set PYTHONPATH consistent with python version
   * fixed --debugMode
 
 1.5.3

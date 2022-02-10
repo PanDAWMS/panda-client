@@ -189,6 +189,7 @@ setup(
     data_files = [ ('etc/panda', ['templates/panda_setup.sh.template',
                                   'templates/panda_setup.csh.template',
                                   'templates/panda_setup.example.cfg.template',
+                                  'templates/site_path.sh.template',
                                   'glade/pbook.glade',
                                   ]
                     ),
