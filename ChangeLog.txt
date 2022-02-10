@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.5
+  * fixed setup.sh for sl6
+
 1.5.4
   * to set PYTHONPATH consistent with python version
   * fixed --debugMode
