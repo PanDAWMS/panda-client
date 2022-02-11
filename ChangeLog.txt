@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.6
+  * added PANDACACHE_URL
+
 1.5.5
   * fixed setup.sh for sl6
 

@@ -44,7 +44,10 @@ try:
 except Exception:
     baseURLSSL = 'https://pandaserver.cern.ch/server/panda'
 
-baseURLCSRVSSL = "https://pandacache.cern.ch/server/panda"
+if 'PANDACACHE_URL' in os.environ:
+    baseURLCSRVSSL = os.environ['PANDACACHE_URL']
+else:
+    baseURLCSRVSSL = "https://pandacache.cern.ch/server/panda"
 
 # exit code
 EC_Failed = 255
