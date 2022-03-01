@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.7
+  * added --vo, --prodSourceLabel, and --workingGroup to pchain
+
 1.5.6
   * added PANDACACHE_URL
 

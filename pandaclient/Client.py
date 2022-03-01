@@ -757,10 +757,10 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
             # return reusable filename
             return 0,"NewFileName:%s" % reuseFileName
     # execute
-    if useCacheSrv:
-        url = baseURLCSRVSSL + '/putFile'
-    else:
-        url = baseURLSSL + '/putFile'
+    if not useCacheSrv:
+        global baseURLCSRVSSL
+        baseURLCSRVSSL = baseURLSSL
+    url = baseURLCSRVSSL + '/putFile'
     data = {'file':file}
     s,o = curl.put(url,data)
     return s, str_decode(o)

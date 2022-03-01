@@ -61,11 +61,14 @@ def main():
     group_build.add_argument('--useAthenaPackages', action='store_const', const=True, dest='useAthenaPackages',
                              default=False,
                              help='One or more tasks in the workflow uses locally-built Athena packages')
+    group_build.add_argument('--vo', action='store', dest='vo',  default=None,
+                             help="virtual organization name")
 
     group_output.add_argument('--outDS', action='store', dest='outDS', default=None, required=True,
                               help='Name of the dataset for output and log files')
     group_output.add_argument('--official', action='store_const', const=True, dest='official', default=False,
                               help='Produce official dataset')
+
     group_submit.add_argument('--noSubmit', action='store_const', const=True, dest='noSubmit', default=False,
                               help="Dry-run")
     group_submit.add_argument("-3", action="store_true", dest="python3", default=False,
@@ -75,6 +78,10 @@ def main():
                                    "e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot")
     group_submit.add_argument('--noEmail', action='store_const', const=True, dest='noEmail', default=False,
                               help='Suppress email notification')
+    group_submit.add_argument('--prodSourceLabel', action='store', dest='prodSourceLabel', default='',
+                              help="set prodSourceLabel")
+    group_submit.add_argument('--workingGroup', action='store', dest='workingGroup',  default=None,
+                              help="set workingGroup")
 
     group_expert.add_argument('--intrSrv', action='store_const', const=True, dest='intrSrv', default=False,
                               help="Please don't use this option. Only for developers to use the intr panda server")
@@ -131,8 +138,12 @@ def main():
 
     if not options.noSubmit:
         tmpLog.info("uploading workflow sandbox")
+        if options.vo:
+            use_cache_srv = False
+        else:
+            use_cache_srv = True
         os.chdir(tmpDir)
-        status, out = Client.putFile(archiveName, options.verbose, useCacheSrv=True, reuseSandbox=True)
+        status, out = Client.putFile(archiveName, options.verbose, useCacheSrv=use_cache_srv, reuseSandbox=True)
         os.chdir(curDir)
         if out.startswith('NewFileName:'):
             # found the same input sandbox to reuse
@@ -166,10 +177,17 @@ def main():
             prun_exec_str += ' --noSubmit'
         if options.verbose:
             prun_exec_str += ' -v'
+        if options.vo:
+            prun_exec_str += ' --vo {0}'.format(options.vo)
+        if options.prodSourceLabel:
+            prun_exec_str += ' --prodSourceLabel {0}'.format(options.prodSourceLabel)
+        if options.workingGroup:
+            prun_exec_str += ' --workingGroup {0}'.format(options.workingGroup)
         arg_dict = {'get_taskparams': True,
                     'ext_args': shlex.split(prun_exec_str)}
         if options.checkOnly:
             arg_dict['dry_mode'] = True
+
         taskParamMap = PrunScript.main(**arg_dict)
         del taskParamMap['noInput']
         del taskParamMap['nEvents']
