@@ -1326,15 +1326,30 @@ def convertConfToOutput(runConfig,extOutFile,original_outDS,destination='',space
 
 # get CMTCONFIG + IMG
 def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None, verbose=False, architecture=None):
-    if architecture:
-        retVal = architecture
-    else:
+    # get CMTCONFIG
+    retVal = ''
+    if architecture and '@' in architecture:
+        retVal = architecture.split('@')[0]
+    if not retVal:
         retVal = getCmtConfig(athenaVer, cacheVer, nightVer, cmtConfig, verbose)
-    if 'ALRB_USER_PLATFORM' in os.environ:
+    # get base platform + HW specs
+    if architecture and '@' in architecture:
+        # architecture with base platform
+        spec_str = '@' + architecture.split('@')[-1]
+    elif 'ALRB_USER_PLATFORM' in os.environ:
+        # base platform from ALRB
+        spec_str = '@' + os.environ['ALRB_USER_PLATFORM']
+        # HW specs
+        if architecture:
+            spec_str += architecture
+    else:
+        # architecture w/o base platform or even empty architecture
+        spec_str = architecture
+    # append base platform + HW specs if any
+    if spec_str:
         if retVal is None:
             retVal = ''
-        if '@' not in retVal:
-            retVal = retVal + '@' + os.environ['ALRB_USER_PLATFORM']
+        retVal = retVal + spec_str
     return retVal
 
 

@@ -405,8 +405,12 @@ group_submit.add_argument('--maxAttempt', action='store', dest='maxAttempt', def
 group_containerJob.add_argument('--containerImage', action='store', dest='containerImage', default='',
                 type=str, help="Name of a container image")
 group_containerJob.add_argument('--architecture', action='store', dest='architecture', default='',
-                                help="CPU and/or GPU requirements. #CPU_spec&GPU_spec where CPU or GPU spec can be "
-                                     "omitted. CPU_spec = architecture<-vendor<-instruction set>>, "
+                                help="Base OS platform, CPU, and/or GPU requirements. "
+                                     "The format is @base_platform#CPU_spec&GPU_spec "
+                                     "where base platform, CPU, or GPU spec can be omitted. "
+                                     "If base platform is not specified it is automatically taken from "
+                                     "$ALRB_USER_PLATFORM. "
+                                     "CPU_spec = architecture<-vendor<-instruction set>>, "
                                      "GPU_spec = vendor<-model>. A wildcards can be used if there is no special "
                                      "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
                                      "CPU with avx2 support and nvidia GPU")
@@ -1400,9 +1404,6 @@ taskParamMap['vo'] = 'atlas'
 if options.containerImage == '':
     taskParamMap['architecture'] = AthenaUtils.getCmtConfigImg(athenaVer,cacheVer,nightVer,options.cmtConfig,
                                                                architecture=options.architecture)
-    if options.architecture:
-        taskParamMap['architecture'] = (taskParamMap['architecture'] if taskParamMap['architecture'] else '') \
-                                       + options.architecture
 else:
     taskParamMap['architecture'] = options.architecture
     taskParamMap['container_name'] = options.containerImage

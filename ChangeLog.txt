@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.8
+  * fixed --architecture of pathena/prun to keep cmtconfig stuff in task.architecture
+
 1.5.7
   * added --vo, --prodSourceLabel, and --workingGroup to pchain
 
