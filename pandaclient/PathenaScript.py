@@ -448,6 +448,8 @@ group_submit.add_argument('--osMatching', action='store_const', const=True, dest
                   help='To let the brokerage choose sites which have the same OS as the local machine has.')
 group_job.add_argument('--cpuTimePerEvent', action='store', dest='cpuTimePerEvent', default=-1, type=int,
                 help='Expected HS06 seconds per event (~= 10 * the expected duration per event in seconds)')
+group_job.add_argument('--fixedCpuTime', action='store_const', const=True, dest='fixedCpuTime', default=False,
+                       help='Use fixed cpuTime instead of estimated cpuTime')
 group_job.add_argument('--maxWalltime', action='store', dest='maxWalltime', default=0, type=int,
   help='Max walltime for each job in hours. Note that this option works only ' \
                      'when the nevents metadata of input files are available in rucio')
@@ -1471,6 +1473,8 @@ if options.maxWalltime > 0:
 if options.cpuTimePerEvent > 0:
     taskParamMap['cpuTime'] = options.cpuTimePerEvent
     taskParamMap['cpuTimeUnit'] = 'HS06sPerEvent'
+if options.fixedCpuTime:
+    taskParamMap['cpuTimeUnit'] = 'HS06sPerEventFixed'
 if options.memory > 0:
     taskParamMap['ramCount'] = options.memory
 if options.outDiskCount is not None:
