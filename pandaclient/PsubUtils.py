@@ -735,10 +735,10 @@ def uploadGzippedFile(origFileName,currentDir,tmpLog,delFilesOnExit,nosubmit,ver
     # open original file
     if origFileName.startswith('/'):
         # absolute path
-        tmpIn = open(origFileName)
+        tmpIn = open(origFileName, 'rb')
     else:
         # relative path
-        tmpIn = open('%s/%s' % (currentDir,origFileName))
+        tmpIn = open('%s/%s' % (currentDir,origFileName), 'rb')
     # use unique name for gzip
     newFileName = 'pre_%s.dat' % MiscUtils.wrappedUuidGen()
     gzipFullPath = '%s/%s.gz' % (currentDir,newFileName)

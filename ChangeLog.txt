@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.10
+  * fixed GRL for py3
+
 1.5.9
   * added --fixedCpuTime to pathena/prun
 
