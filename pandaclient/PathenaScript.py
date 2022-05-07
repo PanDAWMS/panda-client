@@ -9,6 +9,7 @@ from pandaclient.Group_argparse import GroupArgParser
 import random
 import pickle
 import json
+from pandaclient.MiscUtils import parse_secondary_datasets_opt
 
 try:
     unicode
@@ -165,6 +166,11 @@ group_input.add_argument('--inDsTxt',action='store',dest='inDsTxt',default='',
 action = group_input.add_argument('--inOutDsJson', action='store', dest='inOutDsJson', default='',
                   help="A json file to specify input and output datasets for bulk submission. It contains a json dump of [{'inDS': a comma-concatenated input dataset names, 'outDS': output dataset name}, ...]")
 group_output.shareWithMe(action)
+group_input.add_argument('--secondaryDSs', action='store', dest='secondaryDSs', default='',
+                         help='A versatile option to specify arbitrary secondary inputs that takes a list of '
+                              'secondary datasets. See PandaRun wiki page for detail')
+group_input.add_argument('--notExpandSecDSs', action='store_const', const=True, dest='notExpandSecDSs', default=False,
+                         help = 'Use files across dataset boundaries in secondary dataset containers')
 group_input.add_argument('--minDS',  action='store', dest='minDS',  default='',
                 type=str, help='Dataset name for minimum bias stream')
 group_job.add_argument('--nMin',  action='store', dest='nMin',  default=-1,
@@ -1266,6 +1272,13 @@ if options.inDS != '' or options.shipinput or options.pfnList != '':
                                                                                        options.nBeamGasO,
                                                                                        'BeamGas Oxygen')
 
+    # general secondaries
+    tmpStat, tmpOut = parse_secondary_datasets_opt(options.secondaryDSs)
+    if not tmpStat:
+        tmpLog.error(tmpOut)
+        sys.exit(EC_Config)
+    else:
+        options.secondaryDSs = tmpOut
 
 
 #####################################################################
@@ -1879,6 +1892,26 @@ if beamGasStream != '':
                 }
     taskParamMap['jobParameters'] += [dictItem]
 
+# general secondaries
+if options.secondaryDSs:
+    for tmpDsName in options.secondaryDSs:
+        tmpMap = options.secondaryDSs[tmpDsName]
+        # make template item
+        streamName = tmpMap['streamName']
+        if not options.notExpandSecDSs:
+            expandFlag = True
+        else:
+            expandFlag = False
+        dictItem = MiscUtils.makeJediJobParam('${' + streamName + '}', tmpDsName, 'input', hidden=True,
+                                              expand=expandFlag, include=tmpMap['pattern'], offset=tmpMap['nSkip'],
+                                              nFilesPerJob=tmpMap['nFiles'])
+        taskParamMap['jobParameters'] += dictItem
+        inputMap[streamName] = tmpDsName
+    dictItem = {'type':'constant',
+                'value':'-m "${{{0}/T}}"'.format(
+                    ','.join([tmpMap['streamName'] for tmpMap in options.secondaryDSs.values()]))
+                }
+    taskParamMap['jobParameters'] += [dictItem]
 
 # output
 if options.addNthFieldOfInDSToLFN != '' or options.addNthFieldOfInFileToLFN != '':
@@ -1936,8 +1969,10 @@ taskParamMap['jobParameters'] += [
      'padding':False,
      },
     ]
-taskParamMap['jobParameters'] += PsubUtils.convertParamStrToJediParam(tmpJobO,inputMap,options.outDS[:-1],
-                                                                      True,False,usePfnList)
+taskParamMap['jobParameters'] += PsubUtils.convertParamStrToJediParam(
+    tmpJobO, inputMap, options.outDS[:-1],
+    True, False, usePfnList,
+    extra_in_list=[tmpMap['streamName'] for tmpMap in options.secondaryDSs.values()])
 taskParamMap['jobParameters'] += [
     {'type':'constant',
      'value': '"',

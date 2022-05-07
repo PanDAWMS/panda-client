@@ -190,3 +190,40 @@ def pickle_loads(str_input):
         return pickle.loads(str_input)
     except Exception:
         return pickle.loads(str_input.encode('utf-8'), encoding='latin1')
+
+
+# parse secondary dataset option
+def parse_secondary_datasets_opt(secondaryDSs):
+    if secondaryDSs != '':
+        # parse
+        tmpMap = {}
+        for tmpItem in secondaryDSs.split(','):
+            if "#" in tmpItem:
+                tmpItems = tmpItem.split('#')
+            else:
+                tmpItems = tmpItem.split(':')
+            if len(tmpItems) in [3,4,5]:
+                tmpDsName = tmpItems[2]
+                # change ^ to ,
+                tmpDsName = tmpDsName.replace('^',',')
+                # make map
+                tmpMap[tmpDsName] = {'nFiles'     : int(tmpItems[1]),
+                                     'streamName' : tmpItems[0],
+                                     'pattern'    : '',
+                                     'nSkip'      : 0,
+                                     'files'      : []}
+                # using filtering pattern
+                if len(tmpItems) >= 4:
+                    tmpMap[tmpItems[2]]['pattern'] = tmpItems[3]
+                # nSkip
+                if len(tmpItems) >= 5:
+                    tmpMap[tmpItems[2]]['nSkip'] = int(tmpItems[4])
+            else:
+                errStr = "Wrong format %s in --secondaryDSs. Must be StreamName:nFilesPerJob:DatasetName[:Pattern[:nSkipFiles]]" \
+                             % tmpItem
+                return False, errStr
+        # set
+        secondaryDSs = tmpMap
+    else:
+        secondaryDSs = {}
+    return True, secondaryDSs

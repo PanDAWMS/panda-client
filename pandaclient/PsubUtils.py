@@ -594,9 +594,12 @@ def readDsFromFile(txtName):
 
 
 # convert param string to JEDI params
-def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,usePfnList=False,includeIO=True):
+def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,usePfnList=False,includeIO=True,
+                               extra_in_list=None):
     # list of place holders for input
     inList = ['IN','CAVIN','MININ','LOMBIN','HIMBIN','BHIN','BGIN','BGHIN','BGCIN','BGOIN']
+    if extra_in_list:
+        inList += extra_in_list
     # place holder for seq_number
     seqHolder = 'SEQNUMBER'
     # place holder for output
@@ -615,7 +618,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
     # replace %XYZ with ${XYZ}
     if includeIO:
         for tmpH in inList:
-            encStr = re.sub('%'+tmpH,'${'+tmpH+'}',encStr)
+            encStr = re.sub('%'+tmpH+r'\b', '${'+tmpH+'}', encStr)
     # replace %XYZ with ${newXYZ}
     extensionMap = {}
     for newH in holders:

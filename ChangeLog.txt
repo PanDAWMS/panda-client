@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.11
+  * added --secondaryDSs and --notExpandSecDSs to pathena
+
 1.5.10
   * fixed GRL for py3
 

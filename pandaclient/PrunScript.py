@@ -12,7 +12,7 @@ except ImportError:
 import types
 import json
 import copy
-from pandaclient.MiscUtils import commands_get_output, commands_get_status_output
+from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, parse_secondary_datasets_opt
 
 try:
     unicode
@@ -906,38 +906,12 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             sys.exit(EC_Config)
 
     # secondary datasets
-    if options.secondaryDSs != '':
-        # parse
-        tmpMap = {}
-        for tmpItem in options.secondaryDSs.split(','):
-            if "#" in tmpItem:
-                tmpItems = tmpItem.split('#')
-            else:
-                tmpItems = tmpItem.split(':')
-            if len(tmpItems) in [3,4,5]:
-                tmpDsName = tmpItems[2]
-                # change ^ to ,
-                tmpDsName = tmpDsName.replace('^',',')
-                # make map
-                tmpMap[tmpDsName] = {'nFiles'     : int(tmpItems[1]),
-                                     'streamName' : tmpItems[0],
-                                     'pattern'    : '',
-                                     'nSkip'      : 0,
-                                     'files'      : []}
-                # using filtering pattern
-                if len(tmpItems) >= 4:
-                    tmpMap[tmpItems[2]]['pattern'] = tmpItems[3]
-                # nSkip
-                if len(tmpItems) >= 5:
-                    tmpMap[tmpItems[2]]['nSkip'] = int(tmpItems[4])
-            else:
-                tmpLog.error("Wrong format %s in --secondaryDSs. Must be StreamName:nFilesPerJob:DatasetName[:Pattern[:nSkipFiles]]" \
-                             % tmpItem)
-                sys.exit(EC_Config)
-        # set
-        options.secondaryDSs = tmpMap
+    tmpStat, tmpOut = parse_secondary_datasets_opt(options.secondaryDSs)
+    if not tmpStat:
+        tmpLog.error(tmpOut)
+        sys.exit(EC_Config)
     else:
-        options.secondaryDSs = {}
+        options.secondaryDSs = tmpOut
 
     # reusable secondary streams
     if options.reusableSecondary == '':
