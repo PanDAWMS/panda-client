@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.12
+  * fixed 1.5.11
+
 1.5.11
   * added --secondaryDSs and --notExpandSecDSs to pathena
 

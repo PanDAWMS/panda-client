@@ -1969,10 +1969,14 @@ taskParamMap['jobParameters'] += [
      'padding':False,
      },
     ]
+if options.secondaryDSs:
+    extra_in_list = [tmpMap['streamName'] for tmpMap in options.secondaryDSs.values()]
+else:
+    extra_in_list = []
 taskParamMap['jobParameters'] += PsubUtils.convertParamStrToJediParam(
     tmpJobO, inputMap, options.outDS[:-1],
     True, False, usePfnList,
-    extra_in_list=[tmpMap['streamName'] for tmpMap in options.secondaryDSs.values()])
+    extra_in_list=extra_in_list)
 taskParamMap['jobParameters'] += [
     {'type':'constant',
      'value': '"',
