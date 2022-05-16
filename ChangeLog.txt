@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.13
+  * to allow https in PANDA_URL
+
 1.5.12
   * fixed 1.5.11
 

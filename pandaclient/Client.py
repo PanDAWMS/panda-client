@@ -118,6 +118,11 @@ def str_decode(data):
     return data
 
 
+# check if https
+def is_https(url):
+    return url.startswith('https://')
+
+
 # curl class
 class _Curl:
     # constructor
@@ -194,11 +199,13 @@ class _Curl:
             [v[-1][0] for v in socket.getaddrinfo(host, port, socket.AF_INET)])]
         return url.replace(host, random.choice(host_names))
 
+
     # GET method
     def get(self,url,data,rucioAccount=False, via_file=False):
+        use_https = is_https(url)
         # make command
         com = '%s --silent --get' % self.path
-        if not self.verifyHost or not url.startswith('https://'):
+        if not self.verifyHost or not use_https:
             com += ' --insecure'
         else:
             tmp_x509_CApath = _x509_CApath()
@@ -210,12 +217,14 @@ class _Curl:
             self.get_id_token()
             com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
             com += ' -H "Origin: {0}"'.format(self.authVO)
-        else:
-            if self.sslCert != '':
-                com += ' --cert %s' % self.sslCert
-                com += ' --cacert %s' % self.sslCert
-            if self.sslKey != '':
-                com += ' --key %s' % self.sslKey
+        elif use_https:
+            if not self.sslCert:
+                self.sslCert = _x509()
+            com += ' --cert %s' % self.sslCert
+            com += ' --cacert %s' % self.sslCert
+            if not self.sslKey:
+                self.sslKey  = _x509()
+            com += ' --key %s' % self.sslKey
         # max time of 10 min
         com += ' -m 600'
         # add rucio account info
@@ -268,9 +277,10 @@ class _Curl:
 
     # POST method
     def post(self,url,data,rucioAccount=False, is_json=False, via_file=False, compress_body=False):
+        use_https = is_https(url)
         # make command
         com = '%s --silent' % self.path
-        if not self.verifyHost or not url.startswith('https://'):
+        if not self.verifyHost or not use_https:
             com += ' --insecure'
         else:
             tmp_x509_CApath = _x509_CApath()
@@ -282,12 +292,14 @@ class _Curl:
             self.get_id_token()
             com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
             com += ' -H "Origin: {0}"'.format(self.authVO)
-        else:
-            if self.sslCert != '':
-                com += ' --cert %s' % self.sslCert
-                com += ' --cacert %s' % self.sslCert
-            if self.sslKey != '':
-                com += ' --key %s' % self.sslKey
+        elif use_https:
+            if not self.sslCert:
+                self.sslCert = _x509()
+            com += ' --cert %s' % self.sslCert
+            com += ' --cacert %s' % self.sslCert
+            if not self.sslKey:
+                self.sslKey = _x509()
+            com += ' --key %s' % self.sslKey
         if compress_body:
             com += ' -H "Content-Type: application/json"'
         # max time of 10 min
@@ -355,12 +367,12 @@ class _Curl:
             print(ret)
         return ret
 
-
     # PUT method
-    def put(self,url,data):
+    def put(self, url, data):
+        use_https = is_https(url)
         # make command
         com = '%s --silent' % self.path
-        if not self.verifyHost or not url.startswith('https://'):
+        if not self.verifyHost or not use_https:
             com += ' --insecure'
         else:
             tmp_x509_CApath = _x509_CApath()
@@ -372,12 +384,14 @@ class _Curl:
             self.get_id_token()
             com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
             com += ' -H "Origin: {0}"'.format(self.authVO)
-        else:
-            if self.sslCert != '':
-                com += ' --cert %s' % self.sslCert
-                com += ' --cacert %s' % self.sslCert
-            if self.sslKey != '':
-                com += ' --key %s' % self.sslKey
+        elif use_https:
+            if not self.sslCert:
+                self.sslCert = _x509()
+            com += ' --cert %s' % self.sslCert
+            com += ' --cacert %s' % self.sslCert
+            if not self.sslKey:
+                self.sslKey = _x509()
+            com += ' --key %s' % self.sslKey
         # emulate PUT
         for key in data.keys():
             com += ' -F "%s=@%s"' % (key,data[key])
@@ -412,6 +426,7 @@ class _NativeCurl(_Curl):
 
     def http_method(self, url, data, header, rdata=None, compress_body=False):
         try:
+            use_https = is_https(url)
             url = self.randomize_ip(url)
             if header is None:
                 header = {}
@@ -428,7 +443,11 @@ class _NativeCurl(_Curl):
                     rdata = gzip.compress(json.dumps(data).encode())
             req = Request(url, rdata, headers=header)
             context = ssl._create_unverified_context()
-            if self.sslCert and self.sslKey:
+            if use_https:
+                if not self.sslCert:
+                    self.sslCert = _x509()
+                if not self.sslKey:
+                    self.sslKey = _x509()
                 context.load_cert_chain(certfile=self.sslCert, keyfile=self.sslKey)
             if self.verbose:
                 print('url = {}'.format(url))
