@@ -186,6 +186,9 @@ class _Curl:
 
     # randomize IP
     def randomize_ip(self, url):
+        # not to resolve IP when panda server is running behind real load balancer than DNS LB
+        if os.environ['PANDA_BEHIND_LB']:
+            return url
         # parse URL
         parsed = urlparse(url)
         host = parsed.hostname
@@ -443,7 +446,7 @@ class _NativeCurl(_Curl):
                     rdata = gzip.compress(json.dumps(data).encode())
             req = Request(url, rdata, headers=header)
             context = ssl._create_unverified_context()
-            if use_https:
+            if use_https and self.authMode != 'oidc':
                 if not self.sslCert:
                     self.sslCert = _x509()
                 if not self.sslKey:
