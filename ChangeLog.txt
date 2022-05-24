@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.5.14
+  * added PANDA_BEHIND_REAL_LB
+  * added getFile
+
 1.5.13
   * to allow https in PANDA_URL
 

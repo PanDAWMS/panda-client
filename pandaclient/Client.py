@@ -56,12 +56,13 @@ EC_Failed = 255
 maxCpuCountLimit = 1000000000
 
 # resolve panda cache server's name
-netloc = urlparse(baseURLCSRVSSL)
-tmp_host = socket.getfqdn(random.choice(socket.getaddrinfo(netloc.hostname, netloc.port))[-1][0])
-if netloc.port:
-    baseURLCSRVSSL = '%s://%s:%s%s' % (netloc.scheme, tmp_host, netloc.port, netloc.path)
-else:
-    baseURLCSRVSSL = '%s://%s%s' % (netloc.scheme, tmp_host, netloc.path)
+if 'PANDA_BEHIND_REAL_LB' not in os.environ:
+    netloc = urlparse(baseURLCSRVSSL)
+    tmp_host = socket.getfqdn(random.choice(socket.getaddrinfo(netloc.hostname, netloc.port))[-1][0])
+    if netloc.port:
+        baseURLCSRVSSL = '%s://%s:%s%s' % (netloc.scheme, tmp_host, netloc.port, netloc.path)
+    else:
+        baseURLCSRVSSL = '%s://%s%s' % (netloc.scheme, tmp_host, netloc.path)
 
 
 # look for a grid proxy certificate
@@ -187,7 +188,7 @@ class _Curl:
     # randomize IP
     def randomize_ip(self, url):
         # not to resolve IP when panda server is running behind real load balancer than DNS LB
-        if os.environ['PANDA_BEHIND_LB']:
+        if 'PANDA_BEHIND_REAL_LB' in os.environ:
             return url
         # parse URL
         parsed = urlparse(url)
@@ -204,7 +205,7 @@ class _Curl:
 
 
     # GET method
-    def get(self,url,data,rucioAccount=False, via_file=False):
+    def get(self, url, data, rucioAccount=False, via_file=False):
         use_https = is_https(url)
         # make command
         com = '%s --silent --get' % self.path
@@ -465,13 +466,20 @@ class _NativeCurl(_Curl):
                 print(code, text)
             return code, text
         except Exception as e:
-            print (traceback.format_exc())
+            if self.verbose:
+                print (traceback.format_exc())
             return 1, str(e)
 
     # GET method
-    def get(self, url, data, rucioAccount=False, via_file=False):
-        url = '{}?{}'.format(url, urlencode(data))
-        return self.http_method(url, {}, {})
+    def get(self, url, data, rucioAccount=False, via_file=False, output_name=None):
+        if data:
+            url = '{}?{}'.format(url, urlencode(data))
+        code, text = self.http_method(url, {}, {})
+        if code == 0 and output_name:
+            with open(output_name, 'wb') as f:
+                f.write(text)
+            text = True
+        return code, text
 
     # POST method
     def post(self,url,data,rucioAccount=False, is_json=False, via_file=False, compress_body=False):
@@ -786,6 +794,34 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
     data = {'file':file}
     s,o = curl.put(url,data)
     return s, str_decode(o)
+
+
+# get file
+def getFile(filename, output_path=None, verbose=False):
+    """Get a file
+       args:
+          filename: filename to be downloaded
+          output_path: output path. set to filename if unspecified
+          verbose: True to see debug messages
+       returns:
+          status code
+             0: communication succeeded to the panda server
+             1: communication failure
+          True if succeeded. diagnostic message otherwise
+    """
+    if not output_path:
+        output_path = filename
+    # instantiate curl
+    curl = _NativeCurl()
+    curl.verbose = verbose
+    # execute
+    netloc = urlparse(baseURLCSRVSSL)
+    url = '%s://%s' % (netloc.scheme, netloc.hostname)
+    if netloc.port:
+        url += ':%s' % netloc.port
+    url = url + '/cache/' + filename
+    s, o = curl.get(url, {}, output_name=output_path)
+    return s, o
 
 
 # get grid source file
