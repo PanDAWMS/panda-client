@@ -189,7 +189,10 @@ def pickle_loads(str_input):
     try:
         return pickle.loads(str_input)
     except Exception:
-        return pickle.loads(str_input.encode('utf-8'), encoding='latin1')
+        try:
+            return pickle.loads(str_input.encode('utf-8'), encoding='latin1')
+        except Exception:
+            return str_input
 
 
 # parse secondary dataset option

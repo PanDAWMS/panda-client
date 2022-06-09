@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.15
+  * message cleanup
+
 1.5.14
   * added PANDA_BEHIND_REAL_LB
   * added getFile

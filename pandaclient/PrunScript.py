@@ -1233,7 +1233,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         # upload source files
         if not options.noSubmit:
             # upload sources via HTTP POST
-            tmpLog.info("upload source files")
+            tmpLog.info("upload sandbox files")
             if options.vo is None:
                 use_cache_srv = True
             else:
@@ -1244,7 +1244,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                 archiveName = out.split(':')[-1]
             elif out != 'True':
                 print(out)
-                tmpLog.error("failed to upload source files with %s" % status)
+                tmpLog.error("failed to upload sandbox files with %s" % status)
                 sys.exit(EC_Post)
             # good run list
             if options.goodRunListXML != '':
@@ -1910,18 +1910,19 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                 tmpStr = "task submission failed with {0}".format(status)
                 tmpLog.error(tmpStr)
                 exitCode = EC_Submit
-            if tmpOut[0] in [0,3]:
-                tmpStr = tmpOut[1]
-                tmpLog.info(tmpStr)
-                try:
-                    m = re.search('jediTaskID=(\d+)', tmpStr)
-                    taskID = int(m.group(1))
-                except Exception:
-                    pass
             else:
-                tmpStr = "task submission failed. {0}".format(tmpOut[1])
-                tmpLog.error(tmpStr)
-                exitCode = EC_Submit
+                if tmpOut[0] in [0,3]:
+                    tmpStr = tmpOut[1]
+                    tmpLog.info(tmpStr)
+                    try:
+                        m = re.search('jediTaskID=(\d+)', tmpStr)
+                        taskID = int(m.group(1))
+                    except Exception:
+                        pass
+                else:
+                    tmpStr = "task submission failed. {0}".format(tmpOut[1])
+                    tmpLog.error(tmpStr)
+                    exitCode = EC_Submit
         dumpItem = copy.deepcopy(vars(options))
         dumpItem['returnCode'] = exitCode
         dumpItem['returnOut'] = tmpStr

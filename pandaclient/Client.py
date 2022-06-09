@@ -468,7 +468,10 @@ class _NativeCurl(_Curl):
         except Exception as e:
             if self.verbose:
                 print (traceback.format_exc())
-            return 1, str(e)
+            errMsg = str(e)
+            if hasattr(e, 'fp'):
+                errMsg += '. {0}'.format(e.fp.read().decode())
+            return 1, errMsg
 
     # GET method
     def get(self, url, data, rucioAccount=False, via_file=False, output_name=None):
@@ -778,7 +781,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
         status, output = curl.post(url,data)
         output = str_decode(output)
         if status != 0:
-            return EC_Failed,'ERROR: Could not check Sandbox duplication with %s' % status
+            return EC_Failed,'ERROR: Could not check sandbox duplication with %s' % output
         elif output.startswith('FOUND:'):
             # found reusable sandbox
             hostName,reuseFileName = output.split(':')[1:]
@@ -1200,7 +1203,12 @@ def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_ti
         data['parent_tid'] = parent_tid
     status,output = curl.post(url,data)
     try:
-        loaded_output = list(pickle_loads(output))
+        loaded_output = pickle_loads(output)
+        # got error message from the server
+        if loaded_output == output:
+            print(output)
+            return EC_Failed, output
+        loaded_output = list(loaded_output)
         # extract taskID
         try:
             m = re.search('jediTaskID=(\d+)', loaded_output[-1])
@@ -1537,10 +1545,13 @@ def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose
         if status != 0:
             return EC_Failed, output
         else:
-            if loader:
-                return 0, loader(output)
-            else:
-                return 0, json.loads(output)
+            try:
+                if loader:
+                    return 0, loader(output)
+                else:
+                    return 0, json.loads(output)
+            except Exception:
+                return EC_Failed, output
     except Exception as e:
         msg = "Failed with {}".format(str(e))
         print (traceback.format_exc())

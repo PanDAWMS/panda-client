@@ -2121,18 +2121,19 @@ for iSubmission, ioItem in enumerate(ioList):
             tmpStr = "task submission failed with {0}".format(status)
             tmpLog.error(tmpStr)
             exitCode = EC_Submit
-        if tmpOut[0] in [0,3]:
-            tmpStr = tmpOut[1]
-            tmpLog.info(tmpStr)
-            try:
-                m = re.search('jediTaskID=(\d+)', tmpStr)
-                taskID = int(m.group(1))
-            except Exception:
-                pass
         else:
-            tmpStr = "task submission failed. {0}".format(tmpOut[1])
-            tmpLog.error(tmpStr)
-            exitCode = EC_Submit
+            if tmpOut[0] in [0,3]:
+                tmpStr = tmpOut[1]
+                tmpLog.info(tmpStr)
+                try:
+                    m = re.search('jediTaskID=(\d+)', tmpStr)
+                    taskID = int(m.group(1))
+                except Exception:
+                    pass
+            else:
+                tmpStr = "task submission failed. {0}".format(tmpOut[1])
+                tmpLog.error(tmpStr)
+                exitCode = EC_Submit
     dumpItem = copy.deepcopy(vars(options))
     dumpItem['returnCode'] = exitCode
     dumpItem['returnOut'] = tmpStr

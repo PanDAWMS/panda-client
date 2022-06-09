@@ -512,18 +512,19 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         tmpStr = "task submission failed with {0}".format(tmpStat)
         tmpLog.error(tmpStr)
         exitCode = 1
-    if tmpOut[0] in [0, 3]:
-        tmpStr = tmpOut[1]
-        tmpLog.info(tmpStr)
-        try:
-            m = re.search('jediTaskID=(\d+)', tmpStr)
-            taskID = int(m.group(1))
-        except Exception:
-            pass
     else:
-        tmpStr = "task submission failed. {0}".format(tmpOut[1])
-        tmpLog.error(tmpStr)
-        exitCode = 1
+        if tmpOut[0] in [0, 3]:
+            tmpStr = tmpOut[1]
+            tmpLog.info(tmpStr)
+            try:
+                m = re.search('jediTaskID=(\d+)', tmpStr)
+                taskID = int(m.group(1))
+            except Exception:
+                pass
+        else:
+            tmpStr = "task submission failed. {0}".format(tmpOut[1])
+            tmpLog.error(tmpStr)
+            exitCode = 1
 
     dumpItem = copy.deepcopy(vars(options))
     dumpItem['returnCode'] = exitCode
