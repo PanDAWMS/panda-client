@@ -88,7 +88,16 @@ else:
             _printConfig('Input=BS')
             noInputFlag = False
             break
-    if noInputFlag:    
+    if noInputFlag:
+        try:
+            eventSelector = _Service("EventSelector")
+            if hasattr(eventSelector, 'Input') and hasattr(eventSelector.Input, '__len__') \
+                    and eventSelector.Input:
+                _printConfig('Input=BS')
+                noInputFlag = False
+        except Exception:
+            pass
+    if noInputFlag:
         _printConfig('No Input')
 
 

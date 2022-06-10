@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.16
+  * fixed BS for rel 22
+
 1.5.15
   * message cleanup
 
