@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.5.17
+  * added --extFile to pchain
+  * improved the error message in pchain in case of wrong argument
+
 1.5.16
   * fixed BS for rel 22
 

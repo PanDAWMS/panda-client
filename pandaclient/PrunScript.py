@@ -1147,7 +1147,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                         # append
                         workDirFiles.append(tmpPath)
                 if skippedFlag:
-                    tmpLog.info("please use --maxFileSize or --extFile if you need to send the skipped files to WNs")
+                    tmpLog.info("please use --extFile if you need to send the skipped files to WNs")
                 # set archive name
                 if not options.useAthenaPackages:
                     # create archive

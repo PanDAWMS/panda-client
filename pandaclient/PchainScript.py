@@ -53,9 +53,9 @@ def main():
     group_check.add_argument('--debug', action='store_const', const=True, dest='debugCheck', default=False,
                               help='verbose mode when checking workflow description locally')
 
-    group_output.add_argument('--cwl', action='store', dest='cwl', default=None, required=True,
+    group_output.add_argument('--cwl', action='store', dest='cwl', default=None,
                               help='Name of the main CWL file to describe the workflow')
-    group_output.add_argument('--yaml', action='store', dest='yaml', default=None, required=True,
+    group_output.add_argument('--yaml', action='store', dest='yaml', default=None,
                               help='Name of the yaml file for workflow parameters')
 
     group_build.add_argument('--useAthenaPackages', action='store_const', const=True, dest='useAthenaPackages',
@@ -63,8 +63,12 @@ def main():
                              help='One or more tasks in the workflow uses locally-built Athena packages')
     group_build.add_argument('--vo', action='store', dest='vo',  default=None,
                              help="virtual organization name")
+    group_build.add_argument('--extFile', action='store', dest='extFile', default='',
+                             help='root or large files under WORKDIR are not sent to WNs by default. '
+                                  'If you want to send some skipped files, specify their names, '
+                                  'e.g., data.root,big.tgz,*.o')
 
-    group_output.add_argument('--outDS', action='store', dest='outDS', default=None, required=True,
+    group_output.add_argument('--outDS', action='store', dest='outDS', default=None,
                               help='Name of the dataset for output and log files')
     group_output.add_argument('--official', action='store_const', const=True, dest='official', default=False,
                               help='Produce official dataset')
@@ -98,6 +102,13 @@ def main():
 
     # parse args
     options = optP.parse_args()
+
+    # check
+    for arg_name in ['cwl', 'yaml', 'outDS']:
+        if not getattr(options, arg_name):
+            tmpStr = "argument --{0} is required".format(arg_name)
+            tmpLog.error(tmpStr)
+            sys.exit(1)
 
     # check grid-proxy
     PsubUtils.check_proxy(options.verbose, options.vomsRoles)
@@ -183,6 +194,8 @@ def main():
             prun_exec_str += ' --prodSourceLabel {0}'.format(options.prodSourceLabel)
         if options.workingGroup:
             prun_exec_str += ' --workingGroup {0}'.format(options.workingGroup)
+        if options.extFile:
+            prun_exec_str += ' --extFile {0}'.format(options.extFile)
         arg_dict = {'get_taskparams': True,
                     'ext_args': shlex.split(prun_exec_str)}
         if options.checkOnly:
