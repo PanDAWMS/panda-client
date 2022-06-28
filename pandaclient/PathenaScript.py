@@ -301,8 +301,10 @@ group_input.add_argument('--noRandom', action='store_const', const=True, dest='n
                 help='Enter random seeds manually')
 group_job.add_argument('--useAMIAutoConf',action='store_const',const=True,dest='useAMIAutoConf',default=False,
                 help='Use AMI for AutoConfiguration')
-group_submit.add_argument('--memory', action='store', dest='memory',  default=-1,
-                type=int,    help='Required memory size in MB. e.g., for 1GB --memory 1024')
+group_submit.add_argument('--memory', action='store', dest='memory', default=-1, type=int,
+                          help='Required memory size in MB per core. e.g., for 1GB per core --memory 1024')
+group_submit.add_argument('--fixedRamCount', action='store_const', const=True, dest='fixedRamCount', default=False,
+                          help='Use fixed memory size instead of estimated memory size')
 group_submit.add_argument('--outDiskCount', action='store', dest='outDiskCount', default=None, type=int,
                           help="Expected output size in kB per 1 MB of input. The system automatically calculates this "
                                "value using successful jobs and the value contains a safety offset (100kB). "
@@ -1490,6 +1492,10 @@ if options.fixedCpuTime:
     taskParamMap['cpuTimeUnit'] = 'HS06sPerEventFixed'
 if options.memory > 0:
     taskParamMap['ramCount'] = options.memory
+    if options.fixedRamCount:
+        taskParamMap['ramCountUnit'] = 'MBPerCoreFixed'
+    else:
+        taskParamMap['ramCountUnit'] = 'MBPerCore'
 if options.outDiskCount is not None:
     taskParamMap['outDiskCount'] = options.outDiskCount
     taskParamMap['outDiskUnit'] = 'kBFixed'

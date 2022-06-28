@@ -195,7 +195,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     group_input.add_argument('--notSkipLog',action='store_const',const=True,dest='notSkipLog',default=False,
                     help="Don't skip log files in input datasets (obsolete. use --useLogAsInput instead)")
     group_submit.add_argument('--memory',action='store',dest='memory',default=-1,type=int,
-                    help='Required memory size in MB. e.g., for 1GB --memory 1024')
+                              help='Required memory size in MB per core. e.g., for 1GB per core --memory 1024')
+    group_submit.add_argument('--fixedRamCount', action='store_const', const=True, dest='fixedRamCount', default=False,
+                           help='Use fixed memory size instead of estimated memory size')
     group_submit.add_argument('--nCore', action='store', dest='nCore', default=-1, type=int,
                     help='The number of CPU cores. Note that the system distinguishes only nCore=1 and nCore>1. This means that even if you set nCore=2 jobs can go to sites with nCore=8 and your application must use the 8 cores there. The number of available cores is defined in an environment variable, $ATHENA_PROC_NUMBER, on WNs. Your application must check the env variable when starting up to dynamically change the number of cores')
     group_submit.add_argument('--maxCpuCount', action='store', dest='maxCpuCount', default=0, type=int,
@@ -1361,6 +1363,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         taskParamMap['cpuTimeUnit'] = 'HS06sPerEventFixed'
     if options.memory > 0:
         taskParamMap['ramCount'] = options.memory
+        if options.fixedRamCount:
+            taskParamMap['ramCountUnit'] = 'MBPerCoreFixed'
+        else:
+            taskParamMap['ramCountUnit'] = 'MBPerCore'
     if options.outDiskCount is not None:
         taskParamMap['outDiskCount'] = options.outDiskCount
         taskParamMap['outDiskUnit'] = 'kBFixed'
