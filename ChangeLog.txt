@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.19
+  * cleanup
+
 1.5.18
   * changed definition of --memroy of pathena/prun to memory size per core
 

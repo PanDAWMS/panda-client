@@ -328,7 +328,7 @@ class _Curl:
             os.write(tmpFD, strData.encode('utf-8'))
         else:
             f = os.fdopen(tmpFD, "wb")
-            with gzip.GzipFile(fileobj=f) as f_gzip:
+            with gzip.GzipFile(fileobj=f, mode='wb') as f_gzip:
                 f_gzip.write(json.dumps(data).encode())
             f.close()
         try:

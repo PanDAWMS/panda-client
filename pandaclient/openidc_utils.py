@@ -46,7 +46,6 @@ class OpenIdConnect_Utils:
         data = {'client_id': client_id,
                 'scope': "openid profile email offline_access ",#iam",
                 'audience': audience}
-        print (data)
         rdata = urlencode(data).encode()
         req = Request(device_auth_endpoint, rdata)
         req.add_header('content-type', 'application/x-www-form-urlencoded')
