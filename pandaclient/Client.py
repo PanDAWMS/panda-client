@@ -306,6 +306,8 @@ class _Curl:
             com += ' --key %s' % self.sslKey
         if compress_body:
             com += ' -H "Content-Type: application/json"'
+        if is_json:
+            com += ' -H "Accept: application/json"'
         # max time of 10 min
         com += ' -m 600'
         # add rucio account info
@@ -428,7 +430,7 @@ class _Curl:
 
 class _NativeCurl(_Curl):
 
-    def http_method(self, url, data, header, rdata=None, compress_body=False):
+    def http_method(self, url, data, header, rdata=None, compress_body=False, is_json=False):
         try:
             use_https = is_https(url)
             url = self.randomize_ip(url)
@@ -440,6 +442,8 @@ class _NativeCurl(_Curl):
                 header['Origin'] = self.authVO
             if compress_body:
                 header['Content-Type'] = 'application/json'
+            if is_json:
+                header['Accept'] = 'application/json'
             if rdata is None:
                 if not compress_body:
                     rdata = urlencode(data).encode()
@@ -486,10 +490,7 @@ class _NativeCurl(_Curl):
 
     # POST method
     def post(self,url,data,rucioAccount=False, is_json=False, via_file=False, compress_body=False):
-        if not compress_body:
-            code, text = self.http_method(url, data, {})
-        else:
-            code, text = self.http_method(url, data, {}, compress_body=True)
+        code, text = self.http_method(url, data, {}, compress_body=True, is_json=is_json)
         if is_json and code == 0:
             text = json.loads(text)
         return code, text
@@ -1758,3 +1759,39 @@ def get_user_secerts(verbose=False):
             msg += ' raw output="{}"'.format(str(output))
         tmp_log.error(msg)
         return EC_Failed, msg
+
+
+# increase attempt numbers to retry failed jobs
+def increase_attempt_nr(task_id, increase=3, verbose=False):
+    """increase attempt numbers to retry failed jobs
+       args:
+          task_id: jediTaskID of the task
+          increase: increase for attempt numbers
+          verbose: True to see verbose message
+       returns:
+          status code
+                0: communication succeeded to the panda server
+                255: communication failure
+          return code
+                0: succeeded
+                1: unknown task
+                2: invalid task status
+                3: permission denied
+                4: wrong parameter
+                None: database error
+    """
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/increaseAttemptNrPanda'
+    data = {'jediTaskID':task_id,
+            'increasedNr':increase}
+    status,output = curl.post(url, data)
+    try:
+        return 0, pickle_loads(output)
+    except Exception as e:
+        errStr = dump_log("increaseAttemptNrPanda", e, output)
+        return EC_Failed, errStr

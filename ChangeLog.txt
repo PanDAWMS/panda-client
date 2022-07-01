@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.20
+  * added increase_attempt_nr
+
 1.5.19
   * cleanup
 

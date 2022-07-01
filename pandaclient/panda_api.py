@@ -258,6 +258,27 @@ class PandaAPI(object):
         """
         return Client.hello(verbose)
 
+    # increase attempt numbers to retry failed jobs
+    def increase_attempt_nr(self, task_id, increase=3, verbose=False):
+        """increase attempt numbers to retry failed jobs
+           args:
+              task_id: jediTaskID of the task
+              increase: increase for attempt numbers
+              verbose: True to see verbose message
+           returns:
+              status code
+                    0: communication succeeded to the panda server
+                    255: communication failure
+              return code
+                    0: succeeded
+                    1: unknown task
+                    2: invalid task status
+                    3: permission denied
+                    4: wrong parameter
+                    None: database error
+        """
+        return Client.increase_attempt_nr(task_id, increase, verbose)
+
 
 pandaAPI = PandaAPI()
 del PandaAPI
