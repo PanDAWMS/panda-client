@@ -1074,19 +1074,19 @@ else:
     if match is not None:
         outputDAODFile = match.group(1)
         # remove %OUT
-        outputDAODFile = re.sub('%OUT\.','',outputDAODFile)
-        match = re.search('--reductionConf[ =\"\']+([^ \"\']+)',tmpString)
+        outputDAODFile = re.sub(r'%OUT\.', '', outputDAODFile)
+        match = re.search(r'(--reductionConf|--formats)[ =\"\']+([^ \"\']+)', tmpString)
         if match is not None:
             # remove %OUT from outputDAODFile
-            jobO = jobO.replace('%OUT.'+outputDAODFile,outputDAODFile)
+            jobO = jobO.replace('%OUT.'+outputDAODFile, outputDAODFile)
             # loop over all configs
-            reductionConf = match.group(1)
+            reductionConf = match.group(2)
             for reductionItem in reductionConf.split(','):
                 reductionItem = reductionItem.strip()
                 if reductionItem == '':
                     continue
                 # make actual output names for derivation
-                tmpOutName = 'DAOD_{0}.{1}'.format(reductionItem,outputDAODFile)
+                tmpOutName = 'DAOD_{0}.{1}'.format(reductionItem, outputDAODFile)
                 if tmpOutName not in options.extOutFile:
                     options.extOutFile.append(tmpOutName)
                     oneOut = True
