@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.22
+  * fixed archive making in pchain
+
 1.5.21
   * fixed for --flag in Derivation_tf.py
 

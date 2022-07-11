@@ -1,3 +1,4 @@
+import shutil
 import sys
 import re
 import os
@@ -155,7 +156,7 @@ def main():
             use_cache_srv = True
         os.chdir(tmpDir)
         status, out = Client.putFile(archiveName, options.verbose, useCacheSrv=use_cache_srv, reuseSandbox=True)
-        os.chdir(curDir)
+
         if out.startswith('NewFileName:'):
             # found the same input sandbox to reuse
             archiveName = out.split(':')[-1]
@@ -164,6 +165,11 @@ def main():
             print(out)
             tmpLog.error("Failed with %s" % status)
             sys.exit(1)
+    os.chdir(curDir)
+    try:
+        shutil.rmtree(tmpDir)
+    except Exception:
+        pass
 
     matchURL = re.search("(http.*://[^/]+)/", Client.baseURLCSRVSSL)
     sourceURL = matchURL.group(1)
@@ -183,6 +189,7 @@ def main():
     if options.useAthenaPackages:
         task_type_args['athena'] = '--useAthenaPackages'
     for task_type in task_type_args:
+        os.chdir(curDir)
         prun_exec_str = '--exec __dummy_exec_str__ --outDS {0} {1}'.format(options.outDS, task_type_args[task_type])
         if options.noSubmit:
             prun_exec_str += ' --noSubmit'
