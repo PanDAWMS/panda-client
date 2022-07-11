@@ -1906,8 +1906,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             with open(os.path.expanduser(options.dumpTaskParams), 'w') as f:
                 json.dump(newTaskParamMap, f)
         if get_taskparams:
+            os.chdir(curDir)
             try:
-                os.chdir(curDir)
                 shutil.rmtree(tmpDir)
             except Exception:
                 pass
