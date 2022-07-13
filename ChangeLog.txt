@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.23
+  * keep port number of sandbox host
+
 1.5.22
   * fixed archive making in pchain
 

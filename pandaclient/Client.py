@@ -889,7 +889,11 @@ def useIntrServer():
 # set cache server
 def setCacheServer(host_name):
     global baseURLCSRVSSL
-    baseURLCSRVSSL = "https://%s:25443/server/panda" % host_name
+    netloc = urlparse(baseURLCSRVSSL)
+    if netloc.port:
+        baseURLCSRVSSL = '%s://%s:%s%s' % (netloc.scheme, host_name, netloc.port, netloc.path)
+    else:
+        baseURLCSRVSSL = '%s://%s%s' % (netloc.scheme, host_name, netloc.path)
 
 
 # register proxy key
