@@ -867,7 +867,10 @@ if not stA:
     retA = {'workArea': os.getcwd(), 'athenaVer': '', 'groupArea': '', 'cacheVer':'', 'nightVer': '', 'cmtConfig': ''}
 
 workArea  = retA['workArea']
-athenaVer = 'Atlas-%s' % retA['athenaVer']
+if retA['athenaVer']:
+    athenaVer = 'Atlas-%s' % retA['athenaVer']
+else:
+    athenaVer = ''
 groupArea = retA['groupArea']
 cacheVer  = retA['cacheVer']
 nightVer  = retA['nightVer']
