@@ -1356,73 +1356,17 @@ def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None
 # get CMTCONFIG
 def getCmtConfig(athenaVer=None,cacheVer=None,nightVer=None,cmtConfig=None,verbose=False):
     # use user-specified cmtconfig
-    if cmtConfig is not None:
+    if cmtConfig:
         return cmtConfig
-    # nightlies
-    if cacheVer is not None and (re.search('_rel_\d+$',cacheVer) is not None or 'AtlasBuildStamp' in os.environ):
-        # use local cmtconfig if it is available
-        if 'CMTCONFIG' in os.environ:
-            return os.environ['CMTCONFIG']
-        # get cmtconfig for nightlies
-        if athenaVer is not None:
-            # remove prefix
-            verStr = re.sub('^[^-]+-','',athenaVer)
-            # dev nightlies
-            if verStr in ['dev','devval']:
-                return 'x86_64-slc6-gcc47-opt'
-            # extract version numbers
-            match = re.search('(\d+)\.([^\.+])\.',verStr)
-            # major,miner
-            maVer = int(match.group(1))
-            miVer = match.group(2)
-            # use x86_64-slc5-gcc43-opt for 17.X.0 or higher                
-            if maVer > 17 or (maVer == 17 and miVer == 'X'):
-                return 'x86_64-slc5-gcc43-opt'
-            # use i686-slc5-gcc43-opt by default
-            return 'i686-slc5-gcc43-opt'
-    # AthAnalysis
-    if cacheVer is not None and isAthRelease(cacheVer):
-        if 'CMTCONFIG' in os.environ:
-            return os.environ['CMTCONFIG']
-        else:
-            # get logger
-            tmpLog = PLogger.getPandaLogger()
-            tmpLog.error('environment variable CMTCONFIG is undefined')
-            sys.exit(EC_Config)
-    # get default cmtconfig according to Atlas release
-    if athenaVer:
-        # remove prefix
-        verStr = re.sub('^[^-]+-','',athenaVer)
-        # get cmtconfig list
-        cmtConfigList = Client.getCmtConfigList(athenaVer,verbose)
-        if cmtConfigList == [] and verStr not in ['',athenaVer]:
-            cmtConfigList = Client.getCmtConfigList(verStr,verbose)
-        if len(cmtConfigList) == 1:
-            # no choice
-            return cmtConfigList[0]
-        elif len(cmtConfigList) > 1:
-            # use local cmtconfig if it is available
-            if os.environ['CMTCONFIG'] in cmtConfigList:
-                return os.environ['CMTCONFIG']
-            # use the latest one
-            cmtConfigList.sort()
-            return cmtConfigList[-1]
-        # extract version numbers
-        match = re.search('(\d+)\.(\d+)\.(\d+)',verStr)
-        if match is None:
-            return None
-        # major,miner,rev
-        maVer = int(match.group(1))
-        miVer = int(match.group(2))
-        reVer = int(match.group(3))
-        # use x86_64-slc5-gcc43-opt for 17.5.0 or higher
-        if maVer > 17 or (maVer == 17 and miVer > 5) or (maVer == 17 and miVer == 5 and reVer >= 0):
-            return 'x86_64-slc5-gcc43-opt'
-        # use i686-slc5-gcc43-opt for 15.6.3 or higher
-        if maVer > 15 or (maVer == 15 and miVer > 6) or (maVer == 15 and miVer == 6 and reVer >= 3):
-            return 'i686-slc5-gcc43-opt'
-        # use i686-slc4-gcc34-opt by default
-        return 'i686-slc4-gcc34-opt'
+    # local settting
+    if 'CMTCONFIG' in os.environ:
+        return os.environ['CMTCONFIG']
+    # undefined in Athena
+    if athenaVer or cacheVer:
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        tmpLog.error('environment variable CMTCONFIG is undefined. Please set --cmtConfig')
+        sys.exit(EC_Config)
     return None
     
 
@@ -1505,38 +1449,30 @@ def parse_athena_tag(athena_tag, verbose, tmp_log):
     athenaVer = ''
     cacheVer  = ''
     nightVer  = ''
-    # get list of Athena projects
-    listProjects = Client.getCachePrefixes(verbose)
     # loop over all tags
     items = athena_tag.split(',')
     usingNightlies = False
     for item in items:
         # releases
-        match = re.search('^(\d+\.\d+\.\d+)', item)
-        if match is not None:
+        match = re.search(r'^(\d+\.\d+\.\d+)', item)
+        if match:
             athenaVer = 'Atlas-%s' % match.group(1)
             # cache
-            cmatch = re.search('^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
+            cmatch = re.search(r'^(\d+\.\d+\.\d+\.\d+\.*\d*)$',item)
             if cmatch is not None:
                 cacheVer += '_%s' % cmatch.group(1)
             else:
                 cacheVer += '_%s' % match.group(1)
             continue
-        else:
-            # nightlies
-            match = re.search('^(\d+\.\d+\.X|\d+\.X\.\d+)$',item)
-            if match is not None:
-                athenaVer = 'Atlas-%s' % match.group(1)
-                continue
-            elif item == 'master':
-                athenaVer = 'Atlas-%s' % item
-                continue
-        # project
-        if item.startswith('Atlas') or item in listProjects + ['Athena', 'AthAthDerivation'] \
-                or item.startswith('Athena'):
-            # ignore AtlasOffline
-            if item not in ['AtlasOffline']:
-                cacheVer = '-'+item+cacheVer
+        # nightlies
+        match = re.search(r'^(\d+\.\d+\.X|\d+\.X\.\d+)$',item)
+        if match:
+            athenaVer = 'Atlas-%s' % match.group(1)
+            continue
+        # master or XX.YY
+        match = re.search(r'^\d+\.\d+$', item)
+        if item.startswith('master') or match:
+            athenaVer = 'Atlas-%s' % item
             continue
         # old nightlies
         if item.startswith('rel_'):
@@ -1552,14 +1488,17 @@ def parse_athena_tag(athena_tag, verbose, tmp_log):
             cacheVer += '_%s' % item
             continue
         # CMTCONFIG
-        if item in ['32','64']:
+        if item in ['32', '64']:
             tmp_log.error("%s in --athenaTag is unsupported. Please use --cmtConfig instead" % item)
             sys.exit(EC_Config)
-        tmp_log.error("unknown tag %s in --athenaTag" % item)
-        sys.exit(EC_Config)
+        # ignoring AtlasOffline
+        if item in ['AtlasOffline']:
+            continue
+        # regarded as project
+        cacheVer = '-'+item+cacheVer
     # check cache
-    if re.search('^-.+_.+$',cacheVer) is None:
-        if re.search('^_\d+\.\d+\.\d+\.\d+$',cacheVer) is not None:
+    if re.search(r'^-.+_.+$', cacheVer) is None:
+        if re.search(r'^_\d+\.\d+\.\d+\.\d+$', cacheVer) is not None:
             # use AtlasProduction
             cacheVer = '-AtlasProduction'+cacheVer
         elif 'AthAnalysisBase' in cacheVer or 'AthAnalysis' in cacheVer:

@@ -1068,6 +1068,7 @@ def getPandaClientVer(verbose):
 
 
 # get list of cache prefix
+# OBSOLETE to be removed in a future release
 def getCachePrefixes(verbose):
     # instantiate curl
     curl = _Curl()
@@ -1093,6 +1094,7 @@ def getCachePrefixes(verbose):
 
 
 # get list of cmtConfig
+# OBSOLETE to be removed in a future release
 def getCmtConfigList(athenaVer,verbose):
     # instantiate curl
     curl = _Curl()

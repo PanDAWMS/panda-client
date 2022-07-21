@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.24
+  * removed getCachePrefixes and getCmtConfigList for installedSW retirement
+
 1.5.23
   * keep port number of sandbox host
 
