@@ -22,6 +22,15 @@ TOKEN_BASENAME = '.token'
 CACHE_PREFIX = '.page_cache_'
 
 
+# decode ID token
+def decode_id_token(enc):
+    enc = enc.split('.')[1]
+    enc += '=' * (-len(enc) % 4)
+    dec = json.loads(base64.urlsafe_b64decode(enc.encode()))
+    return dec
+
+
+# utility class
 class OpenIdConnect_Utils:
 
     # constructor
@@ -167,9 +176,7 @@ class OpenIdConnect_Utils:
                 try:
                     # decode ID token
                     data = json.load(f)
-                    enc = data['id_token'].split('.')[1]
-                    enc += '=' * (-len(enc) % 4)
-                    dec = json.loads(base64.urlsafe_b64decode(enc.encode()))
+                    dec = decode_id_token(data['id_token'])
                     exp_time = datetime.datetime.utcfromtimestamp(dec['exp'])
                     delta = exp_time - datetime.datetime.utcnow()
                     if self.verbose:

@@ -166,6 +166,11 @@ class _Curl:
     # get ID token
     def get_id_token(self):
         tmp_log = PLogger.getPandaLogger()
+        if 'PANDA_AUTH_ID_TOKEN' in os.environ:
+            if self.verbose:
+                tmp_log.debug('use $PANDA_AUTH_ID_TOKEN')
+            self.idToken = os.environ['PANDA_AUTH_ID_TOKEN']
+            return True
         oidc = self.get_oidc(tmp_log)
         s, o = oidc.run_device_authorization_flow()
         if not s:
@@ -177,6 +182,10 @@ class _Curl:
     # get token
     def get_token_info(self):
         tmp_log = PLogger.getPandaLogger()
+        if 'PANDA_AUTH_ID_TOKEN' in os.environ:
+            if self.verbose:
+                tmp_log.debug('directly parse $PANDA_AUTH_ID_TOKEN')
+            return openidc_utils.decode_id_token(os.environ['PANDA_AUTH_ID_TOKEN'])
         oidc = self.get_oidc(tmp_log)
         s, o = oidc.run_device_authorization_flow()
         if not s:

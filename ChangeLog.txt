@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.26
+  * to use PANDA_AUTH_ID_TOKEN in Client
+
 1.5.24
   * removed getCachePrefixes and getCmtConfigList for installedSW retirement
 
