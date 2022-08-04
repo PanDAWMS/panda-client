@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * added non-ascii file/dataset name check
+
 1.5.26
   * to use PANDA_AUTH_ID_TOKEN in Client
 

@@ -797,12 +797,27 @@ def checkTaskParam(taskParamMap,unlimitNumOutputs):
         if tmpDict['type'] == 'template' and tmpDict['param_type'] in ['output','log']:
             if tmpDict['param_type'] == 'output':
                 nOutputs += 1
+            tmpErrStr = None
+            # check length of dataset name
             if len(tmpDict['dataset']) > maxLengthCont:
                 tmpErrStr  = "The name of an output or log dataset container (%s) is too long (%s). " % (tmpDict['dataset'],len(tmpDict['dataset']))
                 tmpErrStr += "The length must be less than %s following DDM definition. " % maxLengthCont
                 tmpErrStr += "Please note that one dataset container is creted per output/log type and "
                 tmpErrStr += "each name is <outDS>_<extension made from the output filename>/ or <outDS>.log/. "
-                # get logger
+            # check non-ascii characters
+            if not tmpErrStr:
+                try:
+                    tmpDict['value'].encode('ascii')
+                except Exception:
+                    tmpErrStr = "Output name {0} contains non-ascii charters that are forbidden since they screw up "\
+                                "the storage".format(tmpDict['value'])
+            if not tmpErrStr:
+                try:
+                    tmpDict['dataset'].encode('ascii')
+                except Exception:
+                    tmpErrStr = "Dataset name {0} contains non-ascii charters that are forbidden since they screw up "\
+                                "the storage".format(tmpDict['dataset'])
+            if tmpErrStr:
                 tmpLog = PLogger.getPandaLogger()
                 tmpLog.error(tmpErrStr)
                 return (EC_Config, tmpErrStr)
