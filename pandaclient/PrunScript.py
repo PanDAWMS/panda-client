@@ -1532,6 +1532,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             del tmpDict['exclude']
         if options.loadXML is None and not options.notExpandInDS:
             tmpDict['expand'] = True
+        if options.notExpandInDS:
+            tmpDict['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
         if options.nSkipFiles != 0:
             tmpDict['offset'] = options.nSkipFiles
         if options.match != '':
@@ -1657,6 +1659,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             dictItem = MiscUtils.makeJediJobParam('${'+streamName+'}',tmpDsName,'input',hidden=True,
                                                   expand=expandFlag,include=tmpMap['pattern'],offset=tmpMap['nSkip'],
                                                   nFilesPerJob=tmpMap['nFiles'],reusableAtt=reusableAtt)
+            if not expandFlag:
+                dictItem['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
             taskParamMap['jobParameters'] += dictItem
             inMap[streamName] = 'tmp_'+streamName
             streamNames.append(streamName)

@@ -1686,6 +1686,7 @@ if options.inDS != '':
                }
     if options.notExpandInDS:
         del tmpDict['expand']
+        tmpDict['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
     if options.inputType != '':
         tmpDict['include'] = options.inputType
     if options.filelist != []:
@@ -1771,6 +1772,8 @@ if options.minDS != '':
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nMin,useNumFilesAsRatio=True,
                                           randomAtt=options.randomMin)
+    if not expand_flag:
+        dictItem['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
     taskParamMap['jobParameters'] += dictItem
     inputMap['MININ'] = options.minDS
     minBiasStream += 'MININ,'
@@ -1785,6 +1788,8 @@ if options.lowMinDS != '':
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nLowMin,useNumFilesAsRatio=True,
                                           randomAtt=options.randomMin)
+    if not expand_flag:
+        dictItem['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
     taskParamMap['jobParameters'] += dictItem
     inputMap['LOMBIN'] = options.lowMinDS
     minBiasStream += 'LOMBIN,'
@@ -1799,6 +1804,8 @@ if options.highMinDS != '':
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nHighMin,useNumFilesAsRatio=True,
                                           randomAtt=options.randomMin)
+    if not expand_flag:
+        dictItem['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
     taskParamMap['jobParameters'] += dictItem
     inputMap['HIMBIN'] = options.highMinDS
     minBiasStream += 'HIMBIN,'
@@ -1822,6 +1829,8 @@ if options.cavDS != '':
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nCav,useNumFilesAsRatio=True,
                                           randomAtt=options.randomCav)
+    if not expand_flag:
+        dictItem['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
     taskParamMap['jobParameters'] += dictItem
     inputMap['CAVIN'] = options.cavDS
     if options.sameSecRetry:
@@ -1914,6 +1923,8 @@ if options.secondaryDSs:
         dictItem = MiscUtils.makeJediJobParam('${' + streamName + '}', tmpDsName, 'input', hidden=True,
                                               expand=expandFlag, include=tmpMap['pattern'], offset=tmpMap['nSkip'],
                                               nFilesPerJob=tmpMap['nFiles'])
+        if not expandFlag:
+            dictItem['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
         taskParamMap['jobParameters'] += dictItem
         inputMap[streamName] = tmpDsName
     dictItem = {'type':'constant',

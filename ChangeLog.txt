@@ -1,7 +1,8 @@
 ** Release Notes
 
-current
+1.5.27
   * added non-ascii file/dataset name check
+  * added consolidate when --notExpandBlah
 
 1.5.26
   * to use PANDA_AUTH_ID_TOKEN in Client
