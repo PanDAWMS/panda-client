@@ -1771,9 +1771,7 @@ if options.minDS != '':
     dictItem = MiscUtils.makeJediJobParam('${MININ}',options.minDS,'input',hidden=True,
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nMin,useNumFilesAsRatio=True,
-                                          randomAtt=options.randomMin)
-    if not expand_flag:
-        dictItem['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
+                                          randomAtt=options.randomMin, outDS=options.outDS)
     taskParamMap['jobParameters'] += dictItem
     inputMap['MININ'] = options.minDS
     minBiasStream += 'MININ,'
@@ -1787,9 +1785,7 @@ if options.lowMinDS != '':
     dictItem = MiscUtils.makeJediJobParam('${LOMBIN}',options.lowMinDS,'input',hidden=True,
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nLowMin,useNumFilesAsRatio=True,
-                                          randomAtt=options.randomMin)
-    if not expand_flag:
-        dictItem['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
+                                          randomAtt=options.randomMin, outDS=options.outDS)
     taskParamMap['jobParameters'] += dictItem
     inputMap['LOMBIN'] = options.lowMinDS
     minBiasStream += 'LOMBIN,'
@@ -1803,9 +1799,7 @@ if options.highMinDS != '':
     dictItem = MiscUtils.makeJediJobParam('${HIMBIN}',options.highMinDS,'input',hidden=True,
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nHighMin,useNumFilesAsRatio=True,
-                                          randomAtt=options.randomMin)
-    if not expand_flag:
-        dictItem['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
+                                          randomAtt=options.randomMin, outDS=options.outDS)
     taskParamMap['jobParameters'] += dictItem
     inputMap['HIMBIN'] = options.highMinDS
     minBiasStream += 'HIMBIN,'
@@ -1828,9 +1822,7 @@ if options.cavDS != '':
     dictItem = MiscUtils.makeJediJobParam('-n "${CAVIN/T}"',options.cavDS,'input',
                                           expand=expand_flag,exclude='\.log\.tgz(\.\d+)*$',
                                           nFilesPerJob=options.nCav,useNumFilesAsRatio=True,
-                                          randomAtt=options.randomCav)
-    if not expand_flag:
-        dictItem['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
+                                          randomAtt=options.randomCav, outDS=options.outDS)
     taskParamMap['jobParameters'] += dictItem
     inputMap['CAVIN'] = options.cavDS
     if options.sameSecRetry:
@@ -1922,9 +1914,7 @@ if options.secondaryDSs:
             expandFlag = False
         dictItem = MiscUtils.makeJediJobParam('${' + streamName + '}', tmpDsName, 'input', hidden=True,
                                               expand=expandFlag, include=tmpMap['pattern'], offset=tmpMap['nSkip'],
-                                              nFilesPerJob=tmpMap['nFiles'])
-        if not expandFlag:
-            dictItem['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
+                                              nFilesPerJob=tmpMap['nFiles'], outDS=options.outDS)
         taskParamMap['jobParameters'] += dictItem
         inputMap[streamName] = tmpDsName
     dictItem = {'type':'constant',

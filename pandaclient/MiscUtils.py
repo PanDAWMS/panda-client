@@ -23,7 +23,7 @@ def wrappedUuidGen():
 def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=False,
                      include='',exclude='',nFilesPerJob=None,offset=0,destination='',
                      token='',useNumFilesAsRatio=False,randomAtt=False,reusableAtt=False,
-                     allowNoOutput=None):
+                     allowNoOutput=None, outDS=None):
     dictItem = {}
     if paramType == 'output':
         dictItem['type']       = 'template'
@@ -58,6 +58,8 @@ def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=Fals
             dictItem['exclude'] = exclude
         if expand:
             dictItem['expand'] = expand
+        elif outDS:
+            dictItem['consolidate'] = '.'.join(outDS.split('.')[:2]) + '.' + wrappedUuidGen() + '/'
         if nFilesPerJob not in [None,0]:
             dictItem['nFilesPerJob'] = nFilesPerJob
         if useNumFilesAsRatio and nFilesPerJob not in [None,0]:

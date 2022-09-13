@@ -1658,9 +1658,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                 reusableAtt = True
             dictItem = MiscUtils.makeJediJobParam('${'+streamName+'}',tmpDsName,'input',hidden=True,
                                                   expand=expandFlag,include=tmpMap['pattern'],offset=tmpMap['nSkip'],
-                                                  nFilesPerJob=tmpMap['nFiles'],reusableAtt=reusableAtt)
-            if not expandFlag:
-                dictItem['consolidate'] = '.'.join(options.outDS.split('.')[:2]) + '.' + MiscUtils.wrappedUuidGen() + '/'
+                                                  nFilesPerJob=tmpMap['nFiles'],reusableAtt=reusableAtt,
+                                                  outDS=options.outDS)
             taskParamMap['jobParameters'] += dictItem
             inMap[streamName] = 'tmp_'+streamName
             streamNames.append(streamName)

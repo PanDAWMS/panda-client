@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * fixed for consolidate
+
 1.5.27
   * added non-ascii file/dataset name check
   * added consolidate when --notExpandBlah
