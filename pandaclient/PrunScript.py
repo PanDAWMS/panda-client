@@ -299,6 +299,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                     help="Please don't use this option. Only for developers to use the dev panda server")
     group_expert.add_argument('--intrSrv', action='store_const', const=True, dest='intrSrv',  default=False,
                     help="Please don't use this option. Only for developers to use the intr panda server")
+    group_expert.add_argument('--persistentFile', action='store', dest='persistentFile', default='',
+                              help="Please don't use this option. Only for junction steps "
+                                   "to keep persistent information in workflows")
     group_build.add_argument('--outTarBall', action='store', dest='outTarBall', default='',
                       help='Save a gzipped tarball of local files which is the input to buildXYZ')
     group_build.add_argument('--inTarBall', action='store', dest='inTarBall', default='',
@@ -701,6 +704,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     if options.inDS != '':
         options.inDS = options.inDS.replace(' ', '')
 
+    # persistent file
+    if options.persistentFile:
+        options.persistentFile = '{0}:sources.{1}.__ow__'.format(options.persistentFile, MiscUtils.wrappedUuidGen())
+
     # warning
     if options.nFilesPerJob is not None and options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
         tmpLog.warning("Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
@@ -726,7 +733,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         tmpLog.error("you need to run prun in a directory under %s" % options.workDir)
         sys.exit(EC_Config)
 
-    # avoid gathering up the home dir
+    # avoid gathering the home dir
     if 'HOME' in os.environ and not options.useHomeDir and not options.useAthenaPackages \
             and os.path.realpath(os.path.expanduser(os.environ['HOME'])) == options.workDir \
             and not dry_mode:
@@ -1719,6 +1726,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             jobParameters += "--useCentralRegistry=True "
         elif options.notUseCentralRegistry:
             jobParameters += "--useCentralRegistry=False "
+    # persistent file
+    if options.persistentFile:
+        jobParameters += "--fileToSave={0} --fileToLoad={0} ".format(options.persistentFile)
     # set task param
     if jobParameters != '':
         taskParamMap['jobParameters'] += [

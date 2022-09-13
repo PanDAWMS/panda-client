@@ -1,7 +1,8 @@
 ** Release Notes
 
-current
+1.5.28
   * fixed for consolidate
+  * added --persistentFile
 
 1.5.27
   * added non-ascii file/dataset name check
