@@ -539,31 +539,6 @@ def updatePackage(verbose=False):
     return result
 
 
-# check unmerge dataset
-def checkUnmergedDataset(inDS,secDS):
-    dsList = []
-    if inDS != '':
-        dsList += inDS.split(',')
-    if secDS != '':
-        dsList += secDS.split(',')
-    # pattern for unmerged datasets
-    unPatt = '^mc.+\.recon\.AOD\.'
-    unMergedDs = ''
-    for tmpDs in dsList:
-        # check dataset name
-        if re.search(unPatt,tmpDs) is not None:
-            unMergedDs += '%s,' % tmpDs
-    unMergedDs = unMergedDs[:-1]
-    # return
-    if unMergedDs != '':
-        # get logger
-        tmpLog = PLogger.getPandaLogger()
-        msg = "%s is unmerged AOD dataset which is not distributed. Please use mc*.merge.AOD.* instead\n" % unMergedDs
-        print('')
-        tmpLog.warning(msg)
-    return
-
-
 # read dataset names from text
 def readDsFromFile(txtName):
     dsList = ''
@@ -596,18 +571,18 @@ def readDsFromFile(txtName):
 # convert param string to JEDI params
 def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,usePfnList=False,includeIO=True,
                                extra_in_list=None):
-    # list of place holders for input
+    # list of placeholders for input
     inList = ['IN','CAVIN','MININ','LOMBIN','HIMBIN','BHIN','BGIN','BGHIN','BGCIN','BGOIN']
     if extra_in_list:
         inList += extra_in_list
-    # place holder for seq_number
+    # placeholder for seq_number
     seqHolder = 'SEQNUMBER'
-    # place holder for output
+    # placeholder for output
     outHolder = 'SN'
-    # place holders with extension
+    # placeholders with extension
     digExList = ['SEQNUMBER', 'FIRSTEVENT']
     allExList = digExList + ['DBR']
-    # mapping of client and JEDI place holders
+    # mapping of client and JEDI placeholders
     holders = {'SEQNUMBER' : 'RNDM',
                'DBR'       : 'DB',
                'SKIPEVENTS': 'SKIPEVENTS',
@@ -623,7 +598,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
     extensionMap = {}
     for newH in holders:
         oldH = holders[newH]
-        # JEDI-only place holders
+        # JEDI-only placeholders
         if oldH is None:
             oldH = newH
         oldH = '%' + oldH
@@ -659,7 +634,7 @@ def convertParamStrToJediParam(encStr,inputMap,outNamePrefix,encode,padding,useP
     # make parameters
     jobParams = []
     for tmpItem in tmpItems:
-        # check if a place holder
+        # check if a placeholder
         matchP = re.search('\$\{([^:\}]+)',tmpItem)
         if re.search(patS,tmpItem) is not None and matchP is not None:
             tmpHolder = matchP.group(1)

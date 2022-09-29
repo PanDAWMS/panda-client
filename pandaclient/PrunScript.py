@@ -649,9 +649,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")
         sys.exit(EC_Config)
 
-    # check unmerge dataset
-    PsubUtils.checkUnmergedDataset(options.inDS,options.secondaryDSs)
-
     # Good Run List
     if options.goodRunListXML != '' and options.inDS != '':
         tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")
