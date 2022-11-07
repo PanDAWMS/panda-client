@@ -25,6 +25,7 @@ try:
     import cPickle as pickle
 except ImportError:
     import pickle
+from io import BytesIO
 import socket
 import random
 import tempfile
@@ -122,6 +123,12 @@ def str_decode(data):
 # check if https
 def is_https(url):
     return url.startswith('https://')
+
+
+# hide sensitive info
+def hide_sensitive_info(com):
+    com = re.sub('Bearer [^"\']+', '***"', str(com))
+    return com
 
 
 # curl class
@@ -265,7 +272,7 @@ class _Curl:
         com += ' %s' % self.randomize_ip(url)
         # execute
         if self.verbose:
-            print(com)
+            print(hide_sensitive_info(com))
             print(strData[:-1])
         s,o = commands_get_status_output(com)
         if o != '\x00':
@@ -356,7 +363,7 @@ class _Curl:
         com += ' %s' % self.randomize_ip(url)
         # execute
         if self.verbose:
-            print(com)
+            print(hide_sensitive_info(com))
             for key in data:
                 print('{}={}'.format(key, data[key]))
         s,o = commands_get_status_output(com)
@@ -412,7 +419,7 @@ class _Curl:
             com += ' -F "%s=@%s"' % (key,data[key])
         com += ' %s' % self.randomize_ip(url)
         if self.verbose:
-            print(com)
+            print(hide_sensitive_info(com))
         # execute
         ret = commands_get_status_output(com)
         ret = self.convRet(ret)
@@ -457,7 +464,10 @@ class _NativeCurl(_Curl):
                 if not compress_body:
                     rdata = urlencode(data).encode()
                 else:
-                    rdata = gzip.compress(json.dumps(data).encode())
+                    rdata_out = BytesIO()
+                    with gzip.GzipFile(fileobj=rdata_out, mode="w") as f_gzip:
+                        f_gzip.write(json.dumps(data).encode())
+                    rdata = rdata_out.getvalue()
             req = Request(url, rdata, headers=header)
             context = ssl._create_unverified_context()
             if use_https and self.authMode != 'oidc':
@@ -468,7 +478,7 @@ class _NativeCurl(_Curl):
                 context.load_cert_chain(certfile=self.sslCert, keyfile=self.sslKey)
             if self.verbose:
                 print('url = {}'.format(url))
-                print('header = {}'.format(str(header)))
+                print('header = {}'.format(hide_sensitive_info(header)))
                 print('data = {}'.format(str(data)))
             conn = urlopen(req, context=context)
             code = conn.getcode()
@@ -1808,5 +1818,39 @@ def increase_attempt_nr(task_id, increase=3, verbose=False):
     try:
         return 0, pickle_loads(output)
     except Exception as e:
-        errStr = dump_log("increaseAttemptNrPanda", e, output)
+        errStr = dump_log("increase_attempt_nr", e, output)
+        return EC_Failed, errStr
+
+
+# reload input
+def reload_input(task_id, verbose=False):
+    """Retry task
+       args:
+           task_id: jediTaskID of the task to reload and retry
+       returns:
+           status code
+                 0: communication succeeded to the panda server
+                 255: communication failure
+           tuple of return code and diagnostic message
+                 0: request is registered
+                 1: server error
+                 2: task not found
+                 3: permission denied
+                 4: irrelevant task status
+               100: non SSL connection
+               101: irrelevant taskID
+    """
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/reloadInput'
+    data = {'jediTaskID': task_id}
+    status, output = curl.post(url, data)
+    try:
+        return status,pickle_loads(output)
+    except Exception as e:
+        errStr = dump_log("reload_input", e, output)
         return EC_Failed, errStr
