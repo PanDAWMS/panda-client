@@ -23,7 +23,7 @@ def wrappedUuidGen():
 def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=False,
                      include='',exclude='',nFilesPerJob=None,offset=0,destination='',
                      token='',useNumFilesAsRatio=False,randomAtt=False,reusableAtt=False,
-                     allowNoOutput=None, outDS=None):
+                     allowNoOutput=None, outDS=None, file_list=None):
     dictItem = {}
     if paramType == 'output':
         dictItem['type']       = 'template'
@@ -64,6 +64,8 @@ def makeJediJobParam(lfn,dataset,paramType,padding=True,hidden=False,expand=Fals
             dictItem['nFilesPerJob'] = nFilesPerJob
         if useNumFilesAsRatio and nFilesPerJob not in [None,0]:
             dictItem['ratio'] = nFilesPerJob
+        if file_list:
+            dictItem['files'] = file_list
     if hidden:
         dictItem['hidden'] = hidden
     if randomAtt:
@@ -207,7 +209,7 @@ def parse_secondary_datasets_opt(secondaryDSs):
                 tmpItems = tmpItem.split('#')
             else:
                 tmpItems = tmpItem.split(':')
-            if len(tmpItems) in [3,4,5]:
+            if 3 <= len(tmpItems) <= 6:
                 tmpDsName = tmpItems[2]
                 # change ^ to ,
                 tmpDsName = tmpDsName.replace('^',',')
@@ -218,13 +220,21 @@ def parse_secondary_datasets_opt(secondaryDSs):
                                      'nSkip'      : 0,
                                      'files'      : []}
                 # using filtering pattern
-                if len(tmpItems) >= 4:
+                if len(tmpItems) >= 4 and tmpItems[3]:
                     tmpMap[tmpItems[2]]['pattern'] = tmpItems[3]
                 # nSkip
-                if len(tmpItems) >= 5:
+                if len(tmpItems) >= 5 and tmpItems[4]:
                     tmpMap[tmpItems[2]]['nSkip'] = int(tmpItems[4])
+                # files
+                if len(tmpItems) >= 6 and tmpItems[5]:
+                    with open(tmpItems[5]) as f:
+                        for l in f:
+                            l = l.strip()
+                            if l:
+                                tmpMap[tmpItems[2]]['files'].append(l)
             else:
-                errStr = "Wrong format %s in --secondaryDSs. Must be StreamName:nFilesPerJob:DatasetName[:Pattern[:nSkipFiles]]" \
+                errStr = "Wrong format %s in --secondaryDSs. Must be "\
+                         "StreamName:nFilesPerJob:DatasetName[:Pattern[:nSkipFiles[:FileNameList]]]" \
                              % tmpItem
                 return False, errStr
         # set

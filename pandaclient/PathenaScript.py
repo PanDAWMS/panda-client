@@ -363,13 +363,14 @@ group_input.add_argument('--shipInput', action='store_const', const=True, dest='
 group_submit.add_argument('--disableAutoRetry',action='store_const',const=True,dest='disableAutoRetry',default=False,
                 help='disable automatic job retry on the server side')
 group_input.add_argument('--fileList', action='store', dest='filelist', default='',
-                type=str, help='List of files in the input dataset to be run')
+                type=str, help=argparse.SUPPRESS)
 group_build.add_argument('--dbRelease', action='store', dest='dbRelease', default='',
                 type=str, help='DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used')
 group_build.add_argument('--addPoolFC', action='store', dest='addPoolFC',  default='',
                 help="file names to be inserted into PoolFileCatalog.xml except input files. e.g., MyCalib1.root,MyGeom2.root")
 group_input.add_argument('--inputFileList', action='store', dest='inputFileList', default='',
-                type=str, help='name of file which contains a list of files to be run in the input dataset')
+                type=str, help='A local file which specifies names of files to be used in the input dataset. '
+                               'One filename per line in the the local file')
 group_build.add_argument('--voms', action='store', dest='vomsRoles',  default=None, type=str,
                 help="generate proxy with paticular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot")
 group_job.add_argument('--useNextEvent', action='store_const', const=True, dest='useNextEvent',  default=False,
@@ -1914,7 +1915,8 @@ if options.secondaryDSs:
             expandFlag = False
         dictItem = MiscUtils.makeJediJobParam('${' + streamName + '}', tmpDsName, 'input', hidden=True,
                                               expand=expandFlag, include=tmpMap['pattern'], offset=tmpMap['nSkip'],
-                                              nFilesPerJob=tmpMap['nFiles'], outDS=options.outDS)
+                                              nFilesPerJob=tmpMap['nFiles'], outDS=options.outDS,
+                                              file_list=tmpMap['files'])
         taskParamMap['jobParameters'] += dictItem
         inputMap[streamName] = tmpDsName
     dictItem = {'type':'constant',

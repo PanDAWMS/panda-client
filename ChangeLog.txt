@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.30
+  * improved secondaryDSs to allow specifying input file list
+
 1.5.29
   * added reload_input
   * gzip for python 2 and 3

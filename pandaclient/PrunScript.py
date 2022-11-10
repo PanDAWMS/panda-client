@@ -261,7 +261,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     group_build.add_argument('--excludeFile',action='store',dest='excludeFile',default='',
                     help='specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C')
     group_input.add_argument('--inputFileList', action='store', dest='inputFileListName', default='',
-                      help='name of file which contains a list of files to be run in the input dataset')
+                             help='A local file which specifies names of files to be used in the input dataset. '
+                             'One filename per line in the the local file')
     action = group_job.add_argument('--allowNoOutput',action='store',dest='allowNoOutput',default='',
                     help='A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. Jobs go to finish even if they are not produced on WN')
     group_output.shareWithMe(action)
@@ -1663,7 +1664,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             dictItem = MiscUtils.makeJediJobParam('${'+streamName+'}',tmpDsName,'input',hidden=True,
                                                   expand=expandFlag,include=tmpMap['pattern'],offset=tmpMap['nSkip'],
                                                   nFilesPerJob=tmpMap['nFiles'],reusableAtt=reusableAtt,
-                                                  outDS=options.outDS)
+                                                  outDS=options.outDS, file_list=tmpMap['files'])
             taskParamMap['jobParameters'] += dictItem
             inMap[streamName] = 'tmp_'+streamName
             streamNames.append(streamName)
