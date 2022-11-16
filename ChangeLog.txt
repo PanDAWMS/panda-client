@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.31
+  * added pbook.retry(all)
+
 1.5.30
   * improved secondaryDSs to allow specifying input file list
 

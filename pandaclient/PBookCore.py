@@ -100,6 +100,7 @@ def check_task_owner(func):
         global func_return_value
         func_return_value = ret
         return ret
+    wrapper.original_func = func
     return wrapper
 
 

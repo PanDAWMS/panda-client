@@ -196,7 +196,10 @@ For more info, do help(show) for example
     # finish
     def finish(taskIDs, soft=False):
         """
-        Finish all subJobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). If 'all', finish all active tasks of the user. If soft is False (default), all running jobs are killed and the task finishes immediately. If soft is True, new jobs are not generated and the task finishes once all running jobs finish.
+        Finish all subJobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). If taskIDs is 'all',
+        finish all active tasks of the user. If soft is False (default), all running jobs are killed and the task
+        finishes immediately. If soft is True, new jobs are not generated and the task finishes once all running
+        jobs finish.
 
          example:
            >>> finish(123)
@@ -207,7 +210,9 @@ For more info, do help(show) for example
         if taskIDs == 'all':
             # active tasks
             task_list = pbookCore.get_active_tasks()
-            ret = list_parallel_exec(lambda task: pbookCore.finish(task.jeditaskid, soft=soft), task_list)
+            ret = list_parallel_exec(lambda task: pbookCore.finish.original_func(pbookCore,
+                                                                                 task.jeditaskid, soft=soft),
+                                     task_list)
         elif isinstance(taskIDs, (list, tuple)):
             ret = list_parallel_exec(lambda taskID: pbookCore.finish(taskID, soft=soft), taskIDs)
         elif isinstance(taskIDs, (int, long)):
@@ -218,30 +223,41 @@ For more info, do help(show) for example
         return ret
 
     # retry
-    def retry(taskIDs, newOpts=None, **kwargs):
+    def retry(taskIDs, newOpts=None, days=14, limit=1000, **kwargs):
         """
         Retry failed/cancelled subJobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID).
-        This means that you need to have the same runtime env (such as Athena version, run dir, source files)
-        as the previous submission. One can use newOpts which is a map of options and new arguments like
-        {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'} to overwrite task parameters. The list of changeable
-        parameters is site, excludedSite, includedSite, nFilesPerJob, nGBPerJob, nFiles, nEvents, loopingCheck,
-        nMaxFilesPerJob, ramCount, avoidVP. It is also possible to specify those parameters as named arguments
-        in the retry call, e.g. nFilesPerJob=10, excludedSite='ABC,XYZ'.
+        It is possible to specify newOpts, which is a map of options and new arguments like
+        {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'}, to overwrite task parameters for new attempts. The list of
+        changeable parameters is site, excludedSite, includedSite, nFilesPerJob, nGBPerJob, nFiles, nEvents,
+        loopingCheck, nMaxFilesPerJob, ramCount, avoidVP. It is also possible to specify those parameters as named
+        arguments of the retry function, e.g. nFilesPerJob=10, excludedSite='ABC,XYZ'.
         If input files were used or are being used by other jobs for the same
         output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs.
+
+        If taskIDs is 'all', it retries 1000 tasks at most that have finished for the last 14 days. It is possible
+        to retry more tasks by setting the days and limit options. If newOpts and/or named arguments are specified,
+        they are applied to all retried tasks.
 
          example:
            >>> retry(123)
            >>> retry([123, 345, 567])
            >>> retry(789, newOpts={'excludedSite':'siteA,siteB'})
            >>> retry(789, excludedSite='siteA,siteB')
+           >>> retry('all')
+           >>> retry('all', days=30, limit=2000)
+           >>> retry('all', newOpts={'excludedSite':'siteA,siteB'})
         """
         if newOpts is None:
             newOpts = kwargs
         if isinstance(taskIDs, (list, tuple)):
             ret = list_parallel_exec(lambda taskID: pbookCore.retry(taskID, newOpts=newOpts), taskIDs)
         elif isinstance(taskIDs, (int, long)):
-            ret = [ pbookCore.retry(taskIDs, newOpts=newOpts) ]
+            ret = [pbookCore.retry(taskIDs, newOpts=newOpts)]
+        elif taskIDs == 'all':
+            dataList = pbookCore.show(status='finished', days=days, limit=limit, sync=True, format='json')
+            ret = list_parallel_exec(lambda data: pbookCore.retry.original_func(pbookCore, data['jeditaskid'],
+                                                                                newOpts=newOpts),
+                                     dataList)
         else:
             print('Error: Invalid argument')
             ret = None
