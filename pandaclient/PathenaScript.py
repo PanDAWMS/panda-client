@@ -774,12 +774,9 @@ except Exception:
 if options.split > 0:
     # set nFiles when nEventsPerJob and nEventsPerFile are set
     if options.nEventsPerJob > 0 and options.nEventsPerFile > 0:
-        if options.nEventsPerJob >= options.nEventsPerFile:
-            options.nfiles = options.nEventsPerJob / options.nEventsPerFile * options.split
-        else:
-            options.nfiles =  options.split / (options.nEventsPerFile / options.nEventsPerJob)
-            if options.nfiles == 0:
-                options.nfiles = 1
+        options.nfiles = (options.nEventsPerJob * options.split) // options.nEventsPerFile
+        if options.nfiles == 0:
+            options.nfiles = 1
 
     # set nFiles when nFilesPerJob is set
     if options.nFilesPerJob > 0 and options.nfiles == 0:
@@ -787,7 +784,7 @@ if options.split > 0:
 
     # set nFiles per job when nFiles is set
     if options.nFilesPerJob < 0 and options.nfiles > 0:
-        options.nFilesPerJob = options.nfiles / options.split
+        options.nFilesPerJob = options.nfiles // options.split
         if options.nFilesPerJob == 0:
             options.nFilesPerJob = 1
 

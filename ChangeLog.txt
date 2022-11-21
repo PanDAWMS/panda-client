@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.32
+  * fixed nFiles+python3
+
 1.5.31
   * added pbook.retry(all)
 
