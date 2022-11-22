@@ -864,6 +864,9 @@ def extract_voms_proxy_username():
             username = re.sub('[ |_]\d+', '', username)
             username = re.sub("[()']", '', username)
             break
+    name_wo_email = re.sub(r' [a-z][\w\.-]+@[\w\.-]+(?:\.\w+)+', '', username).strip()
+    if ' ' in name_wo_email:
+        username = name_wo_email
     return username
 
 

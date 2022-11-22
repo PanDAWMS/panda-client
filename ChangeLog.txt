@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.33
+  * fixed username extraction to get rid of emails
+
 1.5.32
   * fixed nFiles+python3
 
