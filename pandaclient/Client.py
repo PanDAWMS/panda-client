@@ -1510,9 +1510,9 @@ def get_cert_attributes(verbose=False):
         return EC_Failed, msg
 
 
-# get user name from token
+# get username from token
 def get_user_name_from_token():
-    """Extract user name and groups from ID token
+    """Extract username and groups from ID token
 
        returns:
           a tuple of username and groups
@@ -1520,7 +1520,9 @@ def get_user_name_from_token():
     curl = _Curl()
     token_info = curl.get_token_info()
     try:
-        return token_info['name'], token_info['groups'], token_info['preferred_username']
+        name = ' '.join(
+            [t[:1].upper() + t[1:].lower() for t in str(token_info['name']).split()])
+        return name, token_info['groups'], token_info['preferred_username']
     except Exception:
         return None, None
 
