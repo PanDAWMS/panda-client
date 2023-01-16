@@ -131,6 +131,24 @@ def hide_sensitive_info(com):
     return com
 
 
+# get token string
+def get_token_string(tmp_log, verbose):
+    if 'PANDA_AUTH_ID_TOKEN' in os.environ:
+        if verbose:
+            tmp_log.debug('use $PANDA_AUTH_ID_TOKEN')
+        return os.environ['PANDA_AUTH_ID_TOKEN']
+    if 'OIDC_AUTH_TOKEN_FILE' in os.environ:
+        if verbose:
+            tmp_log.debug('use $OIDC_AUTH_TOKEN_FILE')
+        with open(os.environ['OIDC_AUTH_TOKEN_FILE']) as f:
+            return f.read()
+    if 'OIDC_AUTH_ID_TOKEN' in os.environ:
+        if verbose:
+            tmp_log.debug('use $OIDC_AUTH_ID_TOKEN')
+        return os.environ['OIDC_AUTH_ID_TOKEN']
+    return None
+
+
 # curl class
 class _Curl:
     # constructor
@@ -152,7 +170,10 @@ class _Curl:
         self.authVO = None
         if use_oidc():
             self.authMode = 'oidc'
-            self.authVO = os.environ['PANDA_AUTH_VO']
+            if 'PANDA_AUTH_VO' in os.environ:
+                self.authVO = os.environ['PANDA_AUTH_VO']
+            elif 'OIDC_AUTH_VO' in os.environ:
+                self.authVO = os.environ['OIDC_AUTH_VO']
         else:
             self.authMode = 'voms'
         # verbose
@@ -173,10 +194,9 @@ class _Curl:
     # get ID token
     def get_id_token(self):
         tmp_log = PLogger.getPandaLogger()
-        if 'PANDA_AUTH_ID_TOKEN' in os.environ:
-            if self.verbose:
-                tmp_log.debug('use $PANDA_AUTH_ID_TOKEN')
-            self.idToken = os.environ['PANDA_AUTH_ID_TOKEN']
+        token_str = get_token_string(tmp_log, self.verbose)
+        if token_str:
+            self.idToken = token_str
             return True
         oidc = self.get_oidc(tmp_log)
         s, o = oidc.run_device_authorization_flow()
@@ -189,10 +209,9 @@ class _Curl:
     # get token
     def get_token_info(self):
         tmp_log = PLogger.getPandaLogger()
-        if 'PANDA_AUTH_ID_TOKEN' in os.environ:
-            if self.verbose:
-                tmp_log.debug('directly parse $PANDA_AUTH_ID_TOKEN')
-            return openidc_utils.decode_id_token(os.environ['PANDA_AUTH_ID_TOKEN'])
+        token_str = get_token_string(tmp_log, self.verbose)
+        if token_str:
+            return openidc_utils.decode_id_token(token_str)
         oidc = self.get_oidc(tmp_log)
         s, o = oidc.run_device_authorization_flow()
         if not s:
