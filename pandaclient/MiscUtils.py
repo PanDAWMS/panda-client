@@ -12,6 +12,10 @@ try:
     raw_input
 except NameError:
     raw_input = input
+try:
+    unicode
+except Exception:
+    unicode = str
 
 
 # wrapper for uuidgen
@@ -112,7 +116,7 @@ def unicodeConvert(input):
             retList.append(unicodeConvert(tmpItem))
         return retList
     elif isinstance(input, unicode):
-        return input.encode('ascii', 'ignore')
+        return input.encode('ascii', 'ignore').decode()
     return input
 
 
