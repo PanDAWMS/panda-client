@@ -1548,7 +1548,7 @@ def get_user_name_from_token():
 
 # call idds command
 def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose=False, compress=False,
-                      manager=False, loader=None):
+                      manager=False, loader=None, json_outputs=False):
     """Call an iDDS command through PanDA
        args:
           command_name: command name
@@ -1559,6 +1559,7 @@ def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose
           compress: True to compress request body
           manager: True to use ClientManager
           loader: function object for json.loads
+          json_outputs: True to use json outputs
        returns:
           status code
              0: communication succeeded to the panda server
@@ -1588,6 +1589,8 @@ def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose
                 data['kwargs'] = dumper(kwargs)
         if manager:
             data['manager'] = True
+        if json_outputs:
+            data['json_outputs'] = True
         status, output = curl.post(url, data, compress_body=compress)
         if status != 0:
             return EC_Failed, output
@@ -1606,12 +1609,13 @@ def call_idds_command(command_name, args=None, kwargs=None, dumper=None, verbose
 
 
 # call idds user workflow command
-def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False):
+def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, json_outputs=False):
     """Call an iDDS workflow user command
        args:
           command_name: command name
           kwargs: a dictionary of keyword arguments
           verbose: True to see verbose message
+          json_outputs: True to use json outputs
        returns:
           status code
              0: communication succeeded to the panda server
@@ -1630,6 +1634,8 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False):
         data['command_name'] = command_name
         if kwargs:
             data['kwargs'] = json.dumps(kwargs)
+        if json_outputs:
+            data['json_outputs'] = True
         status, output = curl.post(url, data)
         if status != 0:
             return EC_Failed, output

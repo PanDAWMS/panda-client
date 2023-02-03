@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.5.37
+  * fixed --official for OIDC
+  * added json_outputs arg to idds command
+
 1.5.36
   * fixed --inOutDsJson for python3
 

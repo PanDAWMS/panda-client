@@ -188,12 +188,21 @@ def checkOutDsName(outDS,official,nickName='',mergeOutput=False,verbose=False):
         status, output = get_proxy_info(False, verbose)
         # extract production role
         prodGroups = []
-        for tmpLine in output.split('\n'):
-            match = re.search('/([^/]+)/Role=production',tmpLine)
-            if match is not None:
-                # ignore atlas production role
-                if not match.group(1) in ['atlas']:
-                    prodGroups.append(match.group(1))
+        if Client.use_oidc():
+            for tmpLine in output[1]:
+                tmpItems = tmpLine.split('/')
+                if len(tmpItems) != 2:
+                    continue
+                tmpVO, tmpRole = tmpLine.split('/')
+                if tmpRole == 'production':
+                    prodGroups.append(tmpVO)
+        else:
+            for tmpLine in output.split('\n'):
+                match = re.search('/([^/]+)/Role=production',tmpLine)
+                if match is not None:
+                    # ignore atlas production role
+                    if not match.group(1) in ['atlas']:
+                        prodGroups.append(match.group(1))
         # no production role
         if prodGroups == []:
             errStr  = "The --official option requires production role. Please use the --voms option to set production role;\n"
@@ -214,8 +223,6 @@ def checkOutDsName(outDS,official,nickName='',mergeOutput=False,verbose=False):
         errStr += "        with the following prefix\n"
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
-                tmpPattO = '%s%s.%s' % (tmpPrefix,time.strftime('%y',time.gmtime()),tmpGroup)
-                errStr += "          %s\n" % tmpPattO
                 tmpPattN = '%s.%s' % (tmpPrefix,tmpGroup)
                 errStr += "          %s\n" % tmpPattN
         errStr += "If you have production role for another group please use the --voms option to set the role\n"

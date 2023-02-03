@@ -24,18 +24,20 @@ class IddsApiInteface(object):
     def __init__(self):
         self.dumper = None
         self.loader = None
+        self.json_outputs = False
 
     def __getattr__(self, item):
         return IddsApi(item, self.dumper, self.verbose, self.idds_host, self.compress, self.manager,
                        self.loader)
 
-    def setup(self, dumper, verbose, idds_host, compress, manager, loader):
+    def setup(self, dumper, verbose, idds_host, compress, manager, loader, json_outputs):
         self.dumper = dumper
         self.verbose = verbose
         self.idds_host = idds_host
         self.compress = compress
         self.manager = manager
         self.loader = loader
+        self.json_outputs = json_outputs
 
 
 # entry for API
@@ -43,7 +45,8 @@ api = IddsApiInteface()
 del IddsApiInteface
 
 
-def get_api(dumper=None, verbose=False, idds_host=None, compress=True, manager=False, loader=None):
+def get_api(dumper=None, verbose=False, idds_host=None, compress=True, manager=False, loader=None,
+            json_outputs=False):
     """Get an API object to access iDDS through PanDA
 
        args:
@@ -53,8 +56,9 @@ def get_api(dumper=None, verbose=False, idds_host=None, compress=True, manager=F
            compress: True to compress request body
            manager: True to use ClientManager API
            loader: function object to load json-serialized data
+           json_outputs: True to use json outputs
        return:
            an API object
     """
-    api.setup(dumper, verbose, idds_host, compress, manager, loader)
+    api.setup(dumper, verbose, idds_host, compress, manager, loader, json_outputs)
     return api
