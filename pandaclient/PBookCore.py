@@ -440,3 +440,48 @@ class PBookCore(object):
             tmpLog.error(data)
         # return
         return status
+
+    # pause
+    def pause(self, task_id):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # pause JEDI task
+        tmpLog.info('Sending pause command ...')
+        status, output = Client.pauseTask(task_id, self.verbose)
+        # communication error
+        if status != 0:
+            tmpLog.error(output)
+            tmpLog.error('Failed to pause jediTaskID=%s' % task_id)
+            return False
+        tmpStat, tmpDiag = output
+        if tmpStat != 0:
+            print(tmpStat)
+            tmpLog.error(tmpDiag)
+            tmpLog.error('Failed to pause jediTaskID=%s' % task_id)
+            return False
+        tmpLog.info(tmpDiag)
+        # done
+        tmpLog.info('Done')
+        return True
+
+    # resume
+    def resume(self, task_id):
+        # get logger
+        tmpLog = PLogger.getPandaLogger()
+        # pause JEDI task
+        tmpLog.info('Sending resume command ...')
+        status, output = Client.resumeTask(task_id, self.verbose)
+        # communication error
+        if status != 0:
+            tmpLog.error(output)
+            tmpLog.error('Failed to resume jediTaskID=%s' % task_id)
+            return False
+        tmpStat, tmpDiag = output
+        if tmpStat != 0:
+            tmpLog.error(tmpDiag)
+            tmpLog.error('Failed to resume jediTaskID=%s' % task_id)
+            return False
+        tmpLog.info(tmpDiag)
+        # done
+        tmpLog.info('Done')
+        return True
