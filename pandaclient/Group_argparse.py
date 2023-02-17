@@ -59,11 +59,7 @@ class GroupArgParser(argparse.ArgumentParser):
 
     class print_briefHelp(argparse.Action):
          def __call__(self, parser, namespace, values, option_string=None):
-             briefHelp = parser.briefHelp
-             if briefHelp != None:
-                briefHelp.seek(0)
-                print(''.join(briefHelp.readlines()))
-             print(parser.examples)
+             parser.print_help()
              sys.exit(0)
 
     class print_groupHelp(argparse.Action):

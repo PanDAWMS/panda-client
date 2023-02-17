@@ -1,5 +1,11 @@
 ** Release Notes
 
+1.5.38
+  * --help == --helpGroup ALL
+  * low-level API to pause/resume tasks
+  * protection against unrecognized arguments in prun
+  * stripping role from workingGroup
+
 1.5.37
   * fixed --official for OIDC
   * added json_outputs arg to idds command

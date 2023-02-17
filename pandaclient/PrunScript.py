@@ -1349,7 +1349,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     if options.disableAutoRetry:
         taskParamMap['disableAutoRetry'] = 1
     if options.workingGroup is not None:
-        taskParamMap['workingGroup'] = options.workingGroup
+        # remove role
+        taskParamMap['workingGroup'] = options.workingGroup.split('.')[0].split(':')[0]
     if options.official:
         taskParamMap['official'] = True
     taskParamMap['nMaxFilesPerJob'] = options.maxNFilesPerJob

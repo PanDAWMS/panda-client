@@ -479,8 +479,9 @@ options, args = optP.parse_known_args()
 
 if options.verbose:
     print(options)
-    print(args)
+    print('args={0}'.format(args))
     print('')
+
 # load json
 jsonExecStr = ''
 if options.loadJson is not None:
@@ -538,6 +539,15 @@ fullExecString += jsonExecStr
 
 # get logger
 tmpLog = PLogger.getPandaLogger()
+
+# check if unknown arg
+for tmp_arg in args:
+    # separator
+    if tmp_arg == '--':
+        break
+    if tmp_arg.startswith('-'):
+        tmpLog.error("unrecognized argument: {0}".format(tmp_arg))
+        sys.exit(EC_Config)
 
 # use dev server
 if options.devSrv:
