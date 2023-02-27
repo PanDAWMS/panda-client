@@ -200,8 +200,9 @@ def main():
         if options.prodSourceLabel:
             prun_exec_str += ' --prodSourceLabel {0}'.format(options.prodSourceLabel)
         if options.workingGroup:
-            # remove role
-            prun_exec_str += ' --workingGroup {0}'.format(options.workingGroup.split('.')[0].split(':')[0])
+            prun_exec_str += ' --workingGroup {0}'.format(options.workingGroup)
+        if options.official:
+            prun_exec_str += ' --official'
         if options.extFile:
             prun_exec_str += ' --extFile {0}'.format(options.extFile)
         arg_dict = {'get_taskparams': True,
