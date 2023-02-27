@@ -42,7 +42,6 @@ def main():
     group_build = optP.add_group('build', 'build/compile the package and env setup')
     group_check = optP.add_group('check', 'check workflow description')
 
-
     optP.add_helpGroup()
 
     group_config.add_argument('--version', action='store_const', const=True, dest='version', default=False,
@@ -50,19 +49,21 @@ def main():
     group_config.add_argument('-v', action='store_const', const=True, dest='verbose', default=False,
                               help='Verbose')
     group_check.add_argument('--check', action='store_const', const=True, dest='checkOnly', default=False,
-                              help='Check workflow description locally')
+                             help='Check workflow description locally')
     group_check.add_argument('--debug', action='store_const', const=True, dest='debugCheck', default=False,
-                              help='verbose mode when checking workflow description locally')
+                             help='verbose mode when checking workflow description locally')
 
     group_output.add_argument('--cwl', action='store', dest='cwl', default=None,
                               help='Name of the main CWL file to describe the workflow')
     group_output.add_argument('--yaml', action='store', dest='yaml', default=None,
                               help='Name of the yaml file for workflow parameters')
+    group_output.add_argument('--snakefile', action='store', dest='snakefile', default=None,
+                              help='Name of the main Snakefile to describe the workflow')
 
     group_build.add_argument('--useAthenaPackages', action='store_const', const=True, dest='useAthenaPackages',
                              default=False,
                              help='One or more tasks in the workflow uses locally-built Athena packages')
-    group_build.add_argument('--vo', action='store', dest='vo',  default=None,
+    group_build.add_argument('--vo', action='store', dest='vo', default=None,
                              help="virtual organization name")
     group_build.add_argument('--extFile', action='store', dest='extFile', default='',
                              help='root or large files under WORKDIR are not sent to WNs by default. '
@@ -85,7 +86,7 @@ def main():
                               help='Suppress email notification')
     group_submit.add_argument('--prodSourceLabel', action='store', dest='prodSourceLabel', default='',
                               help="set prodSourceLabel")
-    group_submit.add_argument('--workingGroup', action='store', dest='workingGroup',  default=None,
+    group_submit.add_argument('--workingGroup', action='store', dest='workingGroup', default=None,
                               help="set workingGroup")
 
     group_expert.add_argument('--intrSrv', action='store_const', const=True, dest='intrSrv', default=False,
@@ -105,11 +106,23 @@ def main():
     options = optP.parse_args()
 
     # check
-    for arg_name in ['cwl', 'yaml', 'outDS']:
-        if not getattr(options, arg_name):
-            tmpStr = "argument --{0} is required".format(arg_name)
-            tmpLog.error(tmpStr)
-            sys.exit(1)
+    if getattr(options, 'cwl'):
+        workflow_language = 'cwl'
+    elif getattr(options, 'snakefile'):
+        workflow_language = 'snakemake'
+    else:
+        tmpLog.error('argument --cwl or --snakefile is required')
+        sys.exit(1)
+    if workflow_language == 'cwl':
+        for arg_name in ['yaml', 'outDS']:
+            if not getattr(options, arg_name):
+                tmpLog.error(f'argument --{arg_name} is required')
+                sys.exit(1)
+    elif workflow_language == 'snakemake':
+        for arg_name in ['outDS']:
+            if not getattr(options, arg_name):
+                tmpLog.error(f'argument --{arg_name} is required')
+                sys.exit(1)
 
     # check grid-proxy
     PsubUtils.check_proxy(options.verbose, options.vomsRoles)
@@ -139,8 +152,9 @@ def main():
     archiveName = 'jobO.%s.tar.gz' % MiscUtils.wrappedUuidGen()
     archiveFullName = os.path.join(tmpDir, archiveName)
     extensions = ['cwl', 'yaml', 'json']
-    find_opt = ' -o '.join(['-name "*.{0}"'.format(e) for e in extensions])
-    tmpOut = MiscUtils.commands_get_output('find . {0} | tar cvfz {1} --files-from - '.format(find_opt, archiveFullName))
+    find_opt = ' -o '.join(['-name "*.{0}"'.format(e) for e in extensions] + [f'-name "Snakefile"'])
+    tmpOut = MiscUtils.commands_get_output(
+        'find . {0} | tar cvfz {1} --files-from - '.format(find_opt, archiveFullName))
 
     if options.verbose:
         print(tmpOut + '\n')
@@ -174,15 +188,29 @@ def main():
     matchURL = re.search("(http.*://[^/]+)/", Client.baseURLCSRVSSL)
     sourceURL = matchURL.group(1)
 
-    params = {'taskParams': {},
-              'sourceURL': sourceURL,
-              'sandbox': archiveName,
-              'workflowSpecFile': options.cwl,
-              'workflowInputFile': options.yaml,
-              'language': 'cwl',
-              'outDS': options.outDS,
-              'base_platform': os.environ.get('ALRB_USER_PLATFORM', 'centos7')
-              }
+    if workflow_language == 'cwl':
+        params = {'taskParams': {},
+                  'sourceURL': sourceURL,
+                  'sandbox': archiveName,
+                  'workflowSpecFile': options.cwl,
+                  'workflowInputFile': options.yaml,
+                  'language': workflow_language,
+                  'outDS': options.outDS,
+                  'base_platform': os.environ.get('ALRB_USER_PLATFORM', 'centos7')
+                  }
+    elif workflow_language == 'snakemake':
+        params = {'taskParams': {},
+                  'sourceURL': sourceURL,
+                  'sandbox': archiveName,
+                  'workflowSpecFile': options.snakefile,
+                  'workflowInputFile': '',
+                  'language': workflow_language,
+                  'outDS': options.outDS,
+                  'base_platform': os.environ.get('ALRB_USER_PLATFORM', 'centos7')
+                  }
+    else:
+        tmpLog.error(f'Unknown workflow language specified: {workflow_language}')
+        sys.exit(1)
 
     # making task params with dummy exec
     task_type_args = {'container': '--containerImage __dummy_container__'}
