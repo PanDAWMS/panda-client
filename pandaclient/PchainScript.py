@@ -116,12 +116,12 @@ def main():
     if workflow_language == 'cwl':
         for arg_name in ['yaml', 'outDS']:
             if not getattr(options, arg_name):
-                tmpLog.error(f'argument --{arg_name} is required')
+                tmpLog.error('argument --{0} is required'.format(arg_name))
                 sys.exit(1)
     elif workflow_language == 'snakemake':
         for arg_name in ['outDS']:
             if not getattr(options, arg_name):
-                tmpLog.error(f'argument --{arg_name} is required')
+                tmpLog.error('argument --{0} is required'.format(arg_name))
                 sys.exit(1)
 
     # check grid-proxy
@@ -152,7 +152,7 @@ def main():
     archiveName = 'jobO.%s.tar.gz' % MiscUtils.wrappedUuidGen()
     archiveFullName = os.path.join(tmpDir, archiveName)
     extensions = ['cwl', 'yaml', 'json']
-    find_opt = ' -o '.join(['-name "*.{0}"'.format(e) for e in extensions] + [f'-name "Snakefile"'])
+    find_opt = ' -o '.join(['-name "*.{0}"'.format(e) for e in extensions] + ['-name "Snakefile"'])
     tmpOut = MiscUtils.commands_get_output(
         'find . {0} | tar cvfz {1} --files-from - '.format(find_opt, archiveFullName))
 
@@ -209,7 +209,7 @@ def main():
                   'base_platform': os.environ.get('ALRB_USER_PLATFORM', 'centos7')
                   }
     else:
-        tmpLog.error(f'Unknown workflow language specified: {workflow_language}')
+        tmpLog.error('Unknown workflow language specified: {0}'.format(workflow_language))
         sys.exit(1)
 
     # making task params with dummy exec
