@@ -384,7 +384,7 @@ class PBookCore(object):
         tmpLog = PLogger.getPandaLogger()
         if is_file:
             with open(value, 'rb') as f:
-                value = base64.b64encode(f.read()).encode()
+                value = base64.b64encode(f.read()).decode()
             # add prefix
             key = '___file___:'+format(key)
         size_limit = 1000

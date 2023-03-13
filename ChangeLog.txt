@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.40
+  * fixed delete_secret with file secrets
+
 1.5.39
   * fixed --official in pchain
 
