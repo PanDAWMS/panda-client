@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.41
+  * added secret-related methods to JobSpec
+
 1.5.40
   * fixed delete_secret with file secrets
 

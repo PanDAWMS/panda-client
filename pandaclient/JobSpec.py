@@ -56,27 +56,37 @@ class JobSpec(object):
                     'supErrorDiag'           : 250,
                     }
     # tag for special handling
-    _tagForSH = {'altStgOut'          : 'ao',
-                 'allOkEvents'        : 'at',
-                 'notDiscardEvents'   : 'de',
-                 'decAttOnFailedES'   : 'df',
-                 'dynamicNumEvents'   : 'dy',
-                 'fakeJobToIgnore'    : 'fake',
-                 'homeCloud'          : 'hc',
-                 'inFilePosEvtNum'    : 'if',
-                 'inputPrestaging'    : 'ip',
-                 'lumiBlock'          : 'lb',
-                 'mergeAtOs'          : 'mo',
-                 'noExecStrCnv'       : 'nc',
-                 'putLogToOS'         : 'po',
-                 'registerEsFiles'    : 're',
-                 'resurrectConsumers' : 'rs',
-                 'requestType'        : 'rt',
-                 'jobCloning'         : 'sc',
-                 'scoutJob'           : 'sj',
-                 'usePrefetcher'      : 'up',
-                 'useZipToPin'        : 'uz',
-                 'writeInputToFile'   : 'wf',
+    _tagForSH = {'altStgOut': 'ao',
+                 'acceptPartial': 'ap',
+                 'allOkEvents': 'at',
+                 'notDiscardEvents': 'de',
+                 'decAttOnFailedES': 'df',
+                 'debugMode': 'dm',
+                 'dynamicNumEvents': 'dy',
+                 'encJobParams': 'ej',
+                 'fakeJobToIgnore': 'fake',
+                 'homeCloud': 'hc',
+                 'hpoWorkflow': 'ho',
+                 'inFilePosEvtNum': 'if',
+                 'inputPrestaging': 'ip',
+                 'lumiBlock': 'lb',
+                 'noLoopingCheck': 'lc',
+                 'mergeAtOs': 'mo',
+                 'noExecStrCnv': 'nc',
+                 'onSiteMerging': 'om',
+                 'pushStatusChanges': 'pc',
+                 'pushJob': 'pj',
+                 'putLogToOS': 'po',
+                 'registerEsFiles': 're',
+                 'retryRam': 'rr',
+                 'resurrectConsumers': 'rs',
+                 'requestType': 'rt',
+                 'jobCloning': 'sc',
+                 'scoutJob': 'sj',
+                 'usePrefetcher': 'up',
+                 'useSecrets': 'us',
+                 'useZipToPin': 'uz',
+                 'writeInputToFile': 'wf',
                  }
 
 
@@ -409,7 +419,23 @@ class JobSpec(object):
             pass
         return []
 
+    # check special handling
+    def check_special_handling(self, key):
+        if self.specialHandling:
+            return self._tagForSH[key] in self.specialHandling.split(',')
+        return False
 
+    # set special handling
+    def set_special_handling(self, key):
+        if self.specialHandling:
+            items = self.specialHandling.split(',')
+        else:
+            items = []
+        if self._tagForSH[key] not in items:
+            items.append(self._tagForSH[key])
+        if 'NULL' in items:
+            items.remove('NULL')
+        self.specialHandling = ','.join(items)
 
     # get mode for alternative stage-out
     def getAltStgOut(self):
@@ -650,7 +676,13 @@ class JobSpec(object):
             items.append(self._tagForSH['useZipToPin'])
         self.specialHandling = ','.join(items)
 
+    # use secrets
+    def use_secrets(self):
+        return self.check_special_handling('useSecrets')
 
+    # set to use secrets
+    def set_use_secrets(self):
+        self.set_special_handling('useSecrets')
 
     # not discard events
     def notDiscardEvents(self):
