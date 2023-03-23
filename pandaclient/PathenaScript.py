@@ -345,7 +345,8 @@ action = group_job.add_argument('--allowNoOutput',action='store',dest='allowNoOu
                 help='A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. Jobs go to finished even if they are not produced on WN')
 group_output.shareWithMe(action)
 group_submit.add_argument('--excludedSite', action='append', dest='excludedSite',  default=[],
-                help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
+                          help="A comma-separated list of sites which are not used for site section, "
+                               "e.g., ABC,OPQ*,XYZ which excludes ABC, XYZ, and OPQ<blah> due to the wildcard")
 group_submit.add_argument('--noSubmit', action='store_const', const=True, dest='noSubmit',  default=False,
                 help="Don't submit jobs")
 group_submit.add_argument('--prodSourceLabel', action='store', dest='prodSourceLabel',  default='',

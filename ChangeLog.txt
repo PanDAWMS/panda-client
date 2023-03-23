@@ -1,5 +1,14 @@
 ** Release Notes
 
+1.5.41
+  * added secret-related methods to JobSpec
+
+1.5.40
+  * fixed delete_secret with file secrets
+
+1.5.39
+  * fixed --official in pchain
+
 1.5.38
   * --help == --helpGroup ALL
   * low-level API to pause/resume tasks

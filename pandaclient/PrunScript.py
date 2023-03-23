@@ -267,7 +267,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                     help='A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. Jobs go to finish even if they are not produced on WN')
     group_output.shareWithMe(action)
     group_submit.add_argument('--excludedSite', action='append', dest='excludedSite',  default=[],
-                    help="list of sites which are not used for site section, e.g., ANALY_ABC,ANALY_XYZ")
+                              help="A comma-separated list of sites which are not used for site section, "
+                                   "e.g., ABC,OPQ*,XYZ which excludes ABC, XYZ, and OPQ<blah> due to the wildcard")
     group_input.add_argument('--useLogAsInput',action='store_const',const=True,dest='useLogAsInput',default=False,
                     help="log.tgz files in inDS are ignored by default. This option allows log files to be used as input")
     group_submit.add_argument('--noSubmit',action='store_const',const=True,dest='noSubmit',default=False,
