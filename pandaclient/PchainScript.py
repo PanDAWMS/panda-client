@@ -106,23 +106,24 @@ def main():
     options = optP.parse_args()
 
     # check
-    if getattr(options, 'cwl'):
+    if options.cwl:
         workflow_language = 'cwl'
-    elif getattr(options, 'snakefile'):
+        workflow_file = options.cwl
+        workflow_input = options.yaml
+        args_to_check = ['yaml', 'outDS']
+    elif options.snakefile:
         workflow_language = 'snakemake'
+        workflow_file = options.snakefile
+        workflow_input = ''
+        args_to_check = ['outDS']
     else:
         tmpLog.error('argument --cwl or --snakefile is required')
         sys.exit(1)
-    if workflow_language == 'cwl':
-        for arg_name in ['yaml', 'outDS']:
-            if not getattr(options, arg_name):
-                tmpLog.error('argument --{0} is required'.format(arg_name))
-                sys.exit(1)
-    elif workflow_language == 'snakemake':
-        for arg_name in ['outDS']:
-            if not getattr(options, arg_name):
-                tmpLog.error('argument --{0} is required'.format(arg_name))
-                sys.exit(1)
+
+    for arg_name in args_to_check:
+        if not getattr(options, arg_name):
+            tmpLog.error('argument --{0} is required'.format(arg_name))
+            sys.exit(1)
 
     # check grid-proxy
     PsubUtils.check_proxy(options.verbose, options.vomsRoles)
@@ -188,29 +189,15 @@ def main():
     matchURL = re.search("(http.*://[^/]+)/", Client.baseURLCSRVSSL)
     sourceURL = matchURL.group(1)
 
-    if workflow_language == 'cwl':
-        params = {'taskParams': {},
-                  'sourceURL': sourceURL,
-                  'sandbox': archiveName,
-                  'workflowSpecFile': options.cwl,
-                  'workflowInputFile': options.yaml,
-                  'language': workflow_language,
-                  'outDS': options.outDS,
-                  'base_platform': os.environ.get('ALRB_USER_PLATFORM', 'centos7')
-                  }
-    elif workflow_language == 'snakemake':
-        params = {'taskParams': {},
-                  'sourceURL': sourceURL,
-                  'sandbox': archiveName,
-                  'workflowSpecFile': options.snakefile,
-                  'workflowInputFile': '',
-                  'language': workflow_language,
-                  'outDS': options.outDS,
-                  'base_platform': os.environ.get('ALRB_USER_PLATFORM', 'centos7')
-                  }
-    else:
-        tmpLog.error('Unknown workflow language specified: {0}'.format(workflow_language))
-        sys.exit(1)
+    params = {'taskParams': {},
+              'sourceURL': sourceURL,
+              'sandbox': archiveName,
+              'workflowSpecFile': workflow_file,
+              'workflowInputFile': workflow_input,
+              'language': workflow_language,
+              'outDS': options.outDS,
+              'base_platform': os.environ.get('ALRB_USER_PLATFORM', 'centos7')
+              }
 
     # making task params with dummy exec
     task_type_args = {'container': '--containerImage __dummy_container__'}
