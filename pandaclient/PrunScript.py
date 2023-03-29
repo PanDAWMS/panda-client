@@ -4,6 +4,8 @@ import sys
 import shutil
 import atexit
 import argparse
+import time
+
 from pandaclient.Group_argparse import GroupArgParser
 try:
     from urllib import quote
@@ -981,7 +983,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             if options.useRootCore:
                 # check $ROOTCOREDIR
                 if 'ROOTCOREDIR' not in os.environ:
-                    tmpErrMsg  = '$ROOTCOREDIR is not definied in your enviornment. '
+                    tmpErrMsg  = '$ROOTCOREDIR is not defined in your environment. '
                     tmpErrMsg += 'Please setup RootCore runtime beforehand'
                     tmpLog.error(tmpErrMsg)
                     sys.exit(EC_Config)
@@ -1204,10 +1206,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
 
             # check symlinks
             if options.useAthenaPackages:
-                tmpLog.info("checking symbolic links")
-                status,out = commands_get_status_output('tar tvfz %s' % archiveName)
+                tmpLog.info("checking sandbox")
+                for _ in range(5):
+                    status, out = commands_get_status_output('tar tvfz %s' % archiveName)
+                    if status == 0:
+                        break
+                    time.sleep(5)
                 if status != 0:
-                    tmpLog.error("Failed to expand archive")
+                    tmpLog.error("Failed to expand sandbox. {0}".format(out))
                     sys.exit(EC_Archive)
                 symlinks = []
                 for line in out.split('\n'):
@@ -1241,7 +1247,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         # upload source files
         if not options.noSubmit:
             # upload sources via HTTP POST
-            tmpLog.info("upload sandbox files")
+            tmpLog.info("upload sandbox")
             if options.vo is None:
                 use_cache_srv = True
             else:
@@ -1252,7 +1258,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                 archiveName = out.split(':')[-1]
             elif out != 'True':
                 print(out)
-                tmpLog.error("failed to upload sandbox files with %s" % status)
+                tmpLog.error("failed to upload sandbox with %s" % status)
                 sys.exit(EC_Post)
             # good run list
             if options.goodRunListXML != '':

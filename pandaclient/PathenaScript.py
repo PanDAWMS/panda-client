@@ -9,6 +9,7 @@ from pandaclient.Group_argparse import GroupArgParser
 import random
 import pickle
 import json
+import time
 from pandaclient.MiscUtils import parse_secondary_datasets_opt
 
 try:
@@ -1355,10 +1356,14 @@ if True:
             sys.exit(EC_Archive)
 
         # check symlinks
-        tmpLog.info("checking symbolic links")
-        status,out = commands_get_status_output('tar tvfz %s' % archiveName)
+        tmpLog.info("checking sandbox")
+        for _ in range(5):
+            status, out = commands_get_status_output('tar tvfz %s' % archiveName)
+            if status == 0:
+                break
+            time.sleep(5)
         if status != 0:
-            tmpLog.error("Failed to expand archive")
+            tmpLog.error("Failed to expand sandbox. {0}".format(out))
             sys.exit(EC_Archive)
         symlinks = []
         for line in out.split('\n'):
@@ -1391,7 +1396,7 @@ if True:
 
     # put sources/jobO via HTTP POST
     if not options.noSubmit:
-        tmpLog.info("uploading source/jobO files")
+        tmpLog.info("uploading sandbox")
         status,out = Client.putFile(archiveName,options.verbose,useCacheSrv=True,reuseSandbox=True)
         if out.startswith('NewFileName:'):
             # found the same input sandbox to reuse
