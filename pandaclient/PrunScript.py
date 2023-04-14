@@ -1872,7 +1872,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         if not options.nGBPerMergeJob in [-1,'MAX']:
             # convert to int
             try:
-                if options.nGBPerJob != 'MAX':
+                if options.nGBPerMergeJob != 'MAX':
                     options.nGBPerMergeJob = int(options.nGBPerMergeJob)
             except Exception:
                 tmpLog.error("--nGBPerMergeJob must be an integer")
