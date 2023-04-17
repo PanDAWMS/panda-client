@@ -40,7 +40,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     sys.argv.insert(0, 'prun')
 
     usage = """prun [options]
-    
+
       HowTo is available at https://panda-wms.readthedocs.io/en/latest/client/prun.html"""
 
     examples = """Examples:
@@ -100,7 +100,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
 
     usage_containerJob="""Visit the following wiki page for examples:
       https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
-    
+
     Please test the job interactively first prior to submitting to the grid.
     Check the following on how to test container job interactively:
       https://twiki.cern.ch/twiki/bin/viewauth/AtlasComputing/SingularityInAtlas
@@ -1867,8 +1867,23 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         taskParamMap['mergeSpec']['useLocalIO'] = 1
         taskParamMap['mergeSpec']['jobParameters'] = jobParameters
         taskParamMap['mergeOutput'] = True
-        if options.nGBPerMergeJob > 0:
-            taskParamMap['nGBPerMergeJob'] = options.nGBPerMergeJob
+
+        # check nGBPerJob
+        if not options.nGBPerMergeJob in [-1,'MAX']:
+            # convert to int
+            try:
+                if options.nGBPerMergeJob != 'MAX':
+                    options.nGBPerMergeJob = int(options.nGBPerMergeJob)
+            except Exception:
+                tmpLog.error("--nGBPerMergeJob must be an integer")
+                sys.exit(EC_Config)
+            # check negative
+            if options.nGBPerMergeJob <= 0:
+                tmpLog.error("--nGBPerMergeJob must be positive")
+                sys.exit(EC_Config)
+
+            if options.nGBPerMergeJob > 0:
+                taskParamMap['nGBPerMergeJob'] = options.nGBPerMergeJob
 
 
     #####################################################################
