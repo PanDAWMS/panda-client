@@ -297,7 +297,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                     help=argparse.SUPPRESS)
     group_job.add_argument('--respectSplitRule', action='store_const',const=True,dest='respectSplitRule',default=False,
                     help="force scout jobs to follow split rules like nGBPerJob")
-    group_job.add_argument('--nGBPerMergeJob',action='store',dest='nGBPerMergeJob',default=-1,
+    group_job.add_argument('--nGBPerMergeJob', action='store', dest='nGBPerMergeJob', default='MAX',
                     help='Instantiate one merge job per NGBPERMERGEJOB GB of pre-merged files')
     group_expert.add_argument('--devSrv',action='store_const',const=True,dest='devSrv',default=False,
                     help="Please don't use this option. Only for developers to use the dev panda server")
@@ -1869,11 +1869,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         taskParamMap['mergeOutput'] = True
 
         # check nGBPerJob
-        if not options.nGBPerMergeJob in [-1,'MAX']:
+        if options.nGBPerMergeJob != 'MAX':
             # convert to int
             try:
-                if options.nGBPerMergeJob != 'MAX':
-                    options.nGBPerMergeJob = int(options.nGBPerMergeJob)
+                options.nGBPerMergeJob = int(options.nGBPerMergeJob)
             except Exception:
                 tmpLog.error("--nGBPerMergeJob must be an integer")
                 sys.exit(EC_Config)
@@ -1881,9 +1880,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             if options.nGBPerMergeJob <= 0:
                 tmpLog.error("--nGBPerMergeJob must be positive")
                 sys.exit(EC_Config)
-
-            if options.nGBPerMergeJob > 0:
-                taskParamMap['nGBPerMergeJob'] = options.nGBPerMergeJob
+            taskParamMap['nGBPerMergeJob'] = options.nGBPerMergeJob
 
 
     #####################################################################

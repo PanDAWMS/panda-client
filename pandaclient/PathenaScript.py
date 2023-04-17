@@ -153,7 +153,7 @@ action = group_job.add_argument('--nEventsPerFile', action='store', dest='nEvent
                 type=int,    help='Number of events per file')
 group_input.shareWithMe(action)
 group_job.add_argument('--nGBPerJob',action='store',dest='nGBPerJob',default=-1, help='Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value')
-group_job.add_argument('--nGBPerMergeJob',action='store',dest='nGBPerMergeJob',default=-1, help='Instantiate one merge job per NGBPERMERGEJOB GB of pre-merged files')
+group_job.add_argument('--nGBPerMergeJob', action='store', dest='nGBPerMergeJob', default="MAX", help='Instantiate one merge job per NGBPERMERGEJOB GB of pre-merged files')
 group_submit.add_argument('--site', action='store', dest='site',  default="AUTO",
                 type=str,    help='Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites')
 group_build.add_argument('--athenaTag',action='store',dest='athenaTag',default='',type=str,
@@ -2085,9 +2085,18 @@ if options.mergeOutput:
     taskParamMap['mergeSpec']['useLocalIO'] = 1
     taskParamMap['mergeSpec']['jobParameters'] = jobParameters
     taskParamMap['mergeOutput'] = True
-    if options.nGBPerMergeJob > 0:
+    if options.nGBPerMergeJob != 'MAX':
+        # convert to int
+        try:
+            options.nGBPerMergeJob = int(options.nGBPerMergeJob)
+        except Exception:
+            tmpLog.error("--nGBPerMergeJob must be an integer")
+            sys.exit(EC_Config)
+        # check negative
+        if options.nGBPerMergeJob <= 0:
+            tmpLog.error("--nGBPerMergeJob must be positive")
+            sys.exit(EC_Config)
         taskParamMap['nGBPerMergeJob'] = options.nGBPerMergeJob
-
 
 
 #####################################################################

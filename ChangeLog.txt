@@ -1,7 +1,10 @@
 ** Release Notes
 
+1.5.44
+  * fixed --nFBPerMergeJob in pathena
+
 1.5.43
-  * fixed --nGBPerMergeJob
+  * fixed --nGBPerMergeJob in prun
 
 1.5.42
   * added retry when checking sandbox files created by cpack
