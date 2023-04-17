@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.43
+  * fixed --nGBPerMergeJob
+
 1.5.42
   * added retry when checking sandbox files created by cpack
 
