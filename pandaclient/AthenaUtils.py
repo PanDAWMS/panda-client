@@ -1067,7 +1067,7 @@ def archiveWithCpack(withSource,tmpDir,verbose):
     comStr = 'cpack -B {0} -D CPACK_PACKAGE_FILE_NAME={1} -G TGZ '.format(tmpDir,archiveName)
     comStr += '-D CPACK_PACKAGE_NAME="" -D CPACK_PACKAGE_VERSION="" -D CPACK_PACKAGE_VERSION_MAJOR="" '
     comStr += '-D CPACK_PACKAGE_VERSION_MINOR="" -D CPACK_PACKAGE_VERSION_PATCH="" '
-    comStr += '-D CPACK_INSTALL_CMAKE_PROJECTS="" -D CPACK_PACKAGE_DESCRIPTION="" '
+    comStr += '-D CPACK_PACKAGE_DESCRIPTION="" '
     if verbose:
         tmpLog.debug(comStr)
         comStr += '-V '

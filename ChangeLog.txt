@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.45
+  * removed -D CPACK_INSTALL_CMAKE_PROJECTS="" from cpack arguments
+
 1.5.44
   * fixed --nFBPerMergeJob in pathena
 
