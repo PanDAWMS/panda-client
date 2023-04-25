@@ -1052,10 +1052,10 @@ def archiveWithCpack(withSource,tmpDir,verbose):
     tmpLog = PLogger.getPandaLogger()
     # define archive name
     if withSource:
-        tmpLog.info('archiving source files')
+        tmpLog.info('archiving source files with cpack')
         archiveName = 'sources.%s' % MiscUtils.wrappedUuidGen()
     else:
-        tmpLog.info('archiving jobOs and modules')
+        tmpLog.info('archiving jobOs and modules with cpack')
         archiveName = 'jobO.%s' % MiscUtils.wrappedUuidGen()
     archiveFullName = "%s/%s" % (tmpDir,archiveName)
     # extract build dir
@@ -1063,27 +1063,38 @@ def archiveWithCpack(withSource,tmpDir,verbose):
     buildDir = os.path.dirname(buildDir.split(':')[0])
     _curdir = os.getcwd()
     os.chdir(buildDir)
-    tmpLog.info('The build directory is {0}'.format(buildDir))
-    comStr = 'cpack -B {0} -D CPACK_PACKAGE_FILE_NAME={1} -G TGZ '.format(tmpDir,archiveName)
-    comStr += '-D CPACK_PACKAGE_NAME="" -D CPACK_PACKAGE_VERSION="" -D CPACK_PACKAGE_VERSION_MAJOR="" '
-    comStr += '-D CPACK_PACKAGE_VERSION_MINOR="" -D CPACK_PACKAGE_VERSION_PATCH="" '
-    comStr += '-D CPACK_PACKAGE_DESCRIPTION="" '
-    if verbose:
-        tmpLog.debug(comStr)
-        comStr += '-V '
-    tmpStat, tmpOut = commands_get_status_output_with_env(comStr)
-    if tmpStat != 0:
-        tmpLog.error('cpack failed')
-        sys.exit(EC_Config)
-    if verbose:
-        print(tmpOut)
+    tmpLog.info('the build directory is {0}'.format(buildDir))
+    check_file = 'CPackConfig.cmake'
+    if os.path.exists(os.path.join(buildDir, check_file)):
+        use_cpack = True
+        comStr = 'cpack -B {0} -D CPACK_PACKAGE_FILE_NAME={1} -G TGZ '.format(tmpDir,archiveName)
+        comStr += '-D CPACK_PACKAGE_NAME="" -D CPACK_PACKAGE_VERSION="" -D CPACK_PACKAGE_VERSION_MAJOR="" '
+        comStr += '-D CPACK_PACKAGE_VERSION_MINOR="" -D CPACK_PACKAGE_VERSION_PATCH="" '
+        comStr += '-D CPACK_PACKAGE_DESCRIPTION="" '
+        if verbose:
+            tmpLog.debug(comStr)
+            comStr += '-V '
+        tmpStat, tmpOut = commands_get_status_output_with_env(comStr)
+        if tmpStat != 0:
+            print(tmpOut)
+            tmpLog.error('cpack failed')
+            sys.exit(EC_Config)
+        if verbose:
+            print(tmpOut)
+    else:
+        use_cpack = False
+        tmpLog.info('skip cpack since {0} is missing in the build directory'.format(check_file))
     archiveName += '.tar'
     archiveFullName += '.tar'
     os.chdir(tmpDir)
-    comStr = 'tar xfz {0}.gz; tar cf {0} usr > /dev/null 2>&1; rm -rf usr _CPack_Packages {0}.gz'.format(archiveName)
+    if use_cpack:
+        comStr = 'tar xfz {0}.gz; tar cf {0} usr > /dev/null 2>&1; rm -rf usr _CPack_Packages {0}.gz'.format(
+            archiveName)
+    else:
+        comStr = 'tar cf {0} -T /dev/null > /dev/null 2>&1'.format(archiveName)
     commands_get_output(comStr)
     os.chdir(_curdir)
-    return archiveName,archiveFullName
+    return archiveName, archiveFullName
 
 
 # convert runConfig to outMap

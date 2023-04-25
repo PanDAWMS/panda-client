@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.46
+  * to skip cpack if the user doesn't have own build dir
+
 1.5.45
   * removed -D CPACK_INSTALL_CMAKE_PROJECTS="" from cpack arguments
 
