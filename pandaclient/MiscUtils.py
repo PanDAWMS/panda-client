@@ -1,4 +1,5 @@
 import re
+import sys
 import os
 import json
 import uuid
@@ -151,6 +152,47 @@ def commands_get_status_output(com):
 
 def commands_get_output(com):
     return commands_get_status_output(com)[1]
+
+def commands_failOnNonZeroExitStatus(
+    com, errorStatusOnFailure,
+    verboseCmd=False,verboseOutputCmd=False,
+    logger=None,logMsg="",errorLogMsg=""):
+    
+    # add log message if logger and log message have been provided 
+    if logger is not None and logMsg != "":
+        logger.debug(logMsg)
+    
+    # print command if verbose
+    if verboseCmd:
+        print(com)
+    
+    # execute command, get status code and message printed by the command 
+    status,data = commands_get_status_output(com)
+    
+    # fail for non zero exit status 
+    if status != 0:
+        # print error message before failing
+        print(data)
+        # report error message if logger and log message have been provided 
+        if logger is not None and errorLogMsg != "":
+            logger.error(errorLogMsg)
+        
+        if type(errorStatusOnFailure) == int:
+            # use error status provided to the function
+            sys.exit(errorStatusOnFailure)
+        elif errorStatusOnFailure == "sameAsStatus":
+            # use error status exit code returned 
+            # by the execution of the command
+            sys.exit(status)
+        else: 
+            # default exit status otherwise
+            sys.exit(1)
+    
+    # print command output message if verbose
+    if verboseOutputCmd and data != "":
+        print(data)
+
+    return status,data
 
 
 # decorator to run with the original environment
