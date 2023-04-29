@@ -45,8 +45,8 @@ class OpenIdConnect_Utils:
         self.verbose = verbose
 
     def get_ca_path(self):
-        if 'X509_CERT_DIR' in os.environ and os.environ['X509_CERT_DIR']:
-            ca_path = os.environ['X509_CERT_DIR']
+        if 'PANDA_VERIFY_SSL_CERT_DIR' in os.environ and os.environ['PANDA_VERIFY_SSL_CERT_DIR']:
+            ca_path = os.environ['PANDA_VERIFY_SSL_CERT_DIR']
             if os.path.exists(ca_path):
                 return ca_path
         return None
