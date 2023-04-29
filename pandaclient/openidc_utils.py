@@ -44,6 +44,11 @@ class OpenIdConnect_Utils:
         self.log_stream = log_stream
         self.verbose = verbose
 
+    def get_ca_path(self):
+        if 'X509_CERT_DIR' not in os.environ or os.environ['X509_CERT_DIR'] == '':
+            os.environ['X509_CERT_DIR'] = '/etc/grid-security/certificates'
+        return os.environ['X509_CERT_DIR']
+
     # get token path
     def get_token_path(self):
         return os.path.join(self.token_dir, TOKEN_BASENAME)
@@ -59,7 +64,7 @@ class OpenIdConnect_Utils:
         req = Request(device_auth_endpoint, rdata)
         req.add_header('content-type', 'application/x-www-form-urlencoded')
         try:
-            conn = urlopen(req)
+            conn = urlopen(req, capath=self.get_ca_path())
             text = conn.read()
             if self.verbose:
                 self.log_stream.debug(text)
@@ -91,7 +96,7 @@ class OpenIdConnect_Utils:
         req.add_header('content-type', 'application/x-www-form-urlencoded')
         while datetime.datetime.utcnow() - startTime < datetime.timedelta(seconds=expires_in):
             try:
-                conn = urlopen(req)
+                conn = urlopen(req, capath=self.get_ca_path())
                 text = conn.read().decode()
                 if self.verbose:
                     self.log_stream.debug(text)
@@ -125,7 +130,7 @@ class OpenIdConnect_Utils:
         req = Request(token_endpoint, rdata)
         req.add_header('content-type', 'application/x-www-form-urlencoded')
         try:
-            conn = urlopen(req)
+            conn = urlopen(req, capath=self.get_ca_path())
             text = conn.read()
             if self.verbose:
                 self.log_stream.debug(text)
@@ -152,8 +157,8 @@ class OpenIdConnect_Utils:
         if self.verbose:
             self.log_stream.debug('fetching {0}'.format(url))
         try:
-            context = ssl._create_unverified_context()
-            conn = urlopen(url, context=context)
+            # context = ssl._create_unverified_context()
+            conn = urlopen(url, capath=self.get_ca_path())
             text = conn.read().decode()
             if self.verbose:
                 self.log_stream.debug(text)
