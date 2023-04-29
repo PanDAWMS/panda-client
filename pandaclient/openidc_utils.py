@@ -45,9 +45,11 @@ class OpenIdConnect_Utils:
         self.verbose = verbose
 
     def get_ca_path(self):
-        if 'X509_CERT_DIR' not in os.environ or os.environ['X509_CERT_DIR'] == '':
-            os.environ['X509_CERT_DIR'] = '/etc/grid-security/certificates'
-        return os.environ['X509_CERT_DIR']
+        if 'X509_CERT_DIR' in os.environ and os.environ['X509_CERT_DIR']:
+            ca_path = os.environ['X509_CERT_DIR']
+            if os.path.exists(ca_path):
+                return ca_path
+        return None
 
     # get token path
     def get_token_path(self):
