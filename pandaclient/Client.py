@@ -192,13 +192,15 @@ class _Curl:
         return oidc
 
     # get ID token
-    def get_id_token(self):
+    def get_id_token(self, force_new=False):
         tmp_log = PLogger.getPandaLogger()
         token_str = get_token_string(tmp_log, self.verbose)
         if token_str:
             self.idToken = token_str
             return True
         oidc = self.get_oidc(tmp_log)
+        if force_new:
+            oidc.cleanup()
         s, o = oidc.run_device_authorization_flow()
         if not s:
             tmp_log.error(o)
@@ -1581,6 +1583,19 @@ def get_user_name_from_token():
         return name, token_info['groups'], token_info['preferred_username']
     except Exception:
         return None, None
+
+
+# get new token
+def get_new_token():
+    """Get new ID token
+
+       returns: a string of ID token. None if failed
+
+    """
+    curl = _Curl()
+    if curl.get_id_token(force_new=True):
+        return curl.idToken
+    return None
 
 
 # call idds command

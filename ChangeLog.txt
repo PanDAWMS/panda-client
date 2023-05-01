@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.47
+  * utilities for ID tokens
+
 1.5.46
   * to skip cpack if the user doesn't have own build dir
 
