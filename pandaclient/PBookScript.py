@@ -457,7 +457,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
                     return None
                 if some_string == 'True':
                     return True
-                elif some_string == 'False':
+                if some_string == 'False':
                     return False
                 try:
                     return int(some_string)
