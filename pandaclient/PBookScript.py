@@ -453,6 +453,8 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
                 except Exception:
                     return some_string.split(',')
             else:
+                if some_string == 'None':
+                    return None
                 if some_string == 'True':
                     return True
                 elif some_string == 'False':
