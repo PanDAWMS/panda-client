@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.48
+  * pbook in batch mode
+
 1.5.47
   * utilities for ID tokens
 

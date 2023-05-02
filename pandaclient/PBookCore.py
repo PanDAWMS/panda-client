@@ -65,8 +65,6 @@ def check_task_owner(func):
         tmpLog = PLogger.getPandaLogger()
         # initialize
         ret = None
-        # check proxy
-        PsubUtils.check_proxy(self.verbose, None)
         # check task owner
         try:
             taskid = None
@@ -111,15 +109,21 @@ class PBookCore(object):
     def __init__(self, verbose=False):
         # verbose
         self.verbose = verbose
+        self.username = None
+
+    # init
+    def init(self, sanity_check=True):
         # check proxy
-        PsubUtils.check_proxy(self.verbose, None)
+        if sanity_check:
+            PsubUtils.check_proxy(self.verbose, None)
         # user name
         username_from_proxy = PsubUtils.extract_voms_proxy_username()
         if username_from_proxy:
             self.username = username_from_proxy
             sys.stdout.write('PBook user: {0} \n'.format(self.username))
         else:
-            sys.stderr.write('ERROR : Cannot get user name from proxy. Exit... \n')
+            sys.stderr.write('ERROR : Cannot get user name from proxy or token. '
+                             'Please generate a new one using "generate_credential"\n')
             sys.exit(1)
 
     # kill
@@ -172,8 +176,6 @@ class PBookCore(object):
     def debug(self, pandaID, modeOn):
         # get logger
         tmpLog = PLogger.getPandaLogger()
-        # check proxy
-        PsubUtils.check_proxy(self.verbose, None)
         # set
         status,output = Client.setDebugMode(pandaID,modeOn,self.verbose)
         if status != 0:
@@ -485,3 +487,7 @@ class PBookCore(object):
         # done
         tmpLog.info('Done')
         return True
+
+    # generate_credential
+    def generate_credential(self):
+        return PsubUtils.check_proxy(self.verbose, None, generate_new=True)

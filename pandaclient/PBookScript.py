@@ -30,6 +30,7 @@ else:
 
 import argparse
 import readline
+import pydoc
 
 from pandaclient import Client
 from pandaclient import PandaToolsPkgInfo
@@ -88,11 +89,9 @@ sys.path = [tmpDir]+sys.path
 
 from pandaclient import PBookCore    # noqa: E402
 
-orig_help = help
-
 
 # main for interactive session
-def intmain(pbookCore,comString):
+def intmain(pbookCore, comString, args_list):
 
     # help
     def help(*arg):
@@ -105,7 +104,7 @@ def intmain(pbookCore,comString):
                     func = main_locals[arg[0]]
                 else:
                     func = arg[0]
-                orig_help(func)
+                print(pydoc.plain(pydoc.render_doc(func)))
                 return
             except Exception:
                 print("Unknown command : {0}".format(str(arg[0])))
@@ -132,8 +131,9 @@ The following commands are available:
     list_secrets
     delete_secret
     delete_all_secrets
+    generate_credential
 
-For more info, do help(show) for example
+For more info of each command, e.g. do "help(show)" in interactive mode or "help show" in batch mode.
 """
         print(tmp_str)
 
@@ -418,16 +418,72 @@ For more info, do help(show) for example
         """
         pbookCore.list_secrets(full)
 
+    # generate credential
+    def generate_credential():
+        """
+        Generate a new proxy or token
+
+        """
+        pbookCore.generate_credential()
+
+    main_locals = locals()
+
     # execute command in the batch mode
     if comString != '':
+        pbookCore.init()
         exec(comString) in globals(), locals()
         # exit
         if PBookCore.func_return_value:
             sys.exit(0)
         else:
             sys.exit(1)
-    main_locals = locals()
+
+    # execute with args in the batch mode
+    if args_list:
+        func_name = args_list.pop(0)
+        if func_name not in locals():
+            print("ERROR : function {0} is undefined".format(func_name))
+            sys.exit(1)
+
+        # convert arg string
+        def _conv_str(some_string):
+            if ',' in some_string:
+                try:
+                    return [int(s) for s in some_string.split(',')]
+                except Exception:
+                    return some_string.split(',')
+            else:
+                if some_string == 'True':
+                    return True
+                elif some_string == 'False':
+                    return False
+                try:
+                    return int(some_string)
+                except Exception:
+                    return some_string
+
+        # separate args and kwargs
+        args = []
+        kwargs = {}
+        for arg in args_list:
+            if '=' in arg:
+                k, v = arg.split('=')
+                kwargs[k] = _conv_str(v)
+            else:
+                args.append(_conv_str(arg))
+        # execute
+        if func_name not in ['help', 'generate_credential']:
+            pbookCore.init(sanity_check=False)
+        locals()[func_name](*args, **kwargs)
+
+        # exit
+        if PBookCore.func_return_value:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
     # go to interactive prompt
+    pbookCore.init()
     code.interact(banner="\nStart pBook %s" % PandaToolsPkgInfo.release_version,
                   local=locals())
 
@@ -443,11 +499,54 @@ def catch_sig(sig, frame):
 # overall main
 def main():
     # parse option
-    parser = argparse.ArgumentParser(conflict_handler="resolve")
+    usage = """
+    $ pbook [options] # interactive mode
+    $ pbook [options] command [args] [kwargs] # batch mode
+    
+    The same command can be executed in interactive mode:
+    
+    $ pbook
+    >>> command(*args, **kwargs) 
+    
+    or in batch mode:
+
+    $ pbook command arg1 arg2 ... argN kwarg1=value1 kwarg2=value2 ... kwargN=valueN
+        
+    E.g.
+
+    $ pbook
+    >>> show(123, format='long', sync=True)
+    
+    is equivalent to    
+
+    $ pbook show 123 format='long' sync=True
+    
+    If arg or value is a list in interactive mode, it is represented as a comma-separate list in batch mode. E.g.
+    to kill three tasks in interactive mode:
+
+    $ pbook
+    >>> kill([123, 456, 789])
+    
+    or in batch mode:
+
+    $ pbook kill 123,456,789 
+    
+    To see the list of commands and help of each command,
+    
+    $ pbook
+    >>> help()
+    >>> help(command_name)
+    
+    or 
+    
+    $ pbook help
+    $ pbook help command_name
+    """
+    parser = argparse.ArgumentParser(conflict_handler="resolve", usage=usage)
     parser.add_argument("-v",action="store_true",dest="verbose",default=False,
                       help="Verbose")
     parser.add_argument('-c',action='store',dest='comString',default='',type=str,
-                      help='Execute a command in the batch mode')
+                      help='Execute a python code snippet')
     parser.add_argument("-3", action="store_true", dest="python3", default=False,
                       help="Use python3")
     parser.add_argument('--version',action='store_const',const=True,dest='version',default=False,
@@ -460,7 +559,7 @@ def main():
     parser.add_argument('--prompt_with_newline', action='store_const', const=True, dest='prompt_with_newline',
                         default=False, help=argparse.SUPPRESS)
 
-    options,args = parser.parse_known_args()
+    options, args = parser.parse_known_args()
 
     # display version
     if options.version:
@@ -483,15 +582,14 @@ def main():
         sys.exit(1)
     if fork_child_pid == 0:
         # main
-        # instantiate core
         if options.verbose:
             print(options)
         if options.prompt_with_newline:
             sys.ps1 = ">>> \n"
+        # instantiate core
         pbookCore = PBookCore.PBookCore(verbose=options.verbose)
-
-        # CUI
-        intmain(pbookCore,options.comString)
+        # execute
+        intmain(pbookCore, options.comString, args)
     else:
         # set handler
         signal.signal(signal.SIGINT, catch_sig)

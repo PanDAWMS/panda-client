@@ -128,6 +128,8 @@ def check_proxy(verbose, voms_role, refresh_info=False, generate_new=True):
         tmpLog.error(output)
         tmpLog.error("Could not generate a grid proxy")
         sys.exit(EC_Config)
+    else:
+        tmpLog.info("Succeeded")
     return check_proxy(verbose, voms_role, refresh_info=True, generate_new=False)
 
 
@@ -863,6 +865,8 @@ def extract_voms_proxy_username():
     status, output = get_proxy_info(False, False)
     if Client.use_oidc():
         return output[0]
+    if status != 0:
+        return None
     for line in output.split('\n'):
         if line.startswith('subject'):
             subj = line.split(':', 1)[-1].lstrip()
