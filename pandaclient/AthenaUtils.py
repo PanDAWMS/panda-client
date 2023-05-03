@@ -3,13 +3,13 @@ import re
 import sys
 
 from . import MiscUtils
-from .MiscUtils import commands_get_output, commands_get_status_output_with_env, commands_get_output_with_env
+from .MiscUtils import commands_get_output, commands_get_status_output_with_env, commands_get_output_with_env, commands_failOnNonZeroExitStatus
 from . import PLogger
 from . import Client
 
 # error code
 EC_Config    = 10
-
+EC_Archive   = 60
 
 # get CMT projects
 def getCmtProjects(dir='.'):
@@ -790,26 +790,30 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
                                 sString=re.sub('[\+]','.',workArea)
                                 relPath = re.sub(sString+'/','',iFile)
                             if os.path.islink(iFile):
-                                cmd = "tar -rh '%s' -f '%s' --exclude '%s'" % (relPath,_archiveFullName,excludePattern)
-                                out = commands_get_output(cmd)
+                                comStr = "tar -rh '%s' -f '%s' --exclude '%s'" % (relPath,_archiveFullName,excludePattern)
                             else:
-                                cmd = "tar rf '%s' '%s' --exclude '%s'" % (_archiveFullName,relPath,excludePattern)
-                                out = commands_get_output(cmd)
+                                comStr = "tar rf '%s' '%s' --exclude '%s'" % (_archiveFullName,relPath,excludePattern)
                             if verbose:
                                 print(relPath)
-                                if out != '':    
-                                    print(out)
+                            
+                            commands_failOnNonZeroExitStatus(
+                                comStr, EC_Archive,
+                                verboseCmd=False, verboseOutputCmd=verbose,
+                                logger=tmpLog, errorLogMsg='tarball creation failed')
                     continue
                 # else
                 if dereferenceSymLinks:
-                    cmd = "tar rfh '%s' '%s/%s' --exclude '%s'" % (_archiveFullName,pack,item,excludePattern)
+                    comStr = "tar rfh '%s' '%s/%s' --exclude '%s'" % (_archiveFullName,pack,item,excludePattern)
                 else:
-                    cmd = "tar rf '%s' '%s/%s' --exclude '%s'" % (_archiveFullName,pack,item,excludePattern)
-                out = commands_get_output(cmd)
+                    comStr = "tar rf '%s' '%s/%s' --exclude '%s'" % (_archiveFullName,pack,item,excludePattern)
+                
                 if verbose:
                     print("%s/%s" % (pack,item))
-                    if out != '':    
-                        print(out)
+
+                commands_failOnNonZeroExitStatus(
+                    comStr, EC_Archive,
+                    verboseCmd=False, verboseOutputCmd=verbose,
+                    logger=tmpLog, errorLogMsg='tarball creation failed')
         # back to previous dir
         os.chdir(_curdir)
 
@@ -870,14 +874,17 @@ def archiveSourceFiles(workArea,runDir,currentDir,tmpDir,verbose,gluePackages=[]
         # archive
         if not alreadyFlag:
             if os.path.islink(file):
-                out = commands_get_output("tar -rh '%s' -f '%s'" % (relPath, archiveFullName))
+                comStr = "tar -rh '%s' -f '%s'" % (relPath, archiveFullName)
             else:
-                out = commands_get_output("tar rf '%s' '%s'" % (archiveFullName, relPath))
+                comStr = "tar rf '%s' '%s'" % (archiveFullName, relPath)
             if verbose:
                 print(relPath)
-                if out != '':    
-                    print(out)
-    # back to current dir            
+            
+            commands_failOnNonZeroExitStatus(
+                comStr, EC_Archive,
+                verboseCmd=verbose, verboseOutputCmd=verbose,
+                logger=tmpLog, errorLogMsg='tarball creation failed')
+    # back to current dir
     os.chdir(currentDir)
     # return
     return archiveName,archiveFullName
@@ -923,11 +930,15 @@ def archiveJobOFiles(workArea,runDir,currentDir,tmpDir,verbose,archiveName=''):
         sString=re.sub('[\+]','.',workArea)
         relPath = re.sub(sString+'/','',file)
         # append
-        out = commands_get_output("tar -rh '%s' -f '%s'" % (relPath,archiveFullName))
+        comStr = "tar -rh '%s' -f '%s'" % (relPath,archiveFullName)
         if verbose:
             print(relPath)
-            if out != '':    
-                print(out)
+        
+        commands_failOnNonZeroExitStatus(
+            comStr, EC_Archive,
+            verboseCmd=False, verboseOutputCmd=verbose,
+            logger=tmpLog, errorLogMsg='tarball creation failed')
+        
     # return
     return archiveName,archiveFullName
 
@@ -1027,22 +1038,29 @@ def archiveInstallArea(workArea,groupArea,archiveName,archiveFullName,
                 if file not in allFiles:
                     # append
                     if file in files:
-                        out = commands_get_output("tar -rh '%s' -f '%s'" % (file,archiveFullName))
+                        comStr = "tar -rh '%s' -f '%s'" % (file,archiveFullName)
                     else:
                         # requirements files
-                        out = commands_get_output("tar -rh '%s' -f '%s'" % (file,groupFullName))
+                        comStr = "tar -rh '%s' -f '%s'" % (file,groupFullName)
                     allFiles.append(file)
                     if verbose:
                         print(file)
-                        if out != '':    
-                            print(out)
+                    
+                    commands_failOnNonZeroExitStatus(
+                        comStr, EC_Archive,
+                        verboseCmd=False, verboseOutputCmd=verbose,
+                        logger=tmpLog, errorLogMsg='tarball creation failed')
+                    
     # append groupArea to sources
     if groupArea != '' and (not nobuild):
         os.chdir(tmpDir)
         if os.path.exists(groupFileName):
-            out = commands_get_output("tar -rh '%s' -f '%s'" % (groupFileName,archiveFullName))
-            if out != '':    
-                print(out)
+            comStr = "tar -rh '%s' -f '%s'" % (groupFileName,archiveFullName)
+            commands_failOnNonZeroExitStatus(
+                comStr, EC_Archive,
+                verboseCmd=False, verboseOutputCmd=True,
+                logger=tmpLog, errorLogMsg='tarball creation failed')
+            
             commands_get_output('rm -rf %s' % groupFullName)
 
 
@@ -1071,28 +1089,30 @@ def archiveWithCpack(withSource,tmpDir,verbose):
         comStr += '-D CPACK_PACKAGE_NAME="" -D CPACK_PACKAGE_VERSION="" -D CPACK_PACKAGE_VERSION_MAJOR="" '
         comStr += '-D CPACK_PACKAGE_VERSION_MINOR="" -D CPACK_PACKAGE_VERSION_PATCH="" '
         comStr += '-D CPACK_PACKAGE_DESCRIPTION="" '
-        if verbose:
-            tmpLog.debug(comStr)
-            comStr += '-V '
-        tmpStat, tmpOut = commands_get_status_output_with_env(comStr)
-        if tmpStat != 0:
-            print(tmpOut)
-            tmpLog.error('cpack failed')
-            sys.exit(EC_Config)
-        if verbose:
-            print(tmpOut)
+        
+        commands_failOnNonZeroExitStatus(
+          comStr, EC_Config,
+          verboseCmd=False, verboseOutputCmd=verbose,
+          logger=tmpLog, logMsg=comStr, errorLogMsg='cpack failed')
+            
     else:
         use_cpack = False
         tmpLog.info('skip cpack since {0} is missing in the build directory'.format(check_file))
+    
     archiveName += '.tar'
     archiveFullName += '.tar'
     os.chdir(tmpDir)
     if use_cpack:
-        comStr = 'tar xfz {0}.gz; tar cf {0} usr > /dev/null 2>&1; rm -rf usr _CPack_Packages {0}.gz'.format(
-            archiveName)
+        # decompress the tar.gz archive created by cpack to .tar archive using gzip 
+        comStr = 'gzip -d {0}.gz && rm -rf _CPack_Packages'.format(archiveName)
     else:
         comStr = 'tar cf {0} -T /dev/null > /dev/null 2>&1'.format(archiveName)
-    commands_get_output(comStr)
+
+    commands_failOnNonZeroExitStatus(
+        comStr, EC_Archive,
+        verboseCmd=False, verboseOutputCmd=False,
+        logger=tmpLog, errorLogMsg='tarball creation failed')
+
     os.chdir(_curdir)
     return archiveName, archiveFullName
 
