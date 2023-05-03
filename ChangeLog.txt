@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.49
+  * not to ignore tar failures
+  
 1.5.48
   * pbook in batch mode
 
