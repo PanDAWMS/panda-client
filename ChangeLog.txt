@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.50
+  * to recreate cpack tarball for subsequent file appending as gzip -d is not enough
+
 1.5.49
   * not to ignore tar failures
   

@@ -153,34 +153,33 @@ def commands_get_status_output(com):
 def commands_get_output(com):
     return commands_get_status_output(com)[1]
 
-def commands_failOnNonZeroExitStatus(
-    com, errorStatusOnFailure,
-    verboseCmd=False,verboseOutputCmd=False,
-    logger=None,logMsg="",errorLogMsg=""):
-    
-    # add log message if logger and log message have been provided 
-    if logger is not None and logMsg != "":
-        logger.debug(logMsg)
+
+def commands_fail_on_non_zero_exit_status(
+        com, error_status_on_failure,
+        verbose_cmd=False, verbose_output=False,
+        logger=None, error_log_msg=""):
     
     # print command if verbose
-    if verboseCmd:
+    if verbose_cmd:
         print(com)
     
     # execute command, get status code and message printed by the command 
-    status,data = commands_get_status_output(com)
+    status, data = commands_get_status_output(com)
     
     # fail for non zero exit status 
     if status != 0:
+        if not verbose_cmd:
+            print(com)
         # print error message before failing
         print(data)
         # report error message if logger and log message have been provided 
-        if logger is not None and errorLogMsg != "":
-            logger.error(errorLogMsg)
+        if logger and error_log_msg:
+            logger.error(error_log_msg)
         
-        if type(errorStatusOnFailure) == int:
+        if type(error_status_on_failure) == int:
             # use error status provided to the function
-            sys.exit(errorStatusOnFailure)
-        elif errorStatusOnFailure == "sameAsStatus":
+            sys.exit(error_status_on_failure)
+        elif error_status_on_failure == "sameAsStatus":
             # use error status exit code returned 
             # by the execution of the command
             sys.exit(status)
@@ -189,7 +188,7 @@ def commands_failOnNonZeroExitStatus(
             sys.exit(1)
     
     # print command output message if verbose
-    if verboseOutputCmd and data != "":
+    if verbose_output and data:
         print(data)
 
     return status,data
