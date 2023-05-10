@@ -36,7 +36,7 @@ def main():
     optP = GroupArgParser(usage=usage, conflict_handler="resolve")
 
     group_output = optP.add_group('output', 'output dataset/files')
-    group_config = optP.add_group('config', 'single configuration file to set multiple options')
+    group_config = optP.add_group('config', 'workflow configuration')
     group_submit = optP.add_group('submit', 'job submission/site/retry')
     group_expert = optP.add_group('expert', 'for experts/developers only')
     group_build = optP.add_group('build', 'build/compile the package and env setup')
@@ -59,6 +59,8 @@ def main():
                               help='Name of the yaml file for workflow parameters')
     group_output.add_argument('--snakefile', action='store', dest='snakefile', default=None,
                               help='Name of the main Snakefile to describe the workflow')
+    group_output.add_argument('--maxSizeInSandbox', action='store', dest='maxSizeInSandbox', default=1, type=int,
+                              help='Maximum size in MB of files in the workflow sandbox (default 1 MB)')
 
     group_build.add_argument('--useAthenaPackages', action='store_const', const=True, dest='useAthenaPackages',
                              default=False,
@@ -152,8 +154,7 @@ def main():
         tmpLog.debug("making sandbox")
     archiveName = 'jobO.%s.tar.gz' % MiscUtils.wrappedUuidGen()
     archiveFullName = os.path.join(tmpDir, archiveName)
-    extensions = ['cwl', 'yaml', 'json']
-    find_opt = ' -o '.join(['-name "*.{0}"'.format(e) for e in extensions] + ['-name "Snakefile"'])
+    find_opt = ' -type f -size -{0}k'.format(options.maxSizeInSandbox*1024)
     tmpOut = MiscUtils.commands_get_output(
         'find . {0} | tar cvfz {1} --files-from - '.format(find_opt, archiveFullName))
 
