@@ -1933,3 +1933,33 @@ def reload_input(task_id, verbose=False):
     except Exception as e:
         errStr = dump_log("reload_input", e, output)
         return EC_Failed, errStr
+
+
+# get files in datasets
+def get_files_in_datasets(task_id, dataset_types='input,pseudo_input', verbose=False):
+    """Get files in datasets
+       args:
+          task_id: jediTaskID of the datasets
+          dataset_types: a comma-separated string to specify dataset types
+          verbose: True to see verbose message
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          a list of dataset dictionaries including file info, or error message if failed
+    """
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/get_files_in_datasets'
+    data = {'task_id': task_id,
+            'dataset_types': dataset_types}
+    status, output = curl.post(url, data, is_json=True)
+    if status != 0:
+        return EC_Failed, output
+    if output is None:
+        return EC_Failed, 'server side error'
+    return 0, output
