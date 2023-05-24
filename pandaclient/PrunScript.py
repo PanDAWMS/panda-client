@@ -1491,30 +1491,38 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     if options.outputs != '':
         outMap = {}
         dsSuffix = []
+        dsIndex = 0
         for tmpLFN in options.outputs.split(','):
             tmpDsSuffix = ''
             if ':' in tmpLFN:
-                tmpDsSuffix,tmpLFN = tmpLFN.split(':')
+                tmpDsSuffix, tmpLFN = tmpLFN.split(':')
                 if tmpDsSuffix in dsSuffix:
-                    tmpErrMsg  = "dataset name suffix '%s' is used for multiple files in --outputs. " % tmpDsSuffix
+                    tmpErrMsg = "dataset name suffix '%s' is used for multiple files in --outputs. " % tmpDsSuffix
                     tmpErrMsg += 'each output must have a unique suffix.'
                     tmpLog.error(tmpErrMsg)
                     sys.exit(EC_Config)
                 dsSuffix.append(tmpDsSuffix)
-            tmpNewLFN = tmpLFN
-            # change * to XYZ and add .tgz
-            if '*' in tmpNewLFN:
-                tmpNewLFN = tmpNewLFN.replace('*','XYZ')
-                tmpNewLFN += '.tgz'
-            if len(outDatasetName.split('.')) > 2:
-                lfn = '{0}.{1}'.format(*outDatasetName.split('.')[:2])
+            if tmpLFN.startswith('regex|'):
+                # regex
+                lfn = tmpLFN
+                if not tmpDsSuffix:
+                    tmpDsSuffix = dsIndex
+                    dsIndex += 1
             else:
-                lfn = outDatasetName[:-1]
-            if options.addNthFieldOfInDSToLFN != '' or options.addNthFieldOfInFileToLFN != '':
-                lfn += '${MIDDLENAME}'
-            lfn += '.$JEDITASKID._${{SN/P}}.{0}'.format(tmpNewLFN)
-            if tmpDsSuffix == '':
-                tmpDsSuffix = tmpNewLFN
+                tmpNewLFN = tmpLFN
+                # change * to XYZ and add .tgz
+                if '*' in tmpNewLFN:
+                    tmpNewLFN = tmpNewLFN.replace('*','XYZ')
+                    tmpNewLFN += '.tgz'
+                if len(outDatasetName.split('.')) > 2:
+                    lfn = '{0}.{1}'.format(*outDatasetName.split('.')[:2])
+                else:
+                    lfn = outDatasetName[:-1]
+                if options.addNthFieldOfInDSToLFN != '' or options.addNthFieldOfInFileToLFN != '':
+                    lfn += '${MIDDLENAME}'
+                lfn += '.$JEDITASKID._${{SN/P}}.{0}'.format(tmpNewLFN)
+                if tmpDsSuffix == '':
+                    tmpDsSuffix = tmpNewLFN
             dataset = '{0}_{1}/'.format(outDatasetName[:-1],tmpDsSuffix)
             taskParamMap['jobParameters'] += MiscUtils.makeJediJobParam(lfn,dataset,'output',hidden=True,
                                                                         destination=options.destSE,
