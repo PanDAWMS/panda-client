@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.57
+  * set modules for unpickling in client-light
+
 1.5.53
   * regex in outputs of prun
 

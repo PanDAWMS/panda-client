@@ -18,6 +18,15 @@ try:
 except Exception:
     unicode = str
 
+# set modules for unpickling in client-light
+try:
+    from pandaserver.taskbuffer.JobSpec import JobSpec
+except ImportError:
+    from . import JobSpec
+    sys.modules['pandaserver.taskbuffer.JobSpec'] = JobSpec
+    from . import FileSpec
+    sys.modules['pandaserver.taskbuffer.FileSpec'] = FileSpec
+
 
 # wrapper for uuidgen
 def wrappedUuidGen():
