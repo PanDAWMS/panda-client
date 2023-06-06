@@ -27,7 +27,7 @@ jobs:
     - name: Build a sdist
       run: |
         python -m build -s
-        cd ../light
+        cd packages/light
         hatch build -t wheel
 
     - name: Verify the distribution
