@@ -22,6 +22,8 @@ except Exception:
 try:
     from pandaserver.taskbuffer.JobSpec import JobSpec
 except ImportError:
+    import pandaclient
+    sys.modules['pandaserver'] = pandaclient
     from . import JobSpec
     sys.modules['pandaserver.taskbuffer.JobSpec'] = JobSpec
     from . import FileSpec
