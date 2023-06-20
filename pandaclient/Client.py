@@ -1963,3 +1963,59 @@ def get_files_in_datasets(task_id, dataset_types='input,pseudo_input', verbose=F
     if output is None:
         return EC_Failed, 'server side error'
     return 0, output
+
+
+# get status of events
+def get_events_status(ids, verbose=False):
+    """Get status of events
+       args:
+          ids: a list of {'task_id': ..., 'panda_id': ...}
+          verbose: True to see verbose message
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          a dictionary of {panda_id: [{event_range_id: status}, ...], ...}
+    """
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/get_events_status'
+    data = {'ids': json.dumps(ids)}
+    status, output = curl.post(url, data, is_json=True)
+    if status != 0:
+        return EC_Failed, output
+    if output is None:
+        return EC_Failed, 'server side error'
+    return 0, output
+
+
+# update events
+def update_events(events, verbose=False):
+    """Update events
+       args:
+          events: a list of {'eventRangeID': ..., 'eventStatus': ..., 'errorCode': <optional>}
+          verbose: True to see verbose message
+       returns:
+          status code
+             0: communication succeeded to the panda server
+           255: communication failure
+          a dictionary of {'Returns': a list of returns when updating events, 'Command': commands to jobs, 'StatusCode': 0 for OK})
+    """
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/updateEventRanges'
+    data = {'eventRanges': json.dumps(events)}
+    status, output = curl.post(url, data, is_json=True)
+    if status != 0:
+        return EC_Failed, output
+    if output is None:
+        return EC_Failed, 'server side error'
+    return 0, output
