@@ -961,7 +961,6 @@ else:
         jobO += '-p %s ' % options.preConfig
     if options.singleLine != '':
         options.singleLine = options.singleLine.replace('"','\'')
-        jobO += '-c "%s" ' % options.singleLine
     for arg in args:
         jobO += ' %s' % arg
 if jobO == "":
@@ -973,10 +972,10 @@ if options.inRunConfig == '':
     # extract run configuration
     tmpLog.info('extracting run configuration')
     # run ConfigExtractor for normal jobO
-    ret,runConfig = AthenaUtils.extractRunConfig(jobO,options.supStream,options.shipinput,
-                                                 options.trf,verbose=options.verbose,
-                                                 useAMI=options.useAMIAutoConf,inDS=options.inDS,
-                                                 tmpDir=tmpDir)
+    ret, runConfig = AthenaUtils.extractRunConfig(jobO, options.supStream, options.shipinput,
+                                                  options.trf, verbose=options.verbose,
+                                                  useAMI=options.useAMIAutoConf, inDS=options.inDS,
+                                                  tmpDir=tmpDir, one_liner=options.singleLine)
     # save runconfig
     if options.outRunConfig != '':
         cFile = open(options.outRunConfig,'w')

@@ -232,8 +232,8 @@ class ConfigAttr(dict):
                         
 
 # extract run configuration
-def extractRunConfig(jobO,supStream,shipinput,trf,verbose=False,useAMI=False,
-                     inDS='',tmpDir='.'):
+def extractRunConfig(jobO, supStream, shipinput, trf, verbose=False, useAMI=False,
+                     inDS='', tmpDir='.', one_liner=''):
     # get logger
     tmpLog = PLogger.getPandaLogger()
     outputConfig = ConfigAttr()
@@ -252,8 +252,10 @@ def extractRunConfig(jobO,supStream,shipinput,trf,verbose=False,useAMI=False,
             jobO = re.sub(' - ', ' %s/ConfigExtractor.py - ' % baseName, jobO)
         else:
             jobO = jobO + ' %s/ConfigExtractor.py ' % baseName
-        com = 'athena.py %s %s/FakeAppMgr.py %s' % \
-              (amiJobO,baseName,jobO)
+        com = 'athena.py '
+        if one_liner:
+            com += '-c "%s" ' % one_liner
+        com += '%s %s/FakeAppMgr.py %s' % (amiJobO, baseName, jobO)
         if verbose:
             tmpLog.debug(com)
         # run ConfigExtractor for normal jobO

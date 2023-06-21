@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.60
+  * fixed pathena -c
+
 1.5.59
   * added update_events and get_events_status
 
