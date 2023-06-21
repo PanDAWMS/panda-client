@@ -147,7 +147,7 @@ def getNickname(verbose=False):
     # X509
     for line in output.split('\n'):
         if line.startswith('attribute'):
-            match = re.search('nickname =\s*([^\s]+)\s*\(atlas\)',line)
+            match = re.search('nickname =\s*([^\s]+)\s*\(.*\)',line)
             if match is not None:
                 nickName = match.group(1)
                 break
