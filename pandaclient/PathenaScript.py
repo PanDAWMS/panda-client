@@ -1032,6 +1032,9 @@ if not options.trf:
         for tmpExtOutFile in tuple(options.extOutFile):
             if tmpExtOutFile in runConfig.output.alloutputs:
                 options.extOutFile.remove(tmpExtOutFile)
+    # add -c
+    if options.singleLine:
+        jobO = '-c "%s" ' % options.singleLine + jobO
 else:
     # parse parameters for trf
     # AMI tag

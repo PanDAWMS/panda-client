@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.61
+  * fixed changes in 1.5.60
+
 1.5.60
   * fixed pathena -c
 
