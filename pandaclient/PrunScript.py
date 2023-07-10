@@ -6,7 +6,7 @@ import atexit
 import argparse
 import time
 
-from pandaclient.Group_argparse import GroupArgParser
+from pandaclient.Group_argparse import get_parser
 try:
     from urllib import quote
 except ImportError:
@@ -83,7 +83,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
       "--useSiteGroup"
     ]
 
-    optP = GroupArgParser(usage=usage, conflict_handler="resolve")
+    optP = get_parser(usage=usage, conflict_handler="resolve")
     optP.set_examples(examples)
 
     # command-line parameters

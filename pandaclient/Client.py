@@ -1997,7 +1997,8 @@ def get_events_status(ids, verbose=False):
 def update_events(events, verbose=False):
     """Update events
        args:
-          events: a list of {'eventRangeID': ..., 'eventStatus': ..., 'errorCode': <optional>}
+          events: a list of {'eventRangeID': ..., 'eventStatus': ...,
+                             'errorCode': <optional>, 'errorDiag': <optional, < 500chars>}
           verbose: True to see verbose message
        returns:
           status code
@@ -2012,7 +2013,8 @@ def update_events(events, verbose=False):
     curl.verbose = verbose
     # execute
     url = baseURLSSL + '/updateEventRanges'
-    data = {'eventRanges': json.dumps(events)}
+    data = {'eventRanges': json.dumps(events),
+            'version': 2}
     status, output = curl.post(url, data, is_json=True)
     if status != 0:
         return EC_Failed, output

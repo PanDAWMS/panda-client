@@ -1,6 +1,22 @@
 import argparse
 import sys
 from collections import OrderedDict
+try:
+    unicode
+except Exception:
+    unicode = str
+
+
+# check string args if they can be encoded with utf-8
+class ActionWithUnicodeCheck(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        if isinstance(values, (unicode, str)):
+            try:
+                values.encode()
+            except Exception:
+                parser.exit(1, message="ERROR: argument --{0} cannot be encoded with utf-8: '{1}'\n".format(self.dest, values))
+        setattr(namespace, self.dest, values)
+
 
 class GroupArgParser(argparse.ArgumentParser):
     def __init__(self, usage, conflict_handler):
@@ -86,3 +102,10 @@ class GroupArgParser(argparse.ArgumentParser):
              else:
                 raise Exception("!!!ERROR!!! Unknown group name=%s" % values)
              sys.exit(0)
+
+
+# factory method
+def get_parser(usage, conflict_handler):
+    p = GroupArgParser(usage, conflict_handler)
+    p.register('action', 'store', ActionWithUnicodeCheck)
+    return p

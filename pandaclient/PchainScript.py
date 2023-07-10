@@ -5,7 +5,7 @@ import os
 import shlex
 import atexit
 
-from pandaclient.Group_argparse import GroupArgParser
+from pandaclient.Group_argparse import get_parser
 from pandaclient import PLogger
 from pandaclient import PandaToolsPkgInfo
 from pandaclient import MiscUtils
@@ -33,7 +33,7 @@ def main():
     usage = """pchain [options]
     """
 
-    optP = GroupArgParser(usage=usage, conflict_handler="resolve")
+    optP = get_parser(usage=usage, conflict_handler="resolve")
 
     group_output = optP.add_group('output', 'output dataset/files')
     group_config = optP.add_group('config', 'workflow configuration')

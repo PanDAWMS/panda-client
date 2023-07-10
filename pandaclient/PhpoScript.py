@@ -5,7 +5,7 @@ import os
 import copy
 import atexit
 
-from pandaclient.Group_argparse import GroupArgParser
+from pandaclient.Group_argparse import get_parser
 from pandaclient import PLogger
 from pandaclient import PandaToolsPkgInfo
 from pandaclient import MiscUtils
@@ -33,7 +33,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     usage = """phpo [options]
     """
 
-    optP = GroupArgParser(usage=usage, conflict_handler="resolve")
+    optP = get_parser(usage=usage, conflict_handler="resolve")
 
     group_input = optP.add_group('input', 'input dataset(s)/files/format')
     group_output = optP.add_group('output', 'output dataset/files')

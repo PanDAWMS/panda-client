@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.62
+  * protection against non-ASCII args
+
 1.5.61
   * fixed changes in 1.5.60
 

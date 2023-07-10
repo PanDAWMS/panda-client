@@ -5,7 +5,7 @@ import copy
 import shutil
 import atexit
 import argparse
-from pandaclient.Group_argparse import GroupArgParser
+from pandaclient.Group_argparse import get_parser
 import random
 import pickle
 import json
@@ -114,7 +114,7 @@ removedOpts = [  # list of deprecated options w.r.t version 0.4.9
   "-l"
 ]
 
-optP = GroupArgParser(usage=usage, conflict_handler="resolve")
+optP = get_parser(usage=usage, conflict_handler="resolve")
 optP.set_examples(examples)
 
 # define option groups
