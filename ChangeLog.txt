@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.63
+  * to check python3 if python is missing
+
 1.5.62
   * protection against non-ASCII args
 

@@ -27,7 +27,8 @@ function exec_p_command () {
                 if [ ! -f "$PANDA_PYTHON_EXEC" ]; then
                     unset PANDA_PYTHON_EXEC
                 fi
-            else
+            fi
+            if [[ -z "$PANDA_PYTHON_EXEC" ]]; then
                 PANDA_PYTHON_EXEC=${VIRTUAL_ENV}/bin/python3
                 if [ ! -f "$PANDA_PYTHON_EXEC" ]; then
                     unset PANDA_PYTHON_EXEC
@@ -44,7 +45,8 @@ function exec_p_command () {
                 if [ ! -f  "$PANDA_PYTHON_EXEC" ]; then
                     unset PANDA_PYTHON_EXEC
                 fi
-            else
+            fi
+            if [[ -z "$PANDA_PYTHON_EXEC" ]]; then
                 PANDA_PYTHON_EXEC=${CONDA_PREFIX}/bin/python3
                 if [ ! -f  "$PANDA_PYTHON_EXEC" ]; then
                     unset PANDA_PYTHON_EXEC
@@ -60,7 +62,8 @@ function exec_p_command () {
             if [ ! -f  "$PANDA_PYTHON_EXEC" ]; then
                 unset PANDA_PYTHON_EXEC
             fi
-        else
+        fi
+        if [[ -z "$PANDA_PYTHON_EXEC" ]]; then
             PANDA_PYTHON_EXEC=/usr/bin/python3
             if [ ! -f  "$PANDA_PYTHON_EXEC" ]; then
                 unset PANDA_PYTHON_EXEC
