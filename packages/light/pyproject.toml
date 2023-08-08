@@ -2,15 +2,16 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+
 [project]
 name = "panda-client-light"
 dynamic = ["version"]
 description = "Lightweight PanDA Client Package installed on PanDA server"
-readme = {"text" = "PanDA Client Package", "content-type" = "text/markdown"}
+readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 authors = [
-    { name = "PanDA Team", email = "atlas-adc-panda@cern.ch" },
+    { name = "PanDA Team", email = "panda-support@cern.ch" },
 ]
 classifiers = [
     "Programming Language :: Python",
@@ -23,20 +24,22 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
 ]
+
 
 [project.urls]
 Homepage = "https://panda-wms.readthedocs.io/en/latest/"
 
+
 [tool.hatch.version]
-path = "../../pandaclient/PandaToolsPkgInfo.py"
+path = "pandaclient/PandaToolsPkgInfo.py"
 pattern = "release_version = \"(?P<version>[^\"]+)\""
 
-[tool.hatch.build]
-directory = "../../dist"
 
-[tool.hatch.build.targets.wheel.force-include]
-"../../pandaclient" = "pandaclient"
+[tool.hatch.build]
+directory = "dist"
+
 
 [tool.hatch.build.targets.wheel]
 packages = ["pandaclient"]

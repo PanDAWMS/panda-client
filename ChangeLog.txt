@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * fixed pyproject.toml
+
 1.5.63
   * to check python3 if python is missing
 
