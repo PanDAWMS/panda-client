@@ -165,7 +165,10 @@ group_input.add_argument('--notExpandInDS', action='store_const', const=True, de
 group_input.add_argument('--inDsTxt',action='store',dest='inDsTxt',default='',
                 type=str, help='a text file which contains the list of datasets to run over. newlines are replaced by commas and the result is set to --inDS. lines starting with # are ignored')
 action = group_input.add_argument('--inOutDsJson', action='store', dest='inOutDsJson', default='',
-                  help="A json file to specify input and output datasets for bulk submission. It contains a json dump of [{'inDS': a comma-concatenated input dataset names, 'outDS': output dataset name}, ...]")
+                                  help="A json file to specify input and output datasets for bulk submission. "
+                                       "It contains a json dump of [{'inDS': a comma-concatenated input dataset names, "
+                                       "'outDS': output dataset name}, ...]. "
+                                       "When this option is used --bulkSubmission is automatically set internally.")
 group_output.shareWithMe(action)
 group_input.add_argument('--secondaryDSs', action='store', dest='secondaryDSs', default='',
                          help='A versatile option to specify arbitrary secondary inputs that takes a list of '
@@ -406,7 +409,10 @@ group_config.add_argument('--inRunConfig', action='store', dest='inRunConfig', d
 group_input.add_argument('--pfnList', action='store', dest='pfnList', default='',
                 type=str, help='Name of file which contains a list of input PFNs. Those files can be un-registered in DDM')
 group_build.add_argument('--cmtConfig', action='store', dest='cmtConfig', default=None,
-                type=str, help='CMTCONFIG=i686-slc5-gcc43-opt is used on remote worker-node by default even if you use another CMTCONFIG locally. This option allows you to use another CMTCONFIG remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt.')
+                      help='CMTCONFIG is extracted from local environment variables when tasks are submitted, '
+                           'to set up the same environment on remote worker-nodes. '
+                           'This option allows to set up another CMTCONFIG '
+                           'remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt.')
 group_output.add_argument('--allowTaskDuplication',action='store_const',const=True,dest='allowTaskDuplication',default=False,
                 help="As a general rule each task has a unique outDS and history of file usage is recorded per task. This option allows multiple tasks to contribute to the same outDS. Typically useful to submit a new task with the outDS which was used by another broken task. Use this option very carefully at your own risk, since file duplication happens when the second task runs on the same input which the first task successfully processed")
 group_input.add_argument('--skipFilesUsedBy', action='store', dest='skipFilesUsedBy', default='',

@@ -136,7 +136,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
 
     # the option is shared by both groups, group_input and group_output
     action = group_input.add_argument('--inOutDsJson', action='store', dest='inOutDsJson', default='',
-                      help="A json file to specify input and output datasets for bulk submission. It contains a json dump of [{'inDS': a comma-concatenated input dataset names, 'outDS': output dataset name}, ...]")
+                      help="A json file to specify input and output datasets for bulk submission. "
+                           "It contains a json dump of [{'inDS': a comma-concatenated input dataset names, "
+                           "'outDS': output dataset name}, ...]. "
+                           "When this option is used --bulkSubmission is automatically set internally.")
     group_output.shareWithMe(action)
 
     group_evtFilter.add_argument('--goodRunListXML', action='store', dest='goodRunListXML', default='',
@@ -330,7 +333,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     group_input.add_argument('--pfnList',action='store',dest='pfnList',default='',
                     help='Name of file which contains a list of input PFNs. Those files can be un-registered in DDM')
     group_build.add_argument('--cmtConfig', action='store', dest='cmtConfig', default=None,
-                      help='CMTCONFIG=i686-slc5-gcc43-opt is used on remote worker-node by default even if you use another CMTCONFIG locally. This option allows you to use another CMTCONFIG remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt.')
+                      help='CMTCONFIG is extracted from local environment variables when tasks are submitted, '
+                           'to set up the same environment on remote worker-nodes. '
+                           'This option allows to set up another CMTCONFIG '
+                           'remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt.')
     group_config.add_argument('--loadXML',action='store',dest='loadXML',default=None,
                     help='Expert mode: load complete submission configuration from an XML file ')
     group_config.add_argument('--loadJson', action='store', dest='loadJson',default=None,

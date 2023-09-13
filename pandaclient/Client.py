@@ -1061,7 +1061,7 @@ def getFullJobStatus(ids, verbose=False):
         return status, pickle_loads(output)
     except Exception as e:
         dump_log("getFullJobStatus", e, output)
-        return EC_Failed,None
+        return EC_Failed, "cannot load pickle: {0}".format(str(e))
 
 
 # set debug mode
