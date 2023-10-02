@@ -90,6 +90,8 @@ def main():
                               help="set prodSourceLabel")
     group_submit.add_argument('--workingGroup', action='store', dest='workingGroup', default=None,
                               help="set workingGroup")
+    group_submit.add_argument('--workflowName', action='store', dest='workflowName', default=None,
+                              help="set workflow name")
 
     group_expert.add_argument('--intrSrv', action='store_const', const=True, dest='intrSrv', default=False,
                               help="Please don't use this option. Only for developers to use the intr panda server")
@@ -199,6 +201,8 @@ def main():
               'outDS': options.outDS,
               'base_platform': os.environ.get('ALRB_USER_PLATFORM', 'centos7')
               }
+    if options.workflowName:
+        params['workflow_name'] = options.workflowName
 
     # making task params with dummy exec
     task_type_args = {'container': '--containerImage __dummy_container__'}

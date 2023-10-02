@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.65
+  * added --workflowName to pchain
+
 1.5.64
   * fixed pyproject.toml
   * improved various messages
