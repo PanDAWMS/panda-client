@@ -5,6 +5,7 @@ job specification
 
 import re
 import datetime
+from FileSpec import FileSpec
 
 reserveChangedState = False
 
@@ -833,3 +834,25 @@ class JobSpec(object):
                 v = None
             ret[a] = v
         return ret
+
+    # dump to json-serializable
+    def dump_to_json_serializable(self):
+        job_state = self.__getstate__()
+        file_state_list = []
+        for file_spec in job_state[-1]:
+            file_stat = file_spec.dump_to_json_serializable()
+            file_state_list.append(file_stat)
+        job_state = job_state[:-1]
+        # append files
+        job_state.append(file_state_list)
+        return job_state
+
+    # load from json-serializable
+    def load_from_json_serializable(self, job_state):
+        # initialize with empty file list
+        self.__setstate__(job_state[:-1] + [[]])
+        # add files
+        for file_stat in job_state[-1]:
+            file_spec = FileSpec()
+            file_spec.__setstate__(file_stat)
+            self.addFile(file_spec)

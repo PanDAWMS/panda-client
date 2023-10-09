@@ -64,19 +64,6 @@ class CustomBuildHook(BuildHookInterface):
 
         # post install only for client installation
         if not os.path.exists(os.path.join(self.params['install_purelib'], 'pandacommon')):
-            target = 'taskbuffer'
-            if not os.path.exists(os.path.join(self.params['install_purelib'], target)):
-                os.symlink('pandaclient', target)
             target = 'pandatools'
             if not os.path.exists(os.path.join(self.params['install_purelib'], target)):
                 os.symlink('pandaclient', target)
-            # dummy pandaserver package
-            target = 'pandaserver'
-            if not os.path.exists(os.path.join(self.params['install_purelib'], target)):
-                os.makedirs(target)
-                target_init = os.path.join(target, '__init__.py')
-                with open(target_init, 'w'):
-                    pass
-                target_tb = os.path.join(target, 'taskbuffer')
-                if not os.path.exists(target_tb):
-                    os.symlink('../pandaclient', target_tb)

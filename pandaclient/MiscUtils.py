@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import uuid
+import datetime
 import traceback
 import subprocess
 try:
@@ -298,3 +299,37 @@ def parse_secondary_datasets_opt(secondaryDSs):
     else:
         secondaryDSs = {}
     return True, secondaryDSs
+
+
+# convert datetime to string
+class NonJsonObjectEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            return {"_datetime_object": obj.strftime("%Y-%m-%d %H:%M:%S.%f")}
+        return json.JSONEncoder.default(self, obj)
+
+
+# hook for json decoder
+def as_python_object(dct):
+    if "_datetime_object" in dct:
+        return datetime.datetime.strptime(str(dct["_datetime_object"]), "%Y-%m-%d %H:%M:%S.%f")
+    return dct
+
+
+# dump jobs to serialized json
+def dump_jobs_json(jobs):
+    state_objects = []
+    for job_spec in jobs:
+        state_objects.append(job_spec.dump_to_json_serializable())
+    return json.dumps(state_objects, cls=NonJsonObjectEncoder)
+
+
+# load serialized json to jobs
+def load_jobs_json(state):
+    state_objects = json.loads(state, object_hook=as_python_object)
+    jobs = []
+    for job_state in state_objects:
+        job_spec = JobSpec.JobSpec()
+        job_spec.load_from_json_serializable(job_state)
+        jobs.append(job_spec)
+    return jobs

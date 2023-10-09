@@ -122,22 +122,9 @@ class install_data_panda (install_data_org):
         install_data_org.run(self)
         # post install only for client installation
         if not os.path.exists(os.path.join(self.install_purelib, 'pandacommon')):
-            target = os.path.join(self.install_purelib, 'taskbuffer')
-            if not os.path.exists(target):
-                os.symlink('pandaclient',
-                           os.path.join(self.install_purelib, 'taskbuffer'))
             target = os.path.join(self.install_purelib, 'pandatools')
             if not os.path.exists(target):
                 os.symlink('pandaclient', target)
-            target = os.path.join(self.install_purelib, 'pandaserver')
-            if not os.path.exists(target):
-                os.makedirs(target)
-            target_init = os.path.join(target, '__init__.py')
-            with open(target_init, 'w'):
-                pass
-            target = os.path.join(target, 'taskbuffer')
-            if not os.path.exists(target):
-                os.symlink('../pandaclient', target)
         # delete
         for autoGenFile in autoGenFiles:
             try:
