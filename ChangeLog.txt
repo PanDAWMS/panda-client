@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.66
+  * fixed FileSpec import
+
 1.5.65
   * added --workflowName to pchain
   * added n_try in a few functions in Client

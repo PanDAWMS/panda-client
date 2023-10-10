@@ -5,7 +5,7 @@ job specification
 
 import re
 import datetime
-from FileSpec import FileSpec
+from .FileSpec import FileSpec
 
 reserveChangedState = False
 
