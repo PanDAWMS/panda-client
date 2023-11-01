@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.5.67
+  * added reload_input to pbook
+  * added memory warning and -y to pathena/prun
+
 1.5.66
   * fixed FileSpec import
 
