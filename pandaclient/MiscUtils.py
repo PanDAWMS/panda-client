@@ -282,7 +282,7 @@ def pickle_loads(str_input):
         try:
             return pickle.loads(str_input.encode("utf-8"), encoding="latin1")
         except Exception:
-            return str_input
+            raise Exception("failed to unpickle")
 
 
 # parse secondary dataset option
