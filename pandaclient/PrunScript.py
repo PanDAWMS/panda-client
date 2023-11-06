@@ -758,6 +758,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         default=False,
         help=argparse.SUPPRESS,
     )
+    group_expert.add_argument(
+        "--msgDriven",
+        action="store_const",
+        const=True,
+        dest="msgDriven",
+        default=False,
+        help=argparse.SUPPRESS,
+    )
     group_job.add_argument(
         "--respectSplitRule",
         action="store_const",
@@ -2134,6 +2142,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         taskParamMap["noEmail"] = True
     if options.skipScout:
         taskParamMap["skipScout"] = True
+    if options.msgDriven:
+        taskParamMap["messageDriven"] = True
     if options.respectSplitRule:
         taskParamMap["respectSplitRule"] = True
     if options.respectLB:
