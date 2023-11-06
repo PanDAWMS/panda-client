@@ -8,6 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
     - uses: actions/checkout@v3
       with:
@@ -36,5 +38,3 @@ jobs:
     - name: Publish distribution to PyPI
       if: github.event_name == 'release' && github.event.action == 'published' && github.repository == 'PanDAWMS/panda-client'
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
