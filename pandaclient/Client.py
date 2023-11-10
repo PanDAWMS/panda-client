@@ -545,7 +545,7 @@ class _NativeCurl(_Curl):
     # POST method
     def post(self, url, data, rucioAccount=False, is_json=False, via_file=False, compress_body=False, n_try=1):
         for i_try in range(n_try):
-            code, text = self.http_method(url, data, {}, compress_body=True, is_json=is_json)
+            code, text = self.http_method(url, data, {}, compress_body=compress_body, is_json=is_json)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)

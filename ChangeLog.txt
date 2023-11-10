@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.69
+  * fixed _NativeClient
+
 1.5.68
   * to throw an exception when unpicking is failed
 
