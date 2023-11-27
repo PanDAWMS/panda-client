@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.70
+  * fixed FakeAppMgr for recent changes of AthAppMgr.OutStreamType
+
 1.5.69
   * fixed _NativeClient
 

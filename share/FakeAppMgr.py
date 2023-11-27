@@ -3,47 +3,48 @@ replace AppMgr with a fake mgr to disable DLL loading
 
 """
 
+
 # fake property
 class fakeProperty(list):
-    def __init__(self,name):
+    def __init__(self, name):
         self.name = name
-        
-    def __getattribute__(self,name):
+
+    def __getattribute__(self, name):
         try:
-            return object.__getattribute__(self,name)
+            return object.__getattribute__(self, name)
         except Exception:
-            setattr(self,name,fakeProperty(name))
-            return object.__getattribute__(self,name)
+            setattr(self, name, fakeProperty(name))
+            return object.__getattribute__(self, name)
 
     def __getstate__(self):
         return self.__dict__
 
-    def __reduce_ex__(self,proto=0):
+    def __reduce_ex__(self, proto=0):
         if proto >= 2:
             proto = 1
-        return super(fakeProperty,self).__reduce_ex__(proto)
-                            
+        return super(fakeProperty, self).__reduce_ex__(proto)
+
     def properties(self):
-        prp = fakeProperty('properties')
+        prp = fakeProperty("properties")
         for attr in dir(self):
             prp.append(attr)
         return prp
 
-    def get(self,name):
+    def get(self, name):
         return self.__getattribute__(name)
 
     def value(self):
         return self
-    
-        
-# fake application manager    
+
+
+# fake application manager
 class fakeAppMgr(fakeProperty):
-    def __init__(self,origTheApp):
+    def __init__(self, origTheApp):
         self.origTheApp = origTheApp
-        fakeProperty.__init__(self,'AppMgr')
+        fakeProperty.__init__(self, "AppMgr")
         # streams
         try:
-            self._streams = self.origTheApp._streams 
+            self._streams = self.origTheApp._streams
         except Exception:
             self._streams = []
         # for https://savannah.cern.ch/bugs/index.php?66675
@@ -52,22 +53,23 @@ class fakeAppMgr(fakeProperty):
         except Exception:
             pass
 
-    def service(self,name):
+    def service(self, name):
         return fakeProperty(name)
 
-    def createSvc(self,name):
-        return fakeProperty(name)        
-
-    def algorithm(self,name):
+    def createSvc(self, name):
         return fakeProperty(name)
 
-    def setup(self,var):
+    def algorithm(self, name):
+        return fakeProperty(name)
+
+    def setup(self, var):
         pass
 
     def exit(self):
         import sys
+
         sys.exit(0)
-        
+
     def serviceMgr(self):
         try:
             return self.origTheApp.serviceMgr()
@@ -79,17 +81,19 @@ class fakeAppMgr(fakeProperty):
             return self.origTheApp.toolSvc()
         except Exception:
             return self._toolSvc
-        
-    def addOutputStream(self,stream):
-         self._streams += stream
+
+    def addOutputStream(self, stream):
+        self._streams += stream
 
     def initialize(self):
-        include ('%s/etc/panda/share/ConfigExtractor.py' % os.environ['PANDA_SYS'])
+        include("%s/etc/panda/share/ConfigExtractor.py" % os.environ["PANDA_SYS"])
         import sys
+
         sys.exit(0)
-    
+
     def run(self):
         import sys
+
         sys.exit(0)
 
 
@@ -100,11 +104,13 @@ theApp = fakeAppMgr(_theApp)
 # for 13.X.0 or higher
 try:
     import AthenaCommon.AppMgr
+
     AthenaCommon.AppMgr.theApp = theApp
 except Exception:
     pass
 
 # for boot strap
 theApp.EventLoop = _theApp.EventLoop
-theApp.OutStreamType = _theApp.OutStreamType
+if hasattr(_theApp, "OutStreamType"):
+    theApp.OutStreamType = _theApp.OutStreamType
 del _theApp
