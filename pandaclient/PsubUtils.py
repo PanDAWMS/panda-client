@@ -48,7 +48,7 @@ def resetCacheValues():
     global cacheActime
     global cacheLastUpdate
     global cacheVomsInfo
-    timeNow = datetime.datetime.utcnow()
+    timeNow = datetime.datetime.now(datetime.UTC)
     if cacheLastUpdate is None or (timeNow - cacheLastUpdate) > datetime.timedelta(minutes=60):
         cacheLastUpdate = timeNow
         cacheProxyStatus = None

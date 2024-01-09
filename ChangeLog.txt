@@ -1,5 +1,8 @@
 ** Release Notes
 
+current
+  * utcnow() -> now(UTC)
+
 1.5.70
   * fixed FakeAppMgr for recent changes of AthAppMgr.OutStreamType
 
