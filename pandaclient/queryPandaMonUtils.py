@@ -65,7 +65,7 @@ def query_tasks(
         else:
             rep = urlopen(req, context=context)
         if verbose:
-            sys.stderr.write("time UTC  = {0}\n".format(datetime.datetime.now(datetime.UTC)))
+            sys.stderr.write("time UTC  = {0}\n".format(datetime.datetime.utcnow()))
         rec = rep.getcode()
         if verbose:
             sys.stderr.write("resp code = {0}\n".format(rec))
@@ -116,7 +116,7 @@ def query_jobs(jeditaskid, limit=10000, drop=True, verbose=False):
         else:
             rep = urlopen(req, context=context)
         if verbose:
-            sys.stderr.write("time UTC  = {0}\n".format(datetime.datetime.now(datetime.UTC)))
+            sys.stderr.write("time UTC  = {0}\n".format(datetime.datetime.utcnow()))
         rec = rep.getcode()
         if verbose:
             sys.stderr.write("resp code = {0}\n".format(rec))

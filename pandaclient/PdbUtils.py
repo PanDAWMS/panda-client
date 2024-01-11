@@ -499,7 +499,7 @@ def initialzieDB(verbose=False, restoreDB=False):
 def insertJobDB(job, verbose=False):
     tmpLog = PLogger.getPandaLogger()
     # set update time
-    job.lastUpdate = datetime.datetime.now(datetime.UTC)
+    job.lastUpdate = datetime.datetime.utcnow()
     # make sql
     sql1 = "INSERT INTO %s (%s) " % (pdbProxy.tablename, LocalJobSpec.columnNames())
     sql1 += "VALUES " + job.values()
@@ -519,7 +519,7 @@ def updateJobDB(job, verbose=False, updateTime=None):
         job.lastUpdate = updateTime
         sql1 += " AND lastUpdate<'%s' " % updateTime.strftime("%Y-%m-%d %H:%M:%S")
     else:
-        job.lastUpdate = datetime.datetime.now(datetime.UTC)
+        job.lastUpdate = datetime.datetime.utcnow()
     status, out = pdbProxy.execute_direct(sql1)
     if not status:
         raise RuntimeError("failed to update job")
@@ -539,7 +539,7 @@ def setRetryID(job, verbose=False):
 # delete old jobs
 def deleteOldJobs(days, verbose=False):
     # time limit
-    limit = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=days)
+    limit = datetime.datetime.utcnow() - datetime.timedelta(days=days)
     # make sql
     sql1 = "DELETE FROM %s " % pdbProxy.tablename
     sql1 += " WHERE creationTime<'%s' " % limit.strftime("%Y-%m-%d %H:%M:%S")

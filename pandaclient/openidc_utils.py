@@ -80,7 +80,7 @@ class OpenIdConnect_Utils:
                 return False, "aborted"
         if self.verbose:
             self.log_stream.debug("getting ID token")
-        startTime = datetime.datetime.now(datetime.UTC)
+        startTime = datetime.datetime.utcnow()
         data = {
             "client_id": client_id,
             "client_secret": client_secret,
@@ -90,7 +90,7 @@ class OpenIdConnect_Utils:
         rdata = urlencode(data).encode()
         req = Request(token_endpoint, rdata)
         req.add_header("content-type", "application/x-www-form-urlencoded")
-        while datetime.datetime.now(datetime.UTC) - startTime < datetime.timedelta(seconds=expires_in):
+        while datetime.datetime.utcnow() - startTime < datetime.timedelta(seconds=expires_in):
             try:
                 conn = urlopen(req)
                 text = conn.read().decode()
@@ -173,8 +173,8 @@ class OpenIdConnect_Utils:
                     # decode ID token
                     data = json.load(f)
                     dec = decode_id_token(data["id_token"])
-                    exp_time = datetime.datetime.utcfromtimestamp(dec["exp"])
-                    delta = exp_time - datetime.datetime.now(datetime.UTC)
+                    exp_time = datetime.datetime.timezone.utcfromtimestamp(dec["exp"])
+                    delta = exp_time - datetime.datetime.utcnow()
                     if self.verbose:
                         self.log_stream.debug("token expiration time : {0} UTC".format(exp_time.strftime("%Y-%m-%d %H:%M:%S")))
                     # check expiration time
