@@ -1,7 +1,7 @@
 ** Release Notes
 
-current
-  * utcnow() -> now(UTC)
+1.5.71
+  * synchronous workflow submission
 
 1.5.70
   * fixed FakeAppMgr for recent changes of AthAppMgr.OutStreamType

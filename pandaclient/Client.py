@@ -961,9 +961,9 @@ def useDevServer():
 # use INTR server
 def useIntrServer():
     global baseURL
-    baseURL = "http://aipanda059.cern.ch:25080/server/panda"
+    baseURL = "http://aipanda123.cern.ch:25080/server/panda"
     global baseURLSSL
-    baseURLSSL = "https://aipanda059.cern.ch:25443/server/panda"
+    baseURLSSL = "https://aipanda123.cern.ch:25443/server/panda"
     global baseURLCSRVSSL
     baseURLCSRVSSL = baseURLSSL
 
@@ -1821,6 +1821,8 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
         data = {"data": json.dumps(params)}
         if check:
             data["check"] = True
+        else:
+            data["sync"] = True
         status, output = curl.post(url, data, compress_body=True, is_json=True)
         if status != 0:
             tmp_log.error(output)
