@@ -173,7 +173,7 @@ class OpenIdConnect_Utils:
                     # decode ID token
                     data = json.load(f)
                     dec = decode_id_token(data["id_token"])
-                    exp_time = datetime.datetime.timezone.utcfromtimestamp(dec["exp"])
+                    exp_time = datetime.datetime.utcfromtimestamp(dec["exp"])
                     delta = exp_time - datetime.datetime.utcnow()
                     if self.verbose:
                         self.log_stream.debug("token expiration time : {0} UTC".format(exp_time.strftime("%Y-%m-%d %H:%M:%S")))

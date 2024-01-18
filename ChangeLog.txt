@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.72
+  * fixed for OIDC
+
 1.5.71
   * synchronous workflow submission
 
