@@ -1249,6 +1249,14 @@ group_job.add_argument(
     default=False,
     help="show printout of included files",
 )
+group_job.add_argument(
+    "--CA",
+    action="store_const",
+    const=True,
+    dest="componentAccumulator",
+    default=False,
+    help=argparse.SUPPRESS,
+)
 
 group_expert.add_argument(
     "--queueData",
@@ -1428,6 +1436,14 @@ if options.devSrv:
 # use INTR server
 if options.intrSrv:
     Client.useIntrServer()
+
+# Athena --CA
+if options.componentAccumulator:
+    tmpLog.info(
+        "Please use --trf if you want to run athena.py --CA. See "
+        "https://panda-wms.readthedocs.io/en/latest/client/pathena.html#running-arbitrary-executables-in-the-athena-runtime-environment"
+    )
+    sys.exit(0)
 
 # noCompile uses noBuild stuff
 if options.noCompile:
