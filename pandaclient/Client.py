@@ -595,12 +595,13 @@ public methods
 
 
 # submit jobs
-def submitJobs(jobs, verbose=False):
+def submitJobs(jobs, verbose=False, no_pickle=False):
     """Submit jobs
 
     args:
         jobs: a list of job specs
         verbose: True to see verbose messages
+        no_pickle: True to use json instead of pickle
     returns:
         status code
               0: communication succeeded to the panda server
@@ -612,7 +613,10 @@ def submitJobs(jobs, verbose=False):
     for job in jobs:
         job.creationHost = hostname
     # serialize
-    strJobs = pickle.dumps(jobs, protocol=0)
+    if no_pickle:
+        strJobs = MiscUtils.dump_jobs_json(jobs)
+    else:
+        strJobs = pickle.dumps(jobs, protocol=0)
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()

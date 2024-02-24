@@ -122,6 +122,7 @@ The following commands are available:
     kill
     retry
     finish
+    debug
     kill_and_retry
     get_user_job_metadata
     recover_lost_files

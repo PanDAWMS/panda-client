@@ -30,9 +30,12 @@ except ImportError:
     from . import JobSpec
 
     sys.modules["pandaserver.taskbuffer.JobSpec"] = JobSpec
+    JobSpec.JobSpec.__module__ = "pandaserver.taskbuffer.JobSpec"
+
     from . import FileSpec
 
     sys.modules["pandaserver.taskbuffer.FileSpec"] = FileSpec
+    FileSpec.FileSpec.__module__ = "pandaserver.taskbuffer.FileSpec"
 
 
 # wrapper for uuidgen
