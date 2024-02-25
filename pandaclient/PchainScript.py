@@ -203,6 +203,14 @@ def main():
     except Exception:
         pass
 
+    # check if the workflow uses athena packages
+    if not options.useAthenaPackages:
+        with open(workflow_file, "r") as f:
+            for line in f.readlines():
+                if re.search(r"^\s*[^#]\s*opt_useAthenaPackages", line):
+                    options.useAthenaPackages = True
+                    break
+
     matchURL = re.search("(http.*://[^/]+)/", Client.baseURLCSRVSSL)
     sourceURL = matchURL.group(1)
 
