@@ -1993,17 +1993,18 @@ else:
     oneOut = False
     # replace ; for job sequence
     tmpString = re.sub(";", " ", jobO)
-    # look for --outputDAODFile and --reductionConf
-    match = re.search("--outputDAODFile[ =\"']+([^ \"',]+)", tmpString)
-    outputDAODFile = None
+    # look for --outputDAODFile/--outputD2AODFile and --reductionConf/formats
+    match = re.search(r"(--outputDAODFile|--outputD2AODFile)[ =\"']+([^ \"',]+)", tmpString)
+    dxaod_output_filename = None
     if match is not None:
-        outputDAODFile = match.group(1)
+        dxaod_output_format = match.group(1)[8:][:-4]
+        dxaod_output_filename = match.group(2)
         # remove %OUT
-        outputDAODFile = re.sub(r"%OUT\.", "", outputDAODFile)
+        dxaod_output_filename = re.sub(r"%OUT\.", "", dxaod_output_filename)
         match = re.search(r"(--reductionConf|--formats)[ =\"\']+([^ \"\']+)", tmpString)
         if match is not None:
             # remove %OUT from outputDAODFile
-            jobO = jobO.replace("%OUT." + outputDAODFile, outputDAODFile)
+            jobO = jobO.replace("%OUT." + dxaod_output_filename, dxaod_output_filename)
             # loop over all configs
             reductionConf = match.group(2)
             for reductionItem in reductionConf.split(","):
@@ -2011,7 +2012,7 @@ else:
                 if reductionItem == "":
                     continue
                 # make actual output names for derivation
-                tmpOutName = "DAOD_{0}.{1}".format(reductionItem, outputDAODFile)
+                tmpOutName = "{0}_{1}.{2}".format(dxaod_output_format, reductionItem, dxaod_output_filename)
                 if tmpOutName not in options.extOutFile:
                     options.extOutFile.append(tmpOutName)
                     oneOut = True
@@ -2022,7 +2023,7 @@ else:
             # append basenames to extOutFile
             tmpOutName = match.group(1)
             # skip basename of derivation
-            if outputDAODFile is not None and outputDAODFile == tmpOutName:
+            if dxaod_output_filename is not None and dxaod_output_filename == tmpOutName:
                 continue
             if tmpOutName not in options.extOutFile:
                 options.extOutFile.append(tmpOutName)

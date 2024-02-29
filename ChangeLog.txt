@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.74
+  * added support for D2AODs in pathena
+
 1.5.73
   * fixed module of JobSpec and FileSpec
   * to allow main in --useAthenaTag
