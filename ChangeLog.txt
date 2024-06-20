@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.75
+  * warning message for missing nickname in IAM
+
 1.5.74
   * added support for D2AODs in pathena
 

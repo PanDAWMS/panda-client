@@ -1603,14 +1603,13 @@ def get_cert_attributes(verbose=False):
             return EC_Failed, msg
         else:
             d = dict()
-            for l in output.split("\n"):
-                if ":" not in l:
+            for line in output.split("\n"):
+                if ":" not in line:
                     continue
-                l = l.encode("utf-8")
-                print(l)
-                if not l.startswith("GRST_CRED"):
+                print(line)
+                if not line.startswith("GRST_CRED"):
                     continue
-                items = l.split(":")
+                items = line.split(":")
                 d[items[0].strip()] = items[1].strip()
             return 0, d
     except Exception as e:

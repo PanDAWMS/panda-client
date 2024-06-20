@@ -161,9 +161,7 @@ def getNickname(verbose=False):
         tmpLog = PLogger.getPandaLogger()
         wMessage = "Could not get nickname by using voms-proxy-info which gave\n\n"
         wMessage += output
-        wMessage += "\nPlease register nickname to ATLAS VO via\n\n"
-        wMessage += "   https://lcg-voms2.cern.ch:8443/voms/atlas/vomrs\n"
-        wMessage += "      [Member Info] -> [Edit Personal Info]"
+        wMessage += "\nPlease contact VO Admins using project-lcg-vo-atlas-admin@cern.ch mailing list to register nickname in IAM"
         print("")
         tmpLog.warning(wMessage)
         print("")
