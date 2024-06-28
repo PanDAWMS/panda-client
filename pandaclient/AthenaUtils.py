@@ -1341,30 +1341,34 @@ def convertConfToOutput(runConfig, extOutFile, original_outDS, destination="", s
 # get CMTCONFIG + IMG
 def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None, verbose=False, architecture=None):
     # get CMTCONFIG
-    retVal = ""
-    if architecture and "@" in architecture:
-        retVal = architecture.split("@")[0]
-    if not retVal:
-        retVal = getCmtConfig(athenaVer, cacheVer, nightVer, cmtConfig, verbose)
+    cmt_config = ""
+    spec_str = ""
+    if architecture:
+        tmp_m = re.search("^[^@&#]+", architecture)
+        if tmp_m:
+            cmt_config = tmp_m.group(0)
+            spec_str = architecture.replace(cmt_config, "")
+        else:
+            tmp_m = re.search("[@&#].+$", architecture)
+            if tmp_m:
+                spec_str = tmp_m.group(0)
+    if not cmt_config:
+        cmt_config = getCmtConfig(athenaVer, cacheVer, nightVer, cmtConfig, verbose)
     # get base platform + HW specs
-    if architecture and "@" in architecture:
-        # architecture with base platform
-        spec_str = "@" + architecture.split("@")[-1]
+    if spec_str:
+        pass
     elif "ALRB_USER_PLATFORM" in os.environ:
-        # base platform from ALRB
+        # base platform + HW specs from ALRB
         spec_str = "@" + os.environ["ALRB_USER_PLATFORM"]
-        # HW specs
-        if architecture:
-            spec_str += architecture
     else:
         # architecture w/o base platform or even empty architecture
         spec_str = architecture
     # append base platform + HW specs if any
     if spec_str:
-        if retVal is None:
-            retVal = ""
-        retVal = retVal + spec_str
-    return retVal
+        if cmt_config is None:
+            cmt_config = ""
+        cmt_config = cmt_config + spec_str
+    return cmt_config
 
 
 # get CMTCONFIG
