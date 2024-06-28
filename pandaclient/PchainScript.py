@@ -1,4 +1,6 @@
 import atexit
+import copy
+import json
 import os
 import re
 import shlex
@@ -48,6 +50,13 @@ def main():
 
     group_config.add_argument("--version", action="store_const", const=True, dest="version", default=False, help="Displays version")
     group_config.add_argument("-v", action="store_const", const=True, dest="verbose", default=False, help="Verbose")
+    group_config.add_argument(
+        "--dumpJson",
+        action="store",
+        dest="dumpJson",
+        default=None,
+        help="Dump all command-line parameters and submission result such as returnCode, returnOut, and requestID to a json file",
+    )
     group_check.add_argument("--check", action="store_const", const=True, dest="checkOnly", default=False, help="Check workflow description locally")
     group_check.add_argument(
         "--debug", action="store_const", const=True, dest="debugCheck", default=False, help="verbose mode when checking workflow description locally"
@@ -287,29 +296,45 @@ def main():
     tmpStat, tmpOut = Client.send_workflow_request(params, **data)
 
     # result
-    exitCode = None
+    exit_code = 0
+    request_id = None
+    tmp_str = ""
     if tmpStat != 0:
-        tmpStr = "workflow {0} failed with {1}".format(action_type, tmpStat)
-        tmpLog.error(tmpStr)
-        exitCode = 1
-        return exitCode
-    if tmpOut[0]:
-        stat_code = tmpOut[1]["status"]
-        check_log = "messages from the server\n\n" + tmpOut[1]["log"]
-        if options.checkOnly:
-            tmpLog.info(check_log)
-            if stat_code:
-                tmpLog.info("successfully verified workflow description")
-            else:
-                tmpLog.error("workflow description is corrupted")
-        else:
-            if stat_code:
-                tmpLog.info("successfully submitted with request_id={0}".format(tmpOut[1]["request_id"]))
-            else:
-                tmpLog.info(check_log)
-                tmpLog.error("workflow submission failed")
+        tmp_str = "workflow {0} failed with {1}".format(action_type, tmpStat)
+        tmpLog.error(tmp_str)
+        exit_code = 1
     else:
-        tmpStr = "workflow {0} failed. {1}".format(action_type, tmpOut[1])
-        tmpLog.error(tmpStr)
-        exitCode = 1
-    return exitCode
+        if tmpOut[0]:
+            stat_code = tmpOut[1]["status"]
+            check_log = "messages from the server\n\n" + tmpOut[1]["log"]
+            if options.checkOnly:
+                tmpLog.info(check_log)
+                if stat_code:
+                    tmpLog.info("successfully verified workflow description")
+                else:
+                    tmpLog.error("workflow description is corrupted")
+            else:
+                if stat_code:
+                    request_id = tmpOut[1]["request_id"]
+                    tmp_str = "successfully submitted with request_id={0}".format(request_id)
+                    tmpLog.info(tmp_str)
+                else:
+                    tmpLog.info(check_log)
+                    tmp_str = "workflow submission failed with {0}".format(stat_code)
+                    tmpLog.error(tmp_str)
+                    exit_code = stat_code
+        else:
+            tmp_str = "workflow {0} failed. {1}".format(action_type, tmpOut[1])
+            tmpLog.error(tmp_str)
+            exit_code = 1
+
+    # dump json
+    if options.dumpJson:
+        dump_item = copy.deepcopy(vars(options))
+        dump_item["returnCode"] = exit_code
+        dump_item["returnOut"] = tmp_str
+        dump_item["requestID"] = request_id
+        with open(options.dumpJson, "w") as f:
+            json.dump(dump_item, f)
+
+    return exit_code
