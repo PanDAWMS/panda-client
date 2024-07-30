@@ -1,5 +1,12 @@
 ** Release Notes
 
+1.5.77
+  * added --useNumFilesInSecDSsAsRatio to prun
+
+1.5.76
+  * For changes in ALRB_USER_PLATFORM
+  * execute_pchain in panda_api.py
+
 1.5.75
   * warning message for missing nickname in IAM
 
