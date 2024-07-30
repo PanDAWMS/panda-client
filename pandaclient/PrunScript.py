@@ -378,7 +378,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         action="store",
         dest="secondaryDSs",
         default="",
-        help="List of secondary datasets when the job requires multiple inputs. See PandaRun wiki page for detail",
+        help="List of secondary datasets when the job requires multiple inputs. "
+        "Comma-separated strings in the format of StreamName:nFiles:DatasetName[:Pattern[:nSkipFiles[:FileNameList]]]. "
+        "StreamName is the stream name used in --exec to expand to actual filenames. "
+        "nFiles is the number of files per job by default, while it means the ratio to the number of primary "
+        "files when --useNumFilesInSecDSsAsRatio is set. DatasetName is the dataset name. "
+        "Pattern is used to filter files in the dataset. nSkipFiles is the number of files to skip in the dataset. "
+        "FileNameList is a file listing names of files to be used in the dataset. ",
     )
     group_input.add_argument(
         "--reusableSecondary",
@@ -386,6 +392,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         dest="reusableSecondary",
         default="",
         help="A comma-separated list of secondary streams which reuse files when all files are used",
+    )
+    group_input.add_argument(
+        "--useNumFilesInSecDSsAsRatio",
+        action="store_const",
+        const=True,
+        dest="useNumFilesInSecDSsAsRatio",
+        default=False,
+        help="Set the option when the nFiles field in --secondaryDSs means the ratio to the number of primary files",
     )
     group_submit.add_argument(
         "--site",
@@ -2509,6 +2523,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                 include=tmpMap["pattern"],
                 offset=tmpMap["nSkip"],
                 nFilesPerJob=tmpMap["nFiles"],
+                useNumFilesAsRatio=options.useNumFilesInSecDSsAsRatio,
                 reusableAtt=reusableAtt,
                 outDS=options.outDS,
                 file_list=tmpMap["files"],

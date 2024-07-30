@@ -101,9 +101,10 @@ def makeJediJobParam(
         elif outDS:
             dictItem["consolidate"] = ".".join(outDS.split(".")[:2]) + "." + wrappedUuidGen() + "/"
         if nFilesPerJob not in [None, 0]:
-            dictItem["nFilesPerJob"] = nFilesPerJob
-        if useNumFilesAsRatio and nFilesPerJob not in [None, 0]:
-            dictItem["ratio"] = nFilesPerJob
+            if useNumFilesAsRatio:
+                dictItem["ratio"] = nFilesPerJob
+            else:
+                dictItem["nFilesPerJob"] = nFilesPerJob
         if file_list:
             dictItem["files"] = file_list
     if hidden:
@@ -324,7 +325,7 @@ def parse_secondary_datasets_opt(secondaryDSs):
                             if l:
                                 tmpMap[tmpItems[2]]["files"].append(l)
             else:
-                errStr = "Wrong format %s in --secondaryDSs. Must be " "StreamName:nFilesPerJob:DatasetName[:Pattern[:nSkipFiles[:FileNameList]]]" % tmpItem
+                errStr = "Wrong format %s in --secondaryDSs. Must be " "StreamName:nFiles:DatasetName[:Pattern[:nSkipFiles[:FileNameList]]]" % tmpItem
                 return False, errStr
         # set
         secondaryDSs = tmpMap
