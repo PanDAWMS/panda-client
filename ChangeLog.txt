@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.78
+  * protection against missing THistSvc
+
 1.5.77
   * added --useNumFilesInSecDSsAsRatio to prun
 
