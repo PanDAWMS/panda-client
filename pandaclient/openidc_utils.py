@@ -124,7 +124,7 @@ class OpenIdConnect_Utils:
         req.add_header("content-type", "application/x-www-form-urlencoded")
         try:
             conn = urlopen(req)
-            text = conn.read()
+            text = conn.read().decode()
             if self.verbose:
                 self.log_stream.debug(text)
             id_token = json.loads(text)["id_token"]
