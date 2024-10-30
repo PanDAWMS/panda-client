@@ -69,6 +69,9 @@ Client.setGlobalTmpDir(tmpDir)
 # fork PID
 fork_child_pid = None
 
+# options of client tools
+client_options = None
+
 
 # exit action
 def _onExit(dirName, hFile):
@@ -256,6 +259,21 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
         """
         if newOpts is None:
             newOpts = kwargs
+        global client_options
+        if newOpts:
+            # get valid option list
+            if client_options is None:
+                from pandaclient import PrunScript
+
+                client_options = PrunScript.main(get_options=True)
+            # check options
+            for key in list(newOpts):
+                if key == "memory":
+                    newOpts["ramCount"] = newOpts[key]
+                    del newOpts[key]
+                elif key not in client_options:
+                    print('Error: Unknown option name "%s"' % key)
+                    return None
         if isinstance(taskIDs, (list, tuple)):
             ret = list_parallel_exec(lambda taskID: pbookCore.retry(taskID, newOpts=newOpts), taskIDs)
         elif isinstance(taskIDs, (int, long)):

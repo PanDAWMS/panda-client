@@ -30,7 +30,15 @@ except Exception:
 
 
 # main
-def main(get_taskparams=False, ext_args=None, dry_mode=False):
+def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False):
+    """
+    Execute prun command
+    :param get_taskparams: get task parameters and return them if True
+    :param ext_args: external arguments to be passed to prun
+    :param dry_mode: execute prun in dry mode
+    :param get_options: get options and return them if True
+    :return: task parameters or options if get_taskparams or get_options is True
+    """
     # default cloud/site
     defaultCloud = None
     defaultSite = "AUTO"
@@ -1248,6 +1256,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             print("options after loading json")
             print(options)
             print("")
+
+    # return options
+    if get_options:
+        return vars(options)
 
     # display version
     from pandaclient import PandaToolsPkgInfo
