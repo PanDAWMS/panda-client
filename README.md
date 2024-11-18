@@ -27,9 +27,7 @@ pathena -h
 See ChangeLog.txt
 
 # CVMFS deployment
-1. Leave the tar ball under: /afs/cern.ch/user/a/atlpan/www/panda-client. The web https://atlpan.web.cern.ch/atlpan/panda-client/ publishes the afs directory.
-1. Update the release notes: https://twiki.cern.ch/twiki/bin/view/PanDA/PandaTools
-1. Request atlas-adc-tier3sw-install to copy on CVMFS 
+Request atlas-adc-tier3sw-install to install the new specific version on CVMFS. They will download the package from the github release page.
 
 # Uploading to pip
 ```
