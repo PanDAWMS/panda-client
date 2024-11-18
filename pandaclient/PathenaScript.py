@@ -937,6 +937,13 @@ group_submit.add_argument(
     help="Don't submit jobs",
 )
 group_submit.add_argument(
+    "--framework",
+    action="store",
+    dest="framework",
+    default="",
+    help="set framework used for task submission",
+)
+group_submit.add_argument(
     "--prodSourceLabel",
     action="store",
     dest="prodSourceLabel",
@@ -2378,6 +2385,8 @@ if options.eventPickEvtList != "":
     taskParamMap["waitInput"] = 1
 if options.goodRunListXML != "":
     taskParamMap["processingType"] += "-grl"
+if options.framework != "":
+    taskParamMap["framework"] = options.framework
 if options.prodSourceLabel == "":
     taskParamMap["prodSourceLabel"] = "user"
 else:

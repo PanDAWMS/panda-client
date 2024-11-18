@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.80
+  * added framework option to prun and pathena
+
 1.5.79
   * added option name check in pbook.retry
 
