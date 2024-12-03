@@ -1624,15 +1624,17 @@ def get_user_name_from_token():
     """Extract username and groups from ID token
 
     returns:
-       a tuple of username and groups
+       a tuple of username, groups, and preferred username
     """
     curl = _Curl()
     token_info = curl.get_token_info()
     try:
         name = " ".join([t[:1].upper() + t[1:].lower() for t in str(token_info["name"]).split()])
-        return name, token_info["groups"], token_info["preferred_username"]
+        groups = token_info.get("groups", None)
+        preferred_username = token_info.get("preferred_username", None)
+        return name, groups, preferred_username
     except Exception:
-        return None, None
+        return None, None, None
 
 
 # get new token
