@@ -53,7 +53,7 @@ class OpenIdConnect_Utils:
     def get_device_code(self, device_auth_endpoint, client_id, audience):
         if self.verbose:
             self.log_stream.debug("getting device code")
-        data = {"client_id": client_id, "scope": "openid profile email offline_access ", "audience": audience}  # iam",
+        data = {"client_id": client_id, "scope": "openid profile email offline_access wlcg.groups ", "audience": audience}  # iam",
         rdata = urlencode(data).encode()
         req = Request(device_auth_endpoint, rdata)
         req.add_header("content-type", "application/x-www-form-urlencoded")
