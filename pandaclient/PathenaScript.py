@@ -522,7 +522,20 @@ group_output.add_argument(
     const=True,
     dest="appendStrToExtStream",
     default=False,
-    help="append the first part of filenames to extra stream names for --individualOutDS. E.g., if this option is used together with --individualOutDS, %%OUT.AOD.pool.root will be contained in an EXT0_AOD dataset instead of an EXT0 dataset",
+    help="append the first part of filenames to extra stream names when using --trf. E.g., if this option is used %%OUT.AOD.pool.root will be contained in an EXT0_AOD dataset instead of an EXT0 dataset",
+)
+group_output.add_argument(
+    "--useFileFieldAsStream",
+    action="store_const",
+    const=True,
+    dest="useFileFieldAsStream",
+    default=False,
+    help="use the first part of filenames as output stream names when using --trf. E.g., if this option is used %%OUT.AOD.pool.root will be contained in an AOD dataset instead of an EXT0 dataset",
+)
+group_output.add_argument(
+    '--outputStreamNames',
+    nargs='+',
+    help='use custom output stream names when using --trf, instead of the default EXT# suffixes; must specify one stream name for each job output (%%OUT instance, or --extOutFile entries)',
 )
 group_output.add_argument(
     "--mergeOutput",
@@ -1648,10 +1661,6 @@ except Exception:
 
 # set excludeFile
 AthenaUtils.setExcludeFile(options.excludeFile)
-
-# mapping for extra stream names
-if options.appendStrToExtStream:
-    AthenaUtils.enableExtendedExtStreamName()
 
 # file list
 tmpList = options.filelist.split(",")
@@ -2994,6 +3003,9 @@ outMap, tmpParamList = AthenaUtils.convertConfToOutput(
     spaceToken=options.spaceToken,
     descriptionInLFN=descriptionInLFN,
     allowNoOutput=options.allowNoOutput,
+    appendFileFieldToStreamName=options.appendStrToExtStream or options.useFileFieldAsStream,
+    useEXTStreamName=not options.useFileFieldAsStream,
+    extOutStreams=options.outputStreamNames,
 )
 taskParamMap["jobParameters"] += [
     {"type": "constant", "value": '-o "%s" ' % outMap},

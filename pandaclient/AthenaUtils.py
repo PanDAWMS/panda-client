@@ -591,29 +591,28 @@ def matchExtFile(fileName):
     return False
 
 
-# extended extra stream name
-useExtendedExtStreamName = False
-
-
-# use extended extra stream name
-def enableExtendedExtStreamName():
-    global useExtendedExtStreamName
-    useExtendedExtStreamName = True
-
-
 # get extended extra stream name
-def getExtendedExtStreamName(sIndex, sName, enableExtension):
-    tmpBaseExtName = "EXT%s" % sIndex
-    if not useExtendedExtStreamName or not enableExtension:
-        return tmpBaseExtName
-    # change * to X and add .tgz
-    if sName.find("*") != -1:
-        sName = sName.replace("*", "XYZ")
-        sName = "%s.tgz" % sName
-    # use extended extra stream name
-    tmpItems = sName.split(".")
-    if len(tmpItems) > 0:
-        tmpBaseExtName += "_%s" % tmpItems[0]
+def getExtendedExtStreamName(sIndex, sName, enableExtension=False, addEXTNPrefix=True):
+    tmpBaseExtName = 'EXT%s' % sIndex if addEXTNPrefix else ''
+
+    if enableExtension:
+        if addEXTNPrefix: tmpBaseExtName += '_'
+
+        # change * to X and add .tgz
+        if sName.find("*") != -1:
+            sName = sName.replace("*", "XYZ")
+            sName = "%s.tgz" % sName
+
+        # use extended extra stream name
+        tmpItems = sName.split(".")
+        if len(tmpItems) > 0:
+            tmpBaseExtName += tmpItems[0]
+
+    tmpLog = PLogger.getPandaLogger()
+    if not tmpBaseExtName:
+        tmpLog.error('Invalid stream extension name! If you use --useFileFieldAsStream, all %OUT instances in --trf must contain a distinct suffix, e.g. %OUT.AOD.pool.root')
+        sys.exit(EC_Config)
+
     return tmpBaseExtName
 
 
@@ -1102,7 +1101,8 @@ def archiveWithCpack(withSource, tmpDir, verbose):
 
 
 # convert runConfig to outMap
-def convertConfToOutput(runConfig, extOutFile, original_outDS, destination="", spaceToken="", descriptionInLFN="", allowNoOutput=None):
+def convertConfToOutput(runConfig, extOutFile, original_outDS, destination="", spaceToken="", descriptionInLFN="", allowNoOutput=None, appendFileFieldToStreamName=False, useEXTStreamName=True, extOutStreams=None):
+    tmpLog = PLogger.getPandaLogger()
     outMap = {}
     paramList = []
     # add IROOT
@@ -1190,25 +1190,33 @@ def convertConfToOutput(runConfig, extOutFile, original_outDS, destination="", s
             lfn = "%s.iROOT%s._${SN/P}.%s" % (outDSwoSlash, sIndex, sName)
             tmpSuffix = "_iROOT%s" % sIndex
             dataset = outDsNameBase + tmpSuffix + "/"
-            if "IROOT" not in outMap:
-                outMap["IROOT"] = []
             outMap["IROOT"].append((sName, lfn))
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if extOutFile:
+        if extOutStreams is not None:
+            if len(extOutStreams) != len(extOutFile):
+                tmpLog.error("Missmatched --outputStreamNames (%s) to ext output files (%s)" % extOutStreams, extOutFile)
+                sys.exit(EC_Config)
+            if len(extOutStreams) != len(set(extOutStreams)):
+                tmpLog.error(f"All output stream names indicated with --outputStreamNames (%s) must be different" % extOutStreams)
+                sys.exit(EC_Config)
+        streams = []
         for sIndex, sName in enumerate(extOutFile):
             # change * to X and add .tgz
             origSName = sName
             if sName.find("*") != -1:
                 sName = sName.replace("*", "XYZ")
                 sName = "%s.tgz" % sName
-            tmpExtStreamName = getExtendedExtStreamName(sIndex, sName, False)
-            lfn = "%s.%s._${SN/P}.%s" % (outDSwoSlash, tmpExtStreamName, sName)
-            tmpSuffix = "_%s" % tmpExtStreamName
+            tmpStreamName = getExtendedExtStreamName(sIndex, sName, appendFileFieldToStreamName, useEXTStreamName) if extOutStreams is None else extOutStreams[sIndex]
+            streams.append(tmpStreamName)
+            lfn = "%s.%s._${SN/P}.%s" % (outDSwoSlash, tmpStreamName, sName)
+            tmpSuffix = "_%s" % tmpStreamName
             dataset = outDsNameBase + tmpSuffix + "/"
-            if "IROOT" not in outMap:
-                outMap["IROOT"] = []
             outMap["IROOT"].append((origSName, lfn))
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
+        if len(streams) != len(set(streams)):
+            tmpLog.error(f"All output stream names taken from the %OUT declarations (e.g. %OUT.streamname.root) and --extOutFile must be different")
+            sys.exit(EC_Config)
     if runConfig.output.outTAGX:
         for sName, oName in runConfig.output.outTAGX:
             lfn = "%s.%s._${SN/P}.%s" % (outDSwoSlash, sName, oName)
