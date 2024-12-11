@@ -239,10 +239,10 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
         It is possible to specify newOpts, which is a map of options and new arguments like
         {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'}, to overwrite task parameters for new attempts. The list of
         changeable parameters is site, excludedSite, includedSite, nFilesPerJob, nGBPerJob, nFiles, nEvents,
-        loopingCheck, nMaxFilesPerJob, ramCount, avoidVP. It is also possible to specify those parameters as named
-        arguments of the retry function, e.g. nFilesPerJob=10, excludedSite='ABC,XYZ'.
+        loopingCheck, nMaxFilesPerJob, memory, ramCount, avoidVP, ignoreMissingInDS. It is also possible to specify those
+        parameters as named arguments of the retry function, e.g. nFilesPerJob=10, excludedSite='ABC,XYZ'.
         If input files were used or are being used by other jobs for the same
-        output dataset container, those file are skipped to avoid job duplication when retrying failed subjobs.
+        output dataset container, those files are skipped to avoid job duplication when retrying failed subjobs.
 
         If taskIDs is 'all', it retries 1000 tasks at most that have finished for the last 14 days. It is possible
         to retry more tasks by setting the days and limit options. If newOpts and/or named arguments are specified,
@@ -266,6 +266,12 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
                 from pandaclient import PrunScript
 
                 client_options = PrunScript.main(get_options=True)
+                client_options.update(
+                    {
+                        "ramCount": None,
+                        "ignoreMissingInDS": None,
+                    }
+                )
             # check options
             for key in list(newOpts):
                 if key == "memory":
