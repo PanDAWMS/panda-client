@@ -533,9 +533,9 @@ group_output.add_argument(
     help="use the first part of filenames as output stream names when using --trf. E.g., if this option is used %%OUT.AOD.pool.root will be contained in an AOD dataset instead of an EXT0 dataset",
 )
 group_output.add_argument(
-    '--outputStreamNames',
-    nargs='+',
-    help='use custom output stream names when using --trf, instead of the default EXT# suffixes; must specify one stream name for each job output (%%OUT instance, or --extOutFile entries)',
+    "--outputStreamNames",
+    nargs="+",
+    help="use custom output stream names when using --trf, instead of the default EXT# suffixes; must specify one stream name for each job output (%%OUT instance, or --extOutFile entries)",
 )
 group_output.add_argument(
     "--mergeOutput",
@@ -1142,6 +1142,13 @@ group_build.add_argument(
     default="",
     type=str,
     help="Use a gzipped tarball of local files as input to buildXYZ. Generall the tarball is created by using --outTarBall",
+)
+group_build.add_argument(
+    "--tarBallViaDDM",
+    action="store",
+    dest="tarBallViaDDM",
+    default="",
+    help="Use a gzipped tarball pre-uploaded to DDM as input for buildXYZ. --tarBallViaDDM=datasetName:fileName",
 )
 group_config.add_argument(
     "--outRunConfig",
@@ -2216,7 +2223,7 @@ if options.inDS != "" or options.shipinput or options.pfnList != "":
 # archive sources and send it to HTTP-reachable location
 
 if True:
-    if options.inTarBall == "":
+    if options.inTarBall == "" and options.tarBallViaDDM == "":
         # extract jobOs with full pathnames
         for tmpItem in jobO.split():
             if re.search("^/.*\.py$", tmpItem) is not None:
@@ -2311,6 +2318,11 @@ if True:
             tmpLog.warning(tmpStr)
             for symlink in symlinks:
                 print("  %s" % symlink)
+    elif options.tarBallViaDDM:
+        # go to tmp dir
+        os.chdir(tmpDir)
+        # use sandbox pre-uploaded to DDM
+        archiveName = options.tarBallViaDDM.split(":")[-1]
     else:
         # go to tmp dir
         os.chdir(tmpDir)
@@ -2329,7 +2341,7 @@ if True:
         shutil.copy(archiveName, options.outTarBall)
 
     # put sources/jobO via HTTP POST
-    if not options.noSubmit:
+    if not options.noSubmit and not options.tarBallViaDDM:
         tmpLog.info("uploading sandbox")
         status, out = Client.putFile(archiveName, options.verbose, useCacheSrv=True, reuseSandbox=True)
         if out.startswith("NewFileName:"):
@@ -2527,19 +2539,15 @@ taskParamMap["jobParameters"] = []
 
 # build
 if options.noBuild and not options.noCompile:
-    taskParamMap["jobParameters"] += [
-        {
-            "type": "constant",
-            "value": "-a {0}".format(archiveName),
-        },
-    ]
+    tmp_str = "-a {0}".format(archiveName)
+    if options.tarBallViaDDM:
+        tmp_str += " --noTarballDownload"
 else:
-    taskParamMap["jobParameters"] += [
-        {
-            "type": "constant",
-            "value": "-l ${LIB}",
-        },
-    ]
+    tmp_str = "-l ${LIB}"
+taskParamMap["jobParameters"] += [
+    {"type": "constant", "value": tmp_str},
+]
+
 # pre execution string
 pStr1 = ""
 if runConfig.other.rndmStream != []:
@@ -3090,7 +3098,8 @@ if options.avoidVP:
 
 # build step
 if options.noBuild and not options.noCompile:
-    pass
+    if options.tarBallViaDDM:
+        taskParamMap["tarBallViaDDM"] = options.tarBallViaDDM
 else:
     jobParameters = "-i ${IN} -o ${OUT} --sourceURL ${SURL} "
     # no compile
@@ -3108,6 +3117,9 @@ else:
         "archiveName": archiveName,
         "jobParameters": jobParameters,
     }
+    if options.tarBallViaDDM:
+        taskParamMap["buildSpec"]["tarBallViaDDM"] = options.tarBallViaDDM
+        taskParamMap["buildSpec"]["jobParameters"] += "--noTarballDownload "
     if options.prodSourceLabel != "":
         taskParamMap["buildSpec"]["prodSourceLabel"] = options.prodSourceLabel
 

@@ -838,14 +838,21 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         action="store",
         dest="outTarBall",
         default="",
-        help="Save a gzipped tarball of local files which is the input to buildXYZ",
+        help="Save a gzipped tarball of local files which is the input for buildXYZ",
     )
     group_build.add_argument(
         "--inTarBall",
         action="store",
         dest="inTarBall",
         default="",
-        help="Use a gzipped tarball of local files as input to buildXYZ. Generall the tarball is created by using --outTarBall",
+        help="Use a gzipped tarball of local files as input for buildXYZ. Generall the tarball is created by using --outTarBall",
+    )
+    group_build.add_argument(
+        "--tarBallViaDDM",
+        action="store",
+        dest="tarBallViaDDM",
+        default="",
+        help="Use a gzipped tarball pre-uploaded to DDM as input for buildXYZ. --tarBallViaDDM=datasetName:fileName",
     )
     group_build.add_argument(
         "--bexec",
@@ -1777,7 +1784,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # create archive
     archiveName = None
     if (options.containerImage == "" or options.useSandbox) and not dry_mode:
-        if options.inTarBall == "":
+        if options.inTarBall == "" and options.tarBallViaDDM == "":
             # copy RootCore packages
             if options.useRootCore:
                 # check $ROOTCOREDIR
@@ -2044,6 +2051,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     tmpLog.warning(tmpStr)
                     for symlink in symlinks:
                         print("  %s" % symlink)
+        elif options.tarBallViaDDM:
+            # go to tmp dir
+            os.chdir(tmpDir)
+            # use sandbox pre-uploaded to DDM
+            archiveName = options.tarBallViaDDM.split(":")[-1]
         else:
             # go to tmp dir
             os.chdir(tmpDir)
@@ -2062,7 +2074,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             shutil.copy(archiveName, options.outTarBall)
 
         # upload source files
-        if not options.noSubmit:
+        if not options.noSubmit and not options.tarBallViaDDM:
             # upload sources via HTTP POST
             tmpLog.info("upload sandbox")
             if options.vo is None:
@@ -2319,19 +2331,17 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # build
     if options.containerImage == "" or options.useSandbox:
         if options.noBuild and not options.noCompile:
-            taskParamMap["jobParameters"] += [
-                {
-                    "type": "constant",
-                    "value": "-a {0}".format(archiveName),
-                },
-            ]
+            tmp_str = "-a {0}".format(archiveName)
+            if options.tarBallViaDDM:
+                tmp_str += " --noTarballDownload"
         else:
-            taskParamMap["jobParameters"] += [
-                {
-                    "type": "constant",
-                    "value": "-l ${LIB}",
-                },
-            ]
+            tmp_str = "-l ${LIB}"
+        taskParamMap["jobParameters"] += [
+            {
+                "type": "constant",
+                "value": tmp_str,
+            },
+        ]
     # output
     if options.outputs != "":
         outMap = {}
@@ -2631,7 +2641,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # build step
     if options.noBuild and not options.noCompile:
-        pass
+        if options.tarBallViaDDM:
+            taskParamMap["tarBallViaDDM"] = options.tarBallViaDDM
     else:
         jobParameters = "-i ${IN} -o ${OUT} --sourceURL ${SURL} "
         jobParameters += "-r {0} ".format(runDir)
@@ -2679,6 +2690,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             "archiveName": archiveName,
             "jobParameters": jobParameters,
         }
+        if options.tarBallViaDDM:
+            taskParamMap["buildSpec"]["tarBallViaDDM"] = options.tarBallViaDDM
+            taskParamMap["buildSpec"]["jobParameters"] += "--noTarballDownload "
         if options.prodSourceLabel != "":
             taskParamMap["buildSpec"]["prodSourceLabel"] = options.prodSourceLabel
 
