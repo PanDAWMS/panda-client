@@ -593,10 +593,11 @@ def matchExtFile(fileName):
 
 # get extended extra stream name
 def getExtendedExtStreamName(sIndex, sName, enableExtension=False, addEXTNPrefix=True):
-    tmpBaseExtName = 'EXT%s' % sIndex if addEXTNPrefix else ''
+    tmpBaseExtName = "EXT%s" % sIndex if addEXTNPrefix else ""
 
     if enableExtension:
-        if addEXTNPrefix: tmpBaseExtName += '_'
+        if addEXTNPrefix:
+            tmpBaseExtName += "_"
 
         # change * to X and add .tgz
         if sName.find("*") != -1:
@@ -610,7 +611,9 @@ def getExtendedExtStreamName(sIndex, sName, enableExtension=False, addEXTNPrefix
 
     tmpLog = PLogger.getPandaLogger()
     if not tmpBaseExtName:
-        tmpLog.error('Invalid stream extension name! If you use --useFileFieldAsStream, all %OUT instances in --trf must contain a distinct suffix, e.g. %OUT.AOD.pool.root')
+        tmpLog.error(
+            "Invalid stream extension name! If you use --useFileFieldAsStream, all %OUT instances in --trf must contain a distinct suffix, e.g. %OUT.AOD.pool.root"
+        )
         sys.exit(EC_Config)
 
     return tmpBaseExtName
@@ -1101,7 +1104,18 @@ def archiveWithCpack(withSource, tmpDir, verbose):
 
 
 # convert runConfig to outMap
-def convertConfToOutput(runConfig, extOutFile, original_outDS, destination="", spaceToken="", descriptionInLFN="", allowNoOutput=None, appendFileFieldToStreamName=False, useEXTStreamName=True, extOutStreams=None):
+def convertConfToOutput(
+    runConfig,
+    extOutFile,
+    original_outDS,
+    destination="",
+    spaceToken="",
+    descriptionInLFN="",
+    allowNoOutput=None,
+    appendFileFieldToStreamName=False,
+    useEXTStreamName=True,
+    extOutStreams=None,
+):
     tmpLog = PLogger.getPandaLogger()
     outMap = {}
     paramList = []
@@ -1198,7 +1212,7 @@ def convertConfToOutput(runConfig, extOutFile, original_outDS, destination="", s
                 tmpLog.error("Missmatched --outputStreamNames (%s) to ext output files (%s)" % extOutStreams, extOutFile)
                 sys.exit(EC_Config)
             if len(extOutStreams) != len(set(extOutStreams)):
-                tmpLog.error(f"All output stream names indicated with --outputStreamNames (%s) must be different" % extOutStreams)
+                tmpLog.error("All output stream names indicated with --outputStreamNames (%s) must be different" % extOutStreams)
                 sys.exit(EC_Config)
         streams = []
         for sIndex, sName in enumerate(extOutFile):
@@ -1207,7 +1221,9 @@ def convertConfToOutput(runConfig, extOutFile, original_outDS, destination="", s
             if sName.find("*") != -1:
                 sName = sName.replace("*", "XYZ")
                 sName = "%s.tgz" % sName
-            tmpStreamName = getExtendedExtStreamName(sIndex, sName, appendFileFieldToStreamName, useEXTStreamName) if extOutStreams is None else extOutStreams[sIndex]
+            tmpStreamName = (
+                getExtendedExtStreamName(sIndex, sName, appendFileFieldToStreamName, useEXTStreamName) if extOutStreams is None else extOutStreams[sIndex]
+            )
             streams.append(tmpStreamName)
             lfn = "%s.%s._${SN/P}.%s" % (outDSwoSlash, tmpStreamName, sName)
             tmpSuffix = "_%s" % tmpStreamName
@@ -1215,7 +1231,7 @@ def convertConfToOutput(runConfig, extOutFile, original_outDS, destination="", s
             outMap["IROOT"].append((origSName, lfn))
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
         if len(streams) != len(set(streams)):
-            tmpLog.error(f"All output stream names taken from the %OUT declarations (e.g. %OUT.streamname.root) and --extOutFile must be different")
+            tmpLog.error("All output stream names taken from the %OUT declarations (e.g. %OUT.streamname.root) and --extOutFile must be different")
             sys.exit(EC_Config)
     if runConfig.output.outTAGX:
         for sName, oName in runConfig.output.outTAGX:

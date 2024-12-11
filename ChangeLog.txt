@@ -1,7 +1,10 @@
 ** Release Notes
 
+1.5.82
+  * removed redundant f-formatted strings for python 2
+
 1.5.81
-  * Fix --appendStrToExtStream, and add other options for --trf stream names https://github.com/PanDAWMS/panda-client/pull/41
+  * fixed --appendStrToExtStream, and add other options for --trf stream names https://github.com/PanDAWMS/panda-client/pull/41
   * allowing ramCount in newOpts of pbook.retry
   * added --tarBallViaDDM to prun/pathena
 
