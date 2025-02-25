@@ -2210,8 +2210,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     taskParamMap["nMaxFilesPerJob"] = options.maxNFilesPerJob
     if options.useNewCode:
         taskParamMap["fixedSandbox"] = archiveName
-    if options.maxCpuCount > 0:
-        taskParamMap["walltime"] = -options.maxCpuCount
     if options.noLoopingCheck:
         taskParamMap["noLoopingCheck"] = True
     if options.maxWalltime > 0:

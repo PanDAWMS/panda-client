@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.83
+  * removed legacy code to set negative walltime
+
 1.5.82
   * removed redundant f-formatted strings for python 2
 
