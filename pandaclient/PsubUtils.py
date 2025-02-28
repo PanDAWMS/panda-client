@@ -92,6 +92,10 @@ def get_proxy_info(force, verbose):
                 status = 1
             else:
                 status = 0
+            if "PANDA_NICKNAME_REPLACE" in os.environ:
+                # remove separator from <sep>src<sep>dst<sep>
+                src, dst = os.environ["PANDA_NICKNAME_REPLACE"][1:-1].split(os.environ["PANDA_NICKNAME_REPLACE"][0])
+                nickname = re.sub(src, dst, nickname)
             cacheVomsInfo = (status, (uid, groups, nickname))
     return cacheVomsInfo
 
@@ -214,16 +218,24 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
             return False
     # official dataset
     if official:
+        if "PANDA_PRODUCTION_ROLE" in os.environ:
+            role_name = os.environ["PANDA_PRODUCTION_ROLE"]
+        else:
+            role_name = "production"
         status, output = get_proxy_info(False, verbose)
         # extract production role
         prodGroups = []
         if Client.use_oidc():
+            if verbose:
+                print("== check roles ==")
             for tmpLine in output[1]:
+                if verbose:
+                    print(tmpLine)
                 tmpItems = tmpLine.split("/")
                 if len(tmpItems) != 2:
                     continue
                 tmpVO, tmpRole = tmpLine.split("/")
-                if tmpRole == "production":
+                if tmpRole == role_name:
                     prodGroups.append(tmpVO)
         else:
             for tmpLine in output.split("\n"):
@@ -234,9 +246,13 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
                         prodGroups.append(match.group(1))
         # no production role
         if prodGroups == []:
-            errStr = "The --official option requires production role. Please use the --voms option to set production role;\n"
-            errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
-            errStr += "If you don't have production role for the group please request it in ATLAS VO first"
+            errStr = "The --official option requires %s role. " % role_name
+            if not Client.use_oidc():
+                errStr += "Please use the --voms option to set production role;\n"
+                errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
+                errStr += "If you don't have production role for the group please request it in ATLAS VO first"
+            else:
+                errStr += "Please request to add you in the %s group in IAM" % role_name
             tmpLog.error(errStr)
             return False
         # loop over all prefixes
@@ -248,14 +264,14 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
                 if re.search(tmpPattO, outDS) is not None or re.search(tmpPattN, outDS) is not None:
                     return True
         # didn't match
-        errStr = "Your proxy is allowed to produce official datasets\n"
-        errStr += "        with the following prefix\n"
+        errStr = "You are allowed to produce official datasets with the following prefix\n"
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
                 tmpPattN = "%s.%s" % (tmpPrefix, tmpGroup)
                 errStr += "          %s\n" % tmpPattN
-        errStr += "If you have production role for another group please use the --voms option to set the role\n"
-        errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
+        if not Client.use_oidc():
+            errStr += "If you have production role for another group please use the --voms option to set the role\n"
+            errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
         tmpLog.error(errStr)
         return False
     # check output dataset format

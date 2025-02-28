@@ -2363,6 +2363,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     dsIndex += 1
             else:
                 tmpNewLFN = tmpLFN
+                # disallowed character
+                if "/" in tmpNewLFN:
+                    tmp_err_msg = "An output file name %s contains '/'." % tmpNewLFN
+                    tmpLog.error(tmp_err_msg)
+                    sys.exit(EC_Config)
                 # change * to XYZ and add .tgz
                 if "*" in tmpNewLFN:
                     tmpNewLFN = tmpNewLFN.replace("*", "XYZ")

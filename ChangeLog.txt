@@ -1,5 +1,9 @@
 ** Release Notes
 
+1.5.84
+  * added protection against / in output file names
+  * introduced PANDA_NICKNAME_REPLACE and PANDA_PRODUCTION_ROLE
+
 1.5.83
   * removed legacy code to set negative walltime
 
