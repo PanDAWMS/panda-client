@@ -2069,6 +2069,16 @@ else:
                 "to the argument. Please ignore this message if you limit the number of events "
                 "in each job by using another trf parameter"
             )
+    # warning for multicore/thread
+    if options.nCore > 1 or options.nThreads > 1:
+        if "--multiprocess" not in jobO and "--multithreaed" not in jobO:
+            tmp_msg = "Neither --multiprocess or --multithreaed is set in --trf despite "
+            if options.nCore > 1:
+                tmp_msg += "--nCore=%s " % options.nCore
+            else:
+                tmp_msg += "--nThreads=%s " % options.nThreads
+            tmp_msg += "which may cause inefficient CPU usage on MCORE resources"
+            tmpLog.warning(tmp_msg)
 
 # no output jobs
 tmpOutKeys = list(runConfig.output)

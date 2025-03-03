@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.85
+  * warning message in pathena when --nCore/nThreads>1 and --multiprocess or --multithreaed is missing in --trf
+
 1.5.84
   * added protection against / in output file names
   * introduced PANDA_NICKNAME_REPLACE and PANDA_PRODUCTION_ROLE
