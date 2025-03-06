@@ -1127,25 +1127,6 @@ def setGlobalTmpDir(tmpDir):
     globalTmpDir = tmpDir
 
 
-# get client version
-def getPandaClientVer(verbose):
-    # instantiate curl
-    curl = _Curl()
-    curl.verbose = verbose
-    # execute
-    url = baseURL + "/getPandaClientVer"
-    status, output = curl.get(url, {})
-    output = str_decode(output)
-    # failed
-    if status != 0:
-        return status, output
-    # check format
-    if re.search("^\d+\.\d+\.\d+$", output) is None:
-        return EC_Failed, "invalid version '%s'" % output
-    # return
-    return status, output
-
-
 # get list of cache prefix
 # OBSOLETE to be removed in a future release
 def getCachePrefixes(verbose):
