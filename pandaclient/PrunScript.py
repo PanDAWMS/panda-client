@@ -764,14 +764,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         default=False,
         help="Suppress email notification",
     )
-    group_prun.add_argument(
-        "--update",
-        action="store_const",
-        const=True,
-        dest="update",
-        default=False,
-        help="Update panda-client to the latest version",
-    )
     group_output.add_argument(
         "--spaceToken",
         action="store",
@@ -1283,13 +1275,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         sys.exit(0)
 
     from pandaclient import AthenaUtils, Client, PLogger, PsubUtils
-
-    # update panda-client
-    if options.update:
-        res = PsubUtils.updatePackage(options.verbose)
-        if res:
-            sys.exit(0)
-        sys.exit(1)
 
     # full execution string
     fullExecString = PsubUtils.convSysArgv()

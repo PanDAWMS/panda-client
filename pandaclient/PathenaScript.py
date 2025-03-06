@@ -731,14 +731,6 @@ group_submit.add_argument(
     default=False,
     help="Suppress email notification",
 )
-group_pathena.add_argument(
-    "--update",
-    action="store_const",
-    const=True,
-    dest="update",
-    default=False,
-    help="Update panda-client to the latest version",
-)
 group_build.add_argument(
     "--noBuild",
     action="store_const",
@@ -1431,14 +1423,6 @@ if options.version:
     sys.exit(0)
 
 from pandaclient import AthenaUtils, Client, PLogger, PsubUtils
-
-# update panda-client
-if options.update:
-    res = PsubUtils.updatePackage(options.verbose)
-    if res:
-        sys.exit(0)
-    else:
-        sys.exit(1)
 
 # full execution string
 fullExecString = PsubUtils.convSysArgv()
