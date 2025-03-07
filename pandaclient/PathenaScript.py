@@ -2055,8 +2055,8 @@ else:
             )
     # warning for multicore/thread
     if options.nCore > 1 or options.nThreads > 1:
-        if "--multiprocess" not in jobO and "--multithreaed" not in jobO:
-            tmp_msg = "Neither --multiprocess or --multithreaed is set in --trf despite "
+        if "--multiprocess" not in jobO and "--multithreaded" not in jobO:
+            tmp_msg = "Neither --multiprocess or --multithreaded is set in --trf despite "
             if options.nCore > 1:
                 tmp_msg += "--nCore=%s " % options.nCore
             else:
