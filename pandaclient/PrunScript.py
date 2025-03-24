@@ -2560,6 +2560,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             "value": '--inMap "%s"' % strInMap,
         }
         taskParamMap["jobParameters"] += [dictItem]
+        taskParamMap["reuseSecOnDemand"] = True
 
     # misc
     jobParameters = ""

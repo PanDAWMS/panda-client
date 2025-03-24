@@ -2991,6 +2991,7 @@ if options.secondaryDSs:
         "value": '-m "${{{0}/T}}"'.format(",".join([tmpMap["streamName"] for tmpMap in options.secondaryDSs.values()])),
     }
     taskParamMap["jobParameters"] += [dictItem]
+    taskParamMap["reuseSecOnDemand"] = True
 
 # output
 if options.addNthFieldOfInDSToLFN != "" or options.addNthFieldOfInFileToLFN != "":
