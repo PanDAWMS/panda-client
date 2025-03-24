@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.88
+  * using reuseSecOnDemand by default for secondary datasets
+
 1.5.87
   * fixed typo in a message
 
