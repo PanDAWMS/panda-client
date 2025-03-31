@@ -813,7 +813,8 @@ group_submit.add_argument(
     dest="nCore",
     default=-1,
     type=int,
-    help="The number of CPU cores. Note that the system distinguishes only nCore=1 and nCore>1. This means that even if you set nCore=2 jobs can go to sites with nCore=8 and your application must use the 8 cores there. The number of available cores is defined in an environment variable, $ATHENA_PROC_NUMBER, on WNs. Your application must check the env variable when starting up to dynamically change the number of cores",
+    choices=[1, 8],
+    help="The number of CPU cores. nCore=1 or 8. The number of available cores is defined in an environment variable, $ATHENA_CORE_NUMBER, on WNs, or %%CORE_NUMBER in --trf",
 )
 action = group_job.add_argument(
     "--nThreads",
@@ -821,7 +822,8 @@ action = group_job.add_argument(
     dest="nThreads",
     default=-1,
     type=int,
-    help="The number of threads for AthenaMT. If this option is set to larger than 1, Athena is executed with --threads=$ATHENA_PROC_NUMBER at sites which have nCore>1. This means that even if you set nThreads=2 jobs can go to sites with nCore=8 and your application will use the 8 cores there",
+    choices=[1, 8],
+    help="The number of threads for AthenaMT. If this option is set to 8, Athena is executed with --threads=$ATHENA_PROC_NUMBER at sites. The number of available threads is defined in an environment variable, $ATHENA_PROC_NUMBER, on WNs, or %%PROC_NUMBER in --trf",
 )
 group_submit.shareWithMe(action)
 group_input.add_argument(
