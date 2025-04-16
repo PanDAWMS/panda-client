@@ -319,6 +319,10 @@ class _Curl:
                 o = eval(tmpout)
             except Exception:
                 pass
+
+        if json_out:
+            o = json.loads(o)
+
         if via_file:
             with open(tmpNameOut, "rb") as f:
                 ret = (s, f.read())
@@ -544,15 +548,15 @@ class _NativeCurl(_Curl):
         if data:
             url = "{}?{}".format(url, urlencode(data))
 
-        header = {}
-        if json_out:
-            header["Content-Type"] = "application/json"
-
         for i_try in range(n_try):
-            code, text = self.http_method(url, {}, header=header)
+            code, output = self.http_method(url, {}, {}, is_json=json_out)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
+
+        if json_out:
+            text = json.loads(text)
+
         if code == 0 and output_name:
             with open(output_name, "wb") as f:
                 f.write(text)
