@@ -1127,58 +1127,6 @@ def setGlobalTmpDir(tmpDir):
     globalTmpDir = tmpDir
 
 
-# get list of cache prefix
-# OBSOLETE to be removed in a future release
-def getCachePrefixes(verbose):
-    # instantiate curl
-    curl = _Curl()
-    curl.verbose = verbose
-    # execute
-    url = baseURL + "/getCachePrefixes"
-    status, output = curl.get(url, {})
-    # failed
-    if status != 0:
-        print(output)
-        errStr = "cannot get the list of Athena projects"
-        tmpLog = PLogger.getPandaLogger()
-        tmpLog.error(errStr)
-        sys.exit(EC_Failed)
-    # return
-    try:
-        tmpList = pickle_loads(output)
-        tmpList.append("AthAnalysisBase")
-        return tmpList
-    except Exception as e:
-        dump_log("getCachePrefixes", e, output)
-        sys.exit(EC_Failed)
-
-
-# get list of cmtConfig
-# OBSOLETE to be removed in a future release
-def getCmtConfigList(athenaVer, verbose):
-    # instantiate curl
-    curl = _Curl()
-    curl.verbose = verbose
-    # execute
-    url = baseURL + "/getCmtConfigList"
-    data = {}
-    data["relaseVer"] = athenaVer
-    status, output = curl.get(url, data)
-    # failed
-    if status != 0:
-        print(output)
-        errStr = "cannot get the list of cmtconfig for %s" % athenaVer
-        tmpLog = PLogger.getPandaLogger()
-        tmpLog.error(errStr)
-        sys.exit(EC_Failed)
-    # return
-    try:
-        return pickle_loads(output)
-    except Exception as e:
-        dump_log("getCmtConfigList", e, output)
-        sys.exit(EC_Failed)
-
-
 # request EventPicking
 def requestEventPicking(
     eventPickEvtList,
