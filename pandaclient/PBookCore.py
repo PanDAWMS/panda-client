@@ -412,7 +412,7 @@ class PBookCore(object):
         if value and len(value) > size_limit * 1024:
             tmpLog.error("The value length exceeds the limit ({0} kB)".format(size_limit))
             return False
-        status, output = Client.set_user_secert(key, value, verbose=self.verbose)
+        status, output = Client.set_user_secret(key, value, verbose=self.verbose)
         if status != 0:
             tmpLog.error(output)
             tmpLog.error("Failed to set secret")
@@ -429,7 +429,7 @@ class PBookCore(object):
     def list_secrets(self, full=False):
         # get logger
         tmpLog = PLogger.getPandaLogger()
-        status, output = Client.get_user_secerts(verbose=self.verbose)
+        status, output = Client.get_user_secrets(verbose=self.verbose)
         if status != 0:
             tmpLog.error(output)
             tmpLog.error("Failed to get secrets")

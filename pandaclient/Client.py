@@ -44,6 +44,7 @@ try:
     baseURL = os.environ["PANDA_URL"]
 except Exception:
     baseURL = "http://pandaserver.cern.ch:25080/server/panda"
+
 try:
     baseURLSSL = os.environ["PANDA_URL_SSL"]
 except Exception:
@@ -1772,7 +1773,7 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
 
 
 # set user secret
-def set_user_secert(key, value, verbose=False):
+def set_user_secret(key, value, verbose=False):
     """Set a user secret
     args:
        key: secret name. None to delete all secrets
@@ -1813,7 +1814,7 @@ def set_user_secert(key, value, verbose=False):
 
 
 # get user secret
-def get_user_secerts(verbose=False):
+def get_user_secrets(verbose=False):
     """Get user secrets
     args:
        verbose: True to see verbose message
