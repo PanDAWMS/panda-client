@@ -1521,7 +1521,7 @@ def hello(verbose=False):
             tmp_log.error(tmp_message)
             return EC_Failed, tmp_message
 
-        tmp_log.info(message)
+        tmp_log.info("Done with success={0} and message='{1}'".format(success, message))
         return 0, message
 
     except Exception as e:
