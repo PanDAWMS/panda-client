@@ -549,7 +549,7 @@ class _NativeCurl(_Curl):
             url = "{}?{}".format(url, urlencode(data))
 
         for i_try in range(n_try):
-            code, output = self.http_method(url, {}, {}, is_json=json_out)
+            code, text = self.http_method(url, {}, {}, is_json=json_out)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
