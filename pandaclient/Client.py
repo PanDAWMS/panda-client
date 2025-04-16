@@ -42,18 +42,27 @@ from .MiscUtils import commands_get_output, commands_get_status_output, pickle_l
 # configuration
 try:
     baseURL = os.environ["PANDA_URL"]
+    parsed = urlparse(baseURL)
+    server_base_path = f"{parsed.scheme}://{parsed.netloc}/api/v1"
 except Exception:
     baseURL = "http://pandaserver.cern.ch:25080/server/panda"
+    server_base_path = "http://pandaserver.cern.ch:25080/api/v1"
 
 try:
     baseURLSSL = os.environ["PANDA_URL_SSL"]
+    parsed = urlparse(baseURLSSL)
+    server_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
 except Exception:
     baseURLSSL = "https://pandaserver.cern.ch/server/panda"
+    server_base_path_ssl = "https://pandaserver.cern.ch:25443/server/panda"
 
 if "PANDACACHE_URL" in os.environ:
     baseURLCSRVSSL = os.environ["PANDACACHE_URL"]
+    parsed = urlparse(baseURLCSRVSSL)
+    cache_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
 else:
     baseURLCSRVSSL = "https://pandacache.cern.ch/server/panda"
+    cache_base_path_ssl = "https://pandacache.cern.ch:25443/server/panda"
 
 # exit code
 EC_Failed = 255
@@ -1483,26 +1492,31 @@ def hello(verbose=False):
     curl.sslKey = _x509()
     curl.verbose = verbose
     # execute
-    url = baseURLSSL + "/isAlive"
+    url = server_base_path_ssl + "system/is_alive"
     try:
-        status, output = curl.post(url, {})
-        output = str_decode(output)
+        status, response = curl.get(url, {})
+
+        # Communication issue with PanDA server
         if status != 0:
-            msg = "Not good. " + output
-            tmp_log.error(msg)
-            return EC_Failed, msg
-        elif output != "alive=yes":
-            msg = "Not good. " + output
-            tmp_log.error(msg)
-            return EC_Failed, msg
-        else:
-            msg = "OK"
-            tmp_log.info(msg)
-            return 0, msg
+            tmp_message = "Communication issue. " + response
+            tmp_log.error(tmp_message)
+            return EC_Failed, tmp_message
+
+        response = str_decode(response)
+        success = response.get("success", False)
+        message = response.get("message", "")
+        if not success:
+            tmp_message = "Problem with is_alive. " + message
+            tmp_log.error(tmp_message)
+            return EC_Failed, tmp_message
+
+        tmp_log.info(message)
+        return 0, message
+
     except Exception as e:
-        msg = "Too bad. {}".format(str(e))
-        tmp_log.error(msg)
-        return EC_Failed, msg
+        tmp_message = "Exception. {}".format(str(e))
+        tmp_log.error(tmp_message)
+        return EC_Failed, tmp_message
 
 
 # get certificate attributes
