@@ -253,7 +253,7 @@ class _Curl:
         return url.replace(host, random.choice(host_names))
 
     # GET method
-    def get(self, url, data, rucioAccount=False, via_file=False, n_try=1):
+    def get(self, url, data, rucioAccount=False, via_file=False, n_try=1, json_out=False):
         use_https = is_https(url)
         # make command
         com = "%s --silent --get" % self.path
@@ -277,6 +277,8 @@ class _Curl:
             if not self.sslKey:
                 self.sslKey = _x509()
             com += " --key %s" % self.sslKey
+        if json_out:
+            com += ' -H "Accept: application/json"'
         # max time of 10 min
         com += " -m 600"
         # add rucio account info
@@ -538,11 +540,16 @@ class _NativeCurl(_Curl):
             return 1, errMsg
 
     # GET method
-    def get(self, url, data, rucioAccount=False, via_file=False, output_name=None, n_try=1):
+    def get(self, url, data, rucioAccount=False, via_file=False, output_name=None, n_try=1, json_out=False):
         if data:
             url = "{}?{}".format(url, urlencode(data))
+
+        header = {}
+        if json_out:
+            header["Content-Type"] = "application/json"
+
         for i_try in range(n_try):
-            code, text = self.http_method(url, {}, {})
+            code, text = self.http_method(url, {}, header=header)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
@@ -1492,9 +1499,9 @@ def hello(verbose=False):
     curl.sslKey = _x509()
     curl.verbose = verbose
     # execute
-    url = server_base_path_ssl + "system/is_alive"
+    url = server_base_path_ssl + "/system/is_alive"
     try:
-        status, response = curl.get(url, {})
+        status, response = curl.get(url, {}, json_out=True)
 
         # Communication issue with PanDA server
         if status != 0:
