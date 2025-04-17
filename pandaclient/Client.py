@@ -696,7 +696,7 @@ def getJobStatus(ids, verbose=False, no_pickle=False):
     url = server_base_path_ssl + "/job/get_description_incl_archive"
     data = {"job_ids": ids}
 
-    status, output = curl.get(url, data, via_file=True, json_out=True)
+    status, output = curl.get(url, data, via_file=True, json_out=True, repeating_keys=True)
 
     if isinstance(output, str):
         dump_log("getJobStatus", None, output)
