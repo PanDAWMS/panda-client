@@ -254,7 +254,7 @@ class _Curl:
         return url.replace(host, random.choice(host_names))
 
     # GET method
-    def get(self, url, data, rucioAccount=False, via_file=False, n_try=1, json_out=False):
+    def get(self, url, data, rucioAccount=False, via_file=False, n_try=1, json_out=False, repeating_keys=False):
         use_https = is_https(url)
         # make command
         com = "%s --silent --get" % self.path
@@ -289,10 +289,17 @@ class _Curl:
             if "RUCIO_APPID" in os.environ:
                 data["appid"] = os.environ["RUCIO_APPID"]
             data["client_version"] = "2.4.1"
+
         # data
         strData = ""
         for key in data.keys():
-            strData += 'data="%s"\n' % urlencode({key: data[key]})
+            value = data[key]
+            if repeating_keys and isinstance(value, list):
+                for element in value:
+                    strData += 'data="%s"\n' % urlencode({key: element})
+            else:
+                strData += 'data="%s"\n' % urlencode({key: value})
+
         # write data to temporary config file
         if globalTmpDir != "":
             tmpFD, tmpName = tempfile.mkstemp(dir=globalTmpDir)
@@ -551,9 +558,9 @@ class _NativeCurl(_Curl):
             return 1, errMsg
 
     # GET method
-    def get(self, url, data, rucioAccount=False, via_file=False, output_name=None, n_try=1, json_out=False):
+    def get(self, url, data, rucioAccount=False, via_file=False, output_name=None, n_try=1, json_out=False, repeating_keys=False):
         if data:
-            url = "{}?{}".format(url, urlencode(data))
+            url = "{}?{}".format(url, urlencode(data, doseq=repeating_keys))
 
         for i_try in range(n_try):
             code, text = self.http_method(url, {}, {}, is_json=json_out)
