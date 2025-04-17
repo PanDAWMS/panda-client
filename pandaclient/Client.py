@@ -667,32 +667,24 @@ def getJobStatus(ids, verbose=False, no_pickle=False):
     args:
         ids: a list of PanDA IDs
         verbose: True to see verbose messages
-        no_pickle: True to use json instead of pickle
+        no_pickle: obsolete parameter left for backwards compatibility
     returns:
         status code
               0: communication succeeded to the panda server
               255: communication failure
         a list of job specs, or None if failed
     """
-    # serialize
-    if not no_pickle:
-        strIDs = pickle.dumps(ids, protocol=0)
-    else:
-        strIDs = ids
+
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
     # execute
-    url = baseURL + "/getJobStatus"
-    data = {"ids": strIDs}
-    if no_pickle:
-        data["no_pickle"] = True
-    status, output = curl.post(url, data, via_file=True)
+    url = baseURL + "/job/get_description_incl_archive"
+    data = {"job_ids": ids}
+
+    status, output = curl.get(url, data, via_file=True, json_out=True)
     try:
-        if not no_pickle:
-            return status, pickle_loads(output)
-        else:
-            return status, MiscUtils.load_jobs_json(output)
+        return status, MiscUtils.load_jobs_json(output.get(data))
     except Exception as e:
         dump_log("getJobStatus", e, output)
         return EC_Failed, None
@@ -912,7 +904,7 @@ def getFile(filename, output_path=None, verbose=False, n_try=1):
     """Get a file
     args:
        filename: filename to be downloaded
-       output_path: output path. set to filename if unspecified
+       output_path: output path. Set to filename if unspecified
        verbose: True to see debug messages
        n_try: number of tries
     returns:
