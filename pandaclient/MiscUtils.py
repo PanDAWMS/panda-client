@@ -367,6 +367,15 @@ def load_jobs_json(state):
         jobs.append(job_spec)
     return jobs
 
+# load dictionary list into jobs
+def load_jobs(job_dicts):
+    jobs = []
+    for job_dict in job_dicts:
+        job_spec = JobSpec.JobSpec()
+        job_spec.load_from_json_serializable(job_dict)
+        jobs.append(job_spec)
+    return jobs
+
 
 # ask a yes/no question and return answer
 def query_yes_no(question):

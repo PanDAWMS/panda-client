@@ -715,7 +715,7 @@ def getJobStatus(ids, verbose=False, no_pickle=False):
         return EC_Failed, None
 
     try:
-        return status, MiscUtils.load_jobs_json(jobs)
+        return status, MiscUtils.load_jobs(jobs)
     except Exception as e:
         dump_log("getJobStatus", e, output)
         return EC_Failed, None
