@@ -681,6 +681,46 @@ def getJobStatus(ids, verbose=False, no_pickle=False):
     args:
         ids: a list of PanDA IDs
         verbose: True to see verbose messages
+        no_pickle: True to use json instead of pickle
+    returns:
+        status code
+              0: communication succeeded to the panda server
+              255: communication failure
+        a list of job specs, or None if failed
+    """
+    # serialize
+    if not no_pickle:
+        strIDs = pickle.dumps(ids, protocol=0)
+    else:
+        strIDs = ids
+    # instantiate curl
+    curl = _Curl()
+    curl.verbose = verbose
+    # execute
+    url = baseURL + "/getJobStatus"
+    data = {"ids": strIDs}
+    if no_pickle:
+        data["no_pickle"] = True
+    status, output = curl.post(url, data, via_file=True)
+    try:
+        if not no_pickle:
+            return status, pickle_loads(output)
+        else:
+            return status, MiscUtils.load_jobs_json(output)
+    except Exception as e:
+        dump_log("getJobStatus", e, output)
+        return EC_Failed, None
+
+# get job statuses
+# TODO: confirm with Tadashi if this method is needed. Only HC calls the server method, probably from
+#  panda_server.UserInterface. There is a typo in load_jobs_json, which does JobSpec.JobSpec(), but the
+#  import is already getting the class.
+def getJobStatus_new(ids, verbose=False, no_pickle=False):
+    """Get status of jobs
+
+    args:
+        ids: a list of PanDA IDs
+        verbose: True to see verbose messages
         no_pickle: obsolete parameter left for backwards compatibility
     returns:
         status code
