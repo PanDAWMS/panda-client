@@ -362,7 +362,7 @@ def load_jobs_json(state):
     state_objects = json.loads(state, object_hook=as_python_object)
     jobs = []
     for job_state in state_objects:
-        job_spec = JobSpec.JobSpec()
+        job_spec = JobSpec()
         job_spec.load_from_json_serializable(job_state)
         jobs.append(job_spec)
     return jobs
@@ -371,7 +371,7 @@ def load_jobs_json(state):
 def load_jobs(job_dicts):
     jobs = []
     for job_dict in job_dicts:
-        job_spec = JobSpec.JobSpec()
+        job_spec = JobSpec()
         job_spec.load_from_json_serializable(job_dict)
         jobs.append(job_spec)
     return jobs

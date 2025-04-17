@@ -712,9 +712,6 @@ def getJobStatus(ids, verbose=False, no_pickle=False):
         return EC_Failed, None
 
 # get job statuses
-# TODO: confirm with Tadashi if this method is needed. Only HC calls the server method, probably from
-#  panda_server.UserInterface. There is a typo in load_jobs_json, which does JobSpec.JobSpec(), but the
-#  import is already getting the class.
 def getJobStatus_new(ids, verbose=False, no_pickle=False):
     """Get status of jobs
 
