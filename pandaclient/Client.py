@@ -332,7 +332,10 @@ class _Curl:
 
         # when specified, convert to json
         if json_out:
-            ret = (ret[0], json.loads(ret[1]))
+            try:
+                ret = (ret[0], json.loads(ret[1]))
+            except Exception:
+                ret = (ret[0], ret[1])
 
         ret = self.convRet(ret)
 
@@ -687,8 +690,25 @@ def getJobStatus(ids, verbose=False, no_pickle=False):
     data = {"job_ids": ids}
 
     status, output = curl.get(url, data, via_file=True, json_out=True)
+
+    if isinstance(output, str):
+        dump_log("getJobStatus", None, output)
+        return EC_Failed, None
+
+    if not isinstance(output, dict):
+        dump_log("getJobStatus", None, output)
+        return EC_Failed, None
+
+    success = output.get("success")
+    jobs = output.get("data")
+    message = output.get("message")
+
+    if not success:
+        dump_log("getJobStatus", None, message)
+        return EC_Failed, None
+
     try:
-        return status, MiscUtils.load_jobs_json(output.get(data))
+        return status, MiscUtils.load_jobs_json(jobs)
     except Exception as e:
         dump_log("getJobStatus", e, output)
         return EC_Failed, None
