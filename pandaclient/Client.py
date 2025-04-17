@@ -15,11 +15,12 @@ import time
 import traceback
 
 try:
+    # python 2
     from urllib import unquote_plus, urlencode
-
     from urllib2 import HTTPError, Request, urlopen
     from urlparse import urlparse
 except ImportError:
+    # python 3
     from urllib.parse import urlencode, unquote_plus, urlparse
     from urllib.request import urlopen, Request
     from urllib.error import HTTPError
@@ -320,9 +321,6 @@ class _Curl:
             except Exception:
                 pass
 
-        if json_out:
-            o = json.loads(o)
-
         if via_file:
             with open(tmpNameOut, "rb") as f:
                 ret = (s, f.read())
@@ -331,7 +329,13 @@ class _Curl:
             ret = (s, o)
         # remove temporary file
         os.remove(tmpName)
+
+        # when specified, convert to json
+        if json_out:
+            ret = (ret[0], json.loads(ret[1]))
+
         ret = self.convRet(ret)
+
         if self.verbose:
             print(ret)
         return ret
