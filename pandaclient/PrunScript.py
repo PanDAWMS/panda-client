@@ -1366,7 +1366,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     PsubUtils.get_warning_for_pq(options.site, options.excludedSite, tmpLog)
 
     # warning for memory
-    is_confirmed = PsubUtils.get_warning_for_memory(options.memory, options.is_confirmed, tmpLog)
+    is_confirmed = PsubUtils.get_warning_for_memory(options.memory, options.is_confirmed, options.nCore, tmpLog)
     if not is_confirmed:
         sys.exit(0)
 
