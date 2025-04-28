@@ -775,14 +775,17 @@ def get_warning_for_pq(site, excluded_site, tmp_log):
 
 
 # warning message for memory
-def get_warning_for_memory(memory, is_confirmed, tmp_log):
+def get_warning_for_memory(memory, is_confirmed, n_core, tmp_log):
     if memory > 4000:
-        tmp_log.warning(
+        tmp_str = (
             "You are requesting {0} MB/core which severely restricts the available resources to run on. "
-            "Your task will take longer or may not run at all. Check if you really need this, "
-            "and maybe "
-            "improve the code.".format(memory)
+            "Your task will take longer or may not run at all. Check if you really need this. "
+            "Maybe improve the code".format(memory)
         )
+        if n_core <= 1:
+            tmp_str += " or if the payload supports MT/MP then use --nCore=8 to reduce the memory per core"
+        tmp_str += "."
+        tmp_log.warning(tmp_str)
         if not is_confirmed:
             return MiscUtils.query_yes_no("\nAre you sure with the memory requirement? ")
     return True
