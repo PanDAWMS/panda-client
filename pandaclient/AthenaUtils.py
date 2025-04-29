@@ -8,6 +8,7 @@ from .MiscUtils import (
     commands_get_output,
     commands_get_output_with_env,
 )
+from .PsubUtils import check_invalid_char
 
 # error code
 EC_Config = 10
@@ -1348,8 +1349,18 @@ def convertConfToOutput(
                     outMap["UserData"] = []
                 outMap["UserData"].append(foundLFN)
     # remove IROOT if unnecessary
-    if "IROOT" in outMap and outMap["IROOT"] == []:
-        del outMap["IROOT"]
+    if "IROOT" in outMap:
+        if outMap["IROOT"] == []:
+            del outMap["IROOT"]
+        else:
+            # check invalid characters
+            for stream, lfn in outMap["IROOT"]:
+                checked = check_invalid_char(stream, is_file=True)
+                if checked is not None:
+                    tmp_log = PLogger.getPandaLogger()
+                    tmp_log.error('Invalid character "%s" used in output filename %s' % (checked, stream))
+                    sys.exit(EC_Config)
+
     # set destination
     if destination != "":
         for tmpParam in paramList:
