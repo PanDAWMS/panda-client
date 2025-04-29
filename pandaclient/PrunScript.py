@@ -2801,7 +2801,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         tmpStr = ""
         taskID = None
         # check outDS format
-        if not PsubUtils.checkOutDsName(
+        if not dry_mode and not PsubUtils.checkOutDsName(
             options.outDS,
             options.official,
             nickName,
