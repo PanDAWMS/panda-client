@@ -180,12 +180,9 @@ def setRucioAccount(account, appid, forceSet):
         os.environ["RUCIO_APPID"] = appid
 
 
-# check name of output dataset
-def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=False):
-    # get logger
-    tmpLog = PLogger.getPandaLogger()
-    # check NG chars for SE
-    for tmpChar in [
+# invalid character check
+def check_invalid_char(s, is_file=False):
+    ng_list = [
         "%",
         "|",
         ";",
@@ -198,7 +195,6 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
         ")",
         "$",
         "@",
-        "*",
         ":",
         "=",
         "&",
@@ -211,11 +207,28 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
         "{",
         "}",
         "`",
-    ]:
-        if tmpChar in outDS:
-            errStr = 'invalid character "%s" is used in --outDS' % tmpChar
-            tmpLog.error(errStr)
-            return False
+    ]
+
+    # wildcard is allowed in filename
+    if not is_file:
+        ng_list += ["*"]
+
+    for tmp_char in ng_list:
+        if tmp_char in s:
+            return tmp_char
+    return None
+
+
+# check name of output dataset
+def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # check NG chars for SE
+    checked = check_invalid_char(outDS)
+    if checked is not None:
+        errStr = 'invalid character "%s" is used in --outDS' % checked
+        tmpLog.error(errStr)
+        return False
     # official dataset
     if official:
         if "PANDA_PRODUCTION_ROLE" in os.environ:

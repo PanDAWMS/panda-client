@@ -1,6 +1,7 @@
 ** Release Notes
 
-current
+1.5.90
+  * added invalid characters check in output filenames
   * added --nCore info in worning message related to --memory
 
 1.5.89
