@@ -1366,7 +1366,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     PsubUtils.get_warning_for_pq(options.site, options.excludedSite, tmpLog)
 
     # warning for memory
-    is_confirmed = PsubUtils.get_warning_for_memory(options.memory, options.is_confirmed, tmpLog)
+    is_confirmed = PsubUtils.get_warning_for_memory(options.memory, options.is_confirmed, options.nCore, tmpLog)
     if not is_confirmed:
         sys.exit(0)
 
@@ -2349,15 +2349,21 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     dsIndex += 1
             else:
                 tmpNewLFN = tmpLFN
+                # change * to XYZ and add .tgz
+                if "*" in tmpNewLFN:
+                    tmpNewLFN = tmpNewLFN.replace("*", "XYZ")
+                    tmpNewLFN += ".tgz"
                 # disallowed character
                 if "/" in tmpNewLFN:
                     tmp_err_msg = "An output file name %s contains '/'." % tmpNewLFN
                     tmpLog.error(tmp_err_msg)
                     sys.exit(EC_Config)
-                # change * to XYZ and add .tgz
-                if "*" in tmpNewLFN:
-                    tmpNewLFN = tmpNewLFN.replace("*", "XYZ")
-                    tmpNewLFN += ".tgz"
+                # check invalid characters
+                checked = PsubUtils.check_invalid_char(tmpNewLFN, is_file=True)
+                if checked is not None:
+                    tmp_err_msg = 'An output file name %s contains an invalid character "%s".' % (tmpNewLFN, checked)
+                    tmpLog.error(tmp_err_msg)
+                    sys.exit(EC_Config)
                 if len(outDatasetName.split(".")) > 2:
                     lfn = "{0}.{1}".format(*outDatasetName.split(".")[:2])
                 else:

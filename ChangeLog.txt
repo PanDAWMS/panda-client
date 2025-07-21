@@ -1,5 +1,12 @@
 ** Release Notes
 
+1.5.91
+  * fixed prun for pchain
+
+1.5.90
+  * added invalid characters check in output filenames
+  * added --nCore info in worning message related to --memory
+
 1.5.89
   * changed --nCore of pathena/prun to allow only 1 or 8
 

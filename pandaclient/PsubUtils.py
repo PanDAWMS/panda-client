@@ -180,12 +180,9 @@ def setRucioAccount(account, appid, forceSet):
         os.environ["RUCIO_APPID"] = appid
 
 
-# check name of output dataset
-def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=False):
-    # get logger
-    tmpLog = PLogger.getPandaLogger()
-    # check NG chars for SE
-    for tmpChar in [
+# invalid character check
+def check_invalid_char(s, is_file=False):
+    ng_list = [
         "%",
         "|",
         ";",
@@ -198,7 +195,6 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
         ")",
         "$",
         "@",
-        "*",
         ":",
         "=",
         "&",
@@ -211,11 +207,28 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
         "{",
         "}",
         "`",
-    ]:
-        if tmpChar in outDS:
-            errStr = 'invalid character "%s" is used in --outDS' % tmpChar
-            tmpLog.error(errStr)
-            return False
+    ]
+
+    # wildcard is allowed in filename
+    if not is_file:
+        ng_list += ["*"]
+
+    for tmp_char in ng_list:
+        if tmp_char in s:
+            return tmp_char
+    return None
+
+
+# check name of output dataset
+def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=False):
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+    # check NG chars for SE
+    checked = check_invalid_char(outDS)
+    if checked is not None:
+        errStr = 'invalid character "%s" is used in --outDS' % checked
+        tmpLog.error(errStr)
+        return False
     # official dataset
     if official:
         if "PANDA_PRODUCTION_ROLE" in os.environ:
@@ -775,14 +788,17 @@ def get_warning_for_pq(site, excluded_site, tmp_log):
 
 
 # warning message for memory
-def get_warning_for_memory(memory, is_confirmed, tmp_log):
+def get_warning_for_memory(memory, is_confirmed, n_core, tmp_log):
     if memory > 4000:
-        tmp_log.warning(
+        tmp_str = (
             "You are requesting {0} MB/core which severely restricts the available resources to run on. "
-            "Your task will take longer or may not run at all. Check if you really need this, "
-            "and maybe "
-            "improve the code.".format(memory)
+            "Your task will take longer or may not run at all. Check if you really need this. "
+            "Maybe improve the code".format(memory)
         )
+        if n_core <= 1:
+            tmp_str += " or if the payload supports MT/MP then use --nCore=8 to reduce the memory per core"
+        tmp_str += "."
+        tmp_log.warning(tmp_str)
         if not is_confirmed:
             return MiscUtils.query_yes_no("\nAre you sure with the memory requirement? ")
     return True
