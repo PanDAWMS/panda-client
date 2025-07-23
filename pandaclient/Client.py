@@ -254,18 +254,20 @@ class _Curl:
         return url.replace(host, random.choice(host_names))
 
     # GET method
-    def get(self, url, data, rucioAccount=False, via_file=False, n_try=1, json_out=False, repeating_keys=False):
+    def get(self, url, data, rucio_account=False, via_file=False, n_try=1, json_out=False, repeating_keys=False):
         use_https = is_https(url)
         # make command
         com = "%s --silent --get" % self.path
         if not self.verifyHost or not use_https:
             com += " --insecure"
         else:
-            tmp_x509_CApath = _x509_CApath()
-            if tmp_x509_CApath != "":
-                com += " --capath %s" % tmp_x509_CApath
+            tmp_x509_ca_path = _x509_CApath()
+            if tmp_x509_ca_path != "":
+                com += " --capath %s" % tmp_x509_ca_path
+
         if self.compress:
             com += " --compressed"
+
         if self.authMode == "oidc":
             self.get_id_token()
             com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
@@ -278,12 +280,15 @@ class _Curl:
             if not self.sslKey:
                 self.sslKey = _x509()
             com += " --key %s" % self.sslKey
+
         if json_out:
             com += ' -H "Accept: application/json"'
+
         # max time of 10 min
         com += " -m 600"
+
         # add rucio account info
-        if rucioAccount:
+        if rucio_account:
             if "RUCIO_ACCOUNT" in os.environ:
                 data["account"] = os.environ["RUCIO_ACCOUNT"]
             if "RUCIO_APPID" in os.environ:
@@ -291,31 +296,31 @@ class _Curl:
             data["client_version"] = "2.4.1"
 
         # data
-        strData = ""
+        data_string = ""
         for key in data.keys():
             value = data[key]
             if repeating_keys and isinstance(value, list):
                 for element in value:
-                    strData += 'data="%s"\n' % urlencode({key: element})
+                    data_string += 'data="%s"\n' % urlencode({key: element})
             else:
-                strData += 'data="%s"\n' % urlencode({key: value})
+                data_string += 'data="%s"\n' % urlencode({key: value})
 
         # write data to temporary config file
         if globalTmpDir != "":
-            tmpFD, tmpName = tempfile.mkstemp(dir=globalTmpDir)
+            tmp_file_descriptor, tmp_name = tempfile.mkstemp(dir=globalTmpDir)
         else:
-            tmpFD, tmpName = tempfile.mkstemp()
-        os.write(tmpFD, strData.encode())
-        os.close(tmpFD)
-        tmpNameOut = "{0}.out".format(tmpName)
-        com += " --config %s" % tmpName
+            tmp_file_descriptor, tmp_name = tempfile.mkstemp()
+        os.write(tmp_file_descriptor, data_string.encode())
+        os.close(tmp_file_descriptor)
+        tmp_name_out = "{0}.out".format(tmp_name)
+        com += " --config %s" % tmp_name
         if via_file:
-            com += " -o {0}".format(tmpNameOut)
+            com += " -o {0}".format(tmp_name_out)
         com += " %s" % self.randomize_ip(url)
         # execute
         if self.verbose:
             print(hide_sensitive_info(com))
-            print(strData[:-1])
+            print(data_string[:-1])
         for i_try in range(n_try):
             s, o = commands_get_status_output(com)
             if s == 0 or i_try + 1 == n_try:
@@ -323,19 +328,19 @@ class _Curl:
             time.sleep(1)
         if o != "\x00":
             try:
-                tmpout = unquote_plus(o)
-                o = eval(tmpout)
+                tmp_out = unquote_plus(o)
+                o = eval(tmp_out)
             except Exception:
                 pass
 
         if via_file:
-            with open(tmpNameOut, "rb") as f:
+            with open(tmp_name_out, "rb") as f:
                 ret = (s, f.read())
-            os.remove(tmpNameOut)
+            os.remove(tmp_name_out)
         else:
             ret = (s, o)
         # remove temporary file
-        os.remove(tmpName)
+        os.remove(tmp_name)
 
         # when specified, convert to json
         if json_out:
@@ -344,23 +349,23 @@ class _Curl:
             except Exception:
                 ret = (ret[0], ret[1])
 
-        ret = self.convRet(ret)
+        ret = self.convert_return(ret)
 
         if self.verbose:
             print(ret)
         return ret
 
     # POST method
-    def post(self, url, data, rucioAccount=False, is_json=False, via_file=False, compress_body=False, n_try=1):
+    def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1):
         use_https = is_https(url)
         # make command
         com = "%s --silent" % self.path
         if not self.verifyHost or not use_https:
             com += " --insecure"
         else:
-            tmp_x509_CApath = _x509_CApath()
-            if tmp_x509_CApath != "":
-                com += " --capath %s" % tmp_x509_CApath
+            tmp_x509_ca_path = _x509_CApath()
+            if tmp_x509_ca_path != "":
+                com += " --capath %s" % tmp_x509_ca_path
         if self.compress:
             com += " --compressed"
         if self.authMode == "oidc":
@@ -382,7 +387,7 @@ class _Curl:
         # max time of 10 min
         com += " -m 600"
         # add rucio account info
-        if rucioAccount:
+        if rucio_account:
             if "RUCIO_ACCOUNT" in os.environ:
                 data["account"] = os.environ["RUCIO_ACCOUNT"]
             if "RUCIO_APPID" in os.environ:
@@ -390,31 +395,31 @@ class _Curl:
             data["client_version"] = "2.4.1"
         # write data to temporary config file
         if globalTmpDir != "":
-            tmpFD, tmpName = tempfile.mkstemp(dir=globalTmpDir)
+            tmp_file_descriptor, tmp_name = tempfile.mkstemp(dir=globalTmpDir)
         else:
-            tmpFD, tmpName = tempfile.mkstemp()
+            tmp_file_descriptor, tmp_name = tempfile.mkstemp()
         # data
-        strData = ""
+        data_string = ""
         if not compress_body:
             for key in data.keys():
-                strData += 'data="%s"\n' % urlencode({key: data[key]})
-            os.write(tmpFD, strData.encode("utf-8"))
+                data_string += 'data="%s"\n' % urlencode({key: data[key]})
+            os.write(tmp_file_descriptor, data_string.encode("utf-8"))
         else:
-            f = os.fdopen(tmpFD, "wb")
+            f = os.fdopen(tmp_file_descriptor, "wb")
             with gzip.GzipFile(fileobj=f, mode="wb") as f_gzip:
                 f_gzip.write(json.dumps(data).encode())
             f.close()
         try:
-            os.close(tmpFD)
+            os.close(tmp_file_descriptor)
         except Exception:
             pass
-        tmpNameOut = "{0}.out".format(tmpName)
+        tmp_name_out = "{0}.out".format(tmp_name)
         if not compress_body:
-            com += " --config %s" % tmpName
+            com += " --config %s" % tmp_name
         else:
-            com += " --data-binary @{}".format(tmpName)
+            com += " --data-binary @{}".format(tmp_name)
         if via_file:
-            com += " -o {0}".format(tmpNameOut)
+            com += " -o {0}".format(tmp_name_out)
         com += " %s" % self.randomize_ip(url)
         # execute
         if self.verbose:
@@ -431,19 +436,19 @@ class _Curl:
                 if is_json:
                     o = json.loads(o)
                 else:
-                    tmpout = unquote_plus(o)
-                    o = eval(tmpout)
+                    tmp_out = unquote_plus(o)
+                    o = eval(tmp_out)
             except Exception:
                 pass
         if via_file:
-            with open(tmpNameOut, "rb") as f:
+            with open(tmp_name_out, "rb") as f:
                 ret = (s, f.read())
-            os.remove(tmpNameOut)
+            os.remove(tmp_name_out)
         else:
             ret = (s, o)
         # remove temporary file
-        os.remove(tmpName)
-        ret = self.convRet(ret)
+        os.remove(tmp_name)
+        ret = self.convert_return(ret)
         if self.verbose:
             print(ret)
         return ret
@@ -456,9 +461,9 @@ class _Curl:
         if not self.verifyHost or not use_https:
             com += " --insecure"
         else:
-            tmp_x509_CApath = _x509_CApath()
-            if tmp_x509_CApath != "":
-                com += " --capath %s" % tmp_x509_CApath
+            tmp_x509_ca_path = _x509_CApath()
+            if tmp_x509_ca_path != "":
+                com += " --capath %s" % tmp_x509_ca_path
         if self.compress:
             com += " --compressed"
         if self.authMode == "oidc":
@@ -485,15 +490,16 @@ class _Curl:
             if ret[0] == 0 or i_try + 1 == n_try:
                 break
             time.sleep(1)
-        ret = self.convRet(ret)
+        ret = self.convert_return(ret)
         if self.verbose:
             print(ret)
         return ret
 
     # convert return
-    def convRet(self, ret):
+    def convert_return(self, ret):
         if ret[0] != 0:
             ret = (ret[0] % 255, ret[1])
+
         # add messages to silent errors
         if ret[0] == 35:
             ret = (ret[0], "SSL connect error. The SSL handshaking failed. Check grid certificate/proxy.")
@@ -503,6 +509,7 @@ class _Curl:
             ret = (ret[0], "Failed sending network data.")
         elif ret[0] == 56:
             ret = (ret[0], "Failure in receiving network data.")
+
         return ret
 
 
@@ -552,13 +559,13 @@ class _NativeCurl(_Curl):
         except Exception as e:
             if self.verbose:
                 print(traceback.format_exc())
-            errMsg = str(e)
+            error_message = str(e)
             if hasattr(e, "fp"):
-                errMsg += ". {0}".format(e.fp.read().decode())
-            return 1, errMsg
+                error_message += ". {0}".format(e.fp.read().decode())
+            return 1, error_message
 
     # GET method
-    def get(self, url, data, rucioAccount=False, via_file=False, output_name=None, n_try=1, json_out=False, repeating_keys=False):
+    def get(self, url, data, rucio_account=False, via_file=False, output_name=None, n_try=1, json_out=False, repeating_keys=False):
         if data:
             url = "{}?{}".format(url, urlencode(data, doseq=repeating_keys))
 
@@ -578,7 +585,7 @@ class _NativeCurl(_Curl):
         return code, text
 
     # POST method
-    def post(self, url, data, rucioAccount=False, is_json=False, via_file=False, compress_body=False, n_try=1):
+    def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1):
         for i_try in range(n_try):
             code, text = self.http_method(url, data, {}, compress_body=compress_body, is_json=is_json)
             if code in [0, 403, 404] or i_try + 1 == n_try:
@@ -690,15 +697,15 @@ def getJobStatus(ids, verbose=False, no_pickle=False):
     """
     # serialize
     if not no_pickle:
-        strIDs = pickle.dumps(ids, protocol=0)
+        ids_string = pickle.dumps(ids, protocol=0)
     else:
-        strIDs = ids
+        ids_string = ids
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
     # execute
     url = baseURL + "/getJobStatus"
-    data = {"ids": strIDs}
+    data = {"ids": ids_string}
     if no_pickle:
         data["no_pickle"] = True
     status, output = curl.post(url, data, via_file=True)
@@ -772,7 +779,7 @@ def killJobs(ids, verbose=False):
         a list of server responses, or None if failed
     """
     # serialize
-    strIDs = pickle.dumps(ids, protocol=0)
+    ids_string = pickle.dumps(ids, protocol=0)
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -780,7 +787,7 @@ def killJobs(ids, verbose=False):
     curl.verbose = verbose
     # execute
     url = baseURLSSL + "/killJobs"
-    data = {"ids": strIDs}
+    data = {"ids": ids_string}
     status, output = curl.post(url, data, via_file=True)
     try:
         return status, pickle_loads(output)
@@ -1167,15 +1174,17 @@ def getFullJobStatus(ids, verbose=False):
         a list of job specs, or None if failed
     """
     # serialize
-    strIDs = pickle.dumps(ids, protocol=0)
+    ids_string = pickle.dumps(ids, protocol=0)
+
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/getFullJobStatus"
-    data = {"ids": strIDs}
+    data = {"ids": ids_string}
     status, output = curl.post(url, data, via_file=True)
     try:
         return status, pickle_loads(output)
@@ -1191,6 +1200,7 @@ def setDebugMode(pandaID, modeOn, verbose):
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/setDebugMode"
     data = {"pandaID": pandaID, "modeOn": modeOn}
@@ -1298,15 +1308,17 @@ def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_ti
               4: server error
     """
     # serialize
-    taskParamsStr = json.dumps(taskParams)
+    task_parameters_json = json.dumps(taskParams)
+
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/insertTaskParams"
-    data = {"taskParams": taskParamsStr, "properErrorCode": properErrorCode}
+    data = {"taskParams": task_parameters_json, "properErrorCode": properErrorCode}
     if parent_tid:
         data["parent_tid"] = parent_tid
     status, output = curl.post(url, data)
@@ -1345,6 +1357,7 @@ def getPandaIDsWithTaskID(jediTaskID, verbose=False):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
+
     # execute
     url = baseURL + "/getPandaIDsWithTaskID"
     data = {"jediTaskID": jediTaskID}
@@ -1607,6 +1620,7 @@ def get_cert_attributes(verbose=False):
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/getAttr"
     try:
@@ -1688,11 +1702,13 @@ def call_idds_command(
        a tuple of (True, response from iDDS), or (False, diagnostic message) if failed
     """
     tmp_log = PLogger.getPandaLogger()
+
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/relay_idds_command"
     try:
@@ -1749,6 +1765,7 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/execute_idds_workflow_command"
     try:
@@ -1783,11 +1800,13 @@ def send_file_recovery_request(task_id, dry_run=False, verbose=False):
        a tuple of (True/False and diagnostic message). True if the request was accepted
     """
     tmp_log = PLogger.getPandaLogger()
+
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     output = None
     url = baseURLSSL + "/put_file_recovery_request"
@@ -1825,11 +1844,13 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
        a tuple of (True/False and diagnostic message). True if the request was accepted
     """
     tmp_log = PLogger.getPandaLogger()
+
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     output = None
     if relay_host:
@@ -1871,11 +1892,13 @@ def set_user_secret(key, value, verbose=False):
        a tuple of (True/False and diagnostic message). True if the request was accepted
     """
     tmp_log = PLogger.getPandaLogger()
+
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/set_user_secret"
     try:
@@ -1910,11 +1933,13 @@ def get_user_secrets(verbose=False):
        a tuple of (True/False and a dict of secrets). True if the request was accepted
     """
     tmp_log = PLogger.getPandaLogger()
+
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/get_user_secrets"
     try:
@@ -1961,6 +1986,7 @@ def increase_attempt_nr(task_id, increase=3, verbose=False):
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/increaseAttemptNrPanda"
     data = {"jediTaskID": task_id, "increasedNr": increase}
@@ -2024,6 +2050,7 @@ def get_files_in_datasets(task_id, dataset_types="input,pseudo_input", verbose=F
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/get_files_in_datasets"
     data = {"task_id": task_id, "dataset_types": dataset_types}
@@ -2081,6 +2108,7 @@ def update_events(events, verbose=False):
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/updateEventRanges"
     data = {"eventRanges": json.dumps(events), "version": 2}
