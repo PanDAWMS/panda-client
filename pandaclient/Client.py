@@ -718,6 +718,7 @@ def getJobStatus(ids, verbose=False, no_pickle=False):
         dump_log("getJobStatus", e, output)
         return EC_Failed, None
 
+
 # get job statuses
 def getJobStatus_new(ids, verbose=False, no_pickle=False):
     """Get status of jobs
