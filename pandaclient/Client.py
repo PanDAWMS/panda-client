@@ -738,7 +738,7 @@ def getJobStatus_new(ids, verbose=False, no_pickle=False):
     curl = _Curl()
     curl.verbose = verbose
     # execute
-    url = server_base_path_ssl + "/job/get_description_incl_archive"
+    url = server_base_path_ssl + "/job/get_description"
     data = {"job_ids": ids}
 
     status, output = curl.get(url, data, via_file=True, json_out=True, repeating_keys=True)
