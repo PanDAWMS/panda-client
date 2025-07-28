@@ -372,7 +372,7 @@ def load_jobs(job_dicts):
     jobs = []
     for job_dict in job_dicts:
         job_spec = JobSpec()
-        job_spec.load_from_json_serializable(job_dict)
+        job_spec.load_from_dict(job_dict)
         jobs.append(job_spec)
     return jobs
 
