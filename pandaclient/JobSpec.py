@@ -4,9 +4,11 @@ job specification
 """
 
 import datetime
+import json
 import re
 
 from .FileSpec import FileSpec
+from .MiscUtils import naive_utcnow
 
 reserveChangedState = False
 
@@ -136,9 +138,13 @@ class JobSpec(object):
         "memory_leak_x2",
         "container_name",
         "job_label",
+        "gco2_regional",
+        "gco2_global",
+        "cpu_architecture_level",
+        "outputFileType",
     )
     # slots
-    __slots__ = _attributes + ("Files", "_changedAttrs")
+    __slots__ = _attributes + ("Files", "_changedAttrs", "_reserveChangedState")
     # attributes which have 0 by default
     _zeroAttrs = (
         "assignedPriority",
@@ -176,6 +182,12 @@ class JobSpec(object):
         "exeErrorDiag": 500,
         "jobSubStatus": 80,
         "supErrorDiag": 250,
+        "commandToPilot": 250,
+        "inputFileType": 32,
+        "outputFileType": 32,
+        "grid": 50,
+        "sourceSite": 36,
+        "destinationSite": 36,
     }
     # tag for special handling
     _tagForSH = {
@@ -206,6 +218,7 @@ class JobSpec(object):
         "requestType": "rt",
         "jobCloning": "sc",
         "scoutJob": "sj",
+        "taskQueuedTime": "tq",
         "usePrefetcher": "up",
         "useSecrets": "us",
         "useZipToPin": "uz",
@@ -221,6 +234,8 @@ class JobSpec(object):
         object.__setattr__(self, "Files", [])
         # map of changed attributes
         object.__setattr__(self, "_changedAttrs", {})
+        # reserve changed state at instance level
+        object.__setattr__(self, "_reserveChangedState", False)
 
     # override __getattribute__ for SQL
     def __getattribute__(self, name):
@@ -236,10 +251,17 @@ class JobSpec(object):
         newVal = getattr(self, name)
         if name == "jobStatus":
             if oldVal != newVal:
-                self.stateChangeTime = datetime.datetime.utcnow()
+                self.stateChangeTime = naive_utcnow()
         # collect changed attributes
         if oldVal != newVal and name not in self._suppAttrs:
             self._changedAttrs[name] = value
+
+    def print_attributes(self):
+        """
+        Print all attributes of the JobSpec instance with their values.
+        """
+        for attr in self._attributes:
+            print("{0}: {1}".format(attr, getattr(self, attr)))
 
     # reset changed attribute list
     def resetChangedList(self):
@@ -298,7 +320,7 @@ class JobSpec(object):
         for attr in self._attributes:
             val = getattr(self, attr)
             state.append(val)
-        if reserveChangedState:
+        if reserveChangedState or self._reserveChangedState:
             state.append(self._changedAttrs)
         # append File info
         state.append(self.Files)
@@ -313,7 +335,9 @@ class JobSpec(object):
             else:
                 object.__setattr__(self, self._attributes[i], "NULL")
         object.__setattr__(self, "Files", state[-1])
-        if reserveChangedState:
+        if not hasattr(self, "_reserveChangedState"):
+            object.__setattr__(self, "_reserveChangedState", False)
+        if reserveChangedState or self._reserveChangedState:
             object.__setattr__(self, "_changedAttrs", state[-2])
         else:
             object.__setattr__(self, "_changedAttrs", {})
@@ -350,7 +374,7 @@ class JobSpec(object):
             if useSeq and attr in cls._seqAttrMap:
                 if panda_config.backend == "mysql":
                     # mysql
-                    ret += "%s," % "NULL"
+                    ret += "NULL,"
                 else:
                     # oracle
                     ret += "%s," % cls._seqAttrMap[attr]
@@ -412,7 +436,7 @@ class JobSpec(object):
         ret += " "
         return ret
 
-    # check if goint to merging
+    # check if going to merging
     def produceUnMerge(self):
         for tmpFile in self.Files:
             if tmpFile.isUnMergedOutput():
@@ -465,20 +489,11 @@ class JobSpec(object):
 
     # set to accept partial finish
     def setToAcceptPartialFinish(self):
-        token = "ap"
-        if self.specialHandling in [None, ""]:
-            self.specialHandling = token
-        else:
-            if token not in self.specialHandling.split(","):
-                self.specialHandling = self.specialHandling + "," + token
+        self.set_special_handling("acceptPartial")
 
     # accept partial finish
     def acceptPartialFinish(self):
-        token = "ap"
-        if self.specialHandling in [None, ""]:
-            return False
-        else:
-            return token in self.specialHandling.split(",")
+        return self.check_special_handling("acceptPartial")
 
     # set home cloud
     def setHomeCloud(self, homeCloud):
@@ -524,8 +539,6 @@ class JobSpec(object):
             items = []
         if self._tagForSH[key] not in items:
             items.append(self._tagForSH[key])
-        if "NULL" in items:
-            items.remove("NULL")
         self.specialHandling = ",".join(items)
 
     # get mode for alternative stage-out
@@ -553,35 +566,19 @@ class JobSpec(object):
 
     # put log files to OS
     def putLogToOS(self):
-        if self.specialHandling is not None:
-            return self._tagForSH["putLogToOS"] in self.specialHandling.split(",")
-        return False
+        return self.check_special_handling("putLogToOS")
 
     # set to put log files to OS
     def setToPutLogToOS(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["putLogToOS"] not in items:
-            items.append(self._tagForSH["putLogToOS"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("putLogToOS")
 
     # write input to file
     def writeInputToFile(self):
-        if self.specialHandling is not None:
-            return self._tagForSH["writeInputToFile"] in self.specialHandling.split(",")
-        return False
+        return self.check_special_handling("writeInputToFile")
 
     # set to write input to file
     def setToWriteInputToFile(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["writeInputToFile"] not in items:
-            items.append(self._tagForSH["writeInputToFile"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("writeInputToFile")
 
     # set request type
     def setRequestType(self, reqType):
@@ -605,8 +602,7 @@ class JobSpec(object):
                 if tmpFile.lfn not in lfnMap:
                     lfnMap[tmpFile.lfn] = []
                 lfnMap[tmpFile.lfn].append(tmpFile)
-            lfns = list(lfnMap)
-            lfns.sort()
+            lfns = sorted(lfnMap)
             newFiles = []
             for tmpLFN in lfns:
                 for tmpFile in lfnMap[tmpLFN]:
@@ -630,53 +626,46 @@ class JobSpec(object):
             pass
         return zipMap
 
+    # add multi step exec
+    def addMultiStepExec(self, steps):
+        if not self.jobParameters:
+            self.jobParameters = ""
+        self.jobParameters += "<MULTI_STEP_EXEC>" + json.dumps(steps) + "</MULTI_STEP_EXEC>"
+
+    # extract multi step exec
+    def extractMultiStepExec(self):
+        try:
+            if "<MULTI_STEP_EXEC>" in self.jobParameters and "</MULTI_STEP_EXEC>" in self.jobParameters:
+                pp_1, pp_2 = self.jobParameters.split("<MULTI_STEP_EXEC>")
+                pp_2 = pp_2.split("</MULTI_STEP_EXEC>")[0]
+                return pp_1, json.loads(pp_2)
+        except Exception:
+            pass
+        return self.jobParameters, None
+
     # suppress execute string conversion
     def noExecStrCnv(self):
-        if self.specialHandling is not None:
-            return self._tagForSH["noExecStrCnv"] in self.specialHandling.split(",")
-        return False
+        return self.check_special_handling("noExecStrCnv")
 
     # set to suppress execute string conversion
     def setNoExecStrCnv(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["noExecStrCnv"] not in items:
-            items.append(self._tagForSH["noExecStrCnv"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("noExecStrCnv")
 
     # in-file positional event number
     def inFilePosEvtNum(self):
-        if self.specialHandling is not None:
-            return self._tagForSH["inFilePosEvtNum"] in self.specialHandling.split(",")
-        return False
+        return self.check_special_handling("inFilePosEvtNum")
 
     # set to use in-file positional event number
     def setInFilePosEvtNum(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["inFilePosEvtNum"] not in items:
-            items.append(self._tagForSH["inFilePosEvtNum"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("inFilePosEvtNum")
 
     # register event service files
     def registerEsFiles(self):
-        if self.specialHandling is not None:
-            return self._tagForSH["registerEsFiles"] in self.specialHandling.split(",")
-        return False
+        return self.check_special_handling("registerEsFiles")
 
     # set to register event service files
     def setRegisterEsFiles(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["registerEsFiles"] not in items:
-            items.append(self._tagForSH["registerEsFiles"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("registerEsFiles")
 
     # set background-able flag
     def setBackgroundableFlag(self):
@@ -699,35 +688,19 @@ class JobSpec(object):
 
     # use prefetcher
     def usePrefetcher(self):
-        if self.specialHandling is not None:
-            return self._tagForSH["usePrefetcher"] in self.specialHandling.split(",")
-        return False
+        return self.check_special_handling("usePrefetcher")
 
     # set to use prefetcher
     def setUsePrefetcher(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["usePrefetcher"] not in items:
-            items.append(self._tagForSH["usePrefetcher"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("usePrefetcher")
 
     # use zip to pin
     def useZipToPin(self):
-        if self.specialHandling is not None:
-            return self._tagForSH["useZipToPin"] in self.specialHandling.split(",")
-        return False
+        return self.check_special_handling("useZipToPin")
 
     # set to use zip to pin
     def setUseZipToPin(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["useZipToPin"] not in items:
-            items.append(self._tagForSH["useZipToPin"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("useZipToPin")
 
     # use secrets
     def use_secrets(self):
@@ -739,79 +712,39 @@ class JobSpec(object):
 
     # not discard events
     def notDiscardEvents(self):
-        if self.specialHandling is not None:
-            return self._tagForSH["notDiscardEvents"] in self.specialHandling.split(",")
-        return False
+        return self.check_special_handling("notDiscardEvents")
 
     # set not to discard events
     def setNotDiscardEvents(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["notDiscardEvents"] not in items:
-            items.append(self._tagForSH["notDiscardEvents"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("notDiscardEvents")
 
     # all events are done
     def allOkEvents(self):
-        if self.specialHandling is not None:
-            return self._tagForSH["allOkEvents"] in self.specialHandling.split(",")
-        return False
+        return self.check_special_handling("allOkEvents")
 
     # set all events are done
     def setAllOkEvents(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["allOkEvents"] not in items:
-            items.append(self._tagForSH["allOkEvents"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("allOkEvents")
 
     # set scout job flag
     def setScoutJobFlag(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["scoutJob"] not in items:
-            items.append(self._tagForSH["scoutJob"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("scoutJob")
 
     # check if scout job
     def isScoutJob(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        return self._tagForSH["scoutJob"] in items
+        return self.check_special_handling("scoutJob")
 
     # decrement attemptNr of events only when failed
     def decAttOnFailedES(self):
-        if self.specialHandling is not None:
-            return self._tagForSH["decAttOnFailedES"] in self.specialHandling.split(",")
-        return False
+        return self.check_special_handling("decAttOnFailedES")
 
     # set to decrement attemptNr of events only when failed
     def setDecAttOnFailedES(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["decAttOnFailedES"] not in items:
-            items.append(self._tagForSH["decAttOnFailedES"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("decAttOnFailedES")
 
     # set fake flag to ignore in monigoring
     def setFakeJobToIgnore(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["fakeJobToIgnore"] not in items:
-            items.append(self._tagForSH["fakeJobToIgnore"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("fakeJobToIgnore")
 
     # remove fake flag to ignore in monigoring
     def removeFakeJobToIgnore(self):
@@ -840,19 +773,11 @@ class JobSpec(object):
 
     # set input prestaging
     def setInputPrestaging(self):
-        if self.specialHandling is not None:
-            items = self.specialHandling.split(",")
-        else:
-            items = []
-        if self._tagForSH["inputPrestaging"] not in items:
-            items.append(self._tagForSH["inputPrestaging"])
-        self.specialHandling = ",".join(items)
+        self.set_special_handling("inputPrestaging")
 
     # use input prestaging
     def useInputPrestaging(self):
-        if self.specialHandling is not None:
-            return self._tagForSH["inputPrestaging"] in self.specialHandling.split(",")
-        return False
+        return self.check_special_handling("inputPrestaging")
 
     # to a dictionary
     def to_dict(self):
@@ -865,6 +790,89 @@ class JobSpec(object):
                 v = None
             ret[a] = v
         return ret
+
+    # check if HPO workflow flag
+    def is_hpo_workflow(self):
+        return self.check_special_handling("hpoWorkflow")
+
+    # set HPO workflow flag
+    def set_hpo_workflow(self):
+        self.set_special_handling("hpoWorkflow")
+
+    # check if looping check is disabled
+    def is_no_looping_check(self):
+        return self.check_special_handling("noLoopingCheck")
+
+    # disable looping check
+    def disable_looping_check(self):
+        self.set_special_handling("noLoopingCheck")
+
+    # check if encode job parameters
+    def to_encode_job_params(self):
+        return self.check_special_handling("encJobParams")
+
+    # encode job parameters
+    def set_encode_job_params(self):
+        self.set_special_handling("encJobParams")
+
+    # check if debug mode
+    def is_debug_mode(self):
+        if self.specialHandling is not None:
+            items = self.specialHandling.split(",")
+            return self._tagForSH["debugMode"] in items or "debug" in items
+        return False
+
+    # set debug mode
+    def set_debug_mode(self):
+        self.set_special_handling("debugMode")
+
+    # set push status changes
+    def set_push_status_changes(self):
+        self.set_special_handling("pushStatusChanges")
+
+    # check if to push status changes
+    def push_status_changes(self):
+        return push_status_changes(self.specialHandling)
+
+    # set push job
+    def set_push_job(self):
+        self.set_special_handling("pushJob")
+
+    # check if to push job
+    def is_push_job(self):
+        return self.check_special_handling("pushJob")
+
+    # set on-site merging
+    def set_on_site_merging(self):
+        self.set_special_handling("onSiteMerging")
+
+    # check if on-site merging
+    def is_on_site_merging(self):
+        return self.check_special_handling("onSiteMerging")
+
+    # get RAM for retry
+    def get_ram_for_retry(self):
+        if self.specialHandling is not None:
+            for tmpItem in self.specialHandling.split(","):
+                if tmpItem.startswith("{0}:".format(self._tagForSH['retryRam'])):
+                    return int(tmpItem.split(":")[-1])
+        return None
+
+    # set RAM for retry
+    def set_ram_for_retry(self, val):
+        if self.specialHandling:
+            items = self.specialHandling.split(",")
+        else:
+            items = []
+        # remove old value
+        newItems = []
+        for tmpItem in items:
+        for tmpItem in items:
+            if tmpItem.startswith("{0}:".format(self._tagForSH['retryRam'])):
+                continue
+            newItems.append(tmpItem)
+        newItems.append("{0}:{1}".format(self._tagForSH['retryRam'], val))
+        self.specialHandling = ",".join(newItems)
 
     # dump to json-serializable
     def dump_to_json_serializable(self):
@@ -887,3 +895,99 @@ class JobSpec(object):
             file_spec = FileSpec()
             file_spec.__setstate__(file_stat)
             self.addFile(file_spec)
+
+    def load_from_dict(self, job_dict):
+        # Extract job attributes (excluding files)
+        job_attrs = []
+        for slot in self.__slots__:
+            if slot == "Files":  # skip files here
+                continue
+            job_attrs.append(job_dict.get(slot, None))
+
+        # Initialize with empty file list
+        self.__setstate__(job_attrs + [[]])
+
+        # Add files
+        for file_data in job_dict.get("Files", []):
+            file_spec = FileSpec()
+            file_spec.__setstate__([file_data.get(s, None) for s in file_spec.__slots__])
+            self.addFile(file_spec)
+
+    # set input and output file types
+    def set_input_output_file_types(self) -> None:
+        """
+        Set input and output file types based on the input and output file names
+        """
+        in_types = set()
+        out_types = set()
+        for tmp_file in self.Files:
+            # ignore DBRelease/lib.tgz files
+            if tmp_file.dataset.startswith("ddo") or tmp_file.lfn.endswith(".lib.tgz"):
+                continue
+            # extract type while ignoring user/group/groupXY
+            tmp_items = tmp_file.dataset.split(".")
+            if (
+                len(tmp_items) > 4
+                and (not tmp_items[0] in ["", "NULL", "user", "group", "hc_test"])
+                and (not tmp_items[0].startswith("group"))
+                and not tmp_file.dataset.startswith("panda.um.")
+            ):
+                tmp_type = tmp_items[4]
+            else:
+                continue
+            if tmp_file.type == "input":
+                in_types.add(tmp_type)
+            elif tmp_file.type == "output":
+                out_types.add(tmp_type)
+        # set types
+        if in_types:
+            in_types = sorted(list(in_types))
+            self.inputFileType = ",".join(in_types)[: self._limitLength["inputFileType"]]
+        if out_types:
+            out_types = sorted(list(out_types))
+            self.outputFileType = ",".join(out_types)[: self._limitLength["outputFileType"]]
+
+    # set task queued time
+    def set_task_queued_time(self, queued_time: float | None):
+        """
+        Set task queued time in job metrics. Skip if queued_time is None
+
+        :param queued_time: task queued time in seconds since epoch
+        """
+        if queued_time is None:
+            return
+        if self.specialHandling in [None, "", "NULL"]:
+            items = []
+        else:
+            items = self.specialHandling.split(",")
+        items.append("{0}={1}".format(self._tagForSH['taskQueuedTime'], queued_time))
+        self.specialHandling = ",".join(items)
+
+
+# utils
+
+
+# check if to push status changes without class instance
+def push_status_changes(special_handling):
+    if special_handling is not None:
+        items = special_handling.split(",")
+        return JobSpec._tagForSH["pushStatusChanges"] in items
+    return False
+
+
+# get task queued time
+def get_task_queued_time(special_handling) -> datetime.datetime | None:
+    """
+    Get task queued time from job metrics
+
+    :param special_handling: special handling string
+    :return: task queued time. None if unset
+    """
+    try:
+        if special_handling is not None:
+            for item in special_handling.split(","):
+                if item.startswith("{0}=".format(JobSpec._tagForSH['taskQueuedTime'])):
+                    return datetime.datetime.fromtimestamp(float(item.split("=")[-1]), datetime.timezone.utc)
+    except Exception:
+        pass
+    return None
