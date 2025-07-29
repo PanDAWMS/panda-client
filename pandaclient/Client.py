@@ -734,6 +734,10 @@ def getJobStatus_new(ids, verbose=False, no_pickle=False):
         a list of job specs, or None if failed
     """
 
+    # check the input
+    if not ids:
+        return EC_Failed, None
+
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
@@ -744,11 +748,11 @@ def getJobStatus_new(ids, verbose=False, no_pickle=False):
     status, output = curl.get(url, data, via_file=True, json_out=True, repeating_keys=True)
 
     if isinstance(output, str):
-        dump_log("getJobStatus", None, output)
+        dump_log("getJobStatus_new", None, output)
         return EC_Failed, None
 
     if not isinstance(output, dict):
-        dump_log("getJobStatus", None, output)
+        dump_log("getJobStatus_new", None, output)
         return EC_Failed, None
 
     success = output.get("success")
@@ -756,13 +760,13 @@ def getJobStatus_new(ids, verbose=False, no_pickle=False):
     message = output.get("message")
 
     if not success:
-        dump_log("getJobStatus", None, message)
+        dump_log("getJobStatus_new", None, message)
         return EC_Failed, None
 
     try:
         return status, MiscUtils.load_jobs(jobs)
     except Exception as e:
-        dump_log("getJobStatus", e, output)
+        dump_log("getJobStatus_new", e, output)
         return EC_Failed, None
 
 
@@ -795,6 +799,54 @@ def killJobs(ids, verbose=False):
     except Exception as e:
         dump_log("killJobs", e, output)
         return EC_Failed, None
+
+
+# kill jobs
+def killJobs_new(ids, verbose=False):
+    """Kill jobs
+
+    args:
+        ids: a list of PanDA IDs
+        verbose: True to see verbose messages
+    returns:
+        status code
+              0: communication succeeded to the panda server
+              255: communication failure
+        a list of server responses, or None if failed
+    """
+
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + "/kill"
+    data = {"job_ids": ids}
+    status, output = curl.post(url, data, via_file=True, json_out=True, repeating_keys=True)
+    try:
+        return status, pickle_loads(output)
+    except Exception as e:
+        dump_log("killJobs", e, output)
+        return EC_Failed, None
+
+    if isinstance(output, str):
+        dump_log("killJobs_new", None, output)
+        return EC_Failed, None
+
+    if not isinstance(output, dict):
+        dump_log("killJobs_new", None, output)
+        return EC_Failed, None
+
+    success = output.get("success")
+    data = output.get("data")
+    message = output.get("message")
+
+    if not success:
+        dump_log("killJobs_new", None, message)
+        return EC_Failed, None
+
+    return status, data
 
 
 # kill task
