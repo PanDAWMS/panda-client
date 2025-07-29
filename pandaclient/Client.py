@@ -825,7 +825,7 @@ def killJobs_new(ids, verbose=False):
     curl.sslKey = _x509()
     curl.verbose = verbose
     # execute
-    url = baseURLSSL + "/kill"
+    url = baseURLSSL + "/job/kill"
     data = {"job_ids": ids}
     status, output = curl.post(url, data, via_file=True, json_out=True)
 
