@@ -828,11 +828,6 @@ def killJobs_new(ids, verbose=False):
     url = baseURLSSL + "/kill"
     data = {"job_ids": ids}
     status, output = curl.post(url, data, via_file=True, json_out=True)
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        dump_log("killJobs", e, output)
-        return EC_Failed, None
 
     if isinstance(output, str):
         dump_log("killJobs_new", None, output)
