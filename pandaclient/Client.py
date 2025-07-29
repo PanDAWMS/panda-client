@@ -404,9 +404,14 @@ class _Curl:
         # data
         data_string = ""
         if not compress_body:
-            for key in data.keys():
-                data_string += 'data="%s"\n' % urlencode({key: data[key]})
-            os.write(tmp_file_descriptor, data_string.encode("utf-8"))
+            if not json_out:
+                for key in data.keys():
+                    data_string += 'data="%s"\n' % urlencode({key: data[key]})
+                os.write(tmp_file_descriptor, data_string.encode("utf-8"))
+            else:
+                # json data
+                data_string = json.dumps(data)
+                os.write(tmp_file_descriptor, data_string.encode("utf-8"))
         else:
             f = os.fdopen(tmp_file_descriptor, "wb")
             with gzip.GzipFile(fileobj=f, mode="wb") as f_gzip:
