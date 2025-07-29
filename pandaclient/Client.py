@@ -428,6 +428,11 @@ class _Curl:
             com += " --data-binary @{}".format(tmp_name)
         if via_file:
             com += " -o {0}".format(tmp_name_out)
+
+        # The new API requires POST method for json
+        if json_out:
+            com += " -X POST"
+
         com += " %s" % self.randomize_ip(url)
         # execute
         if self.verbose:
