@@ -458,7 +458,10 @@ class _Curl:
                 pass
         if via_file:
             with open(tmp_name_out, "rb") as f:
-                ret = (s, f.read())
+                if not json_out:
+                    ret = (s, f.read())
+                else:
+                    ret = (s, json.loads(f.read()))
             os.remove(tmp_name_out)
         else:
             ret = (s, o)
