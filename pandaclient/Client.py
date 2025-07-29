@@ -423,7 +423,10 @@ class _Curl:
             pass
         tmp_name_out = "{0}.out".format(tmp_name)
         if not compress_body:
-            com += " --config %s" % tmp_name
+            if not json_out:
+                com += " --config %s" % tmp_name
+            else:
+                com += " --data @{}".format(tmp_name)
         else:
             com += " --data-binary @{}".format(tmp_name)
         if via_file:
