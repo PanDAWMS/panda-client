@@ -356,7 +356,7 @@ class _Curl:
         return ret
 
     # POST method
-    def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1):
+    def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1, json_out=False):
         use_https = is_https(url)
         # make command
         com = "%s --silent" % self.path
@@ -380,10 +380,13 @@ class _Curl:
             if not self.sslKey:
                 self.sslKey = _x509()
             com += " --key %s" % self.sslKey
-        if compress_body:
+
+        if compress_body or json_out:
             com += ' -H "Content-Type: application/json"'
-        if is_json:
+
+        if is_json or json_out:
             com += ' -H "Accept: application/json"'
+
         # max time of 10 min
         com += " -m 600"
         # add rucio account info
@@ -433,7 +436,7 @@ class _Curl:
             time.sleep(1)
         if o != "\x00":
             try:
-                if is_json:
+                if is_json or json_out:
                     o = json.loads(o)
                 else:
                     tmp_out = unquote_plus(o)
@@ -446,6 +449,7 @@ class _Curl:
             os.remove(tmp_name_out)
         else:
             ret = (s, o)
+
         # remove temporary file
         os.remove(tmp_name)
         ret = self.convert_return(ret)
@@ -823,7 +827,7 @@ def killJobs_new(ids, verbose=False):
     # execute
     url = baseURLSSL + "/kill"
     data = {"job_ids": ids}
-    status, output = curl.post(url, data, via_file=True, json_out=True, repeating_keys=True)
+    status, output = curl.post(url, data, via_file=True, json_out=True)
     try:
         return status, pickle_loads(output)
     except Exception as e:
