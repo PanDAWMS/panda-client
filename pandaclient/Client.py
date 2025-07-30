@@ -44,7 +44,7 @@ from .MiscUtils import commands_get_output, commands_get_status_output, pickle_l
 try:
     baseURL = os.environ["PANDA_URL"]
     parsed = urlparse(baseURL)
-    server_base_path = f"{parsed.scheme}://{parsed.netloc}/api/v1"
+    server_base_path = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
 except Exception:
     baseURL = "http://pandaserver.cern.ch:25080/server/panda"
     server_base_path = "http://pandaserver.cern.ch:25080/api/v1"
@@ -52,7 +52,7 @@ except Exception:
 try:
     baseURLSSL = os.environ["PANDA_URL_SSL"]
     parsed = urlparse(baseURLSSL)
-    server_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
+    server_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
 except Exception:
     baseURLSSL = "https://pandaserver.cern.ch/server/panda"
     server_base_path_ssl = "https://pandaserver.cern.ch:25443/server/panda"
@@ -60,7 +60,7 @@ except Exception:
 if "PANDACACHE_URL" in os.environ:
     baseURLCSRVSSL = os.environ["PANDACACHE_URL"]
     parsed = urlparse(baseURLCSRVSSL)
-    cache_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
+    cache_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
 else:
     baseURLCSRVSSL = "https://pandacache.cern.ch/server/panda"
     cache_base_path_ssl = "https://pandacache.cern.ch:25443/server/panda"
@@ -79,6 +79,42 @@ if "PANDA_BEHIND_REAL_LB" not in os.environ:
         baseURLCSRVSSL = "%s://%s:%s%s" % (netloc.scheme, tmp_host, netloc.port, netloc.path)
     else:
         baseURLCSRVSSL = "%s://%s%s" % (netloc.scheme, tmp_host, netloc.path)
+
+def curl_request_decorator(endpoint, method="post", via_file=False, json_out=False):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            # Extract arguments
+            verbose = kwargs.get("verbose", False)
+            data = func(*args, **kwargs)
+
+            # Instantiate curl
+            curl = _Curl()
+            curl.sslCert = _x509()
+            curl.sslKey = _x509()
+            curl.verbose = verbose
+
+            # Execute request
+            url = "{0}/{1}".format(server_base_path_ssl, endpoint)
+            if method == "post":
+                status, output = curl.post(url, data, via_file=via_file, json_out=json_out)
+            elif method == "get":
+                status, output = curl.get(url, data, via_file=via_file, json_out=json_out)
+            else:
+                raise ValueError("Unsupported HTTP method")
+
+            # Handle response
+            if isinstance(output, str) or not isinstance(output, dict):
+                dump_log(func.__name__, None, output)
+                return EC_Failed, None
+
+            success = output.get("success")
+            if not success:
+                dump_log(func.__name__, None, output.get("message"))
+                return EC_Failed, None
+
+            return status, output.get("data")
+        return wrapper
+    return decorator
 
 
 # look for a grid proxy certificate
@@ -821,7 +857,7 @@ def killJobs(ids, verbose=False):
         return EC_Failed, None
 
 
-# kill jobs
+@curl_request_decorator(endpoint="job/kill", method="post", json_out=True)
 def killJobs_new(ids, verbose=False):
     """Kill jobs
 
@@ -834,34 +870,7 @@ def killJobs_new(ids, verbose=False):
               255: communication failure
         a list of server responses, or None if failed
     """
-
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = server_base_path_ssl + "/job/kill"
-    data = {"job_ids": ids}
-    status, output = curl.post(url, data, via_file=True, json_out=True)
-
-    if isinstance(output, str):
-        dump_log("killJobs_new", None, output)
-        return EC_Failed, None
-
-    if not isinstance(output, dict):
-        dump_log("killJobs_new", None, output)
-        return EC_Failed, None
-
-    success = output.get("success")
-    data = output.get("data")
-    message = output.get("message")
-
-    if not success:
-        dump_log("killJobs_new", None, message)
-        return EC_Failed, None
-
-    return status, data
+    return {"job_ids": ids}
 
 
 # kill task
@@ -897,6 +906,27 @@ def killTask(jediTaskID, verbose=False):
     except Exception as e:
         dump_log("killTask", e, output)
         return EC_Failed, None
+
+@curl_request_decorator(endpoint="job/kill", method="post", json_out=True)
+def killTask_new(jediTaskID, verbose=False):
+    """Kill a task
+    args:
+       jediTaskID: jediTaskID of the task to be killed
+       verbose: True to see debug messages
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       tuple of return code and diagnostic message, or None if failed
+          0: request is registered
+          1: server error
+          2: task not found
+          3: permission denied
+          4: irrelevant task status
+        100: non SSL connection
+        101: irrelevant taskID
+    """
+    return {"task_id": jediTaskID}
 
 
 # finish task
@@ -935,6 +965,59 @@ def finishTask(jediTaskID, soft=False, verbose=False):
     except Exception as e:
         dump_log("finishTask", e, output)
         return EC_Failed, None
+
+
+# finish task
+def finishTask_new(jediTaskID, soft=False, verbose=False):
+    """finish a task
+    args:
+       jediTaskID: jediTaskID of the task to finish
+       soft: True to wait until running jobs are done
+       verbose: True to see debug messages
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       tuple of return code and diagnostic message, or None if failed
+          0: request is registered
+          1: server error
+          2: task not found
+          3: permission denied
+          4: irrelevant task status
+        100: non SSL connection
+        101: irrelevant taskID
+    """
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey = _x509()
+    curl.verbose = verbose
+
+    # execute
+    url = server_base_path_ssl + "/task/finish"
+    data = {"task_id": jediTaskID}
+    if soft:
+        data["soft"] = True
+    status, output = curl.post(url, data, via_file=True, json_out=True)
+
+    if isinstance(output, str):
+        dump_log("finishTask_new", None, output)
+        return EC_Failed, None
+
+    if not isinstance(output, dict):
+        dump_log("finishTask_new", None, output)
+        return EC_Failed, None
+
+    success = output.get("success")
+    data = output.get("data")
+    message = output.get("message")
+
+    if not success:
+        dump_log("finishTask_new", None, message)
+        return EC_Failed, None
+
+    return status, data
+
 
 
 # retry task
@@ -976,6 +1059,60 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
     except Exception as e:
         dump_log("retryTask", e, output)
         return EC_Failed, None
+
+# retry task
+def retryTask_new(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
+    """retry a task
+    args:
+       jediTaskID: jediTaskID of the task to retry
+       verbose: True to see debug messages
+       newParams: a dictionary of task parameters to overwrite
+       properErrorCode: True to get a detailed error code
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       tuple of return code and diagnostic message, or None if failed
+          0: request is registered
+          1: server error
+          2: task not found
+          3: permission denied
+          4: irrelevant task status
+        100: non SSL connection
+        101: irrelevant taskID
+    """
+
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey = _x509()
+    curl.verbose = verbose
+
+    # execute
+    url = server_base_path_ssl + "/task/retry"
+    data = {"task_id": jediTaskID}
+    if newParams:
+        data["new_parameters"] = json.dumps(newParams)
+
+    status, output = curl.post(url, data, via_file=True, json_out=True)
+
+    if isinstance(output, str):
+        dump_log("retryTask_new", None, output)
+        return EC_Failed, None
+
+    if not isinstance(output, dict):
+        dump_log("retryTask_new", None, output)
+        return EC_Failed, None
+
+    success = output.get("success")
+    data = output.get("data")
+    message = output.get("message")
+
+    if not success:
+        dump_log("retryTask_new", None, message)
+        return EC_Failed, None
+
+    return status, data
 
 
 # put file
@@ -1448,7 +1585,7 @@ def reactivateTask(jediTaskID, verbose=False):
         status code
               0: communication succeeded to the panda server
               255: communication failure
-        return: a tupple of return code and message, or error message if failed
+        return: a tuple of return code and message, or error message if failed
               0: unknown task
               1: succeeded
               None: database error
@@ -1469,6 +1606,53 @@ def reactivateTask(jediTaskID, verbose=False):
         return EC_Failed, output + "\n" + errStr
 
 
+# reactivate task
+def reactivateTask_new(jediTaskID, verbose=False):
+    """Reactivate task
+
+    args:
+        jediTaskID: jediTaskID of the task to be reactivated
+        verbose: True to see verbose messages
+    returns:
+        status code
+              0: communication succeeded to the panda server
+              255: communication failure
+        return: a tuple of return code and message, or error message if failed
+              0: unknown task
+              1: succeeded
+              None: database error
+    """
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey = _x509()
+    curl.verbose = verbose
+
+    # execute
+    url = server_base_path_ssl + "/task/reactivate"
+    data = {"task_id": jediTaskID}
+
+    status, output = curl.post(url, data, via_file=True, json_out=True)
+
+    if isinstance(output, str):
+        dump_log("reactivateTask_new", None, output)
+        return EC_Failed, None
+
+    if not isinstance(output, dict):
+        dump_log("reactivateTask_new", None, output)
+        return EC_Failed, None
+
+    success = output.get("success")
+    data = output.get("data")
+    message = output.get("message")
+
+    if not success:
+        dump_log("reactivateTask_new", None, message)
+        return EC_Failed, None
+
+    return status, data
+
+
 # resume task
 def resumeTask(jediTaskID, verbose=False):
     """Resume task
@@ -1480,7 +1664,7 @@ def resumeTask(jediTaskID, verbose=False):
         status code
               0: communication succeeded to the panda server
               255: communication failure
-        return: a tupple of return code and message, or error message if failed
+        return: a tuple of return code and message, or error message if failed
               0: request is registered
               1: server error
               2: task not found
@@ -1517,7 +1701,7 @@ def pauseTask(jediTaskID, verbose=False):
         status code
               0: communication succeeded to the panda server
               255: communication failure
-        return: a tupple of return code and message, or error message if failed
+        return: a tuple of return code and message, or error message if failed
               0: request is registered
               1: server error
               2: task not found
