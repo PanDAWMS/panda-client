@@ -775,7 +775,7 @@ def getJobStatus(ids, verbose=False, no_pickle=False):
         return EC_Failed, None
 
 
-# get job statuses
+@curl_request_decorator(endpoint="job/get_description", method="get", json_out=True)
 def getJobStatus_new(ids, verbose=False, no_pickle=False):
     """Get status of jobs
 
@@ -789,41 +789,7 @@ def getJobStatus_new(ids, verbose=False, no_pickle=False):
               255: communication failure
         a list of job specs, or None if failed
     """
-
-    # check the input
-    if not ids:
-        return EC_Failed, None
-
-    # instantiate curl
-    curl = _Curl()
-    curl.verbose = verbose
-    # execute
-    url = server_base_path_ssl + "/job/get_description"
-    data = {"job_ids": ids}
-
-    status, output = curl.get(url, data, via_file=True, json_out=True, repeating_keys=True)
-
-    if isinstance(output, str):
-        dump_log("getJobStatus_new", None, output)
-        return EC_Failed, None
-
-    if not isinstance(output, dict):
-        dump_log("getJobStatus_new", None, output)
-        return EC_Failed, None
-
-    success = output.get("success")
-    jobs = output.get("data")
-    message = output.get("message")
-
-    if not success:
-        dump_log("getJobStatus_new", None, message)
-        return EC_Failed, None
-
-    try:
-        return status, MiscUtils.load_jobs(jobs)
-    except Exception as e:
-        dump_log("getJobStatus_new", e, output)
-        return EC_Failed, None
+    return {"job_ids": ids}
 
 
 # kill jobs
@@ -967,7 +933,7 @@ def finishTask(jediTaskID, soft=False, verbose=False):
         return EC_Failed, None
 
 
-# finish task
+@curl_request_decorator(endpoint="task/finish", method="post", json_out=True)
 def finishTask_new(jediTaskID, soft=False, verbose=False):
     """finish a task
     args:
@@ -987,37 +953,10 @@ def finishTask_new(jediTaskID, soft=False, verbose=False):
         100: non SSL connection
         101: irrelevant taskID
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-
-    # execute
-    url = server_base_path_ssl + "/task/finish"
     data = {"task_id": jediTaskID}
     if soft:
         data["soft"] = True
-    status, output = curl.post(url, data, via_file=True, json_out=True)
-
-    if isinstance(output, str):
-        dump_log("finishTask_new", None, output)
-        return EC_Failed, None
-
-    if not isinstance(output, dict):
-        dump_log("finishTask_new", None, output)
-        return EC_Failed, None
-
-    success = output.get("success")
-    data = output.get("data")
-    message = output.get("message")
-
-    if not success:
-        dump_log("finishTask_new", None, message)
-        return EC_Failed, None
-
-    return status, data
-
+    return data
 
 
 # retry task
@@ -1060,7 +999,7 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
         dump_log("retryTask", e, output)
         return EC_Failed, None
 
-# retry task
+@curl_request_decorator(endpoint="task/retry", method="post", json_out=True)
 def retryTask_new(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
     """retry a task
     args:
@@ -1081,38 +1020,10 @@ def retryTask_new(jediTaskID, verbose=False, properErrorCode=False, newParams=No
         100: non SSL connection
         101: irrelevant taskID
     """
-
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-
-    # execute
-    url = server_base_path_ssl + "/task/retry"
     data = {"task_id": jediTaskID}
     if newParams:
         data["new_parameters"] = json.dumps(newParams)
-
-    status, output = curl.post(url, data, via_file=True, json_out=True)
-
-    if isinstance(output, str):
-        dump_log("retryTask_new", None, output)
-        return EC_Failed, None
-
-    if not isinstance(output, dict):
-        dump_log("retryTask_new", None, output)
-        return EC_Failed, None
-
-    success = output.get("success")
-    data = output.get("data")
-    message = output.get("message")
-
-    if not success:
-        dump_log("retryTask_new", None, message)
-        return EC_Failed, None
-
-    return status, data
+    return data
 
 
 # put file
@@ -1606,7 +1517,7 @@ def reactivateTask(jediTaskID, verbose=False):
         return EC_Failed, output + "\n" + errStr
 
 
-# reactivate task
+@curl_request_decorator(endpoint="task/reactivate", method="post", json_out=True)
 def reactivateTask_new(jediTaskID, verbose=False):
     """Reactivate task
 
@@ -1622,38 +1533,9 @@ def reactivateTask_new(jediTaskID, verbose=False):
               1: succeeded
               None: database error
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-
-    # execute
-    url = server_base_path_ssl + "/task/reactivate"
-    data = {"task_id": jediTaskID}
-
-    status, output = curl.post(url, data, via_file=True, json_out=True)
-
-    if isinstance(output, str):
-        dump_log("reactivateTask_new", None, output)
-        return EC_Failed, None
-
-    if not isinstance(output, dict):
-        dump_log("reactivateTask_new", None, output)
-        return EC_Failed, None
-
-    success = output.get("success")
-    data = output.get("data")
-    message = output.get("message")
-
-    if not success:
-        dump_log("reactivateTask_new", None, message)
-        return EC_Failed, None
-
-    return status, data
+    return {"task_id": jediTaskID}
 
 
-# resume task
 def resumeTask(jediTaskID, verbose=False):
     """Resume task
 
@@ -1688,6 +1570,30 @@ def resumeTask(jediTaskID, verbose=False):
     except Exception as e:
         errStr = dump_log("resumeTask", e, output)
         return EC_Failed, output + "\n" + errStr
+
+
+@curl_request_decorator(endpoint="task/resume", method="post", json_out=True)
+def resumeTask_new(jediTaskID, verbose=False):
+    """Resume task
+
+    args:
+        jediTaskID: jediTaskID of the task to be resumed
+        verbose: True to see verbose messages
+    returns:
+        status code
+              0: communication succeeded to the panda server
+              255: communication failure
+        return: a tuple of return code and message, or error message if failed
+              0: request is registered
+              1: server error
+              2: task not found
+              3: permission denied
+              4: irrelevant task status
+              100: non SSL connection
+              101: irrelevant taskID
+              None: database error
+    """
+    return {"task_id": jediTaskID}
 
 
 # pause task
@@ -1727,6 +1633,30 @@ def pauseTask(jediTaskID, verbose=False):
         return EC_Failed, output + "\n" + errStr
 
 
+@curl_request_decorator(endpoint="task/resume", method="post", json_out=True)
+def pauseTask_new(jediTaskID, verbose=False):
+    """Pause task
+
+    args:
+        jediTaskID: jediTaskID of the task to pause
+        verbose: True to see verbose messages
+    returns:
+        status code
+              0: communication succeeded to the panda server
+              255: communication failure
+        return: a tuple of return code and message, or error message if failed
+              0: request is registered
+              1: server error
+              2: task not found
+              3: permission denied
+              4: irrelevant task status
+              100: non SSL connection
+              101: irrelevant taskID
+              None: database error
+    """
+    return {"task_id": jediTaskID}
+
+
 # get task status TaskID
 def getTaskStatus(jediTaskID, verbose=False):
     """Get task status
@@ -1752,6 +1682,23 @@ def getTaskStatus(jediTaskID, verbose=False):
     except Exception as e:
         errStr = dump_log("getTaskStatus", e, output)
         return EC_Failed, output + "\n" + errStr
+
+
+@curl_request_decorator(endpoint="task/get_status", method="get", json_out=True)
+def getTaskStatus_new(jediTaskID, verbose=False):
+    """Get task status
+
+    args:
+        jediTaskID: jediTaskID of the task to get lit of PanDA IDs
+        verbose: True to see verbose messages
+    returns:
+        status code
+              0: communication succeeded to the panda server
+              255: communication failure
+        the status string, or error message if failed
+    """
+
+    return {"task_id": jediTaskID}
 
 
 # get taskParamsMap with TaskID
@@ -1780,6 +1727,24 @@ def getTaskParamsMap(jediTaskID):
     except Exception as e:
         errStr = dump_log("getTaskParamsMap", e, output)
         return EC_Failed, output + "\n" + errStr
+
+
+@curl_request_decorator(endpoint="task/get_task_parameters", method="get", json_out=True)
+def getTaskParamsMap_new(jediTaskID):
+    """Get task parameters
+
+    args:
+        jediTaskID: jediTaskID of the task to get taskParamsMap
+    returns:
+        status code
+              0: communication succeeded to the panda server
+              255: communication failure
+        return: a tuple of return code and taskParamsMap, or error message if failed
+              1: logical error
+              0: success
+              None: database error
+    """
+    return {"task_id": jediTaskID}
 
 
 # get user job metadata
