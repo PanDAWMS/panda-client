@@ -39,7 +39,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     :return: task parameters or options if get_taskparams or get_options is True
     """
     # default cloud/site
-    defaultCloud = None
     defaultSite = "AUTO"
 
     # error code
