@@ -1458,6 +1458,30 @@ def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_ti
         return EC_Failed, output + "\n" + errStr
 
 
+@curl_request_decorator(endpoint="task/submit", method="post", json_out=True)
+def insertTaskParams_new(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
+    """Insert task parameters
+
+    args:
+        taskParams: a dictionary of task parameters
+        verbose: True to see verbose messages
+        properErrorCode: True to get a detailed error code
+        parent_tid: ID of the parent task
+    returns:
+        status code
+              0: communication succeeded to the panda server
+              255: communication failure
+        tuple of return code, message from the server, and taskID if successful, or error message if failed
+              0: request is processed
+              1: duplication in DEFT
+              2: duplication in JEDI
+              3: accepted for incremental execution
+              4: server error
+    """
+
+    return {"task_parameters": taskParams}
+
+
 # get PanDA IDs with TaskID
 def getPandaIDsWithTaskID(jediTaskID, verbose=False):
     """Get PanDA IDs with TaskID
