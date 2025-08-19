@@ -570,7 +570,7 @@ class _Curl:
 
 
 class _NativeCurl(_Curl):
-    def http_method(self, url, data, header, rdata=None, compress_body=False, is_json=False, json_out=False, repeating_keys=False):
+    def http_method(self, url, data, header, rdata=None, compress_body=False, is_json=False, json_out=False, repeating_keys=False, method=None):
         try:
             use_https = is_https(url)
             url = self.randomize_ip(url)
@@ -597,7 +597,7 @@ class _NativeCurl(_Curl):
                 else:
                     rdata = json.dumps(data).encode()
 
-            req = Request(url, rdata, headers=header)
+            req = Request(url, rdata, headers=header, method=method)
             context = ssl._create_unverified_context()
             if use_https and self.authMode != "oidc":
                 if not self.sslCert:
