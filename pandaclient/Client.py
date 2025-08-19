@@ -98,7 +98,7 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
             if method == "post":
                 status, output = curl.post(url, data, via_file=via_file, json_out=json_out)
             elif method == "get":
-                status, output = curl.get(url, data, via_file=via_file, json_out=json_out)
+                status, output = curl.get(url, data, via_file=via_file, json_out=json_out, repeating_keys=True)
             else:
                 raise ValueError("Unsupported HTTP method")
 
@@ -595,7 +595,7 @@ class _NativeCurl(_Curl):
                         f_gzip.write(json.dumps(data).encode())
                     rdata = rdata_out.getvalue()
                 else:
-                    rdata = json.dumps(data).encode()
+                    rdata = json.dumps(data)
 
             req = Request(url, rdata, headers=header, method=method)
             context = ssl._create_unverified_context()
