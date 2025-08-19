@@ -570,7 +570,7 @@ class _Curl:
 
 
 class _NativeCurl(_Curl):
-    def http_method(self, url, data, header, rdata=None, compress_body=False, is_json=False):
+    def http_method(self, url, data, header, rdata=None, compress_body=False, is_json=False, json_out=False, repeating_keys=False):
         try:
             use_https = is_https(url)
             url = self.randomize_ip(url)
@@ -580,18 +580,23 @@ class _NativeCurl(_Curl):
                 self.get_id_token()
                 header["Authorization"] = "Bearer {0}".format(self.idToken)
                 header["Origin"] = self.authVO
-            if compress_body:
+            if compress_body or json_out:
                 header["Content-Type"] = "application/json"
-            if is_json:
+
+            if is_json or json_out:
                 header["Accept"] = "application/json"
+
             if rdata is None:
-                if not compress_body:
-                    rdata = urlencode(data).encode()
-                else:
+                if not compress_body and not json_out:
+                    rdata = urlencode(data, doseq=repeating_keys).encode()
+                elif compress_body:
                     rdata_out = BytesIO()
                     with gzip.GzipFile(fileobj=rdata_out, mode="w") as f_gzip:
                         f_gzip.write(json.dumps(data).encode())
                     rdata = rdata_out.getvalue()
+                else:
+                    rdata = json.dumps(data).encode()
+
             req = Request(url, rdata, headers=header)
             context = ssl._create_unverified_context()
             if use_https and self.authMode != "oidc":
@@ -609,6 +614,8 @@ class _NativeCurl(_Curl):
             if code == 200:
                 code = 0
             text = conn.read()
+
+
             if self.verbose:
                 print(code, text)
             return code, text
@@ -626,12 +633,12 @@ class _NativeCurl(_Curl):
             url = "{}?{}".format(url, urlencode(data, doseq=repeating_keys))
 
         for i_try in range(n_try):
-            code, text = self.http_method(url, {}, {}, is_json=json_out)
+            code, text = self.http_method(url, {}, {}, is_json=json_out, json_out=json_out, repeating_keys=False)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
 
-        if json_out:
+        if json_out and code == 0:
             text = json.loads(text)
 
         if code == 0 and output_name:
@@ -641,14 +648,16 @@ class _NativeCurl(_Curl):
         return code, text
 
     # POST method
-    def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1):
+    def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1, json_out=False):
         for i_try in range(n_try):
-            code, text = self.http_method(url, data, {}, compress_body=compress_body, is_json=is_json)
+            code, text = self.http_method(url, data, {}, compress_body=compress_body, is_json=is_json, json_out=json_out)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
-        if is_json and code == 0:
+
+        if (is_json or json_out) and code == 0:
             text = json.loads(text)
+
         return code, text
 
     # PUT method
