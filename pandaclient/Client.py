@@ -632,8 +632,12 @@ class _NativeCurl(_Curl):
         if data:
             url = "{}?{}".format(url, urlencode(data, doseq=repeating_keys))
 
+        method = None
+        if json_out:
+            method = "GET"
+
         for i_try in range(n_try):
-            code, text = self.http_method(url, {}, {}, is_json=json_out, json_out=json_out, repeating_keys=False)
+            code, text = self.http_method(url, {}, {}, is_json=json_out, json_out=json_out, repeating_keys=False, method=method)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
@@ -649,8 +653,13 @@ class _NativeCurl(_Curl):
 
     # POST method
     def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1, json_out=False):
+
+        method = None
+        if json_out:
+            method = "POST"
+
         for i_try in range(n_try):
-            code, text = self.http_method(url, data, {}, compress_body=compress_body, is_json=is_json, json_out=json_out)
+            code, text = self.http_method(url, data, {}, compress_body=compress_body, is_json=is_json, json_out=json_out, method=method)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
