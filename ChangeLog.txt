@@ -1,5 +1,8 @@
 ** Release Notes
 
+1.5.92
+  * json serialized architecture
+
 1.5.91
   * fixed prun for pchain
 

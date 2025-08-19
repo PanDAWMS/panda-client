@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import sys
@@ -1375,10 +1376,20 @@ def convertConfToOutput(
 
 # get CMTCONFIG + IMG
 def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None, verbose=False, architecture=None):
+    # check if json
+    is_json = False
+    if architecture and "{" in architecture:
+        try:
+            architecture = json.loads(architecture)
+            is_json = True
+        except Exception as e:
+            tmp_log = PLogger.getPandaLogger()
+            tmp_log.error("failed to parse architecture %s : %s" % (architecture, e))
+            sys.exit(EC_Config)
     # get CMTCONFIG
     cmt_config = ""
     spec_str = ""
-    if architecture:
+    if architecture and not is_json:
         tmp_m = re.search("^[^@&#]+", architecture)
         if tmp_m:
             cmt_config = tmp_m.group(0)
@@ -1389,20 +1400,26 @@ def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None
                 spec_str = tmp_m.group(0)
     if not cmt_config:
         cmt_config = getCmtConfig(athenaVer, cacheVer, nightVer, cmtConfig, verbose)
+        if is_json and cmt_config and "sw_platform" not in architecture:
+            architecture["sw_platform"] = cmt_config
     # get base platform + HW specs
     if spec_str:
         pass
     elif "ALRB_USER_PLATFORM" in os.environ:
         # base platform + HW specs from ALRB
         spec_str = "@" + os.environ["ALRB_USER_PLATFORM"]
+        if is_json and "cpu_specs" not in architecture and "gpu_spec" not in architecture:
+            architecture["encoded_platform"] = os.environ["ALRB_USER_PLATFORM"]
     else:
         # architecture w/o base platform or even empty architecture
         spec_str = architecture
     # append base platform + HW specs if any
-    if spec_str:
+    if spec_str and not is_json:
         if cmt_config is None:
             cmt_config = ""
         cmt_config = cmt_config + spec_str
+    if is_json:
+        return json.dumps(architecture)
     return cmt_config
 
 
