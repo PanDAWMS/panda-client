@@ -794,6 +794,9 @@ def getJobStatus(ids, verbose=False, no_pickle=False):
 
 
 @curl_request_decorator(endpoint="job/get_description", method="get", json_out=True)
+def getJobStatus_internal(ids, verbose=False, no_pickle=False):
+    return {"job_ids": ids}
+
 def getJobStatus_new(ids, verbose=False, no_pickle=False):
     """Get status of jobs
 
@@ -807,7 +810,15 @@ def getJobStatus_new(ids, verbose=False, no_pickle=False):
               255: communication failure
         a list of job specs, or None if failed
     """
-    return {"job_ids": ids}
+    status, jobs = getJobStatus_internal(ids, verbose=verbose, no_pickle=no_pickle)
+    if status != 0:
+        return status, jobs
+
+    try:
+        return status, MiscUtils.load_jobs(jobs)
+    except Exception as e:
+        dump_log("getJobStatus_new", e, output)
+        return EC_Failed, None
 
 
 # kill jobs
