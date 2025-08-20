@@ -24,7 +24,7 @@ m = re.search(r"new jediTaskID=(\d+)", out)
 if not m:
     print("Failed to find task ID in output of prun command:")
     print(out.strip())
-    return
+    sys.exit(1)
 
 task_id = m.group(1)
 
