@@ -26,7 +26,7 @@ if not m:
     print(out.strip())
     sys.exit(1)
 
-task_id = m.group(1)
+task_id = int(m.group(1))
 
 print("=============================================================")
 pause_ret_old = pauseTask(task_id)
