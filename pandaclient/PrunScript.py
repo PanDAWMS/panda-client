@@ -2818,7 +2818,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             return newTaskParamMap
         if not options.noSubmit and exitCode == 0:
             tmpLog.info("submit {0}".format(options.outDS))
-            status, tmpOut = Client.insertTaskParams(
+            status, tmpOut = Client.insertTaskParams_new(
                 newTaskParamMap,
                 options.verbose,
                 properErrorCode=True,

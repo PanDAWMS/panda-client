@@ -1488,6 +1488,9 @@ def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_ti
 
 
 @curl_request_decorator(endpoint="task/submit", method="post", json_out=True)
+def insertTaskParams_internal(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
+    return {"task_parameters": taskParams}
+
 def insertTaskParams_new(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
     """Insert task parameters
 
@@ -1508,7 +1511,13 @@ def insertTaskParams_new(taskParams, verbose=False, properErrorCode=False, paren
               4: server error
     """
 
-    return {"task_parameters": taskParams}
+    status, output = insertTaskParams_internal(taskParams, verbose=verbose, properErrorCode=properErrorCode, parent_tid=parent_tid)
+
+    if status != 0:
+        return status, output
+
+    # the old code returns a list with the task ID, instead of a simple task ID
+    return status, [output]
 
 
 # get PanDA IDs with TaskID
