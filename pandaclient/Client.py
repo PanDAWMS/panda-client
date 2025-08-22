@@ -80,7 +80,7 @@ if "PANDA_BEHIND_REAL_LB" not in os.environ:
     else:
         baseURLCSRVSSL = "%s://%s%s" % (netloc.scheme, tmp_host, netloc.path)
 
-def curl_request_decorator(endpoint, method="post", via_file=False, json_out=False, full_output=False):
+def curl_request_decorator(endpoint, method="post", via_file=False, json_out=False, output_mode='basic'):
     def decorator(func):
         def wrapper(*args, **kwargs):
             # Extract arguments
@@ -108,7 +108,7 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
                 return EC_Failed, None
 
             # Let the caller handle full output if requested
-            if full_output:
+            if output_mode == 'full':
                 return status, output
 
             success = output.get("success")
@@ -116,6 +116,10 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
                 dump_log(func.__name__, None, output.get("message"))
                 return EC_Failed, None
 
+            if output_mode == 'extended':
+                return status, (output.get("data"), output.get("message"))
+
+            # output_mode == 'basic'
             return status, output.get("data")
         return wrapper
     return decorator
@@ -1491,7 +1495,7 @@ def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_ti
         return EC_Failed, output + "\n" + errStr
 
 
-@curl_request_decorator(endpoint="task/submit", method="post", json_out=True, full_output=True)
+@curl_request_decorator(endpoint="task/submit", method="post", json_out=True, output_mode='full')
 def insertTaskParams_internal(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
     return {"task_parameters": taskParams}
 
@@ -1646,7 +1650,7 @@ def resumeTask(jediTaskID, verbose=False):
         return EC_Failed, output + "\n" + errStr
 
 
-@curl_request_decorator(endpoint="task/resume", method="post", json_out=True)
+@curl_request_decorator(endpoint="task/resume", method="post", json_out=True, output_mode='extended')
 def resumeTask_new(jediTaskID, verbose=False):
     """Resume task
 
@@ -1707,7 +1711,7 @@ def pauseTask(jediTaskID, verbose=False):
         return EC_Failed, output + "\n" + errStr
 
 
-@curl_request_decorator(endpoint="task/pause", method="post", json_out=True)
+@curl_request_decorator(endpoint="task/pause", method="post", json_out=True, output_mode='extended')
 def pauseTask_new(jediTaskID, verbose=False):
     """Pause task
 
