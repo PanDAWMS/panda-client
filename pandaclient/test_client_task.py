@@ -33,13 +33,13 @@ def main(task_id):
     pause_ret_old = pauseTask(task_id)
     resume_ret_old = resumeTask(task_id)
 
-    print("old functions returned {}".format(pause_ret_old, resume_ret_old))
+    print("old functions returned {0}\n {1}".format(pause_ret_old, resume_ret_old))
 
     print("=============================================================")
     pause_ret_new = pauseTask_new(task_id)
     resume_ret_new = resumeTask_new(task_id)
 
-    print("new functions returned {}".format(pause_ret_new, resume_ret_new))
+    print("new functions returned {0}\n {1}".format(pause_ret_new, resume_ret_new))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
