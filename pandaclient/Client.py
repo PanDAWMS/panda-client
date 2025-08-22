@@ -80,7 +80,7 @@ if "PANDA_BEHIND_REAL_LB" not in os.environ:
     else:
         baseURLCSRVSSL = "%s://%s%s" % (netloc.scheme, tmp_host, netloc.path)
 
-def curl_request_decorator(endpoint, method="post", via_file=False, json_out=False):
+def curl_request_decorator(endpoint, method="post", via_file=False, json_out=False, full_output=False):
     def decorator(func):
         def wrapper(*args, **kwargs):
             # Extract arguments
@@ -106,6 +106,10 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
             if isinstance(output, str) or not isinstance(output, dict):
                 dump_log(func.__name__, None, output)
                 return EC_Failed, None
+
+            # Let the caller handle full output if requested
+            if full_output:
+                return status, output
 
             success = output.get("success")
             if not success:
@@ -1487,7 +1491,7 @@ def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_ti
         return EC_Failed, output + "\n" + errStr
 
 
-@curl_request_decorator(endpoint="task/submit", method="post", json_out=True)
+@curl_request_decorator(endpoint="task/submit", method="post", json_out=True, full_output=True)
 def insertTaskParams_internal(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
     return {"task_parameters": taskParams}
 
