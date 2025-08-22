@@ -1517,11 +1517,15 @@ def insertTaskParams_new(taskParams, verbose=False, properErrorCode=False, paren
         return status, output
 
     try:
-        output_return = [output['data'], output['message']]
-    except KeyError:
-        output_return = "Impossible to parse server response. Output: {}".format(output)
+        if not output['success']:
+            # [error code, message]
+            return [output['data'], output['message']]
 
-    return status, output_return
+        # [0, message including task ID]
+        return [0, message]
+
+    except Exception:
+        return EC_Failed, "Impossible to parse server response. Output: {}".format(output)
 
 
 # get PanDA IDs with TaskID
