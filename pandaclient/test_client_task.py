@@ -19,6 +19,7 @@ def main(task_id):
 
         res = subprocess.run(cmd, shell=True, text=True, capture_output=True)
         out = (res.stdout or "") + "\n" + (res.stderr or "")
+        print(out)
 
         os.chdir(cwd)  # back to original dir
 

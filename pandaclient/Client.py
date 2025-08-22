@@ -821,7 +821,7 @@ def getJobStatus_new(ids, verbose=False, no_pickle=False):
     try:
         return status, MiscUtils.load_jobs(jobs)
     except Exception as e:
-        dump_log("getJobStatus_new", e, output)
+        dump_log("getJobStatus_new", e, jobs)
         return EC_Failed, None
 
 
@@ -1523,10 +1523,10 @@ def insertTaskParams_new(taskParams, verbose=False, properErrorCode=False, paren
     try:
         if not output['success']:
             # [error code, message]
-            return [output['data'], output['message']]
+            return status, (output['data'], output['message'])
 
         # [0, message including task ID]
-        return [0, message]
+        return status, (0, output['message'])
 
     except Exception:
         return EC_Failed, "Impossible to parse server response. Output: {}".format(output)
