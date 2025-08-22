@@ -1707,7 +1707,7 @@ def pauseTask(jediTaskID, verbose=False):
         return EC_Failed, output + "\n" + errStr
 
 
-@curl_request_decorator(endpoint="task/resume", method="post", json_out=True)
+@curl_request_decorator(endpoint="task/pause", method="post", json_out=True)
 def pauseTask_new(jediTaskID, verbose=False):
     """Pause task
 
