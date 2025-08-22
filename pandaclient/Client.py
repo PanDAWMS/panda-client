@@ -114,6 +114,9 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
             success = output.get("success")
             if not success:
                 dump_log(func.__name__, None, output.get("message"))
+                if output_mode == 'extended':
+                    return status, (output.get("data"), output.get("message"))
+
                 return EC_Failed, None
 
             if output_mode == 'extended':
