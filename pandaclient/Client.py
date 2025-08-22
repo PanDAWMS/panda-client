@@ -1516,8 +1516,12 @@ def insertTaskParams_new(taskParams, verbose=False, properErrorCode=False, paren
     if status != 0:
         return status, output
 
-    # the old code returns a list with the task ID, instead of a simple task ID
-    return status, [output]
+    try:
+        output_return = [output['data'], output['message']]
+    except KeyError:
+        output_return = "Impossible to parse server response. Output: {}".format(output)
+
+    return status, output_return
 
 
 # get PanDA IDs with TaskID
