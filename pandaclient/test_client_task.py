@@ -1,3 +1,4 @@
+import argparse
 import subprocess, re, uuid, tempfile, sys, os
 
 from pandaclient.Client import insertTaskParams_new, killTask_new, pauseTask_new, resumeTask_new, getTaskStatus_new
