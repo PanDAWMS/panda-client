@@ -4,6 +4,7 @@ client methods
 """
 
 import gzip
+import inspect
 import json
 import os
 import re
@@ -84,7 +85,13 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
     def decorator(func):
         def wrapper(*args, **kwargs):
             # Extract arguments
-            verbose = kwargs.get("verbose", False)
+            try:
+                sig = inspect.signature(func)
+                default_verbose = sig.parameters['verbose'].default
+            except Exception:
+                default_verbose = False
+
+            verbose = kwargs.get("verbose", default_verbose)
             data = func(*args, **kwargs)
 
             # Instantiate curl
