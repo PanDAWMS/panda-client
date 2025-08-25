@@ -127,7 +127,7 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
                 if verbose:
                     output_status = output.get("data")
                 else:
-                    output_status = False
+                    output_status = True
                 return status, (output_status, output.get("message"))
 
             # output_mode == 'basic'
