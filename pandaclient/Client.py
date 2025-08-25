@@ -913,7 +913,7 @@ def killTask(jediTaskID, verbose=False):
         dump_log("killTask", e, output)
         return EC_Failed, None
 
-@curl_request_decorator(endpoint="job/kill", method="post", json_out=True)
+@curl_request_decorator(endpoint="job/kill", method="post", json_out=True, output_mode='extended')
 def killTask_new(jediTaskID, verbose=False):
     """Kill a task
     args:
@@ -973,7 +973,7 @@ def finishTask(jediTaskID, soft=False, verbose=False):
         return EC_Failed, None
 
 
-@curl_request_decorator(endpoint="task/finish", method="post", json_out=True)
+@curl_request_decorator(endpoint="task/finish", method="post", json_out=True, output_mode='extended')
 def finishTask_new(jediTaskID, soft=False, verbose=False):
     """finish a task
     args:
@@ -1039,7 +1039,7 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
         dump_log("retryTask", e, output)
         return EC_Failed, None
 
-@curl_request_decorator(endpoint="task/retry", method="post", json_out=True)
+@curl_request_decorator(endpoint="task/retry", method="post", json_out=True, output_mode='extended')
 def retryTask_new(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
     """retry a task
     args:
