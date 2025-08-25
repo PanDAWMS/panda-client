@@ -928,7 +928,7 @@ def killTask(jediTaskID, verbose=False):
         dump_log("killTask", e, output)
         return EC_Failed, None
 
-@curl_request_decorator(endpoint="job/kill", method="post", json_out=True, output_mode='extended')
+@curl_request_decorator(endpoint="task/kill", method="post", json_out=True, output_mode='extended')
 def killTask_new(jediTaskID, verbose=False):
     """Kill a task
     args:
