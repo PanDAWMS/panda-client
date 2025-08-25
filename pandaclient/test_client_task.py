@@ -1,8 +1,8 @@
 import argparse
 import subprocess, re, uuid, tempfile, sys, os
 
-from pandaclient.Client import insertTaskParams_new, killTask_new, pauseTask_new, resumeTask_new, getTaskStatus_new, finishTask_new, retryTask_new
-from pandaclient.Client import insertTaskParams, killTask, pauseTask, resumeTask, getTaskStatus, finishTask, retryTask
+from pandaclient.Client import insertTaskParams_new, getTaskParamsMap_new, killTask_new, pauseTask_new, resumeTask_new, getTaskStatus_new, finishTask_new, retryTask_new, reactivateTask_new
+from pandaclient.Client import insertTaskParams, getTaskParamsMap, killTask, pauseTask, resumeTask, getTaskStatus, finishTask, retryTask, reactivateTask
 
 def main(task_id):
     outds = f"user.pandasv2.{uuid.uuid4()}"
@@ -31,33 +31,41 @@ def main(task_id):
 
     print("=============================================================")
     status_ret_old = getTaskStatus(task_id)
+    params_ret_old = getTaskParamsMap(task_id)
     pause_ret_old = pauseTask(task_id)
     resume_ret_old = resumeTask(task_id)
     kill_ret_old = killTask(task_id)
     finish_ret_old = finishTask(task_id)
     retry_ret_old = retryTask(task_id)
+    reactivate_ret_old = reactivateTask(task_id)
 
     print("getTaskStatus returned: {0}".format(status_ret_old))
+    print("getTaskParams returned: {0}".format(params_ret_old))
     print("pauseTask returned: {0}".format(pause_ret_old))
     print("resumeTask returned: {0}".format(resume_ret_old))
     print("killTask returned: {0}".format(kill_ret_old))
     print("finishTask returned: {0}".format(finish_ret_old))
     print("retryTask returned: {0}".format(retry_ret_old))
+    print("reactivateTask returned: {0}".format(reactivate_ret_old))
 
     print("=============================================================")
     status_ret_new = getTaskStatus_new(task_id)
+    params_ret_new = getTaskParamsMap_new(task_id)
     pause_ret_new = pauseTask_new(task_id)
     resume_ret_new = resumeTask_new(task_id)
     kill_ret_new = killTask_new(task_id)
     finish_ret_new = finishTask_new(task_id)
     retry_ret_new = retryTask_new(task_id)
+    reactivate_ret_new = reactivateTask_new(task_id)
 
     print("getTaskStatus_new returned: {0}".format(status_ret_new))
+    print("getTaskParamsMap_new returned: {0}".format(params_ret_new))
     print("pauseTask_new returned: {0}".format(pause_ret_new))
     print("resumeTask_new returned: {0}".format(resume_ret_new))
     print("killTask_new returned: {0}".format(kill_ret_new))
     print("finishTask_new returned: {0}".format(finish_ret_new))
     print("retryTask_new returned: {0}".format(retry_ret_new))
+    print("reactivateTask_new returned: {0}".format(reactivate_ret_new))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
