@@ -1613,8 +1613,8 @@ def reactivateTask(jediTaskID, verbose=False):
         return EC_Failed, output + "\n" + errStr
 
 
-@curl_request_decorator(endpoint="task/reactivate", method="post", json_out=True)
-def reactivateTask_new(jediTaskID, verbose=False):
+@curl_request_decorator(endpoint="task/reactivate", method="post", json_out=True, output_mode='extended')
+def reactivateTask_new(jediTaskID, verbose=True):
     """Reactivate task
 
     args:
