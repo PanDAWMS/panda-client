@@ -1870,6 +1870,19 @@ def getUserJobMetadata(task_id, verbose=False):
         errStr = dump_log("getUserJobMetadata", e, output)
         return EC_Failed, errStr
 
+@curl_request_decorator(endpoint="job/get_metadata_for_analysis_jobs", method="get", json_out=True)
+def getUserJobMetadata_new(task_id, verbose=False):
+    """Get metadata of all jobs in a task
+    args:
+       jediTaskID: jediTaskID of the task
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a list of job metadata dictionaries, or error message if failed
+    """
+    return {"task_id": task_id}
 
 # hello
 def hello(verbose=False):
@@ -2233,6 +2246,21 @@ def set_user_secret(key, value, verbose=False):
         tmp_log.error(msg)
         return EC_Failed, msg
 
+@curl_request_decorator(endpoint="creds/set_user_secrets", method="post", json_out=True)
+def set_user_secret_new(key, value, verbose=False):
+    """Set a user secret
+    args:
+       key: secret name. None to delete all secrets
+       value: secret value. None to delete the secret
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a tuple of (True/False and diagnostic message). True if the request was accepted
+    """
+    return {"key": key, "value": value}
+
 
 # get user secret
 def get_user_secrets(verbose=False):
@@ -2274,6 +2302,18 @@ def get_user_secrets(verbose=False):
         tmp_log.error(msg)
         return EC_Failed, msg
 
+@curl_request_decorator(endpoint="creds/get_user_secrets", method="get", json_out=True)
+def get_user_secrets_new(verbose=False):
+    """Get user secrets
+    args:
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a tuple of (True/False and a dict of secrets). True if the request was accepted
+    """
+    return {}
 
 # increase attempt numbers to retry failed jobs
 def increase_attempt_nr(task_id, increase=3, verbose=False):
@@ -2311,6 +2351,28 @@ def increase_attempt_nr(task_id, increase=3, verbose=False):
         return EC_Failed, errStr
 
 
+@curl_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True)
+def increase_attempt_nr(task_id, increase=3, verbose=False):
+    """increase attempt numbers to retry failed jobs
+    args:
+       task_id: jediTaskID of the task
+       increase: increase for attempt numbers
+       verbose: True to see verbose message
+    returns:
+       status code
+             0: communication succeeded to the panda server
+             255: communication failure
+       return code
+             0: succeeded
+             1: unknown task
+             2: invalid task status
+             3: permission denied
+             4: wrong parameter
+             None: database error
+    """
+    return {"task_id": task_id, "increase": increase}
+
+
 # reload input
 def reload_input(task_id, verbose=False):
     """Retry task
@@ -2344,6 +2406,25 @@ def reload_input(task_id, verbose=False):
         errStr = dump_log("reload_input", e, output)
         return EC_Failed, errStr
 
+@curl_request_decorator(endpoint="task/reload_input", method="post", json_out=True, output_mode='extended')
+def reload_input_new(task_id, verbose=True):
+    """Retry task
+    args:
+        task_id: jediTaskID of the task to reload and retry
+    returns:
+        status code
+              0: communication succeeded to the panda server
+              255: communication failure
+        tuple of return code and diagnostic message
+              0: request is registered
+              1: server error
+              2: task not found
+              3: permission denied
+              4: irrelevant task status
+            100: non SSL connection
+            101: irrelevant taskID
+    """
+    return {"task_id": task_id}
 
 # get files in datasets
 def get_files_in_datasets(task_id, dataset_types="input,pseudo_input", verbose=False):
@@ -2375,6 +2456,26 @@ def get_files_in_datasets(task_id, dataset_types="input,pseudo_input", verbose=F
     return 0, output
 
 
+@curl_request_decorator(endpoint="task/get_files_in_datasets", method="get", json_out=True)
+def get_files_in_datasets_internal(task_id, dataset_types, verbose=False):
+    return {"task_id": task_id, "dataset_types": dataset_types}
+
+def get_files_in_datasets_new(task_id, dataset_types="input,pseudo_input", verbose=False):
+    """Get files in datasets
+    args:
+       task_id: jediTaskID of the datasets
+       dataset_types: a comma-separated string to specify dataset types
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a list of dataset dictionaries including file info, or error message if failed
+    """
+    dataset_types_list = dataset_types.split(",")
+    return get_files_in_datasets_internal(task_id, dataset_types_list)
+
+
 # get status of events
 def get_events_status(ids, verbose=False):
     """Get status of events
@@ -2401,6 +2502,20 @@ def get_events_status(ids, verbose=False):
     if output is None:
         return EC_Failed, "server side error"
     return 0, output
+
+@curl_request_decorator(endpoint="event/get_event_range_statuses", method="get", json_out=True)
+def get_events_status_new(ids, verbose=False):
+    """Get status of events
+    args:
+       ids: a list of {'task_id': ..., 'panda_id': ...}
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a dictionary of {panda_id: [{event_range_id: status}, ...], ...}
+    """
+    return {"job_task_ids": ids}
 
 
 # update events
@@ -2431,3 +2546,19 @@ def update_events(events, verbose=False):
     if output is None:
         return EC_Failed, "server side error"
     return 0, output
+
+
+@curl_request_decorator(endpoint="event/update_event_ranges", method="post", json_out=True)
+def update_events_new(events, verbose=False):
+    """Update events
+    args:
+       events: a list of {'eventRangeID': ..., 'eventStatus': ...,
+                          'errorCode': <optional>, 'errorDiag': <optional, < 500chars>}
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a dictionary of {'Returns': a list of returns when updating events, 'Command': commands to jobs, 'StatusCode': 0 for OK})
+    """
+    return {"event_ranges": events}
