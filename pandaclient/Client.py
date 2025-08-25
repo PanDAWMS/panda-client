@@ -1662,7 +1662,7 @@ def resumeTask(jediTaskID, verbose=False):
 
 
 @curl_request_decorator(endpoint="task/resume", method="post", json_out=True, output_mode='extended')
-def resumeTask_new(jediTaskID, verbose=False):
+def resumeTask_new(jediTaskID, verbose=True):
     """Resume task
 
     args:
@@ -1723,7 +1723,7 @@ def pauseTask(jediTaskID, verbose=False):
 
 
 @curl_request_decorator(endpoint="task/pause", method="post", json_out=True, output_mode='extended')
-def pauseTask_new(jediTaskID, verbose=False):
+def pauseTask_new(jediTaskID, verbose=True):
     """Pause task
 
     args:
