@@ -621,7 +621,7 @@ class _NativeCurl(_Curl):
                         f_gzip.write(json.dumps(data).encode())
                     rdata = rdata_out.getvalue()
                 else:
-                    rdata = json.dumps(data)
+                    rdata = json.dumps(data).encode("utf-8")
 
             req = Request(url, rdata, headers=header, method=method)
             context = ssl._create_unverified_context()
