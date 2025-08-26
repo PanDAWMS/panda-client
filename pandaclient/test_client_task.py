@@ -1,8 +1,8 @@
 import argparse
 import subprocess, re, uuid, tempfile, sys, os
 
-from pandaclient.Client import insertTaskParams_new, getTaskParamsMap_new, killTask_new, pauseTask_new, resumeTask_new, getTaskStatus_new, finishTask_new, retryTask_new, reactivateTask_new, increaseAttemptNr_new, reloadInput_new, getJediTaskDetails_new, get_files_in_datasets_new, getJobIDsJediTasksInTimeRange_new, getPandaIDsWithTaskID_new
-from pandaclient.Client import insertTaskParams, getTaskParamsMap, killTask, pauseTask, resumeTask, getTaskStatus, finishTask, retryTask, reactivateTask, increaseAttemptNr, reloadInput, getJediTaskDetails, get_files_in_datasets, getJobIDsJediTasksInTimeRange, getPandaIDsWithTaskID
+from pandaclient.Client import insertTaskParams_new, getTaskParamsMap_new, killTask_new, pauseTask_new, resumeTask_new, getTaskStatus_new, finishTask_new, retryTask_new, reactivateTask_new, increase_attempt_nr_new, reloadInput_new, getJediTaskDetails_new, get_files_in_datasets_new, getJobIDsJediTasksInTimeRange_new, getPandaIDsWithTaskID_new
+from pandaclient.Client import insertTaskParams, getTaskParamsMap, killTask, pauseTask, resumeTask, getTaskStatus, finishTask, retryTask, reactivateTask, increase_attempt_nr, reloadInput, getJediTaskDetails, get_files_in_datasets, getJobIDsJediTasksInTimeRange, getPandaIDsWithTaskID
 
 def main(task_id):
     outds = f"user.pandasv2.{uuid.uuid4()}"
