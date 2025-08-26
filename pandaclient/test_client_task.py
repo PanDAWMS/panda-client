@@ -1,8 +1,8 @@
 import argparse
 import subprocess, re, uuid, tempfile, sys, os
 
-from pandaclient.Client import insertTaskParams_new, getTaskParamsMap_new, killTask_new, pauseTask_new, resumeTask_new, getTaskStatus_new, finishTask_new, retryTask_new, reactivateTask_new, increase_attempt_nr_new, reloadInput_new, getJediTaskDetails_new, get_files_in_datasets_new, getJobIDsJediTasksInTimeRange_new, getPandaIDsWithTaskID_new
-from pandaclient.Client import insertTaskParams, getTaskParamsMap, killTask, pauseTask, resumeTask, getTaskStatus, finishTask, retryTask, reactivateTask, increase_attempt_nr, reloadInput, getJediTaskDetails, get_files_in_datasets, getJobIDsJediTasksInTimeRange, getPandaIDsWithTaskID
+from pandaclient.Client import insertTaskParams_new, getTaskParamsMap_new, killTask_new, pauseTask_new, resumeTask_new, getTaskStatus_new, finishTask_new, retryTask_new, reactivateTask_new, increase_attempt_nr_new, reload_input_new, getJediTaskDetails_new, get_files_in_datasets_new, getJobIDsJediTasksInTimeRange_new, getPandaIDsWithTaskID_new
+from pandaclient.Client import insertTaskParams, getTaskParamsMap, killTask, pauseTask, resumeTask, getTaskStatus, finishTask, retryTask, reactivateTask, increase_attempt_nr, reload_input, getJediTaskDetails, get_files_in_datasets, getJobIDsJediTasksInTimeRange, getPandaIDsWithTaskID
 
 def main(task_id):
     outds = f"user.pandasv2.{uuid.uuid4()}"
@@ -41,8 +41,8 @@ def main(task_id):
     reactivate_ret_old = reactivateTask(task_id)
     get_jobs_old = getJobIDsJediTasksInTimeRange('2025-08-01 14:30:45')
     get_ids_old = getPandaIDsWithTaskID(task_id)
-    increase_ret_old = increaseAttemptNr(task_id)
-    reload_ret_old = reloadInput(task_id)
+    increase_ret_old = increase_attempt_nr(task_id)
+    reload_ret_old = reload_input(task_id)
     files_ret_old = get_files_in_datasets(task_id)
 
     print("getTaskStatus returned: {0}".format(status_ret_old))
@@ -72,8 +72,8 @@ def main(task_id):
     reactivate_ret_new = reactivateTask_new(task_id)
     get_jobs_new = getJobIDsJediTasksInTimeRange_new('2025-08-01 14:30:45')
     get_ids_new = getPandaIDsWithTaskID_new(task_id)
-    increase_ret_new = increaseAttemptNr_new(task_id)
-    reload_ret_new = reloadInput_new(task_id)
+    increase_ret_new = increase_attempt_nr_new(task_id)
+    reload_ret_new = reload_input_new(task_id)
     files_ret_new = get_files_in_datasets_new(task_id)
 
     print("getTaskStatus_new returned: {0}".format(status_ret_new))
