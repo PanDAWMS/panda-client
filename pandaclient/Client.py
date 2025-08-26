@@ -1300,6 +1300,9 @@ def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=Fa
         dump_log("getJediTasksInTimeRange", e, output)
         return EC_Failed, None
 
+@curl_request_decorator(endpoint="task/get_tasks_modified_since", method="get", json_out=True)
+def getJobIDsJediTasksInTimeRange_new(timeRange, dn=None, minTaskID=None, verbose=False, task_type="user"):
+    return {"since": timeRange, "dn": dn, "full": True, "min_task_id": minTaskID, "prod_source_label": task_type}
 
 # get details of jedi task
 def getJediTaskDetails(taskDict, fullFlag, withTaskInfo, verbose=False):
@@ -1330,6 +1333,10 @@ def getJediTaskDetails(taskDict, fullFlag, withTaskInfo, verbose=False):
         dump_log("getJediTaskDetails", e, output)
         return EC_Failed, None
 
+
+@curl_request_decorator(endpoint="task/get_details", method="get", json_out=True)
+def getJediTaskDetails_new(taskDict, fullFlag, withTaskInfo, verbose=False):
+    return {"task_id": taskDict["jediTaskID"], "include_parameters": fullFlag, "include_status": withTaskInfo}
 
 # get full job status
 def getFullJobStatus(ids, verbose=False):
@@ -1364,6 +1371,22 @@ def getFullJobStatus(ids, verbose=False):
         return EC_Failed, "cannot load pickle: {0}".format(str(e))
 
 
+@curl_request_decorator(endpoint="job/get_description_incl_archive", method="get", json_out=True)
+def getFullJobStatus_new(ids, verbose=False):
+    """Get detailed status of jobs
+
+    args:
+        ids: a list of PanDA IDs
+        verbose: True to see verbose messages
+    returns:
+        status code
+              0: communication succeeded to the panda server
+              255: communication failure
+        a list of job specs, or None if failed
+    """
+    return {"job_ids": ids}
+
+
 # set debug mode
 def setDebugMode(pandaID, modeOn, verbose):
     # instantiate curl
@@ -1381,6 +1404,11 @@ def setDebugMode(pandaID, modeOn, verbose):
     except Exception as e:
         errStr = dump_log("setDebugMode", e, output)
         return EC_Failed, errStr
+
+
+@curl_request_decorator(endpoint="job/set_debug_mode", method="post", json_out=True)
+def setDebugMode(pandaID, modeOn, verbose):
+    return {"job_id": pandaID, "mode": modeOn}
 
 
 # set tmp dir
@@ -1579,6 +1607,21 @@ def getPandaIDsWithTaskID(jediTaskID, verbose=False):
     except Exception as e:
         errStr = dump_log("getPandaIDsWithTaskID", e, output)
         return EC_Failed, output + "\n" + errStr
+
+
+@curl_request_decorator(endpoint="task/get_job_ids", method="get", json_out=True)
+def getPandaIDsWithTaskID_new(jediTaskID, verbose=False):
+    """Get PanDA IDs with TaskID
+
+    args:
+        jediTaskID: jediTaskID of the task to get lit of PanDA IDs
+    returns:
+        status code
+              0: communication succeeded to the panda server
+              255: communication failure
+        the list of PanDA IDs, or error message if failed
+    """
+    return {"task_id": jediTaskID}
 
 
 # reactivate task
@@ -1974,6 +2017,19 @@ def get_cert_attributes(verbose=False):
         return EC_Failed, msg
 
 
+@curl_request_decorator(endpoint="system/get_attributes", method="get", json_out=True)
+def get_cert_attributes(verbose=False):
+    """Get certificate attributes from the PanDA server
+    args:
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a dictionary of attributes or diagnostic message
+    """
+    return {}
+
 # get username from token
 def get_user_name_from_token():
     """Extract username and groups from ID token
@@ -2352,7 +2408,7 @@ def increase_attempt_nr(task_id, increase=3, verbose=False):
 
 
 @curl_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True)
-def increase_attempt_nr(task_id, increase=3, verbose=False):
+def increase_attempt_nr_new(task_id, increase=3, verbose=False):
     """increase attempt numbers to retry failed jobs
     args:
        task_id: jediTaskID of the task
