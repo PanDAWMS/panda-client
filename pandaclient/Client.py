@@ -1407,7 +1407,7 @@ def setDebugMode(pandaID, modeOn, verbose):
 
 
 @curl_request_decorator(endpoint="job/set_debug_mode", method="post", json_out=True)
-def setDebugMode(pandaID, modeOn, verbose):
+def setDebugMode_new(pandaID, modeOn, verbose):
     return {"job_id": pandaID, "mode": modeOn}
 
 
