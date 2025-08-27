@@ -1339,9 +1339,12 @@ def getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose=False)
     return {"task_id": taskDict["jediTaskID"], "include_parameters": fullFlag, "include_status": withTaskInfo}
 
 def getJediTaskDetails_new(taskDict, fullFlag, withTaskInfo, verbose=False):
-    tmp_dictionary = getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose)
-    taskDict.update(tmp_dictionary)
-    return taskDict
+    status, tmp_dictionary = getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose)
+    if status == 0:
+        taskDict.update(tmp_dictionary)
+        return status, taskDict
+
+    return status, tmp_dictionary
 
 # get full job status
 def getFullJobStatus(ids, verbose=False):
