@@ -1335,8 +1335,13 @@ def getJediTaskDetails(taskDict, fullFlag, withTaskInfo, verbose=False):
 
 
 @curl_request_decorator(endpoint="task/get_details", method="get", json_out=True)
-def getJediTaskDetails_new(taskDict, fullFlag, withTaskInfo, verbose=False):
+def getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose=False):
     return {"task_id": taskDict["jediTaskID"], "include_parameters": fullFlag, "include_status": withTaskInfo}
+
+def getJediTaskDetails_new(taskDict, fullFlag, withTaskInfo, verbose=False):
+    tmp_dictionary = getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose)
+    taskDict.update(tmp_dictionary)
+    return taskDict
 
 # get full job status
 def getFullJobStatus(ids, verbose=False):
