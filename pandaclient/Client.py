@@ -15,6 +15,8 @@ import sys
 import time
 import traceback
 
+from datetime import datetime
+
 try:
     # python 2
     from urllib import unquote_plus, urlencode
@@ -81,6 +83,14 @@ if "PANDA_BEHIND_REAL_LB" not in os.environ:
     else:
         baseURLCSRVSSL = "%s://%s%s" % (netloc.scheme, tmp_host, netloc.path)
 
+
+# Decoder: check marker and convert back
+def decode_special_cases(obj):
+    if "__datetime__" in obj:
+        return datetime.fromisoformat(obj["__datetime__"])
+    return obj
+
+
 def curl_request_decorator(endpoint, method="post", via_file=False, json_out=False, output_mode='basic'):
     def decorator(func):
         def wrapper(*args, **kwargs):
@@ -120,7 +130,7 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
 
             success = output.get("success")
             if not success:
-                dump_log(func.__name__, None, output.get("message"))
+                # dump_log(func.__name__, None, output.get("message"))
                 if output_mode == 'extended':
                     if verbose:
                         output_status = output.get("data")
@@ -407,7 +417,7 @@ class _Curl:
         # when specified, convert to json
         if json_out:
             try:
-                ret = (ret[0], json.loads(ret[1]))
+                ret = (ret[0], json.loads(ret[1], object_hook=decode_special_cases))
             except Exception:
                 ret = (ret[0], ret[1])
 
@@ -512,7 +522,7 @@ class _Curl:
         if o != "\x00":
             try:
                 if is_json or json_out:
-                    o = json.loads(o)
+                    o = json.loads(o, object_hook=decode_special_cases)
                 else:
                     tmp_out = unquote_plus(o)
                     o = eval(tmp_out)
@@ -523,7 +533,7 @@ class _Curl:
                 if not json_out:
                     ret = (s, f.read())
                 else:
-                    ret = (s, json.loads(f.read()))
+                    ret = (s, json.loads(f.read(), object_hook=decode_special_cases))
             os.remove(tmp_name_out)
         else:
             ret = (s, o)
@@ -669,7 +679,7 @@ class _NativeCurl(_Curl):
             time.sleep(1)
 
         if json_out and code == 0:
-            text = json.loads(text)
+            text = json.loads(text, object_hook=decode_special_cases)
 
         if code == 0 and output_name:
             with open(output_name, "wb") as f:
@@ -691,7 +701,7 @@ class _NativeCurl(_Curl):
             time.sleep(1)
 
         if (is_json or json_out) and code == 0:
-            text = json.loads(text)
+            text = json.loads(text, object_hook=decode_special_cases)
 
         return code, text
 
@@ -2415,7 +2425,7 @@ def increase_attempt_nr(task_id, increase=3, verbose=False):
         return EC_Failed, errStr
 
 
-@curl_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True)
+@curl_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True, output_mode="extended")
 def increase_attempt_nr_new(task_id, increase=3, verbose=False):
     """increase attempt numbers to retry failed jobs
     args:
@@ -2520,7 +2530,7 @@ def get_files_in_datasets(task_id, dataset_types="input,pseudo_input", verbose=F
     return 0, output
 
 
-@curl_request_decorator(endpoint="task/get_files_in_datasets", method="get", json_out=True)
+@curl_request_decorator(endpoint="task/get_datasets_and_files", method="get", json_out=True)
 def get_files_in_datasets_internal(task_id, dataset_types, verbose=False):
     return {"task_id": task_id, "dataset_types": dataset_types}
 
