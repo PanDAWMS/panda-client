@@ -1390,6 +1390,9 @@ def getFullJobStatus(ids, verbose=False):
 
 
 @curl_request_decorator(endpoint="job/get_description_incl_archive", method="get", json_out=True)
+def getFullJobStatus_internal(ids, verbose=False):
+    return {"job_ids": ids}
+
 def getFullJobStatus_new(ids, verbose=False):
     """Get detailed status of jobs
 
@@ -1402,7 +1405,16 @@ def getFullJobStatus_new(ids, verbose=False):
               255: communication failure
         a list of job specs, or None if failed
     """
-    return {"job_ids": ids}
+    status, jobs = getFullJobStatus_internal(ids, verbose=verbose)
+    if status != 0:
+        return status, jobs
+
+    try:
+        return status, MiscUtils.load_jobs(jobs)
+    except Exception as e:
+        dump_log("getFullJobStatus_new", e, jobs)
+        return EC_Failed, None
+
 
 
 # set debug mode
