@@ -790,6 +790,44 @@ def submitJobs(jobs, verbose=False, no_pickle=False):
         dump_log("submitJobs", e, output)
         return EC_Failed, None
 
+@curl_request_decorator(endpoint="job/submit", method="post", json_out=True)
+def submitJobs_internal(jobs, verbose=False, no_pickle=False):
+    return {"jobs": jobs}
+
+def submitJobs_new(jobs, verbose=False, no_pickle=False):
+    """Submit jobs
+
+    args:
+        jobs: a list of job specs
+        verbose: True to see verbose messages
+        no_pickle: True to use json instead of pickle
+    returns:
+        status code
+              0: communication succeeded to the panda server
+              255: communication failure
+        a list of PandaIDs, or None if failed
+    """
+    # set hostname
+    hostname = commands_get_output("hostname")
+    for job in jobs:
+        job.creationHost = hostname
+
+    jobs_serialized = MiscUtils.dump_jobs_json(jobs)
+    status, output = submitJobs_internal(jobs_serialized, verbose, no_pickle)
+
+    if status != 0:
+        print(output)
+        return status, None
+
+    success = output.get("success")
+    if not success:
+        print (output.get("message"))
+        return EC_Failed, None
+
+    output_data = output.get("data")
+    return status, output_data
+
+
 
 # get job statuses
 def getJobStatus(ids, verbose=False, no_pickle=False):
@@ -1155,6 +1193,74 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
     return s, str_decode(o)
 
 
+def putFile_new(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1):
+    """Upload a file with the size limit on 10 MB
+    args:
+       file: filename to be uploaded
+       verbose: True to see debug messages
+       useCacheSrv: True to use a dedicated cache server separated from the PanDA server
+       reuseSandbox: True to avoid uploading the same sandbox files
+       n_try: number of tries
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       diagnostic message
+    """
+    # size check for noBuild
+    size_limit = 10 * 1024 * 1024
+    file_size = os.stat(file)[stat.ST_SIZE]
+    if not os.path.basename(file).startswith("sources."):
+        if file_size > size_limit:
+            error_message = "Exceeded size limit (%sB >%sB). " % (file_size, size_limit)
+            error_message += "Your working directory contains too large files which cannot be put on cache area. "
+            error_message += "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
+            tmp_logger = PLogger.getPandaLogger()
+            tmp_logger.error(error_message)
+            return EC_Failed, "False"
+
+    # Instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey = _x509()
+    curl.verbose = verbose
+
+    # check duplication
+    if reuseSandbox:
+        # get CRC
+        fo = open(file, "rb")
+        file_content = fo.read()
+        fo.close()
+        footer = file_content[-8:]
+        checksum, i_size = struct.unpack("II", footer)
+
+        # Execute request
+        endpoint = "file_server/validate_cache_file"
+        data = {"file_size": i_size, "checksum": checksum}
+        url = "{0}/{1}".format(server_base_path_ssl, endpoint)
+        status, output = curl.post(url, data, via_file=True, json_out=True)
+        if status != 0:
+            return EC_Failed, "ERROR: Could not check sandbox duplication with %s" % output
+
+        message = output["message"]
+        if message.startswith("FOUND:"):
+            # found reusable sandbox
+            host_name, reusable_file_name = output.split(":")[1:]
+            # set cache server hostname
+            setCacheServer(host_name)
+            # return reusable filename
+            return 0, "NewFileName:{0}".format(reusable_file_name)
+
+    if not useCacheSrv:
+        global cache_base_path_ssl
+        cache_base_path_ssl = server_base_path_ssl
+
+    url = "{0}/{1}".format(cache_base_path_ssl, "upload_cache_file")
+    data = {"file": file}
+    s, o = curl.put(url, data, n_try=n_try)
+    return s, str_decode(o)
+
+
 # get file
 def getFile(filename, output_path=None, verbose=False, n_try=1):
     """Get a file
@@ -1252,6 +1358,7 @@ def setCacheServer(host_name):
 
 
 # register proxy key
+# THIS API DOES NOT EXIST IN PANDA SERVER?!?
 def registerProxyKey(credname, origin, myproxy, verbose=False):
     # instantiate curl
     curl = _Curl()
@@ -1266,6 +1373,7 @@ def registerProxyKey(credname, origin, myproxy, verbose=False):
 
 
 # get proxy key
+# THIS API DOES NOT EXIST IN PANDA SERVER?!?
 def getProxyKey(verbose=False):
     # instantiate curl
     curl = _Curl()
@@ -2332,7 +2440,7 @@ def set_user_secret(key, value, verbose=False):
         tmp_log.error(msg)
         return EC_Failed, msg
 
-@curl_request_decorator(endpoint="creds/set_user_secrets", method="post", json_out=True)
+@curl_request_decorator(endpoint="creds/set_user_secrets", method="post", json_out=True, output_mode="extended")
 def set_user_secret_new(key, value, verbose=False):
     """Set a user secret
     args:
