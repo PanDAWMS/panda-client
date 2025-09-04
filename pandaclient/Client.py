@@ -813,20 +813,7 @@ def submitJobs_new(jobs, verbose=False, no_pickle=False):
         job.creationHost = hostname
 
     jobs_serialized = MiscUtils.dump_jobs_json(jobs)
-    status, output = submitJobs_internal(jobs_serialized, verbose, no_pickle)
-
-    if status != 0:
-        print(output)
-        return status, None
-
-    success = output.get("success")
-    if not success:
-        print (output.get("message"))
-        return EC_Failed, None
-
-    output_data = output.get("data")
-    return status, output_data
-
+    return submitJobs_internal(jobs_serialized, verbose, no_pickle)
 
 
 # get job statuses
