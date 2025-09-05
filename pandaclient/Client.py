@@ -952,7 +952,7 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
         global cache_base_path_ssl
         cache_base_path_ssl = server_base_path_ssl
 
-    url = "{0}/{1}".format(cache_base_path_ssl, "upload_cache_file")
+    url = "{0}/{1}".format(cache_base_path_ssl, "file_server/upload_cache_file")
     data = {"file": file}
     s, o = curl.put(url, data, n_try=n_try)
     return s, str_decode(o)
