@@ -1,8 +1,7 @@
 import argparse
 import subprocess, re, uuid, tempfile, sys, os
 
-from pandaclient.Client import insertTaskParams_new, getTaskParamsMap_new, killTask_new, pauseTask_new, resumeTask_new, getTaskStatus_new, finishTask_new, retryTask_new, reactivateTask_new, increase_attempt_nr_new, reload_input_new, getJediTaskDetails_new, get_files_in_datasets_new, getJobIDsJediTasksInTimeRange_new, getPandaIDsWithTaskID_new, getUserJobMetadata
-from pandaclient.Client import insertTaskParams, getTaskParamsMap, killTask, pauseTask, resumeTask, getTaskStatus, finishTask, retryTask, reactivateTask, increase_attempt_nr, reload_input, getJediTaskDetails, get_files_in_datasets, getJobIDsJediTasksInTimeRange, getPandaIDsWithTaskID, getUserJobMetadata_new
+from pandaclient.Client import insertTaskParams, getTaskParamsMap, killTask, pauseTask, resumeTask, getTaskStatus, finishTask, retryTask, reactivateTask, increase_attempt_nr, reload_input, getJediTaskDetails, get_files_in_datasets, getJobIDsJediTasksInTimeRange, getPandaIDsWithTaskID, getUserJobMetadata
 
 def main(task_id):
     outds = f"user.pandasv2.{uuid.uuid4()}"
@@ -61,39 +60,6 @@ def main(task_id):
     print("reloadInput returned: {0}".format(reload_ret_old))
     print("get_files_in_datasets returned: {0}".format(files_ret_old))
     print("getUserJobMetadata returned: {0}".format(metadata_old))
-
-    print("=============================================================")
-    status_ret_new = getTaskStatus_new(task_id)
-    params_ret_new = getTaskParamsMap_new(task_id)
-    details_ret_new = getJediTaskDetails_new({"jediTaskID": task_id}, True, True)
-    pause_ret_new = pauseTask_new(task_id)
-    resume_ret_new = resumeTask_new(task_id)
-    kill_ret_new = killTask_new(task_id)
-    finish_ret_new = finishTask_new(task_id)
-    retry_ret_new = retryTask_new(task_id)
-    reactivate_ret_new = reactivateTask_new(task_id)
-    get_jobs_new = getJobIDsJediTasksInTimeRange_new('2025-08-01 14:30:45')
-    get_ids_new = getPandaIDsWithTaskID_new(task_id)
-    increase_ret_new = increase_attempt_nr_new(task_id)
-    reload_ret_new = reload_input_new(task_id)
-    files_ret_new = get_files_in_datasets_new(task_id)
-    metadata_new = getUserJobMetadata_new(task_id, verbose=True)
-
-    print("getTaskStatus_new returned: {0}".format(status_ret_new))
-    print("getTaskParamsMap_new returned: {0}".format(params_ret_new))
-    print("getJediTaskDetails_new returned: {0}".format(details_ret_new))
-    print("pauseTask_new returned: {0}".format(pause_ret_new))
-    print("resumeTask_new returned: {0}".format(resume_ret_new))
-    print("killTask_new returned: {0}".format(kill_ret_new))
-    print("finishTask_new returned: {0}".format(finish_ret_new))
-    print("retryTask_new returned: {0}".format(retry_ret_new))
-    print("reactivateTask_new returned: {0}".format(reactivate_ret_new))
-    print("getJobIDsJediTasksInTimeRange_new returned: {0}".format(get_jobs_new))
-    print("getPandaIDsWithTaskID_new returned: {0}".format(get_ids_new))
-    print("increaseAttemptNr_new returned: {0}".format(increase_ret_new))
-    print("reloadInput_new returned: {0}".format(reload_ret_new))
-    print("get_files_in_datasets_new returned: {0}".format(files_ret_new))
-    print("getUserJobMetadata_new returned: {0}".format(metadata_new))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

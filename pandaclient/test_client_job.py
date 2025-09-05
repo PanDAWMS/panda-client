@@ -1,5 +1,5 @@
 import argparse
-from pandaclient.Client import getJobStatus, getJobStatus_new, getFullJobStatus, getFullJobStatus_new, killJobs, killJobs_new
+from pandaclient.Client import getJobStatus, getFullJobStatus, killJobs
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Process panda IDs.")
@@ -15,12 +15,3 @@ kill_ret_old = killJobs(ids=panda_ids, verbose=True)
 print("getJobStatus returned: {0}".format(job_status_ret_old))
 print("getFullJobStatus returned: {0}".format(job_full_status_ret_old))
 print("killJobs returned: {0}".format(kill_ret_old))
-
-print("=============================================================")
-job_status_ret_new = getJobStatus_new(ids=panda_ids, verbose=True)
-job_full_status_ret_old = getFullJobStatus_new(ids=panda_ids, verbose=True)
-kill_ret_new = killJobs_new(ids=panda_ids, verbose=True)
-
-print("getJobStatus_new returned: {0}".format(job_status_ret_new))
-print("getFullJobStatus returned: {0}".format(job_full_status_ret_old))
-print("killJobs_new returned: {0}".format(kill_ret_new))

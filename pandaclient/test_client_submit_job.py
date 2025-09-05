@@ -1,5 +1,5 @@
 import argparse
-from pandaclient.Client import getJobStatus, getJobStatus_new, submitJobs, submitJobs_new
+from pandaclient.Client import getJobStatus, submitJobs
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Process panda IDs.")
@@ -17,11 +17,3 @@ job_specs = jobs_old[1]
 
 submit_old = submitJobs(job_specs)
 print("submitJobs returned {0}".format(submit_old))
-
-
-print("=============================================================")
-jobs_new = getJobStatus_new(ids=panda_ids, verbose=True)
-job_specs = jobs_new[1]
-
-submit_new = submitJobs_new(job_specs)
-print("submitJobs_new returned {0}".format(submit_new))
