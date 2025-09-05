@@ -546,7 +546,7 @@ class _Curl:
         return ret
 
     # PUT method
-    def put(self, url, data, n_try=1):
+    def put(self, url, data, n_try=1, json_out=False):
         use_https = is_https(url)
         # make command
         com = "%s --silent" % self.path
@@ -570,6 +570,11 @@ class _Curl:
             if not self.sslKey:
                 self.sslKey = _x509()
             com += " --key %s" % self.sslKey
+
+        if json_out:
+            com += ' -H "Content-Type: application/json"'
+            com += ' -H "Accept: application/json"'
+
         # emulate PUT
         for key in data.keys():
             com += ' -F "%s=@%s"' % (key, data[key])
@@ -706,7 +711,7 @@ class _NativeCurl(_Curl):
         return code, text
 
     # PUT method
-    def put(self, url, data, n_try=1):
+    def put(self, url, data, n_try=1, json_out=False):
         boundary = "".join(random.choice(string.ascii_letters) for ii in range(30 + 1))
         body = b""
         for k in data:
@@ -718,8 +723,9 @@ class _NativeCurl(_Curl):
         lines = ["--%s--" % boundary, ""]
         body += "\r\n".join(lines).encode()
         headers = {"content-type": "multipart/form-data; boundary=" + boundary, "content-length": str(len(body))}
+
         for i_try in range(n_try):
-            code, text = self.http_method(url, None, headers, body)
+            code, text = self.http_method(url, None, headers, body, json_out=json_out)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
@@ -954,7 +960,7 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
 
     url = "{0}/{1}".format(cache_base_path_ssl, "file_server/upload_cache_file")
     data = {"file": file}
-    s, o = curl.put(url, data, n_try=n_try)
+    s, o = curl.put(url, data, n_try=n_try, json_out=True)
     return s, str_decode(o)
 
 
