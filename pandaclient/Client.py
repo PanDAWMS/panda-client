@@ -572,7 +572,7 @@ class _Curl:
             com += " --key %s" % self.sslKey
 
         if json_out:
-            com += ' -H "Content-Type: application/json"'
+            # we accept json response, but the body is form data
             com += ' -H "Accept: application/json"'
 
         # emulate PUT
@@ -611,7 +611,7 @@ class _Curl:
 
 
 class _NativeCurl(_Curl):
-    def http_method(self, url, data, header, rdata=None, compress_body=False, is_json=False, json_out=False, repeating_keys=False, method=None):
+    def http_method(self, url, data, header, rdata=None, compress_body=False, is_json=False, json_out=False, repeating_keys=False, method=None, file_upload=False):
         try:
             use_https = is_https(url)
             url = self.randomize_ip(url)
@@ -621,7 +621,7 @@ class _NativeCurl(_Curl):
                 self.get_id_token()
                 header["Authorization"] = "Bearer {0}".format(self.idToken)
                 header["Origin"] = self.authVO
-            if compress_body or json_out:
+            if not file_upload and (compress_body or json_out):
                 header["Content-Type"] = "application/json"
 
             if is_json or json_out:
@@ -725,7 +725,7 @@ class _NativeCurl(_Curl):
         headers = {"content-type": "multipart/form-data; boundary=" + boundary, "content-length": str(len(body))}
 
         for i_try in range(n_try):
-            code, text = self.http_method(url, None, headers, body, json_out=json_out)
+            code, text = self.http_method(url, None, headers, body, json_out=json_out, file_upload=True)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
