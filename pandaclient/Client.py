@@ -958,7 +958,12 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
         if status != 0:
             return EC_Failed, "ERROR: Could not check sandbox duplication with %s" % output
 
-        message = output["message"]
+        success = output.get("success", False)
+        message = output.get("message", "")
+
+        if success == False:
+            return EC_Failed, "ERROR: Could not check sandbox duplication with %s" % message
+
         if message.startswith("FOUND:"):
             # found reusable sandbox
             host_name, reusable_file_name = output.split(":")[1:]
