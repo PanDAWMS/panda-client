@@ -961,7 +961,17 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
     url = "{0}/{1}".format(cache_base_path_ssl, "file_server/upload_cache_file")
     data = {"file": file}
     s, o = curl.put(url, data, n_try=n_try, json_out=True)
-    return s, str_decode(o)
+
+    if s != 0:
+        return s, "ERROR: Could not upload file with %s" % str_decode(o)
+
+    success = o.get("success", False)
+    if success:
+        message = "True"
+    else:
+        message = o.get("message", "False")
+
+    return s, message
 
 
 # get file
