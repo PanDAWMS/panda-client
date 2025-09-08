@@ -587,27 +587,36 @@ class _Curl:
             if ret[0] == 0 or i_try + 1 == n_try:
                 break
             time.sleep(1)
+
+        if json_out:
+            try:
+                ret = (ret[0], json.loads(ret[1], object_hook=decode_special_cases))
+            except Exception:
+                ret = (ret[0], ret[1])
+
         ret = self.convert_return(ret)
         if self.verbose:
             print(ret)
+
         return ret
 
     # convert return
     def convert_return(self, ret):
         if ret[0] != 0:
-            ret = (ret[0] % 255, ret[1])
+            code = ret[0] % 255
+            data = ret[1]
 
-        # add messages to silent errors
-        if ret[0] == 35:
-            ret = (ret[0], "SSL connect error. The SSL handshaking failed. Check grid certificate/proxy.")
-        elif ret[0] == 7:
-            ret = (ret[0], "Failed to connect to host.")
-        elif ret[0] == 55:
-            ret = (ret[0], "Failed sending network data.")
-        elif ret[0] == 56:
-            ret = (ret[0], "Failure in receiving network data.")
+        # add datas to silent errors
+        if code == 35:
+            data = "SSL connect error. The SSL handshaking failed. Check grid certificate/proxy."
+        elif code == 7:
+            data = "Failed to connect to host."
+        elif code == 55:
+            data = "Failed sending network data."
+        elif code == 56:
+            data = "Failure in receiving network data."
 
-        return ret
+        return code, data
 
 
 class _NativeCurl(_Curl):
@@ -705,7 +714,7 @@ class _NativeCurl(_Curl):
                 break
             time.sleep(1)
 
-        if (is_json or json_out) and code == 0:
+        if code == 0 and (is_json or json_out):
             text = json.loads(text, object_hook=decode_special_cases)
 
         return code, text
@@ -729,6 +738,10 @@ class _NativeCurl(_Curl):
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
+
+        if code == 0 and json_out:
+            text = json.loads(text, object_hook=decode_special_cases)
+
         return code, text
 
 
