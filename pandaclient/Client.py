@@ -602,9 +602,9 @@ class _Curl:
 
     # convert return
     def convert_return(self, ret):
-        if ret[0] != 0:
-            code = ret[0] % 255
-            data = ret[1]
+
+        code = ret[0] % 255
+        data = ret[1]
 
         # add datas to silent errors
         if code == 35:
