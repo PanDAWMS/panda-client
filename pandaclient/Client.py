@@ -857,7 +857,7 @@ def killTask(jediTaskID, verbose=False):
 
 
 @curl_request_decorator(endpoint="task/finish", method="post", json_out=True, output_mode='extended')
-def finishTask_new(jediTaskID, soft=False, verbose=False):
+def finishTask(jediTaskID, soft=False, verbose=False):
     """finish a task
     args:
        jediTaskID: jediTaskID of the task to finish
