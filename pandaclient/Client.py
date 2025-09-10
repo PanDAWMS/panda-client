@@ -1791,10 +1791,10 @@ def get_user_secrets(verbose=False):
     success, data = output
 
     if success:
-        return status, json.loads(data)
+        return status, (success, json.loads(data))
 
     # data should just be an error message
-    return status, data
+    return status, (success, data)
 
 @curl_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True, output_mode="extended")
 def increase_attempt_nr(task_id, increase=3, verbose=False):
