@@ -145,7 +145,7 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
                     output_status = output.get("data")
                 else:
                     output_status = True
-                return status, (output_status, output.get("message"))
+                return status, (output_status, output.get("data"))
 
             # output_mode == 'basic'
             return status, output.get("data")
@@ -1768,7 +1768,11 @@ def set_user_secret(key, value, verbose=False):
     return {"key": key, "value": value}
 
 
-@curl_request_decorator(endpoint="creds/get_user_secrets", method="get", json_out=True)
+@curl_request_decorator(endpoint="creds/get_user_secrets", method="get", json_out=True, output_mode="extended")
+def get_user_secrets_internal(verbose=False):
+    return {}
+
+
 def get_user_secrets(verbose=False):
     """Get user secrets
     args:
@@ -1779,8 +1783,16 @@ def get_user_secrets(verbose=False):
         255: communication failure
        a tuple of (True/False and a dict of secrets). True if the request was accepted
     """
-    return {}
+    status, output = get_user_secrets_internal(verbose=verbose)
 
+    if status != 0:
+        return status, output
+
+    try:
+        return status, json.loads(output)
+    except Exception as e:
+        dump_log("getJobStatus", e, jobs)
+        return EC_Failed, None
 
 @curl_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True, output_mode="extended")
 def increase_attempt_nr(task_id, increase=3, verbose=False):
