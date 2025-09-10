@@ -126,7 +126,6 @@ The following commands are available:
     retry
     finish
     debug
-    kill_and_retry
     get_user_job_metadata
     recover_lost_files
     reload_input
@@ -318,21 +317,6 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
             ret = None
         return ret
 
-    # kill and retry
-    def kill_and_retry(taskIDs, newOpts=None, **kwargs):
-        """
-        Kill running sub-jobs and then retry failed/cancelled sub-jobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID). Concerning newOpts, see help(retry)
-
-         example:
-           >>> kill_and_retry(123)
-           >>> kill_and_retry([123, 345, 567])
-           >>> kill_and_retry(789, newOpts={'excludedSite':'siteA,siteB'})
-           >>> kill_and_retry(789, excludedSite='siteA,siteB')
-        """
-        if newOpts is None:
-            newOpts = kwargs
-        return killAndRetry(taskIDs, newOpts)
-
     # get user job metadata
     def getUserJobMetadata(taskID, outputFileName):
         pbookCore.getUserJobMetadata(taskID, outputFileName)
@@ -343,7 +327,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
         Get user metadata of successful jobs in a task and write them in a json file
 
          example:
-           >>> getUserJobMetadata(123, 'output.json')
+           >>> get_user_job_metadata(123, 'output.json')
         """
         getUserJobMetadata(taskID, outputFileName)
 
