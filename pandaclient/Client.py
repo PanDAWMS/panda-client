@@ -1788,11 +1788,13 @@ def get_user_secrets(verbose=False):
     if status != 0:
         return status, output
 
-    try:
-        return status, json.loads(output)
-    except Exception as e:
-        dump_log("get_user_secrets", e, output)
-        return EC_Failed, None
+    success, data = output
+
+    if success:
+        return status, json.loads(data)
+
+    # data should just be an error message
+    return status, data
 
 @curl_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True, output_mode="extended")
 def increase_attempt_nr(task_id, increase=3, verbose=False):
