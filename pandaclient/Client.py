@@ -1791,7 +1791,7 @@ def get_user_secrets(verbose=False):
     try:
         return status, json.loads(output)
     except Exception as e:
-        dump_log("getJobStatus", e, jobs)
+        dump_log("get_user_secrets", e, output)
         return EC_Failed, None
 
 @curl_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True, output_mode="extended")
