@@ -8,7 +8,7 @@ import json
 import re
 
 from .FileSpec import FileSpec
-from .MiscUtils import naive_utcnow
+from .time_utils import naive_utcnow
 
 reserveChangedState = False
 
