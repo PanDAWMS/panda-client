@@ -22,7 +22,7 @@ except Exception:
 
 # set modules for unpickling in client-light
 try:
-    from pandaserver.taskbuffer.JobSpec import JobSpec
+    from pandaserver.taskbuffer import JobSpec
 except ImportError:
     import pandaclient
 
