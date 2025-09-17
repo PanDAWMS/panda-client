@@ -867,7 +867,6 @@ class JobSpec(object):
         # remove old value
         newItems = []
         for tmpItem in items:
-        for tmpItem in items:
             if tmpItem.startswith("{0}:".format(self._tagForSH['retryRam'])):
                 continue
             newItems.append(tmpItem)
