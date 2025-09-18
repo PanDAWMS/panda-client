@@ -372,7 +372,10 @@ def load_jobs(job_dicts):
     jobs = []
     for job_dict in job_dicts:
         job_spec = JobSpec.JobSpec()
-        job_spec.load_from_dict(job_dict)
+        try:
+            job_spec.load_from_dict(job_dict)
+        except Exception:
+            job_spec = None
         jobs.append(job_spec)
     return jobs
 
