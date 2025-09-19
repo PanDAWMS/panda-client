@@ -58,7 +58,7 @@ try:
     server_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
 except Exception:
     baseURLSSL = "https://pandaserver.cern.ch/server/panda"
-    server_base_path_ssl = "https://pandaserver.cern.ch:25443/api/v1"
+    server_base_path_ssl = "https://pandaserver.cern.ch/api/v1"
 
 if "PANDACACHE_URL" in os.environ:
     baseURLCSRVSSL = os.environ["PANDACACHE_URL"]
