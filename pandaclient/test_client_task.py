@@ -4,16 +4,15 @@ import subprocess, re, uuid, tempfile, sys, os
 from pandaclient.Client import insertTaskParams, getTaskParamsMap, killTask, pauseTask, resumeTask, getTaskStatus, finishTask, retryTask, reactivateTask, increase_attempt_nr, reload_input, getJediTaskDetails, get_files_in_datasets, getJobIDsJediTasksInTimeRange, getPandaIDsWithTaskID, getUserJobMetadata
 
 def main(task_id):
-    outds = f"user.pandasv2.{uuid.uuid4()}"
-
+    outds = "user.pandasv2.{0}".format(uuid.uuid4())
     with tempfile.TemporaryDirectory() as tmpdir:
         # go into temp dir
         cwd = os.getcwd()
         os.chdir(tmpdir)
 
         cmd = (
-            f'''prun --exec "pwd; ls; echo Hello-world > myout.txt" '''
-            f'''--outDS {outds} --nJobs 3 --output myout.txt'''
+            '''prun --exec "pwd; ls; echo Hello-world > myout.txt" '''
+            '''--outDS {outds} --nJobs 3 --output myout.txt'''.format(outds=outds)
         )
 
         res = subprocess.run(cmd, shell=True, text=True, capture_output=True)
