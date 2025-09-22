@@ -83,6 +83,9 @@ if "PANDA_BEHIND_REAL_LB" not in os.environ:
     else:
         baseURLCSRVSSL = "%s://%s%s" % (netloc.scheme, tmp_host, netloc.path)
 
+    parsed = urlparse(baseURLCSRVSSL)
+    cache_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
+
 
 # Decoder: check marker and convert back
 def decode_special_cases(obj):
@@ -1078,11 +1081,16 @@ def useIntrServer():
 # set cache server
 def setCacheServer(host_name):
     global baseURLCSRVSSL
+    global cache_base_path_ssl
+
     netloc = urlparse(baseURLCSRVSSL)
     if netloc.port:
         baseURLCSRVSSL = "%s://%s:%s%s" % (netloc.scheme, host_name, netloc.port, netloc.path)
     else:
         baseURLCSRVSSL = "%s://%s%s" % (netloc.scheme, host_name, netloc.path)
+
+    parsed = urlparse(baseURLCSRVSSL)
+    cache_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
 
 
 # register proxy key
