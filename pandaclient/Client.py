@@ -1823,6 +1823,68 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
         return EC_Failed, msg
 
 
+# temporary method to submit PanDA native workflow
+def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
+    """Temporary method to submit a PanDA native workflow
+    args:
+       params: a workflow request dictionary
+       relay_host: relay hostname to send request
+       check: only check the workflow description
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a tuple of (True/False and diagnostic message). True if the request was accepted
+    """
+    tmp_log = PLogger.getPandaLogger()
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey = _x509()
+    curl.verbose = verbose
+    # execute
+    output = None
+    # if relay_host:
+    #     url = "https://{}:25443/server/panda".format(relay_host)
+    # else:
+    #     url = baseURLSSL
+    url = f"https://localhost:25443/api/v1/workflow/submit_workflow"
+    try:
+        data = {"data": json.dumps(params)}
+        if check:
+            data["check"] = True
+        else:
+            data["sync"] = True
+        status, output = curl.post(url, data, compress_body=True, is_json=True)
+        if status != 0:
+            tmp_log.error(output)
+            return EC_Failed, output
+        else:
+            return 0, output
+    except Exception as e:
+        msg = "{}.".format(str(e))
+        if output:
+            msg += ' raw output="{}"'.format(str(output))
+        tmp_log.error(msg)
+        return EC_Failed, msg
+
+
+# # submit PanDA native workflow
+# @curl_request_decorator(endpoint="workflow/submit_workflow_request", method="post", json_out=True, output_mode="extended")
+# def submit_workflow(params, **kwargs):
+#     """Submit a PanDA native workflow
+#     args:
+#        params: a workflow definition dictionary
+#     returns:
+#        status code
+#           0: communication succeeded to the panda server
+#         255: communication failure
+#        a tuple of (True/False and diagnostic message). True if the request was accepted
+#     """
+#     return {"workflow_definition": params}
+
+
 # set user secret
 def set_user_secert(key, value, verbose=False):
     """Set a user secret
