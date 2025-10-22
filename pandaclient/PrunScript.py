@@ -15,7 +15,6 @@ except ImportError:
 
 import copy
 import json
-import types
 
 from pandaclient.MiscUtils import (
     commands_get_output,
@@ -40,7 +39,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     :return: task parameters or options if get_taskparams or get_options is True
     """
     # default cloud/site
-    defaultCloud = None
     defaultSite = "AUTO"
 
     # error code
@@ -1329,7 +1327,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     delFilesOnExit = []
 
     # load submission configuration from xml file (if provided)
-    xconfig = None
     if options.loadXML is not None:
         from pandaclient import ParseJobXML
 
@@ -1385,11 +1382,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # set maxNFilesPerJob
     PsubUtils.limit_maxNumInputs = options.maxNFilesPerJob
 
-    # site specified
-    siteSpecified = True
-    if options.site == "AUTO":
-        siteSpecified = False
-
     # list of output files which can be skipped
     options.allowNoOutput = options.allowNoOutput.split(",")
 
@@ -1402,7 +1394,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         options.notExpandInDS = True
 
     # bulk submission
-    ioList = []
     if options.inOutDsJson != "":
         options.bulkSubmission = True
     if options.bulkSubmission:
@@ -1685,12 +1676,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         options.antiMatch = options.antiMatch.replace("*", ".*")
 
     # get job script
-    jobScript = ""
     if options.jobParams == "":
         tmpLog.error("you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
         sys.exit(EC_Config)
-    orig_execStr = options.jobParams
-    orig_bexecStr = options.bexec
 
     # replace : to = for backward compatibility
     for optArg in ["RNDM"]:
@@ -2102,11 +2090,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     specialHandling = specialHandling[:-1]
 
     #####################################################################
-    # task making
-
-    # job name
-    jobName = "prun.%s" % MiscUtils.wrappedUuidGen()
-
     # make task
     taskParamMap = {}
     taskParamMap["taskName"] = options.outDS

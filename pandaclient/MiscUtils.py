@@ -22,7 +22,7 @@ except Exception:
 
 # set modules for unpickling in client-light
 try:
-    from pandaserver.taskbuffer.JobSpec import JobSpec
+    from pandaserver.taskbuffer import JobSpec
 except ImportError:
     import pandaclient
 
@@ -364,6 +364,18 @@ def load_jobs_json(state):
     for job_state in state_objects:
         job_spec = JobSpec.JobSpec()
         job_spec.load_from_json_serializable(job_state)
+        jobs.append(job_spec)
+    return jobs
+
+# load dictionary list into jobs
+def load_jobs(job_dicts):
+    jobs = []
+    for job_dict in job_dicts:
+        job_spec = JobSpec.JobSpec()
+        try:
+            job_spec.load_from_dict(job_dict)
+        except Exception:
+            job_spec = None
         jobs.append(job_spec)
     return jobs
 

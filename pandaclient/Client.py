@@ -4,6 +4,7 @@ client methods
 """
 
 import gzip
+import inspect
 import json
 import os
 import re
@@ -14,12 +15,15 @@ import sys
 import time
 import traceback
 
-try:
-    from urllib import unquote_plus, urlencode
+from datetime import datetime
 
+try:
+    # python 2
+    from urllib import unquote_plus, urlencode
     from urllib2 import HTTPError, Request, urlopen
     from urlparse import urlparse
 except ImportError:
+    # python 3
     from urllib.parse import urlencode, unquote_plus, urlparse
     from urllib.request import urlopen, Request
     from urllib.error import HTTPError
@@ -42,17 +46,27 @@ from .MiscUtils import commands_get_output, commands_get_status_output, pickle_l
 # configuration
 try:
     baseURL = os.environ["PANDA_URL"]
+    parsed = urlparse(baseURL)
+    server_base_path = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
 except Exception:
     baseURL = "http://pandaserver.cern.ch:25080/server/panda"
+    server_base_path = "http://pandaserver.cern.ch:25080/api/v1"
+
 try:
     baseURLSSL = os.environ["PANDA_URL_SSL"]
+    parsed = urlparse(baseURLSSL)
+    server_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
 except Exception:
     baseURLSSL = "https://pandaserver.cern.ch/server/panda"
+    server_base_path_ssl = "https://pandaserver.cern.ch/api/v1"
 
 if "PANDACACHE_URL" in os.environ:
     baseURLCSRVSSL = os.environ["PANDACACHE_URL"]
+    parsed = urlparse(baseURLCSRVSSL)
+    cache_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
 else:
     baseURLCSRVSSL = "https://pandacache.cern.ch/server/panda"
+    cache_base_path_ssl = "https://pandacache.cern.ch/api/v1"
 
 # exit code
 EC_Failed = 255
@@ -68,6 +82,78 @@ if "PANDA_BEHIND_REAL_LB" not in os.environ:
         baseURLCSRVSSL = "%s://%s:%s%s" % (netloc.scheme, tmp_host, netloc.port, netloc.path)
     else:
         baseURLCSRVSSL = "%s://%s%s" % (netloc.scheme, tmp_host, netloc.path)
+
+    parsed = urlparse(baseURLCSRVSSL)
+    cache_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
+
+
+# Decoder: check marker and convert back
+def decode_special_cases(obj):
+    if "__datetime__" in obj:
+        return datetime.fromisoformat(obj["__datetime__"])
+    return obj
+
+
+def curl_request_decorator(endpoint, method="post", via_file=False, json_out=False, output_mode='basic'):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            # Extract arguments
+            try:
+                sig = inspect.signature(func)
+                default_verbose = sig.parameters['verbose'].default
+            except Exception:
+                default_verbose = False
+
+            verbose = kwargs.get("verbose", default_verbose)
+            data = func(*args, **kwargs)
+
+            # Instantiate curl
+            curl = _Curl()
+            curl.sslCert = _x509()
+            curl.sslKey = _x509()
+            curl.verbose = verbose
+
+            # Execute request
+            url = "{0}/{1}".format(server_base_path_ssl, endpoint)
+            if method == "post":
+                status, output = curl.post(url, data, via_file=via_file, json_out=json_out)
+            elif method == "get":
+                status, output = curl.get(url, data, via_file=via_file, json_out=json_out, repeating_keys=True)
+            else:
+                raise ValueError("Unsupported HTTP method")
+
+            # Handle response
+            if isinstance(output, str) or not isinstance(output, dict):
+                dump_log(func.__name__, None, output)
+                return EC_Failed, None
+
+            # Let the caller handle full output if requested
+            if output_mode == 'full':
+                return status, output
+
+            success = output.get("success")
+            if not success:
+                # dump_log(func.__name__, None, output.get("message"))
+                if output_mode == 'extended':
+                    if verbose:
+                        output_status = output.get("data")
+                    else:
+                        output_status = False
+                    return status, (output_status, output.get("message"))
+
+                return EC_Failed, None
+
+            if output_mode == 'extended':
+                if verbose:
+                    output_status = output.get("data")
+                else:
+                    output_status = True
+                return status, (output_status, output.get("data"))
+
+            # output_mode == 'basic'
+            return status, output.get("data")
+        return wrapper
+    return decorator
 
 
 # look for a grid proxy certificate
@@ -243,18 +329,20 @@ class _Curl:
         return url.replace(host, random.choice(host_names))
 
     # GET method
-    def get(self, url, data, rucioAccount=False, via_file=False, n_try=1):
+    def get(self, url, data, rucio_account=False, via_file=False, n_try=1, json_out=False, repeating_keys=False):
         use_https = is_https(url)
         # make command
         com = "%s --silent --get" % self.path
         if not self.verifyHost or not use_https:
             com += " --insecure"
         else:
-            tmp_x509_CApath = _x509_CApath()
-            if tmp_x509_CApath != "":
-                com += " --capath %s" % tmp_x509_CApath
+            tmp_x509_ca_path = _x509_CApath()
+            if tmp_x509_ca_path != "":
+                com += " --capath %s" % tmp_x509_ca_path
+
         if self.compress:
             com += " --compressed"
+
         if self.authMode == "oidc":
             self.get_id_token()
             com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
@@ -267,35 +355,47 @@ class _Curl:
             if not self.sslKey:
                 self.sslKey = _x509()
             com += " --key %s" % self.sslKey
+
+        if json_out:
+            com += ' -H "Accept: application/json"'
+
         # max time of 10 min
         com += " -m 600"
+
         # add rucio account info
-        if rucioAccount:
+        if rucio_account:
             if "RUCIO_ACCOUNT" in os.environ:
                 data["account"] = os.environ["RUCIO_ACCOUNT"]
             if "RUCIO_APPID" in os.environ:
                 data["appid"] = os.environ["RUCIO_APPID"]
             data["client_version"] = "2.4.1"
+
         # data
-        strData = ""
+        data_string = ""
         for key in data.keys():
-            strData += 'data="%s"\n' % urlencode({key: data[key]})
+            value = data[key]
+            if repeating_keys and isinstance(value, list):
+                for element in value:
+                    data_string += 'data="%s"\n' % urlencode({key: element})
+            else:
+                data_string += 'data="%s"\n' % urlencode({key: value})
+
         # write data to temporary config file
         if globalTmpDir != "":
-            tmpFD, tmpName = tempfile.mkstemp(dir=globalTmpDir)
+            tmp_file_descriptor, tmp_name = tempfile.mkstemp(dir=globalTmpDir)
         else:
-            tmpFD, tmpName = tempfile.mkstemp()
-        os.write(tmpFD, strData.encode())
-        os.close(tmpFD)
-        tmpNameOut = "{0}.out".format(tmpName)
-        com += " --config %s" % tmpName
+            tmp_file_descriptor, tmp_name = tempfile.mkstemp()
+        os.write(tmp_file_descriptor, data_string.encode())
+        os.close(tmp_file_descriptor)
+        tmp_name_out = "{0}.out".format(tmp_name)
+        com += " --config %s" % tmp_name
         if via_file:
-            com += " -o {0}".format(tmpNameOut)
+            com += " -o {0}".format(tmp_name_out)
         com += " %s" % self.randomize_ip(url)
         # execute
         if self.verbose:
             print(hide_sensitive_info(com))
-            print(strData[:-1])
+            print(data_string[:-1])
         for i_try in range(n_try):
             s, o = commands_get_status_output(com)
             if s == 0 or i_try + 1 == n_try:
@@ -303,34 +403,44 @@ class _Curl:
             time.sleep(1)
         if o != "\x00":
             try:
-                tmpout = unquote_plus(o)
-                o = eval(tmpout)
+                tmp_out = unquote_plus(o)
+                o = eval(tmp_out)
             except Exception:
                 pass
+
         if via_file:
-            with open(tmpNameOut, "rb") as f:
+            with open(tmp_name_out, "rb") as f:
                 ret = (s, f.read())
-            os.remove(tmpNameOut)
+            os.remove(tmp_name_out)
         else:
             ret = (s, o)
         # remove temporary file
-        os.remove(tmpName)
-        ret = self.convRet(ret)
+        os.remove(tmp_name)
+
+        # when specified, convert to json
+        if json_out:
+            try:
+                ret = (ret[0], json.loads(ret[1], object_hook=decode_special_cases))
+            except Exception:
+                ret = (ret[0], ret[1])
+
+        ret = self.convert_return(ret)
+
         if self.verbose:
             print(ret)
         return ret
 
     # POST method
-    def post(self, url, data, rucioAccount=False, is_json=False, via_file=False, compress_body=False, n_try=1):
+    def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1, json_out=False):
         use_https = is_https(url)
         # make command
         com = "%s --silent" % self.path
         if not self.verifyHost or not use_https:
             com += " --insecure"
         else:
-            tmp_x509_CApath = _x509_CApath()
-            if tmp_x509_CApath != "":
-                com += " --capath %s" % tmp_x509_CApath
+            tmp_x509_ca_path = _x509_CApath()
+            if tmp_x509_ca_path != "":
+                com += " --capath %s" % tmp_x509_ca_path
         if self.compress:
             com += " --compressed"
         if self.authMode == "oidc":
@@ -345,14 +455,17 @@ class _Curl:
             if not self.sslKey:
                 self.sslKey = _x509()
             com += " --key %s" % self.sslKey
-        if compress_body:
+
+        if compress_body or json_out:
             com += ' -H "Content-Type: application/json"'
-        if is_json:
+
+        if is_json or json_out:
             com += ' -H "Accept: application/json"'
+
         # max time of 10 min
         com += " -m 600"
         # add rucio account info
-        if rucioAccount:
+        if rucio_account:
             if "RUCIO_ACCOUNT" in os.environ:
                 data["account"] = os.environ["RUCIO_ACCOUNT"]
             if "RUCIO_APPID" in os.environ:
@@ -360,31 +473,44 @@ class _Curl:
             data["client_version"] = "2.4.1"
         # write data to temporary config file
         if globalTmpDir != "":
-            tmpFD, tmpName = tempfile.mkstemp(dir=globalTmpDir)
+            tmp_file_descriptor, tmp_name = tempfile.mkstemp(dir=globalTmpDir)
         else:
-            tmpFD, tmpName = tempfile.mkstemp()
+            tmp_file_descriptor, tmp_name = tempfile.mkstemp()
         # data
-        strData = ""
+        data_string = ""
         if not compress_body:
-            for key in data.keys():
-                strData += 'data="%s"\n' % urlencode({key: data[key]})
-            os.write(tmpFD, strData.encode("utf-8"))
+            if not json_out:
+                for key in data.keys():
+                    data_string += 'data="%s"\n' % urlencode({key: data[key]})
+                os.write(tmp_file_descriptor, data_string.encode("utf-8"))
+            else:
+                # json data
+                data_string = json.dumps(data)
+                os.write(tmp_file_descriptor, data_string.encode("utf-8"))
         else:
-            f = os.fdopen(tmpFD, "wb")
+            f = os.fdopen(tmp_file_descriptor, "wb")
             with gzip.GzipFile(fileobj=f, mode="wb") as f_gzip:
                 f_gzip.write(json.dumps(data).encode())
             f.close()
         try:
-            os.close(tmpFD)
+            os.close(tmp_file_descriptor)
         except Exception:
             pass
-        tmpNameOut = "{0}.out".format(tmpName)
+        tmp_name_out = "{0}.out".format(tmp_name)
         if not compress_body:
-            com += " --config %s" % tmpName
+            if not json_out:
+                com += " --config %s" % tmp_name
+            else:
+                com += " --data @{}".format(tmp_name)
         else:
-            com += " --data-binary @{}".format(tmpName)
+            com += " --data-binary @{}".format(tmp_name)
         if via_file:
-            com += " -o {0}".format(tmpNameOut)
+            com += " -o {0}".format(tmp_name_out)
+
+        # The new API requires POST method for json
+        if json_out:
+            com += " -X POST"
+
         com += " %s" % self.randomize_ip(url)
         # execute
         if self.verbose:
@@ -398,37 +524,41 @@ class _Curl:
             time.sleep(1)
         if o != "\x00":
             try:
-                if is_json:
-                    o = json.loads(o)
+                if is_json or json_out:
+                    o = json.loads(o, object_hook=decode_special_cases)
                 else:
-                    tmpout = unquote_plus(o)
-                    o = eval(tmpout)
+                    tmp_out = unquote_plus(o)
+                    o = eval(tmp_out)
             except Exception:
                 pass
         if via_file:
-            with open(tmpNameOut, "rb") as f:
-                ret = (s, f.read())
-            os.remove(tmpNameOut)
+            with open(tmp_name_out, "rb") as f:
+                if not json_out:
+                    ret = (s, f.read())
+                else:
+                    ret = (s, json.loads(f.read(), object_hook=decode_special_cases))
+            os.remove(tmp_name_out)
         else:
             ret = (s, o)
+
         # remove temporary file
-        os.remove(tmpName)
-        ret = self.convRet(ret)
+        os.remove(tmp_name)
+        ret = self.convert_return(ret)
         if self.verbose:
             print(ret)
         return ret
 
     # PUT method
-    def put(self, url, data, n_try=1):
+    def put(self, url, data, n_try=1, json_out=False):
         use_https = is_https(url)
         # make command
         com = "%s --silent" % self.path
         if not self.verifyHost or not use_https:
             com += " --insecure"
         else:
-            tmp_x509_CApath = _x509_CApath()
-            if tmp_x509_CApath != "":
-                com += " --capath %s" % tmp_x509_CApath
+            tmp_x509_ca_path = _x509_CApath()
+            if tmp_x509_ca_path != "":
+                com += " --capath %s" % tmp_x509_ca_path
         if self.compress:
             com += " --compressed"
         if self.authMode == "oidc":
@@ -443,6 +573,11 @@ class _Curl:
             if not self.sslKey:
                 self.sslKey = _x509()
             com += " --key %s" % self.sslKey
+
+        if json_out:
+            # we accept json response, but the body is form data
+            com += ' -H "Accept: application/json"'
+
         # emulate PUT
         for key in data.keys():
             com += ' -F "%s=@%s"' % (key, data[key])
@@ -455,29 +590,40 @@ class _Curl:
             if ret[0] == 0 or i_try + 1 == n_try:
                 break
             time.sleep(1)
-        ret = self.convRet(ret)
+
+        if json_out:
+            try:
+                ret = (ret[0], json.loads(ret[1], object_hook=decode_special_cases))
+            except Exception:
+                ret = (ret[0], ret[1])
+
+        ret = self.convert_return(ret)
         if self.verbose:
             print(ret)
+
         return ret
 
     # convert return
-    def convRet(self, ret):
-        if ret[0] != 0:
-            ret = (ret[0] % 255, ret[1])
-        # add messages to silent errors
-        if ret[0] == 35:
-            ret = (ret[0], "SSL connect error. The SSL handshaking failed. Check grid certificate/proxy.")
-        elif ret[0] == 7:
-            ret = (ret[0], "Failed to connect to host.")
-        elif ret[0] == 55:
-            ret = (ret[0], "Failed sending network data.")
-        elif ret[0] == 56:
-            ret = (ret[0], "Failure in receiving network data.")
-        return ret
+    def convert_return(self, ret):
+
+        code = ret[0] % 255
+        data = ret[1]
+
+        # add datas to silent errors
+        if code == 35:
+            data = "SSL connect error. The SSL handshaking failed. Check grid certificate/proxy."
+        elif code == 7:
+            data = "Failed to connect to host."
+        elif code == 55:
+            data = "Failed sending network data."
+        elif code == 56:
+            data = "Failure in receiving network data."
+
+        return code, data
 
 
 class _NativeCurl(_Curl):
-    def http_method(self, url, data, header, rdata=None, compress_body=False, is_json=False):
+    def http_method(self, url, data, header, rdata=None, compress_body=False, is_json=False, json_out=False, repeating_keys=False, method=None, file_upload=False):
         try:
             use_https = is_https(url)
             url = self.randomize_ip(url)
@@ -487,19 +633,24 @@ class _NativeCurl(_Curl):
                 self.get_id_token()
                 header["Authorization"] = "Bearer {0}".format(self.idToken)
                 header["Origin"] = self.authVO
-            if compress_body:
+            if not file_upload and (compress_body or json_out):
                 header["Content-Type"] = "application/json"
-            if is_json:
+
+            if is_json or json_out:
                 header["Accept"] = "application/json"
+
             if rdata is None:
-                if not compress_body:
-                    rdata = urlencode(data).encode()
-                else:
+                if not compress_body and not json_out:
+                    rdata = urlencode(data, doseq=repeating_keys).encode()
+                elif compress_body:
                     rdata_out = BytesIO()
                     with gzip.GzipFile(fileobj=rdata_out, mode="w") as f_gzip:
                         f_gzip.write(json.dumps(data).encode())
                     rdata = rdata_out.getvalue()
-            req = Request(url, rdata, headers=header)
+                else:
+                    rdata = json.dumps(data).encode("utf-8")
+
+            req = Request(url, rdata, headers=header, method=method)
             context = ssl._create_unverified_context()
             if use_https and self.authMode != "oidc":
                 if not self.sslCert:
@@ -516,26 +667,37 @@ class _NativeCurl(_Curl):
             if code == 200:
                 code = 0
             text = conn.read()
+
+
             if self.verbose:
                 print(code, text)
             return code, text
         except Exception as e:
             if self.verbose:
                 print(traceback.format_exc())
-            errMsg = str(e)
+            error_message = str(e)
             if hasattr(e, "fp"):
-                errMsg += ". {0}".format(e.fp.read().decode())
-            return 1, errMsg
+                error_message += ". {0}".format(e.fp.read().decode())
+            return 1, error_message
 
     # GET method
-    def get(self, url, data, rucioAccount=False, via_file=False, output_name=None, n_try=1):
+    def get(self, url, data, rucio_account=False, via_file=False, output_name=None, n_try=1, json_out=False, repeating_keys=False):
         if data:
-            url = "{}?{}".format(url, urlencode(data))
+            url = "{}?{}".format(url, urlencode(data, doseq=repeating_keys))
+
+        method = None
+        if json_out:
+            method = "GET"
+
         for i_try in range(n_try):
-            code, text = self.http_method(url, {}, {})
+            code, text = self.http_method(url, {}, {}, is_json=json_out, json_out=json_out, repeating_keys=False, method=method)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
+
+        if json_out and code == 0:
+            text = json.loads(text, object_hook=decode_special_cases)
+
         if code == 0 and output_name:
             with open(output_name, "wb") as f:
                 f.write(text)
@@ -543,18 +705,25 @@ class _NativeCurl(_Curl):
         return code, text
 
     # POST method
-    def post(self, url, data, rucioAccount=False, is_json=False, via_file=False, compress_body=False, n_try=1):
+    def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1, json_out=False):
+
+        method = None
+        if json_out:
+            method = "POST"
+
         for i_try in range(n_try):
-            code, text = self.http_method(url, data, {}, compress_body=compress_body, is_json=is_json)
+            code, text = self.http_method(url, data, {}, compress_body=compress_body, is_json=is_json, json_out=json_out, method=method)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
-        if is_json and code == 0:
-            text = json.loads(text)
+
+        if code == 0 and (is_json or json_out):
+            text = json.loads(text, object_hook=decode_special_cases)
+
         return code, text
 
     # PUT method
-    def put(self, url, data, n_try=1):
+    def put(self, url, data, n_try=1, json_out=False):
         boundary = "".join(random.choice(string.ascii_letters) for ii in range(30 + 1))
         body = b""
         for k in data:
@@ -566,11 +735,16 @@ class _NativeCurl(_Curl):
         lines = ["--%s--" % boundary, ""]
         body += "\r\n".join(lines).encode()
         headers = {"content-type": "multipart/form-data; boundary=" + boundary, "content-length": str(len(body))}
+
         for i_try in range(n_try):
-            code, text = self.http_method(url, None, headers, body)
+            code, text = self.http_method(url, None, headers, body, json_out=json_out, file_upload=True)
             if code in [0, 403, 404] or i_try + 1 == n_try:
                 break
             time.sleep(1)
+
+        if code == 0 and json_out:
+            text = json.loads(text, object_hook=decode_special_cases)
+
         return code, text
 
 
@@ -593,8 +767,10 @@ public methods
 
 """
 
+@curl_request_decorator(endpoint="job/submit", method="post", json_out=True)
+def submitJobs_internal(jobs, verbose=False, no_pickle=False):
+    return {"jobs": jobs}
 
-# submit jobs
 def submitJobs(jobs, verbose=False, no_pickle=False):
     """Submit jobs
 
@@ -612,72 +788,40 @@ def submitJobs(jobs, verbose=False, no_pickle=False):
     hostname = commands_get_output("hostname")
     for job in jobs:
         job.creationHost = hostname
-    # serialize
-    if no_pickle:
-        strJobs = MiscUtils.dump_jobs_json(jobs)
-    else:
-        strJobs = pickle.dumps(jobs, protocol=0)
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/submitJobs"
-    data = {"jobs": strJobs}
-    status, output = curl.post(url, data, via_file=True)
-    if status != 0:
-        print(output)
-        return status, None
-    try:
-        tmp_out = pickle_loads(output)
-        if jobs and not tmp_out:
-            status = EC_Failed
-        return status, tmp_out
-    except Exception as e:
-        dump_log("submitJobs", e, output)
-        return EC_Failed, None
+
+    jobs_serialized = MiscUtils.dump_jobs_json(jobs)
+    return submitJobs_internal(jobs_serialized, verbose, no_pickle)
 
 
-# get job statuses
+@curl_request_decorator(endpoint="job/get_description", method="get", json_out=True)
+def getJobStatus_internal(ids, verbose=False, no_pickle=False):
+    return {"job_ids": ids}
+
 def getJobStatus(ids, verbose=False, no_pickle=False):
     """Get status of jobs
 
     args:
         ids: a list of PanDA IDs
         verbose: True to see verbose messages
-        no_pickle: True to use json instead of pickle
+        no_pickle: obsolete parameter left for backwards compatibility
     returns:
         status code
               0: communication succeeded to the panda server
               255: communication failure
         a list of job specs, or None if failed
     """
-    # serialize
-    if not no_pickle:
-        strIDs = pickle.dumps(ids, protocol=0)
-    else:
-        strIDs = ids
-    # instantiate curl
-    curl = _Curl()
-    curl.verbose = verbose
-    # execute
-    url = baseURL + "/getJobStatus"
-    data = {"ids": strIDs}
-    if no_pickle:
-        data["no_pickle"] = True
-    status, output = curl.post(url, data, via_file=True)
+    status, jobs = getJobStatus_internal(ids, verbose=verbose, no_pickle=no_pickle)
+    if status != 0:
+        return status, jobs
+
     try:
-        if not no_pickle:
-            return status, pickle_loads(output)
-        else:
-            return status, MiscUtils.load_jobs_json(output)
+        return status, MiscUtils.load_jobs(jobs)
     except Exception as e:
-        dump_log("getJobStatus", e, output)
+        dump_log("getJobStatus", e, jobs)
         return EC_Failed, None
 
 
-# kill jobs
+@curl_request_decorator(endpoint="job/kill", method="post", json_out=True)
 def killJobs(ids, verbose=False):
     """Kill jobs
 
@@ -690,25 +834,10 @@ def killJobs(ids, verbose=False):
               255: communication failure
         a list of server responses, or None if failed
     """
-    # serialize
-    strIDs = pickle.dumps(ids, protocol=0)
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/killJobs"
-    data = {"ids": strIDs}
-    status, output = curl.post(url, data, via_file=True)
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        dump_log("killJobs", e, output)
-        return EC_Failed, None
+    return {"job_ids": ids}
 
 
-# kill task
+@curl_request_decorator(endpoint="task/kill", method="post", json_out=True, output_mode='extended')
 def killTask(jediTaskID, verbose=False):
     """Kill a task
     args:
@@ -727,23 +856,10 @@ def killTask(jediTaskID, verbose=False):
         100: non SSL connection
         101: irrelevant taskID
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/killTask"
-    data = {"jediTaskID": jediTaskID}
-    status, output = curl.post(url, data)
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        dump_log("killTask", e, output)
-        return EC_Failed, None
+    return {"task_id": jediTaskID}
 
 
-# finish task
+@curl_request_decorator(endpoint="task/finish", method="post", json_out=True, output_mode='extended')
 def finishTask(jediTaskID, soft=False, verbose=False):
     """finish a task
     args:
@@ -763,25 +879,13 @@ def finishTask(jediTaskID, soft=False, verbose=False):
         100: non SSL connection
         101: irrelevant taskID
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/finishTask"
-    data = {"jediTaskID": jediTaskID}
+    data = {"task_id": jediTaskID}
     if soft:
         data["soft"] = True
-    status, output = curl.post(url, data)
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        dump_log("finishTask", e, output)
-        return EC_Failed, None
+    return data
 
 
-# retry task
+@curl_request_decorator(endpoint="task/retry", method="post", json_out=True, output_mode='extended')
 def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
     """retry a task
     args:
@@ -802,27 +906,12 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
         100: non SSL connection
         101: irrelevant taskID
     """
-    if newParams is None:
-        newParams = {}
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/retryTask"
-    data = {"jediTaskID": jediTaskID, "properErrorCode": properErrorCode}
-    if newParams != {}:
-        data["newParams"] = json.dumps(newParams)
-    status, output = curl.post(url, data)
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        dump_log("retryTask", e, output)
-        return EC_Failed, None
+    data = {"task_id": jediTaskID}
+    if newParams:
+        data["new_parameters"] = json.dumps(newParams)
+    return data
 
 
-# put file
 def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1):
     """Upload a file with the size limit on 10 MB
     args:
@@ -838,52 +927,69 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
        diagnostic message
     """
     # size check for noBuild
-    sizeLimit = 10 * 1024 * 1024
-    fileSize = os.stat(file)[stat.ST_SIZE]
+    size_limit = 10 * 1024 * 1024
+    file_size = os.stat(file)[stat.ST_SIZE]
     if not os.path.basename(file).startswith("sources."):
-        if fileSize > sizeLimit:
-            errStr = "Exceeded size limit (%sB >%sB). " % (fileSize, sizeLimit)
-            errStr += "Your working directory contains too large files which cannot be put on cache area. "
-            errStr += "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
-            # get logger
-            tmpLog = PLogger.getPandaLogger()
-            tmpLog.error(errStr)
+        if file_size > size_limit:
+            error_message = "Exceeded size limit (%sB >%sB). " % (file_size, size_limit)
+            error_message += "Your working directory contains too large files which cannot be put on cache area. "
+            error_message += "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
+            tmp_logger = PLogger.getPandaLogger()
+            tmp_logger.error(error_message)
             return EC_Failed, "False"
-    # instantiate curl
+
+    # Instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # check duplication
     if reuseSandbox:
         # get CRC
         fo = open(file, "rb")
-        fileContent = fo.read()
+        file_content = fo.read()
         fo.close()
-        footer = fileContent[-8:]
-        checkSum, i_size = struct.unpack("II", footer)
-        # check duplication
-        url = baseURLSSL + "/checkSandboxFile"
-        data = {"fileSize": fileSize, "checkSum": checkSum}
-        status, output = curl.post(url, data)
-        output = str_decode(output)
+        footer = file_content[-8:]
+        checksum, i_size = struct.unpack("II", footer)
+
+        # Execute request
+        endpoint = "file_server/validate_cache_file"
+        data = {"file_size": i_size, "checksum": checksum}
+        url = "{0}/{1}".format(server_base_path_ssl, endpoint)
+        status, output = curl.post(url, data, via_file=True, json_out=True)
         if status != 0:
             return EC_Failed, "ERROR: Could not check sandbox duplication with %s" % output
-        elif output.startswith("FOUND:"):
+
+        success = output.get("success", False)
+        message = output.get("message", "")
+
+        if message.startswith("FOUND:"):
             # found reusable sandbox
-            hostName, reuseFileName = output.split(":")[1:]
+            host_name, reusable_file_name = output.split(":")[1:]
             # set cache server hostname
-            setCacheServer(hostName)
+            setCacheServer(host_name)
             # return reusable filename
-            return 0, "NewFileName:%s" % reuseFileName
-    # execute
+            return 0, "NewFileName:{0}".format(reusable_file_name)
+
     if not useCacheSrv:
-        global baseURLCSRVSSL
-        baseURLCSRVSSL = baseURLSSL
-    url = baseURLCSRVSSL + "/putFile"
+        global cache_base_path_ssl
+        cache_base_path_ssl = server_base_path_ssl
+
+    url = "{0}/{1}".format(cache_base_path_ssl, "file_server/upload_cache_file")
     data = {"file": file}
-    s, o = curl.put(url, data, n_try=n_try)
-    return s, str_decode(o)
+    s, o = curl.put(url, data, n_try=n_try, json_out=True)
+
+    if s != 0:
+        return s, "ERROR: Could not upload file with %s" % str_decode(o)
+
+    success = o.get("success", False)
+    if success:
+        message = "True"
+    else:
+        message = o.get("message", "False")
+
+    return s, message
 
 
 # get file
@@ -891,7 +997,7 @@ def getFile(filename, output_path=None, verbose=False, n_try=1):
     """Get a file
     args:
        filename: filename to be downloaded
-       output_path: output path. set to filename if unspecified
+       output_path: output path. Set to filename if unspecified
        verbose: True to see debug messages
        n_try: number of tries
     returns:
@@ -975,14 +1081,20 @@ def useIntrServer():
 # set cache server
 def setCacheServer(host_name):
     global baseURLCSRVSSL
+    global cache_base_path_ssl
+
     netloc = urlparse(baseURLCSRVSSL)
     if netloc.port:
         baseURLCSRVSSL = "%s://%s:%s%s" % (netloc.scheme, host_name, netloc.port, netloc.path)
     else:
         baseURLCSRVSSL = "%s://%s%s" % (netloc.scheme, host_name, netloc.path)
 
+    parsed = urlparse(baseURLCSRVSSL)
+    cache_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
+
 
 # register proxy key
+# THIS API DOES NOT EXIST IN PANDA SERVER?!?
 def registerProxyKey(credname, origin, myproxy, verbose=False):
     # instantiate curl
     curl = _Curl()
@@ -997,6 +1109,7 @@ def registerProxyKey(credname, origin, myproxy, verbose=False):
 
 
 # get proxy key
+# THIS API DOES NOT EXIST IN PANDA SERVER?!?
 def getProxyKey(verbose=False):
     # instantiate curl
     curl = _Curl()
@@ -1016,63 +1129,29 @@ def getProxyKey(verbose=False):
         return EC_Failed, None
 
 
-# get JobIDs and jediTasks in a time range
+@curl_request_decorator(endpoint="task/get_tasks_modified_since", method="get", json_out=True)
 def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=False, task_type="user"):
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/getJediTasksInTimeRange"
-    data = {"timeRange": timeRange, "fullFlag": True, "task_type": task_type}
-    if dn is not None:
-        data["dn"] = dn
-    if minTaskID is not None:
-        data["minTaskID"] = minTaskID
-    status, output = curl.post(url, data, via_file=True)
-    if status != 0:
-        print(output)
-        return status, None
-    try:
-        jediTaskDicts = pickle_loads(output)
-        return 0, jediTaskDicts
-    except Exception as e:
-        dump_log("getJediTasksInTimeRange", e, output)
-        return EC_Failed, None
+    return {"since": timeRange, "dn": dn, "full": True, "min_task_id": minTaskID, "prod_source_label": task_type}
 
 
-# get details of jedi task
+@curl_request_decorator(endpoint="task/get_details", method="get", json_out=True)
+def getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose=False):
+    return {"task_id": taskDict["jediTaskID"], "include_parameters": fullFlag, "include_status": withTaskInfo}
+
+
 def getJediTaskDetails(taskDict, fullFlag, withTaskInfo, verbose=False):
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/getJediTaskDetails"
-    data = {"jediTaskID": taskDict["jediTaskID"], "fullFlag": fullFlag, "withTaskInfo": withTaskInfo}
-    status, output = curl.post(url, data)
-    if status != 0:
-        print(output)
-        return status, None
-    try:
-        tmpDict = pickle_loads(output)
-        # server error
-        if tmpDict == {}:
-            print("ERROR getJediTaskDetails got empty")
-            return EC_Failed, None
-        # copy
-        for tmpKey in tmpDict:
-            tmpVal = tmpDict[tmpKey]
-            taskDict[tmpKey] = tmpVal
-        return 0, taskDict
-    except Exception as e:
-        dump_log("getJediTaskDetails", e, output)
-        return EC_Failed, None
+    status, tmp_dictionary = getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose)
+    if status == 0:
+        taskDict.update(tmp_dictionary)
+        return status, taskDict
+
+    return status, tmp_dictionary
 
 
-# get full job status
+@curl_request_decorator(endpoint="job/get_description_incl_archive", method="get", json_out=True)
+def getFullJobStatus_internal(ids, verbose=False):
+    return {"job_ids": ids}
+
 def getFullJobStatus(ids, verbose=False):
     """Get detailed status of jobs
 
@@ -1085,98 +1164,26 @@ def getFullJobStatus(ids, verbose=False):
               255: communication failure
         a list of job specs, or None if failed
     """
-    # serialize
-    strIDs = pickle.dumps(ids, protocol=0)
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/getFullJobStatus"
-    data = {"ids": strIDs}
-    status, output = curl.post(url, data, via_file=True)
+    status, jobs = getFullJobStatus_internal(ids, verbose=verbose)
+    if status != 0:
+        return status, jobs
+
     try:
-        return status, pickle_loads(output)
+        return status, MiscUtils.load_jobs(jobs)
     except Exception as e:
-        dump_log("getFullJobStatus", e, output)
-        return EC_Failed, "cannot load pickle: {0}".format(str(e))
+        dump_log("getFullJobStatus", e, jobs)
+        return EC_Failed, None
 
 
-# set debug mode
+@curl_request_decorator(endpoint="job/set_debug_mode", method="post", json_out=True)
 def setDebugMode(pandaID, modeOn, verbose):
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/setDebugMode"
-    data = {"pandaID": pandaID, "modeOn": modeOn}
-    status, output = curl.post(url, data)
-    try:
-        return status, output
-    except Exception as e:
-        errStr = dump_log("setDebugMode", e, output)
-        return EC_Failed, errStr
+    return {"job_id": pandaID, "mode": modeOn}
 
 
 # set tmp dir
 def setGlobalTmpDir(tmpDir):
     global globalTmpDir
     globalTmpDir = tmpDir
-
-
-# get list of cache prefix
-# OBSOLETE to be removed in a future release
-def getCachePrefixes(verbose):
-    # instantiate curl
-    curl = _Curl()
-    curl.verbose = verbose
-    # execute
-    url = baseURL + "/getCachePrefixes"
-    status, output = curl.get(url, {})
-    # failed
-    if status != 0:
-        print(output)
-        errStr = "cannot get the list of Athena projects"
-        tmpLog = PLogger.getPandaLogger()
-        tmpLog.error(errStr)
-        sys.exit(EC_Failed)
-    # return
-    try:
-        tmpList = pickle_loads(output)
-        tmpList.append("AthAnalysisBase")
-        return tmpList
-    except Exception as e:
-        dump_log("getCachePrefixes", e, output)
-        sys.exit(EC_Failed)
-
-
-# get list of cmtConfig
-# OBSOLETE to be removed in a future release
-def getCmtConfigList(athenaVer, verbose):
-    # instantiate curl
-    curl = _Curl()
-    curl.verbose = verbose
-    # execute
-    url = baseURL + "/getCmtConfigList"
-    data = {}
-    data["relaseVer"] = athenaVer
-    status, output = curl.get(url, data)
-    # failed
-    if status != 0:
-        print(output)
-        errStr = "cannot get the list of cmtconfig for %s" % athenaVer
-        tmpLog = PLogger.getPandaLogger()
-        tmpLog.error(errStr)
-        sys.exit(EC_Failed)
-    # return
-    try:
-        return pickle_loads(output)
-    except Exception as e:
-        dump_log("getCmtConfigList", e, output)
-        sys.exit(EC_Failed)
 
 
 # request EventPicking
@@ -1248,7 +1255,10 @@ def requestEventPicking(
     return True, userDatasetName
 
 
-# submit task
+@curl_request_decorator(endpoint="task/submit", method="post", json_out=True, output_mode='full')
+def insertTaskParams_internal(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
+    return {"task_parameters": taskParams}
+
 def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
     """Insert task parameters
 
@@ -1268,40 +1278,25 @@ def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_ti
               3: accepted for incremental execution
               4: server error
     """
-    # serialize
-    taskParamsStr = json.dumps(taskParams)
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/insertTaskParams"
-    data = {"taskParams": taskParamsStr, "properErrorCode": properErrorCode}
-    if parent_tid:
-        data["parent_tid"] = parent_tid
-    status, output = curl.post(url, data)
+
+    status, output = insertTaskParams_internal(taskParams, verbose=verbose, properErrorCode=properErrorCode, parent_tid=parent_tid)
+
+    if status != 0:
+        return status, output
+
     try:
-        loaded_output = pickle_loads(output)
-        # got error message from the server
-        if loaded_output == output:
-            print(output)
-            return EC_Failed, output
-        loaded_output = list(loaded_output)
-        # extract taskID
-        try:
-            m = re.search("jediTaskID=(\d+)", loaded_output[-1])
-            taskID = int(m.group(1))
-        except Exception:
-            taskID = None
-        loaded_output.append(taskID)
-        return status, loaded_output
-    except Exception as e:
-        errStr = dump_log("insertTaskParams", e, output)
-        return EC_Failed, output + "\n" + errStr
+        if not output['success']:
+            # [error code, message]
+            return status, (output['data'], output['message'])
+
+        # [0, message including task ID]
+        return status, (0, output['message'])
+
+    except Exception:
+        return EC_Failed, "Impossible to parse server response. Output: {}".format(output)
 
 
-# get PanDA IDs with TaskID
+@curl_request_decorator(endpoint="task/get_job_ids", method="get", json_out=True)
 def getPandaIDsWithTaskID(jediTaskID, verbose=False):
     """Get PanDA IDs with TaskID
 
@@ -1313,22 +1308,11 @@ def getPandaIDsWithTaskID(jediTaskID, verbose=False):
               255: communication failure
         the list of PanDA IDs, or error message if failed
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.verbose = verbose
-    # execute
-    url = baseURL + "/getPandaIDsWithTaskID"
-    data = {"jediTaskID": jediTaskID}
-    status, output = curl.post(url, data)
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        errStr = dump_log("getPandaIDsWithTaskID", e, output)
-        return EC_Failed, output + "\n" + errStr
+    return {"task_id": jediTaskID}
 
 
-# reactivate task
-def reactivateTask(jediTaskID, verbose=False):
+@curl_request_decorator(endpoint="task/reactivate", method="post", json_out=True, output_mode='extended')
+def reactivateTask(jediTaskID, verbose=True):
     """Reactivate task
 
     args:
@@ -1338,29 +1322,16 @@ def reactivateTask(jediTaskID, verbose=False):
         status code
               0: communication succeeded to the panda server
               255: communication failure
-        return: a tupple of return code and message, or error message if failed
+        return: a tuple of return code and message, or error message if failed
               0: unknown task
               1: succeeded
               None: database error
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/reactivateTask"
-    data = {"jediTaskID": jediTaskID}
-    status, output = curl.post(url, data)
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        errStr = dump_log("reactivateTask", e, output)
-        return EC_Failed, output + "\n" + errStr
+    return {"task_id": jediTaskID}
 
 
-# resume task
-def resumeTask(jediTaskID, verbose=False):
+@curl_request_decorator(endpoint="task/resume", method="post", json_out=True, output_mode='extended')
+def resumeTask(jediTaskID, verbose=True):
     """Resume task
 
     args:
@@ -1370,7 +1341,7 @@ def resumeTask(jediTaskID, verbose=False):
         status code
               0: communication succeeded to the panda server
               255: communication failure
-        return: a tupple of return code and message, or error message if failed
+        return: a tuple of return code and message, or error message if failed
               0: request is registered
               1: server error
               2: task not found
@@ -1380,24 +1351,11 @@ def resumeTask(jediTaskID, verbose=False):
               101: irrelevant taskID
               None: database error
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/resumeTask"
-    data = {"jediTaskID": jediTaskID}
-    status, output = curl.post(url, data)
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        errStr = dump_log("resumeTask", e, output)
-        return EC_Failed, output + "\n" + errStr
+    return {"task_id": jediTaskID}
 
 
-# pause task
-def pauseTask(jediTaskID, verbose=False):
+@curl_request_decorator(endpoint="task/pause", method="post", json_out=True, output_mode='extended')
+def pauseTask(jediTaskID, verbose=True):
     """Pause task
 
     args:
@@ -1407,7 +1365,7 @@ def pauseTask(jediTaskID, verbose=False):
         status code
               0: communication succeeded to the panda server
               255: communication failure
-        return: a tupple of return code and message, or error message if failed
+        return: a tuple of return code and message, or error message if failed
               0: request is registered
               1: server error
               2: task not found
@@ -1417,23 +1375,10 @@ def pauseTask(jediTaskID, verbose=False):
               101: irrelevant taskID
               None: database error
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/pauseTask"
-    data = {"jediTaskID": jediTaskID}
-    status, output = curl.post(url, data)
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        errStr = dump_log("pauseTask", e, output)
-        return EC_Failed, output + "\n" + errStr
+    return {"task_id": jediTaskID}
 
 
-# get task status TaskID
+@curl_request_decorator(endpoint="task/get_status", method="get", json_out=True)
 def getTaskStatus(jediTaskID, verbose=False):
     """Get task status
 
@@ -1446,21 +1391,11 @@ def getTaskStatus(jediTaskID, verbose=False):
               255: communication failure
         the status string, or error message if failed
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.verbose = verbose
-    # execute
-    url = baseURL + "/getTaskStatus"
-    data = {"jediTaskID": jediTaskID}
-    status, output = curl.post(url, data)
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        errStr = dump_log("getTaskStatus", e, output)
-        return EC_Failed, output + "\n" + errStr
+
+    return {"task_id": jediTaskID}
 
 
-# get taskParamsMap with TaskID
+@curl_request_decorator(endpoint="task/get_task_parameters", method="get", json_out=True)
 def getTaskParamsMap(jediTaskID):
     """Get task parameters
 
@@ -1475,20 +1410,10 @@ def getTaskParamsMap(jediTaskID):
               0: success
               None: database error
     """
-    # instantiate curl
-    curl = _Curl()
-    # execute
-    url = baseURL + "/getTaskParamsMap"
-    data = {"jediTaskID": jediTaskID}
-    status, output = curl.post(url, data)
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        errStr = dump_log("getTaskParamsMap", e, output)
-        return EC_Failed, output + "\n" + errStr
+    return {"task_id": jediTaskID}
 
 
-# get user job metadata
+@curl_request_decorator(endpoint="job/get_metadata_for_analysis_jobs", method="get", json_out=True)
 def getUserJobMetadata(task_id, verbose=False):
     """Get metadata of all jobs in a task
     args:
@@ -1500,21 +1425,7 @@ def getUserJobMetadata(task_id, verbose=False):
         255: communication failure
        a list of job metadata dictionaries, or error message if failed
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/getUserJobMetadata"
-    data = {"jediTaskID": task_id}
-    status, output = curl.post(url, data, is_json=True)
-    try:
-        return (0, output)
-    except Exception as e:
-        errStr = dump_log("getUserJobMetadata", e, output)
-        return EC_Failed, errStr
-
+    return {"task_id": task_id}
 
 # hello
 def hello(verbose=False):
@@ -1534,26 +1445,31 @@ def hello(verbose=False):
     curl.sslKey = _x509()
     curl.verbose = verbose
     # execute
-    url = baseURLSSL + "/isAlive"
+    url = server_base_path_ssl + "/system/is_alive"
     try:
-        status, output = curl.post(url, {})
-        output = str_decode(output)
+        status, response = curl.get(url, {}, json_out=True)
+
+        # Communication issue with PanDA server
         if status != 0:
-            msg = "Not good. " + output
-            tmp_log.error(msg)
-            return EC_Failed, msg
-        elif output != "alive=yes":
-            msg = "Not good. " + output
-            tmp_log.error(msg)
-            return EC_Failed, msg
-        else:
-            msg = "OK"
-            tmp_log.info(msg)
-            return 0, msg
+            tmp_message = "Communication issue. " + response
+            tmp_log.error(tmp_message)
+            return EC_Failed, tmp_message
+
+        response = str_decode(response)
+        success = response.get("success", False)
+        message = response.get("message", "")
+        if not success:
+            tmp_message = "Problem with is_alive. " + message
+            tmp_log.error(tmp_message)
+            return EC_Failed, tmp_message
+
+        tmp_log.info("Done with success={0} and message='{1}'".format(success, message))
+        return 0, message
+
     except Exception as e:
-        msg = "Too bad. {}".format(str(e))
-        tmp_log.error(msg)
-        return EC_Failed, msg
+        tmp_message = "Exception. {}".format(str(e))
+        tmp_log.error(tmp_message)
+        return EC_Failed, tmp_message
 
 
 # get certificate attributes
@@ -1573,6 +1489,7 @@ def get_cert_attributes(verbose=False):
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/getAttr"
     try:
@@ -1599,6 +1516,19 @@ def get_cert_attributes(verbose=False):
         print(traceback.format_exc())
         return EC_Failed, msg
 
+
+@curl_request_decorator(endpoint="system/get_attributes", method="get", json_out=True)
+def get_cert_attributes(verbose=False):
+    """Get certificate attributes from the PanDA server
+    args:
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a dictionary of attributes or diagnostic message
+    """
+    return {}
 
 # get username from token
 def get_user_name_from_token():
@@ -1654,11 +1584,13 @@ def call_idds_command(
        a tuple of (True, response from iDDS), or (False, diagnostic message) if failed
     """
     tmp_log = PLogger.getPandaLogger()
+
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/relay_idds_command"
     try:
@@ -1715,6 +1647,7 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/execute_idds_workflow_command"
     try:
@@ -1749,11 +1682,13 @@ def send_file_recovery_request(task_id, dry_run=False, verbose=False):
        a tuple of (True/False and diagnostic message). True if the request was accepted
     """
     tmp_log = PLogger.getPandaLogger()
+
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     output = None
     url = baseURLSSL + "/put_file_recovery_request"
@@ -1791,11 +1726,13 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
        a tuple of (True/False and diagnostic message). True if the request was accepted
     """
     tmp_log = PLogger.getPandaLogger()
+
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     output = None
     if relay_host:
@@ -1823,8 +1760,8 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
         return EC_Failed, msg
 
 
-# set user secret
-def set_user_secert(key, value, verbose=False):
+@curl_request_decorator(endpoint="creds/set_user_secrets", method="post", json_out=True, output_mode="extended")
+def set_user_secret(key, value, verbose=False):
     """Set a user secret
     args:
        key: secret name. None to delete all secrets
@@ -1836,36 +1773,15 @@ def set_user_secert(key, value, verbose=False):
         255: communication failure
        a tuple of (True/False and diagnostic message). True if the request was accepted
     """
-    tmp_log = PLogger.getPandaLogger()
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/set_user_secret"
-    try:
-        data = dict()
-        if key:
-            data["key"] = key
-            if value:
-                data["value"] = value
-        status, output = curl.post(url, data)
-        if status != 0:
-            tmp_log.error(output)
-            return EC_Failed, output
-        else:
-            return 0, json.loads(output)
-    except Exception as e:
-        msg = "{}.".format(str(e))
-        if output:
-            msg += ' raw output="{}"'.format(str(output))
-        tmp_log.error(msg)
-        return EC_Failed, msg
+    return {"key": key, "value": value}
 
 
-# get user secret
-def get_user_secerts(verbose=False):
+@curl_request_decorator(endpoint="creds/get_user_secrets", method="get", json_out=True, output_mode="extended")
+def get_user_secrets_internal(verbose=False):
+    return {}
+
+
+def get_user_secrets(verbose=False):
     """Get user secrets
     args:
        verbose: True to see verbose message
@@ -1875,35 +1791,20 @@ def get_user_secerts(verbose=False):
         255: communication failure
        a tuple of (True/False and a dict of secrets). True if the request was accepted
     """
-    tmp_log = PLogger.getPandaLogger()
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/get_user_secrets"
-    try:
-        status, output = curl.post(url, {})
-        if status != 0:
-            tmp_log.error(output)
-            return EC_Failed, output
-        else:
-            output = json.loads(output)
-            if not output[0]:
-                return 0, output
-            if not output[1]:
-                return 0, (output[0], {})
-            return 0, (output[0], json.loads(output[1]))
-    except Exception as e:
-        msg = "{}.".format(str(e))
-        if output:
-            msg += ' raw output="{}"'.format(str(output))
-        tmp_log.error(msg)
-        return EC_Failed, msg
+    status, output = get_user_secrets_internal(verbose=verbose)
 
+    if status != 0:
+        return status, output
 
-# increase attempt numbers to retry failed jobs
+    success, data = output
+
+    if success:
+        return status, (success, json.loads(data))
+
+    # data should just be an error message
+    return status, (success, data)
+
+@curl_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True, output_mode="extended")
 def increase_attempt_nr(task_id, increase=3, verbose=False):
     """increase attempt numbers to retry failed jobs
     args:
@@ -1922,24 +1823,11 @@ def increase_attempt_nr(task_id, increase=3, verbose=False):
              4: wrong parameter
              None: database error
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/increaseAttemptNrPanda"
-    data = {"jediTaskID": task_id, "increasedNr": increase}
-    status, output = curl.post(url, data)
-    try:
-        return 0, pickle_loads(output)
-    except Exception as e:
-        errStr = dump_log("increase_attempt_nr", e, output)
-        return EC_Failed, errStr
+    return {"task_id": task_id, "increase": increase}
 
 
-# reload input
-def reload_input(task_id, verbose=False):
+@curl_request_decorator(endpoint="task/reload_input", method="post", json_out=True, output_mode='extended')
+def reload_input(task_id, verbose=True):
     """Retry task
     args:
         task_id: jediTaskID of the task to reload and retry
@@ -1956,23 +1844,13 @@ def reload_input(task_id, verbose=False):
             100: non SSL connection
             101: irrelevant taskID
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/reloadInput"
-    data = {"jediTaskID": task_id}
-    status, output = curl.post(url, data)
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        errStr = dump_log("reload_input", e, output)
-        return EC_Failed, errStr
+    return {"task_id": task_id}
 
 
-# get files in datasets
+@curl_request_decorator(endpoint="task/get_datasets_and_files", method="get", json_out=True)
+def get_files_in_datasets_internal(task_id, dataset_types, verbose=False):
+    return {"task_id": task_id, "dataset_types": dataset_types}
+
 def get_files_in_datasets(task_id, dataset_types="input,pseudo_input", verbose=False):
     """Get files in datasets
     args:
@@ -1985,23 +1863,11 @@ def get_files_in_datasets(task_id, dataset_types="input,pseudo_input", verbose=F
         255: communication failure
        a list of dataset dictionaries including file info, or error message if failed
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/get_files_in_datasets"
-    data = {"task_id": task_id, "dataset_types": dataset_types}
-    status, output = curl.post(url, data, is_json=True)
-    if status != 0:
-        return EC_Failed, output
-    if output is None:
-        return EC_Failed, "server side error"
-    return 0, output
+    dataset_types_list = dataset_types.split(",")
+    return get_files_in_datasets_internal(task_id, dataset_types_list)
 
 
-# get status of events
+@curl_request_decorator(endpoint="event/get_event_range_statuses", method="get", json_out=True)
 def get_events_status(ids, verbose=False):
     """Get status of events
     args:
@@ -2013,23 +1879,10 @@ def get_events_status(ids, verbose=False):
         255: communication failure
        a dictionary of {panda_id: [{event_range_id: status}, ...], ...}
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/get_events_status"
-    data = {"ids": json.dumps(ids)}
-    status, output = curl.post(url, data, is_json=True)
-    if status != 0:
-        return EC_Failed, output
-    if output is None:
-        return EC_Failed, "server side error"
-    return 0, output
+    return {"job_task_ids": ids}
 
 
-# update events
+@curl_request_decorator(endpoint="event/update_event_ranges", method="post", json_out=True)
 def update_events(events, verbose=False):
     """Update events
     args:
@@ -2042,17 +1895,4 @@ def update_events(events, verbose=False):
         255: communication failure
        a dictionary of {'Returns': a list of returns when updating events, 'Command': commands to jobs, 'StatusCode': 0 for OK})
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/updateEventRanges"
-    data = {"eventRanges": json.dumps(events), "version": 2}
-    status, output = curl.post(url, data, is_json=True)
-    if status != 0:
-        return EC_Failed, output
-    if output is None:
-        return EC_Failed, "server side error"
-    return 0, output
+    return {"event_ranges": events}
