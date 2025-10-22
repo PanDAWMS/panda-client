@@ -915,7 +915,7 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
     """
     status, output = retryTask_internal(jediTaskID, verbose, properErrorCode, newParams)
 
-    if status == 0:
+    if status != 0:
         return status, output
 
     success = output["success"]
