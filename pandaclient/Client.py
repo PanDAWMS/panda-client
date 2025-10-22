@@ -919,7 +919,7 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
         return status, output
 
     success = output["success"]
-    message = output.get["message"]
+    message = output["message"]
     data = output["data"]
 
     return status, (data, message)
