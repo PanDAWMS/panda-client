@@ -885,7 +885,14 @@ def finishTask(jediTaskID, soft=False, verbose=False):
     return data
 
 
-@curl_request_decorator(endpoint="task/retry", method="post", json_out=True, output_mode='extended')
+@curl_request_decorator(endpoint="task/retry", method="post", json_out=True, output_mode='full')
+def retryTask_internal(jediTaskID, verbose, properErrorCode, newParams):
+    data = {"task_id": jediTaskID}
+    if newParams:
+        data["new_parameters"] = newParams
+    return data
+
+
 def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
     """retry a task
     args:
@@ -906,10 +913,16 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
         100: non SSL connection
         101: irrelevant taskID
     """
-    data = {"task_id": jediTaskID}
-    if newParams:
-        data["new_parameters"] = json.dumps(newParams)
-    return data
+    status, output = retryTask_internal(jediTaskID, verbose, properErrorCode, newParams)
+
+    if status == 0:
+        return status, output
+
+    success = output["success"]
+    message = output.get["message"]
+    data = output["data"]
+
+    return status, (data, message)
 
 
 def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1):
