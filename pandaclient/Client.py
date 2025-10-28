@@ -1849,14 +1849,15 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
     #     url = "https://{}:25443/server/panda".format(relay_host)
     # else:
     #     url = baseURLSSL
-    url = f"https://localhost:25443/api/v1/workflow/submit_workflow"
+    url = f"https://aipanda121.cern.ch:25443/api/v1/workflow/submit_workflow_raw_request"
     try:
-        data = {"data": json.dumps(params)}
-        if check:
-            data["check"] = True
-        else:
-            data["sync"] = True
-        status, output = curl.post(url, data, compress_body=True, is_json=True)
+        data = {"params": json.dumps(params)}
+        # data = {"params": params}
+        # if check:
+        #     data["check"] = True
+        # else:
+        #     data["sync"] = True
+        status, output = curl.post(url, data, compress_body=False, is_json=True)
         if status != 0:
             tmp_log.error(output)
             return EC_Failed, output
