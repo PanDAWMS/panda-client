@@ -959,7 +959,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         dest="parentTaskID",
         default=None,
         type=int,
-        help="Set taskID of the paranet task to execute the task while the parent is still running",
+        help="Specifies the parent task ID, allowing this task running concurrently with its parent task",
     )
     group_config.add_argument(
         "--useSecrets",
