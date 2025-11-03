@@ -1318,7 +1318,7 @@ group_config.add_argument(
     dest="parentTaskID",
     default=None,
     type=int,
-    help="Set taskID of the paranet task to execute the task while the parent is still running",
+    help="Specifies the parent task ID, allowing this task running concurrently with its parent task",
 )
 group_submit.add_argument(
     "--priority",
