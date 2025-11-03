@@ -14,12 +14,12 @@ import string
 import sys
 import time
 import traceback
-
 from datetime import datetime
 
 try:
     # python 2
     from urllib import unquote_plus, urlencode
+
     from urllib2 import HTTPError, Request, urlopen
     from urlparse import urlparse
 except ImportError:
@@ -94,13 +94,13 @@ def decode_special_cases(obj):
     return obj
 
 
-def curl_request_decorator(endpoint, method="post", via_file=False, json_out=False, output_mode='basic'):
+def curl_request_decorator(endpoint, method="post", via_file=False, json_out=False, output_mode="basic"):
     def decorator(func):
         def wrapper(*args, **kwargs):
             # Extract arguments
             try:
                 sig = inspect.signature(func)
-                default_verbose = sig.parameters['verbose'].default
+                default_verbose = sig.parameters["verbose"].default
             except Exception:
                 default_verbose = False
 
@@ -128,13 +128,13 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
                 return EC_Failed, None
 
             # Let the caller handle full output if requested
-            if output_mode == 'full':
+            if output_mode == "full":
                 return status, output
 
             success = output.get("success")
             if not success:
                 # dump_log(func.__name__, None, output.get("message"))
-                if output_mode == 'extended':
+                if output_mode == "extended":
                     if verbose:
                         output_status = output.get("data")
                     else:
@@ -143,7 +143,7 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
 
                 return EC_Failed, None
 
-            if output_mode == 'extended':
+            if output_mode == "extended":
                 if verbose:
                     output_status = output.get("data")
                 else:
@@ -152,7 +152,9 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
 
             # output_mode == 'basic'
             return status, output.get("data")
+
         return wrapper
+
     return decorator
 
 
@@ -605,7 +607,6 @@ class _Curl:
 
     # convert return
     def convert_return(self, ret):
-
         code = ret[0] % 255
         data = ret[1]
 
@@ -623,7 +624,9 @@ class _Curl:
 
 
 class _NativeCurl(_Curl):
-    def http_method(self, url, data, header, rdata=None, compress_body=False, is_json=False, json_out=False, repeating_keys=False, method=None, file_upload=False):
+    def http_method(
+        self, url, data, header, rdata=None, compress_body=False, is_json=False, json_out=False, repeating_keys=False, method=None, file_upload=False
+    ):
         try:
             use_https = is_https(url)
             url = self.randomize_ip(url)
@@ -668,7 +671,6 @@ class _NativeCurl(_Curl):
                 code = 0
             text = conn.read()
 
-
             if self.verbose:
                 print(code, text)
             return code, text
@@ -706,7 +708,6 @@ class _NativeCurl(_Curl):
 
     # POST method
     def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1, json_out=False):
-
         method = None
         if json_out:
             method = "POST"
@@ -767,9 +768,11 @@ public methods
 
 """
 
+
 @curl_request_decorator(endpoint="job/submit", method="post", json_out=True)
 def submitJobs_internal(jobs, verbose=False, no_pickle=False):
     return {"jobs": jobs}
+
 
 def submitJobs(jobs, verbose=False, no_pickle=False):
     """Submit jobs
@@ -796,6 +799,7 @@ def submitJobs(jobs, verbose=False, no_pickle=False):
 @curl_request_decorator(endpoint="job/get_description", method="get", json_out=True)
 def getJobStatus_internal(ids, verbose=False, no_pickle=False):
     return {"job_ids": ids}
+
 
 def getJobStatus(ids, verbose=False, no_pickle=False):
     """Get status of jobs
@@ -837,7 +841,7 @@ def killJobs(ids, verbose=False):
     return {"job_ids": ids}
 
 
-@curl_request_decorator(endpoint="task/kill", method="post", json_out=True, output_mode='extended')
+@curl_request_decorator(endpoint="task/kill", method="post", json_out=True, output_mode="extended")
 def killTask(jediTaskID, verbose=False):
     """Kill a task
     args:
@@ -859,7 +863,7 @@ def killTask(jediTaskID, verbose=False):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/finish", method="post", json_out=True, output_mode='extended')
+@curl_request_decorator(endpoint="task/finish", method="post", json_out=True, output_mode="extended")
 def finishTask(jediTaskID, soft=False, verbose=False):
     """finish a task
     args:
@@ -885,7 +889,7 @@ def finishTask(jediTaskID, soft=False, verbose=False):
     return data
 
 
-@curl_request_decorator(endpoint="task/retry", method="post", json_out=True, output_mode='full')
+@curl_request_decorator(endpoint="task/retry", method="post", json_out=True, output_mode="full")
 def retryTask_internal(jediTaskID, verbose, properErrorCode, newParams):
     data = {"task_id": jediTaskID}
     if newParams:
@@ -1165,6 +1169,7 @@ def getJediTaskDetails(taskDict, fullFlag, withTaskInfo, verbose=False):
 def getFullJobStatus_internal(ids, verbose=False):
     return {"job_ids": ids}
 
+
 def getFullJobStatus(ids, verbose=False):
     """Get detailed status of jobs
 
@@ -1268,9 +1273,10 @@ def requestEventPicking(
     return True, userDatasetName
 
 
-@curl_request_decorator(endpoint="task/submit", method="post", json_out=True, output_mode='full')
+@curl_request_decorator(endpoint="task/submit", method="post", json_out=True, output_mode="full")
 def insertTaskParams_internal(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
-    return {"task_parameters": taskParams}
+    return {"task_parameters": taskParams, "parent_tid": parent_tid}
+
 
 def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
     """Insert task parameters
@@ -1298,12 +1304,12 @@ def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_ti
         return status, output
 
     try:
-        if not output['success']:
+        if not output["success"]:
             # [error code, message]
-            return status, (output['data'], output['message'])
+            return status, (output["data"], output["message"])
 
         # [0, message including task ID]
-        return status, (0, output['message'])
+        return status, (0, output["message"])
 
     except Exception:
         return EC_Failed, "Impossible to parse server response. Output: {}".format(output)
@@ -1324,7 +1330,7 @@ def getPandaIDsWithTaskID(jediTaskID, verbose=False):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/reactivate", method="post", json_out=True, output_mode='extended')
+@curl_request_decorator(endpoint="task/reactivate", method="post", json_out=True, output_mode="extended")
 def reactivateTask(jediTaskID, verbose=True):
     """Reactivate task
 
@@ -1343,7 +1349,7 @@ def reactivateTask(jediTaskID, verbose=True):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/resume", method="post", json_out=True, output_mode='extended')
+@curl_request_decorator(endpoint="task/resume", method="post", json_out=True, output_mode="extended")
 def resumeTask(jediTaskID, verbose=True):
     """Resume task
 
@@ -1367,7 +1373,7 @@ def resumeTask(jediTaskID, verbose=True):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/pause", method="post", json_out=True, output_mode='extended')
+@curl_request_decorator(endpoint="task/pause", method="post", json_out=True, output_mode="extended")
 def pauseTask(jediTaskID, verbose=True):
     """Pause task
 
@@ -1439,6 +1445,7 @@ def getUserJobMetadata(task_id, verbose=False):
        a list of job metadata dictionaries, or error message if failed
     """
     return {"task_id": task_id}
+
 
 # hello
 def hello(verbose=False):
@@ -1542,6 +1549,7 @@ def get_cert_attributes(verbose=False):
        a dictionary of attributes or diagnostic message
     """
     return {}
+
 
 # get username from token
 def get_user_name_from_token():
@@ -1817,6 +1825,7 @@ def get_user_secrets(verbose=False):
     # data should just be an error message
     return status, (success, data)
 
+
 @curl_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True, output_mode="extended")
 def increase_attempt_nr(task_id, increase=3, verbose=False):
     """increase attempt numbers to retry failed jobs
@@ -1839,7 +1848,7 @@ def increase_attempt_nr(task_id, increase=3, verbose=False):
     return {"task_id": task_id, "increase": increase}
 
 
-@curl_request_decorator(endpoint="task/reload_input", method="post", json_out=True, output_mode='extended')
+@curl_request_decorator(endpoint="task/reload_input", method="post", json_out=True, output_mode="extended")
 def reload_input(task_id, verbose=True):
     """Retry task
     args:
@@ -1863,6 +1872,7 @@ def reload_input(task_id, verbose=True):
 @curl_request_decorator(endpoint="task/get_datasets_and_files", method="get", json_out=True)
 def get_files_in_datasets_internal(task_id, dataset_types, verbose=False):
     return {"task_id": task_id, "dataset_types": dataset_types}
+
 
 def get_files_in_datasets(task_id, dataset_types="input,pseudo_input", verbose=False):
     """Get files in datasets
