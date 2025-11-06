@@ -816,6 +816,14 @@ group_submit.add_argument(
     choices=[1, 8],
     help="The number of CPU cores. nCore=1 or 8. The number of available cores is defined in an environment variable, $ATHENA_CORE_NUMBER, on WNs, or %%CORE_NUMBER in --trf",
 )
+group_submit.add_argument(
+    "--maxCore",
+    action="store",
+    dest="maxCore",
+    default=None,
+    type=int,
+    help="The maximum number of CPU cores that a single job is allowed to utilize. Use this option to prevent jobs that do not scale efficiently with additional cores from occupying many core resources.",
+)
 action = group_job.add_argument(
     "--nThreads",
     action="store",
@@ -2475,6 +2483,8 @@ if options.nCore > 1:
     taskParamMap["coreCount"] = options.nCore
 elif options.nThreads > 1:
     taskParamMap["coreCount"] = options.nThreads
+if options.maxCore and options.maxCore > 0:
+    taskParamMap["maxCoreCount"] = options.maxCore
 if options.skipFilesUsedBy != "":
     taskParamMap["skipFilesUsedBy"] = options.skipFilesUsedBy
 taskParamMap["respectSplitRule"] = True
