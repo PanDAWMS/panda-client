@@ -972,7 +972,7 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
 
         # Execute request
         endpoint = "file_server/validate_cache_file"
-        data = {"file_size": i_size, "checksum": checksum}
+        data = {"file_size": file_size, "checksum": checksum}
         url = "{0}/{1}".format(server_base_path_ssl, endpoint)
         status, output = curl.post(url, data, via_file=True, json_out=True)
         if status != 0:
@@ -983,7 +983,7 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
 
         if message.startswith("FOUND:"):
             # found reusable sandbox
-            host_name, reusable_file_name = output.split(":")[1:]
+            host_name, reusable_file_name = message.split(":")[1:]
             # set cache server hostname
             setCacheServer(host_name)
             # return reusable filename
@@ -1093,6 +1093,10 @@ def useIntrServer():
     baseURLSSL = "https://aipanda123.cern.ch:25443/server/panda"
     global baseURLCSRVSSL
     baseURLCSRVSSL = baseURLSSL
+    global server_base_path
+    server_base_path = "http://aipanda123.cern.ch:25080/api/v1"
+    global server_base_path_ssl
+    server_base_path_ssl = "https://aipanda123.cern.ch:25443/api/v1"
 
 
 # set cache server
