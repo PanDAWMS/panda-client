@@ -83,10 +83,11 @@ class OpenIdConnect_Utils:
         startTime = datetime.datetime.utcnow()
         data = {
             "client_id": client_id,
-            "client_secret": client_secret,
             "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
             "device_code": device_code,
         }
+        if client_secret:
+            data["client_secret"] = client_secret
         rdata = urlencode(data).encode()
         req = Request(token_endpoint, rdata)
         req.add_header("content-type", "application/x-www-form-urlencoded")
