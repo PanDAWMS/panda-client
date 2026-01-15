@@ -1574,13 +1574,18 @@ def get_user_name_from_token():
 
 
 # get new token
-def get_new_token():
+def get_new_token(verbose=False):
     """Get new ID token
 
-    returns: a string of ID token. None if failed
+    args:
+      verbose: True to see verbose message
+
+    returns:
+      a string of ID token. None if failed
 
     """
     curl = _Curl()
+    curl.verbose = verbose
     if curl.get_id_token(force_new=True):
         return curl.idToken
     return None
