@@ -983,7 +983,8 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
 
         if message.startswith("FOUND:"):
             # found reusable sandbox
-            host_name, reusable_file_name = message.split(":")[1:]
+            rest = message.split(":", 1)[1]  # strip only the first "FOUND:"
+            host_name, reusable_file_name = rest.rsplit(":", 1)
             # set cache server hostname
             setCacheServer(host_name)
             # return reusable filename
