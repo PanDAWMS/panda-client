@@ -998,8 +998,15 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
     data = {"file": file}
     s, o = curl.put(url, data, n_try=n_try, json_out=True)
 
+    # Status error
     if s != 0:
         return s, "ERROR: Could not upload file with %s" % str_decode(o)
+
+    # Status OK, but somehow not a json response
+    if isinstance(o, str):
+        tmp_logger = PLogger.getPandaLogger()
+        tmp_logger.error("{0}, {1}".format(s, o))
+        return s, o
 
     success = o.get("success", False)
     if success:
