@@ -74,6 +74,10 @@ EC_Failed = 255
 # limit on maxCpuCount
 maxCpuCountLimit = 1000000000
 
+# limits on file sizes
+NO_BUILD_LIMIT = 10 * 1024 * 1024
+SOURCES_LIMIT = 760 * 1024 * 1024
+
 # resolve panda cache server's name
 if "PANDA_BEHIND_REAL_LB" not in os.environ:
     netloc = urlparse(baseURLCSRVSSL)
@@ -930,7 +934,7 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
 
 
 def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1):
-    """Upload a file with the size limit on 10 MB
+    """Upload a file with the size limits: 10 MB for noBuild files, 760 MB for sources (Sandbox) files
     args:
        file: filename to be uploaded
        verbose: True to see debug messages
@@ -943,17 +947,24 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
         255: communication failure
        diagnostic message
     """
-    # size check for noBuild
-    size_limit = 10 * 1024 * 1024
+    # size checks
     file_size = os.stat(file)[stat.ST_SIZE]
-    if not os.path.basename(file).startswith("sources."):
-        if file_size > size_limit:
-            error_message = "Exceeded size limit (%sB >%sB). " % (file_size, size_limit)
-            error_message += "Your working directory contains too large files which cannot be put on cache area. "
-            error_message += "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
-            tmp_logger = PLogger.getPandaLogger()
-            tmp_logger.error(error_message)
-            return EC_Failed, "False"
+    exceeded_limit = False
+    error_message = ""
+    if os.path.basename(file).startswith("sources.") and file_size > SOURCES_LIMIT:
+        error_message = "Exceeded size limit for sandbox files (%sB >%sB). " % (file_size, SOURCES_LIMIT)
+        error_message += "Your working directory contains too large files which cannot be put on cache area. "
+        exceeded_limit = True
+    elif file_size > NO_BUILD_LIMIT:
+        error_message = "Exceeded size limit (%sB >%sB). " % (file_size, NO_BUILD_LIMIT)
+        error_message += "Your working directory contains too large files which cannot be put on cache area. "
+        error_message += "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
+        exceeded_limit = True
+
+    if exceeded_limit:
+        tmp_logger = PLogger.getPandaLogger()
+        tmp_logger.error(error_message)
+        return EC_Failed, "False"
 
     # Instantiate curl
     curl = _Curl()
