@@ -76,7 +76,7 @@ maxCpuCountLimit = 1000000000
 
 # limits on file sizes
 NO_BUILD_LIMIT = 10 * 1024 * 1024
-SOURCES_LIMIT = 760 * 1024 * 1024
+SOURCES_LIMIT = 768 * 1024 * 1024
 
 # resolve panda cache server's name
 if "PANDA_BEHIND_REAL_LB" not in os.environ:
