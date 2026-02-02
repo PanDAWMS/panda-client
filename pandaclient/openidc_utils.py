@@ -50,11 +50,16 @@ class OpenIdConnect_Utils:
         return os.path.join(self.token_dir, TOKEN_BASENAME)
 
     # get device code
-    def get_device_code(self, device_auth_endpoint, client_id, audience):
+    def get_device_code(self, device_auth_endpoint, client_id, audience, jwt_profile):
         if self.verbose:
             self.log_stream.debug("getting device code")
-        data = {"client_id": client_id, "scope": "openid profile email offline_access ", "audience": audience}  # iam",
+        scopes = "openid profile email offline_access "
+        if jwt_profile == "wlcg":
+            scopes += "wlcg wlcg.groups "
+        data = {"client_id": client_id, "scope": scopes, "audience": audience}  # iam",
         rdata = urlencode(data).encode()
+        if self.verbose:
+            self.log_stream.debug("request url: {0} data: {1}".format(device_auth_endpoint, rdata))
         req = Request(device_auth_endpoint, rdata)
         req.add_header("content-type", "application/x-www-form-urlencoded")
         try:
@@ -83,10 +88,11 @@ class OpenIdConnect_Utils:
         startTime = datetime.datetime.utcnow()
         data = {
             "client_id": client_id,
-            "client_secret": client_secret,
             "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
             "device_code": device_code,
         }
+        if client_secret:
+            data["client_secret"] = client_secret
         rdata = urlencode(data).encode()
         req = Request(token_endpoint, rdata)
         req.add_header("content-type", "application/x-www-form-urlencoded")
@@ -223,7 +229,8 @@ class OpenIdConnect_Utils:
                 if self.verbose:
                     self.log_stream.debug("failed to refresh token: {0}".format(o))
         # get device code
-        s, o = self.get_device_code(endpoint_config["device_authorization_endpoint"], auth_config["client_id"], auth_config["audience"])
+        jwt_profile = auth_config.get("jwt_profile")
+        s, o = self.get_device_code(endpoint_config["device_authorization_endpoint"], auth_config["client_id"], auth_config["audience"], jwt_profile)
         if not s:
             return False, "Failed to get device code: " + o
         # get ID token

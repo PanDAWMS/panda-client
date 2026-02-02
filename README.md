@@ -24,7 +24,7 @@ pathena -h
 
 # Release Notes
 
-See ChangeLog.txt
+https://github.com/PanDAWMS/panda-client/releases
 
 # CVMFS deployment
 Request atlas-adc-tier3sw-install to install the new specific version on CVMFS. They will download the package from the github release page.
@@ -34,6 +34,3 @@ Request atlas-adc-tier3sw-install to install the new specific version on CVMFS. 
 python setup.py sdist upload
 ```
 Uploading source so that wheel generates setup files locally.
- 
-# Acknowledge
-Icons from http://iconka.com

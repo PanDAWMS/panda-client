@@ -74,6 +74,10 @@ EC_Failed = 255
 # limit on maxCpuCount
 maxCpuCountLimit = 1000000000
 
+# limits on file sizes
+NO_BUILD_LIMIT = 10 * 1024 * 1024
+SOURCES_LIMIT = 768 * 1024 * 1024
+
 # resolve panda cache server's name
 if "PANDA_BEHIND_REAL_LB" not in os.environ:
     netloc = urlparse(baseURLCSRVSSL)
@@ -930,7 +934,7 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
 
 
 def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1):
-    """Upload a file with the size limit on 10 MB
+    """Upload a file with the size limits: 10 MB for noBuild files, 760 MB for sources (Sandbox) files
     args:
        file: filename to be uploaded
        verbose: True to see debug messages
@@ -943,17 +947,24 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
         255: communication failure
        diagnostic message
     """
-    # size check for noBuild
-    size_limit = 10 * 1024 * 1024
+    # size checks
     file_size = os.stat(file)[stat.ST_SIZE]
-    if not os.path.basename(file).startswith("sources."):
-        if file_size > size_limit:
-            error_message = "Exceeded size limit (%sB >%sB). " % (file_size, size_limit)
-            error_message += "Your working directory contains too large files which cannot be put on cache area. "
-            error_message += "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
-            tmp_logger = PLogger.getPandaLogger()
-            tmp_logger.error(error_message)
-            return EC_Failed, "False"
+    exceeded_limit = False
+    error_message = ""
+    if os.path.basename(file).startswith("sources.") and file_size > SOURCES_LIMIT:
+        error_message = "Exceeded size limit for sandbox files (%sB >%sB). " % (file_size, SOURCES_LIMIT)
+        error_message += "Your working directory contains too large files which cannot be put on cache area. "
+        exceeded_limit = True
+    elif file_size > NO_BUILD_LIMIT:
+        error_message = "Exceeded size limit (%sB >%sB). " % (file_size, NO_BUILD_LIMIT)
+        error_message += "Your working directory contains too large files which cannot be put on cache area. "
+        error_message += "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
+        exceeded_limit = True
+
+    if exceeded_limit:
+        tmp_logger = PLogger.getPandaLogger()
+        tmp_logger.error(error_message)
+        return EC_Failed, "False"
 
     # Instantiate curl
     curl = _Curl()
@@ -972,7 +983,7 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
 
         # Execute request
         endpoint = "file_server/validate_cache_file"
-        data = {"file_size": i_size, "checksum": checksum}
+        data = {"file_size": file_size, "checksum": checksum}
         url = "{0}/{1}".format(server_base_path_ssl, endpoint)
         status, output = curl.post(url, data, via_file=True, json_out=True)
         if status != 0:
@@ -983,7 +994,8 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
 
         if message.startswith("FOUND:"):
             # found reusable sandbox
-            host_name, reusable_file_name = output.split(":")[1:]
+            rest = message.split(":", 1)[1]  # strip only the first "FOUND:"
+            host_name, reusable_file_name = rest.rsplit(":", 1)
             # set cache server hostname
             setCacheServer(host_name)
             # return reusable filename
@@ -997,8 +1009,15 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
     data = {"file": file}
     s, o = curl.put(url, data, n_try=n_try, json_out=True)
 
+    # Status error
     if s != 0:
         return s, "ERROR: Could not upload file with %s" % str_decode(o)
+
+    # Status OK, but somehow not a json response
+    if isinstance(o, str):
+        tmp_logger = PLogger.getPandaLogger()
+        tmp_logger.error("{0}, {1}".format(s, o))
+        return s, o
 
     success = o.get("success", False)
     if success:
@@ -1093,6 +1112,10 @@ def useIntrServer():
     baseURLSSL = "https://aipanda123.cern.ch:25443/server/panda"
     global baseURLCSRVSSL
     baseURLCSRVSSL = baseURLSSL
+    global server_base_path
+    server_base_path = "http://aipanda123.cern.ch:25080/api/v1"
+    global server_base_path_ssl
+    server_base_path_ssl = "https://aipanda123.cern.ch:25443/api/v1"
 
 
 # set cache server
@@ -1570,13 +1593,18 @@ def get_user_name_from_token():
 
 
 # get new token
-def get_new_token():
+def get_new_token(verbose=False):
     """Get new ID token
 
-    returns: a string of ID token. None if failed
+    args:
+      verbose: True to see verbose message
+
+    returns:
+      a string of ID token. None if failed
 
     """
     curl = _Curl()
+    curl.verbose = verbose
     if curl.get_id_token(force_new=True):
         return curl.idToken
     return None

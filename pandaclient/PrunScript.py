@@ -462,6 +462,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         help="The number of CPU cores. nCore=1 or 8. The number of available cores is defined in an environment variable, $ATHENA_CORE_NUMBER, on WNs, or %%CORE_NUMBER in --exec",
     )
     group_submit.add_argument(
+        "--maxCore",
+        action="store",
+        dest="maxCore",
+        default=None,
+        type=int,
+        help="The maximum number of CPU cores that a single job is allowed to utilize. Use this option to prevent jobs that do not scale efficiently with additional cores from occupying many core resources.",
+    )
+    group_submit.add_argument(
         "--maxCpuCount",
         action="store",
         dest="maxCpuCount",
@@ -2201,6 +2209,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         taskParamMap["outDiskUnit"] = "kBFixed"
     if options.nCore > 1:
         taskParamMap["coreCount"] = options.nCore
+    if options.maxCore and options.maxCore > 0:
+        taskParamMap["maxCoreCount"] = options.maxCore
     if options.skipFilesUsedBy != "":
         taskParamMap["skipFilesUsedBy"] = options.skipFilesUsedBy
     taskParamMap["respectSplitRule"] = True

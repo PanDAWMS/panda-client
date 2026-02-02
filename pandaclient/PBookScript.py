@@ -238,7 +238,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
         It is possible to specify newOpts, which is a map of options and new arguments like
         {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'}, to overwrite task parameters for new attempts. The list of
         changeable parameters is site, excludedSite, includedSite, nFilesPerJob, nGBPerJob, nFiles, nEvents,
-        loopingCheck, nMaxFilesPerJob, memory, ramCount, avoidVP, ignoreMissingInDS. It is also possible to specify those
+        loopingCheck, maxNFilesPerJob, memory, ramCount, avoidVP, ignoreMissingInDS. It is also possible to specify those
         parameters as named arguments of the retry function, e.g. nFilesPerJob=10, excludedSite='ABC,XYZ'.
         If input files were used or are being used by other jobs for the same
         output dataset container, those files are skipped to avoid job duplication when retrying failed subjobs.
