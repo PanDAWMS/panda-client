@@ -933,7 +933,7 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
     return status, (data, message)
 
 
-def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1):
+def putFile(file, noBuild=False, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1):
     """Upload a file with the size limits: 10 MB for noBuild files, 760 MB for sources (Sandbox) files
     args:
        file: filename to be uploaded
@@ -951,16 +951,18 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
     file_size = os.stat(file)[stat.ST_SIZE]
     exceeded_limit = False
     error_message = ""
-    if os.path.basename(file).startswith("sources.") and file_size > SOURCES_LIMIT:
-        error_message = "Exceeded size limit for sandbox files (%sB >%sB). " % (file_size, SOURCES_LIMIT)
-        error_message += "Your working directory contains too large files which cannot be put on cache area. "
-        exceeded_limit = True
-    elif file_size > NO_BUILD_LIMIT:
+    
+    if noBuild and file_size > NO_BUILD_LIMIT:
         error_message = "Exceeded size limit (%sB >%sB). " % (file_size, NO_BUILD_LIMIT)
         error_message += "Your working directory contains too large files which cannot be put on cache area. "
         error_message += "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
         exceeded_limit = True
-
+    
+    elif file_size > SOURCES_LIMIT:
+        error_message = "Exceeded size limit for sandbox files (%sB >%sB). " % (file_size, SOURCES_LIMIT)
+        error_message += "Your working directory contains too large files which cannot be put on cache area. "
+        exceeded_limit = True
+    
     if exceeded_limit:
         tmp_logger = PLogger.getPandaLogger()
         tmp_logger.error(error_message)
