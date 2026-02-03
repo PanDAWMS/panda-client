@@ -196,7 +196,7 @@ def main():
         else:
             use_cache_srv = True
         os.chdir(tmpDir)
-        status, out = Client.putFile(archiveName, options.verbose, useCacheSrv=use_cache_srv, reuseSandbox=True)
+        status, out = Client.putFile(archiveName, verbose=options.verbose, noBuild=False, useCacheSrv=use_cache_srv, reuseSandbox=True)
 
         if out.startswith("NewFileName:"):
             # found the same input sandbox to reuse
