@@ -9,5 +9,5 @@ panda_ids = args.panda_ids
 
 print("=============================================================")
 
-file_ret = putFile("/root/test/a.py", verbose=True, noBuild=True)
+file_ret = putFile("/root/test/a.py", verbose=True, noBuild=False)
 print("putFile returned: {0}".format(file_ret))
