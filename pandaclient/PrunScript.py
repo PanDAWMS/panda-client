@@ -2087,6 +2087,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     tmpLog,
                     delFilesOnExit,
                     options.noSubmit,
+                    options.noBuild,
                     options.verbose,
                 )
 
