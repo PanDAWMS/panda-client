@@ -2067,7 +2067,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 use_cache_srv = False
             status, out = Client.putFile(
                 archiveName,
-                options.verbose,
+                verbose=options.verbose,
                 noBuild=options.noBuild,
                 useCacheSrv=use_cache_srv,
                 reuseSandbox=True,

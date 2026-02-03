@@ -2349,7 +2349,7 @@ if True:
     # put sources/jobO via HTTP POST
     if not options.noSubmit and not options.tarBallViaDDM:
         tmpLog.info("uploading sandbox")
-        status, out = Client.putFile(archiveName, options.verbose, noBuild=options.noBuild, useCacheSrv=True, reuseSandbox=True)
+        status, out = Client.putFile(archiveName, verbose=options.verbose, noBuild=options.noBuild, useCacheSrv=True, reuseSandbox=True)
         if out.startswith("NewFileName:"):
             # found the same input sandbox to reuse
             archiveName = out.split(":")[-1]
