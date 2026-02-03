@@ -613,7 +613,7 @@ def splitCommaConcatenatedItems(oldList):
 
 
 # upload gzipped file
-def uploadGzippedFile(origFileName, currentDir, tmpLog, delFilesOnExit, nosubmit, verbose):
+def uploadGzippedFile(origFileName, currentDir, tmpLog, delFilesOnExit, nosubmit, noBuild, verbose):
     # open original file
     if origFileName.startswith("/"):
         # absolute path
@@ -633,7 +633,7 @@ def uploadGzippedFile(origFileName, currentDir, tmpLog, delFilesOnExit, nosubmit
     # upload
     if not nosubmit:
         tmpLog.info("uploading data file for preprocessing")
-        status, out = Client.putFile(gzipFullPath, verbose, useCacheSrv=True, reuseSandbox=False)
+        status, out = Client.putFile(gzipFullPath, verbose, noBuild=noBuild, useCacheSrv=True, reuseSandbox=False)
         if status != 0 or out != "True":
             # failed
             print(out)

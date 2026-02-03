@@ -269,7 +269,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             if options.verbose:
                 tmpLog.debug("=== uploading sandbox===")
             os.chdir(tmpDir)
-            status, out = Client.putFile(archiveName, options.verbose, useCacheSrv=True, reuseSandbox=True)
+            status, out = Client.putFile(archiveName, options.verbose, noBuild=False, useCacheSrv=True, reuseSandbox=True)
             os.chdir(curDir)
             if out.startswith('NewFileName:'):
                 # found the same input sandbox to reuse
