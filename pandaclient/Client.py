@@ -934,7 +934,7 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
 
 
 def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1):
-    """Upload a file with the size limits: 10 MB for noBuild files, 760 MB for sources (Sandbox) files
+    """Upload a file with the size limits: 10 MB for noBuild files, 768 MB for sources (Sandbox) files
     args:
        file: filename to be uploaded
        verbose: True to see debug messages
