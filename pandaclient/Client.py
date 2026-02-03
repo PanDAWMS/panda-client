@@ -958,7 +958,7 @@ def putFile(file, verbose=False, noBuild=False, useCacheSrv=False, reuseSandbox=
         error_message += "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
         exceeded_limit = True
     
-    elif file_size > SOURCES_LIMIT:
+    elif not noBuild and file_size > SOURCES_LIMIT:
         error_message = "Exceeded size limit for sandbox files (%sB >%sB). " % (file_size, SOURCES_LIMIT)
         error_message += "Your working directory contains too large files which cannot be put on cache area. "
         exceeded_limit = True
