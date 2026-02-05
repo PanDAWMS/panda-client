@@ -293,8 +293,8 @@ def main():
 
     # action
     tmpLog.info("{0} workflow {1}".format(action_type, options.outDS))
-    # tmpStat, tmpOut = Client.send_workflow_request(params, **data)
-    tmpStat, tmpOut = Client.submit_workflow_tmp(params, **data)
+    # tmpStat, tmpOut = Client.submit_workflow_tmp(params, **data)
+    tmpStat, tmpOut = Client.submit_workflow(params, **data)
 
     # result
     exit_code = 0
@@ -305,29 +305,30 @@ def main():
         tmpLog.error(tmp_str)
         exit_code = 1
     else:
-        if tmpOut[0]:
-            stat_code = tmpOut[1]["status"]
-            check_log = "messages from the server\n\n" + tmpOut[1]["log"]
-            if options.checkOnly:
-                tmpLog.info(check_log)
-                if stat_code:
-                    tmpLog.info("successfully verified workflow description")
-                else:
-                    tmpLog.error("workflow description is corrupted")
-            else:
-                if stat_code:
-                    request_id = tmpOut[1]["request_id"]
-                    tmp_str = "successfully submitted with request_id={0}".format(request_id)
-                    tmpLog.info(tmp_str)
-                else:
-                    tmpLog.info(check_log)
-                    tmp_str = "workflow submission failed with {0}".format(stat_code)
-                    tmpLog.error(tmp_str)
-                    exit_code = stat_code
-        else:
-            tmp_str = "workflow {0} failed. {1}".format(action_type, tmpOut[1])
-            tmpLog.error(tmp_str)
-            exit_code = 1
+        tmpLog.info(f"workflow {action_type} succeeded with: {tmpOut}")
+        # if tmpOut[0]:
+        #     stat_code = tmpOut[1]["status"]
+        #     check_log = "messages from the server\n\n" + tmpOut[1]["log"]
+        #     if options.checkOnly:
+        #         tmpLog.info(check_log)
+        #         if stat_code:
+        #             tmpLog.info("successfully verified workflow description")
+        #         else:
+        #             tmpLog.error("workflow description is corrupted")
+        #     else:
+        #         if stat_code:
+        #             request_id = tmpOut[1]["request_id"]
+        #             tmp_str = "successfully submitted with request_id={0}".format(request_id)
+        #             tmpLog.info(tmp_str)
+        #         else:
+        #             tmpLog.info(check_log)
+        #             tmp_str = "workflow submission failed with {0}".format(stat_code)
+        #             tmpLog.error(tmp_str)
+        #             exit_code = stat_code
+        # else:
+        #     tmp_str = "workflow {0} failed. {1}".format(action_type, tmpOut[1])
+        #     tmpLog.error(tmp_str)
+        #     exit_code = 1
 
     # dump json
     if options.dumpJson:

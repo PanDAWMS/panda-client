@@ -1835,7 +1835,7 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
     #     url = "https://{}:25443/server/panda".format(relay_host)
     # else:
     #     url = baseURLSSL
-    url = f"https://aipanda121.cern.ch:25443/api/v1/workflow/submit_workflow_raw_request"
+    url = f"{server_base_path_ssl}/workflow/submit_workflow_raw_request"
     try:
         data = {"params": json.dumps(params)}
         # data = {"params": params}
@@ -1857,19 +1857,19 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
         return EC_Failed, msg
 
 
-# # submit PanDA native workflow
-# @curl_request_decorator(endpoint="workflow/submit_workflow_raw_request", method="post", json_out=True, output_mode="extended")
-# def submit_workflow(params, **kwargs):
-#     """Submit a PanDA native workflow
-#     args:
-#        params: a workflow definition dictionary
-#     returns:
-#        status code
-#           0: communication succeeded to the panda server
-#         255: communication failure
-#        a tuple of (True/False and diagnostic message). True if the request was accepted
-#     """
-#     return {"workflow_definition": params}
+# submit PanDA native workflow
+@curl_request_decorator(endpoint="workflow/submit_workflow_raw_request", method="post", json_out=True, output_mode="extended")
+def submit_workflow(params, **kwargs):
+    """Submit a PanDA native workflow
+    args:
+       params: a workflow definition dictionary
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a tuple of (True/False and diagnostic message). True if the request was accepted
+    """
+    return {"workflow_definition": params}
 
 
 @curl_request_decorator(endpoint="creds/set_user_secrets", method="post", json_out=True, output_mode="extended")
