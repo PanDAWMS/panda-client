@@ -800,7 +800,7 @@ def submitJobs(jobs, verbose=False, no_pickle=False):
     return submitJobs_internal(jobs_serialized, verbose, no_pickle)
 
 
-@curl_request_decorator(endpoint="job/get_description", method="get", json_out=True)
+@curl_request_decorator(endpoint="job/get_description", method="post", json_out=True)
 def getJobStatus_internal(ids, verbose=False, no_pickle=False):
     return {"job_ids": ids}
 
@@ -1188,7 +1188,7 @@ def getJediTaskDetails(taskDict, fullFlag, withTaskInfo, verbose=False):
     return status, tmp_dictionary
 
 
-@curl_request_decorator(endpoint="job/get_description_incl_archive", method="get", json_out=True)
+@curl_request_decorator(endpoint="job/get_description_incl_archive", method="post", json_out=True)
 def getFullJobStatus_internal(ids, verbose=False):
     return {"job_ids": ids}
 
