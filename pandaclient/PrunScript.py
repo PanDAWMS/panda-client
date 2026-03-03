@@ -2451,7 +2451,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         if options.nEvents > 0:
             taskParamMap["nEvents"] = options.nEvents
             if options.nJobs > 0:
-                taskParamMap["nEventsPerJob"] = options.nEvents // options.nJobs
+                taskParamMap["nEventsPerJob"] = max(1, options.nEvents // options.nJobs)
             else:
                 # set granularity
                 if options.nEventsPerChunk > 0:
