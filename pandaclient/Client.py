@@ -2010,3 +2010,18 @@ def update_events(events, verbose=False):
        a dictionary of {'Returns': a list of returns when updating events, 'Command': commands to jobs, 'StatusCode': 0 for OK})
     """
     return {"event_ranges": events}
+
+
+@curl_request_decorator(endpoint="task/get_detailed_info", method="get", json_out=True)
+def get_task_details_json(task_id, verbose=False):
+    """Get detailed info of a task in JSON format
+    args:
+       task_id: jediTaskID of the task
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a list of job metadata dictionaries, or error message if failed
+    """
+    return {"task_id": task_id}
