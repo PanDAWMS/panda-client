@@ -232,16 +232,36 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
         return ret
 
     # retry
+    _retry_allowed_opts = [
+        "site",
+        "excludedSite",
+        "includedSite",
+        "nFilesPerJob",
+        "nMaxFilesPerJob",
+        "nGBPerJob",
+        "nFiles",
+        "nEvents",
+        "loopingCheck",
+        "maxNFilesPerJob",
+        "memory",
+        "ramCount",
+        "avoidVP",
+        "ignoreMissingInDS",
+        "forceStaged",
+        "maxCore",
+    ]
+
     def retry(taskIDs, newOpts=None, days=14, limit=1000, **kwargs):
         """
         Retry failed/cancelled subJobs in taskIDs (ID or a list of ID, can be either jediTaskID or reqID).
         It is possible to specify newOpts, which is a map of options and new arguments like
-        {'nFilesPerJob':10,'excludedSite':'ABC,XYZ'}, to overwrite task parameters for new attempts. The list of
-        changeable parameters is site, excludedSite, includedSite, nFilesPerJob, nGBPerJob, nFiles, nEvents,
-        loopingCheck, maxNFilesPerJob, memory, ramCount, avoidVP, ignoreMissingInDS. It is also possible to specify those
-        parameters as named arguments of the retry function, e.g. nFilesPerJob=10, excludedSite='ABC,XYZ'.
-        If input files were used or are being used by other jobs for the same
-        output dataset container, those files are skipped to avoid job duplication when retrying failed subjobs.
+        {{'nFilesPerJob':10,'excludedSite':'ABC,XYZ'}}, to overwrite task parameters for new attempts.
+        The list of changeable parameters is
+        {allowed_opts}
+        It is also possible to specify those parameters as named arguments of the retry function,
+        e.g. nFilesPerJob=10, excludedSite='ABC,XYZ'. If input files were used or are being used by other
+        jobs for the same output dataset container, those files are skipped to avoid job duplication when
+        retrying failed subjobs.
 
         If taskIDs is 'all', it retries 1000 tasks at most that have finished for the last 14 days. It is possible
         to retry more tasks by setting the days and limit options. If newOpts and/or named arguments are specified,
@@ -250,33 +270,24 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
          example:
            >>> retry(123)
            >>> retry([123, 345, 567])
-           >>> retry(789, newOpts={'excludedSite':'siteA,siteB'})
+           >>> retry(789, newOpts={{'excludedSite':'siteA,siteB'}})
            >>> retry(789, excludedSite='siteA,siteB')
            >>> retry('all')
            >>> retry('all', days=30, limit=2000)
-           >>> retry('all', newOpts={'excludedSite':'siteA,siteB'})
+           >>> retry('all', newOpts={{'excludedSite':'siteA,siteB'}})
         """
         if newOpts is None:
             newOpts = kwargs
-        global client_options
         if newOpts:
-            # get valid option list
-            if client_options is None:
-                from pandaclient import PrunScript
-
-                client_options = PrunScript.main(get_options=True)
-                client_options.update(
-                    {
-                        "ramCount": None,
-                        "ignoreMissingInDS": None,
-                    }
-                )
-            # check options
+            # check options against the allowed list
             for key in list(newOpts):
                 if key == "memory":
                     newOpts["ramCount"] = newOpts[key]
                     del newOpts[key]
-                elif key not in client_options:
+                elif key == "maxCore":
+                    newOpts["maxCoreCount"] = newOpts[key]
+                    del newOpts[key]
+                elif key not in _retry_allowed_opts:
                     print('Error: Unknown option name "%s"' % key)
                     return None
         if isinstance(taskIDs, (list, tuple)):
@@ -293,6 +304,23 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
             print("Error: Invalid argument")
             ret = None
         return ret
+
+    import textwrap
+
+    _opts_list = ", ".join(_retry_allowed_opts)
+    # 8-space docstring indent
+    _first_indent = " " * 8
+    _subsequent_indent = " " * 16
+    _wrapped_list = textwrap.fill(_first_indent + _opts_list, width=80, subsequent_indent=_subsequent_indent)
+    _wrapped = _wrapped_list
+    retry.__doc__ = (
+        retry.__doc__.replace(
+            "{allowed_opts}",
+            _wrapped,
+        )
+        .replace("{{", "{")
+        .replace("}}", "}")
+    )
 
     # debug mode
     def debug(PandaID, modeOn):
