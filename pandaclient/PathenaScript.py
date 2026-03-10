@@ -214,7 +214,7 @@ group_build.add_argument(
     dest="athenaTag",
     default="",
     type=str,
-    help="Use differnet version of Athena on remote WN. By defualt the same version which you are locally using is set up on WN. e.g., --athenaTag=AtlasProduction,14.2.24.3",
+    help="Use different version of Athena on remote WN. By default the same version which you are locally using is set up on WN. e.g., --athenaTag=AtlasProduction,14.2.24.3",
 )
 group_input.add_argument(
     "--inDS",
@@ -514,7 +514,7 @@ group_job.add_argument(
     const=True,
     dest="useAMIEventLevelSplit",
     default=None,
-    help="retrive the number of events per file from AMI to split the job using --nEventsPerJob",
+    help="retrieve the number of events per file from AMI to split the job using --nEventsPerJob",
 )
 group_output.add_argument(
     "--appendStrToExtStream",
@@ -1040,7 +1040,7 @@ group_input.add_argument(
     dest="inputFileList",
     default="",
     type=str,
-    help="A local file which specifies names of files to be used in the input dataset. " "One filename per line in the the local file",
+    help="A local file which specifies names of files to be used in the input dataset. " "One filename per line in the local file",
 )
 group_build.add_argument(
     "--voms",

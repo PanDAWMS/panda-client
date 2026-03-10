@@ -80,7 +80,7 @@ class LocalJobSpec(object):
                 if tmpIndex < len(tmpStatusList):
                     tmpStatus = tmpStatusList[tmpIndex]
                 else:
-                    # use unkown for out-range
+                    # use unknown for out-range
                     tmpStatus = 'unknown'
                 # status of interest
                 if tmpStatus not in self.flag_showSubstatus.split(','):
