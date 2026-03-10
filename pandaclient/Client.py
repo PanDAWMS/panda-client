@@ -140,7 +140,7 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
                 # dump_log(func.__name__, None, output.get("message"))
                 if output_mode == "extended":
                     if verbose:
-                        output_status = output.get("data")
+                        output_status = output.get("data", False)
                     else:
                         output_status = False
                     return status, (output_status, output.get("message"))
@@ -1949,7 +1949,7 @@ def update_events(events, verbose=False):
     return {"event_ranges": events}
 
 
-@curl_request_decorator(endpoint="task/get_detailed_info", method="get", json_out=True)
+@curl_request_decorator(endpoint="task/get_detailed_info", method="get", json_out=True, output_mode="extended")
 def get_task_details_json(task_id, verbose=False):
     """Get detailed info of a task in JSON format
     args:
