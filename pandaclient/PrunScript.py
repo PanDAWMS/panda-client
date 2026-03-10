@@ -686,7 +686,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         action="store",
         dest="inputFileListName",
         default="",
-        help="A local file which specifies names of files to be used in the input dataset. " "One filename per line in the the local file",
+        help="A local file which specifies names of files to be used in the input dataset. " "One filename per line in the local file",
     )
     action = group_job.add_argument(
         "--allowNoOutput",

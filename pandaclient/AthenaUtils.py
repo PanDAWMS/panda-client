@@ -1508,7 +1508,7 @@ except Exception:
         % (inputFiles, inputFiles)
     )
     oFile.close()
-    # reutrn file name
+    # return file name
     return optFileName
 
 
