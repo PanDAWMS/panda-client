@@ -1869,7 +1869,7 @@ def submit_workflow(params, **kwargs):
         255: communication failure
        a tuple of (True/False and diagnostic message). True if the request was accepted
     """
-    return {"workflow_definition": params}
+    return {"params": params}
 
 
 @curl_request_decorator(endpoint="creds/set_user_secrets", method="post", json_out=True, output_mode="extended")
