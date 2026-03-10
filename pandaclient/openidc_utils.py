@@ -38,7 +38,7 @@ class OpenIdConnect_Utils:
     def __init__(self, auth_config_url, token_dir=None, log_stream=None, verbose=False):
         self.auth_config_url = auth_config_url
         if token_dir is None:
-            token_dir = os.environ["PANDA_CONFIG_ROOT"]
+            token_dir = os.environ.get("PANDA_CONFIG_ROOT", ".")
         self.token_dir = os.path.expanduser(token_dir)
         if not os.path.exists(token_dir):
             os.makedirs(token_dir)
