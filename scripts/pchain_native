@@ -1,0 +1,8 @@
+#!/bin/bash
+
+source ${PANDA_SYS}/etc/panda/share/functions.sh
+
+exec_p_command "from pandaclient.PChainScript_native import main; main()" "$@"
+
+#echo "PANDA_PYTHON_EXEC = $PANDA_PYTHON_EXEC"
+#echo "PYTHONPATH = $PYTHONPATH"
