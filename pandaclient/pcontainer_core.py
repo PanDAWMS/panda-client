@@ -40,9 +40,11 @@ def make_arg_parse():
     optP.add_argument('--architecture', action='store', dest='architecture', default='',
                       help="CPU and/or GPU requirements. #CPU_spec&GPU_spec where CPU or GPU spec can be "
                            "omitted. CPU_spec = architecture<-vendor<-instruction set>>, "
-                           "GPU_spec = vendor<-model>. A wildcards can be used if there is no special "
+                           "GPU_spec = vendor<-model>. A wildcard can be used if there is no special "
                            "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
-                           "CPU with avx2 support and nvidia GPU")
+                           "CPU with avx2 support and nvidia GPU. "
+                           "The json-serialized dictionary format supports != in the gpu_spec model field "
+                           "to exclude a specific model (e.g., !=Tesla P100-SXM2-16GB)")
     optP.add_argument('--noSubmit', action='store_const', const=True, dest='noSubmit', default=None,
                       help=argparse.SUPPRESS)
     optP.add_argument('--outDS', action='store', dest='outDS', default=None,

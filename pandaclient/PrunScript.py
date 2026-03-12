@@ -1065,10 +1065,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         "If base platform is not specified it is automatically taken from "
         "$ALRB_USER_PLATFORM. "
         "CPU_spec = architecture<-vendor<-instruction set>>, "
-        "GPU_spec = vendor<-model>. A wildcards can be used if there is no special "
+        "GPU_spec = vendor<-model>. A wildcard can be used if there is no special "
         "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
         "CPU with avx2 support and nvidia GPU. "
-        "This option also allows to specify a json-serialized dictionary. "
+        "This option also allows to specify a json-serialized dictionary, where the gpu_spec model field "
+        "supports != to exclude a specific model (e.g., !=Tesla P100-SXM2-16GB). "
         "See https://panda-wms.readthedocs.io/en/latest/advanced/brokerage.html#checks-for-cpu-and-or-gpu-hardware",
     )
     group_containerJob.add_argument(
