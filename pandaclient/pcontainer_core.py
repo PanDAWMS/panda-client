@@ -43,8 +43,9 @@ def make_arg_parse():
                            "GPU_spec = vendor<-model>. A wildcard can be used if there is no special "
                            "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
                            "CPU with avx2 support and nvidia GPU. "
-                           "The json-serialized dictionary format supports != in the gpu_spec model field "
-                           "to exclude a specific model, with optional wildcards (e.g., !=Tesla P100-SXM2-16GB or !=*P100*)")
+                           "The json-serialized dictionary format supports regular expressions in the gpu_spec model field "
+                           "for flexible matching or exclusion (e.g., Tesla P100-SXM2-16GB for exact match, "
+                           "or ^(?!.*P100).*$ to exclude P100 models)")
     optP.add_argument('--noSubmit', action='store_const', const=True, dest='noSubmit', default=None,
                       help=argparse.SUPPRESS)
     optP.add_argument('--outDS', action='store', dest='outDS', default=None,

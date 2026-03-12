@@ -128,8 +128,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                                    "GPU_spec = vendor<-model>. A wildcard can be used if there is no special "
                                    "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
                                    "CPU with avx2 support and nvidia GPU. "
-                                   "The json-serialized dictionary format supports != in the gpu_spec model field "
-                                   "to exclude a specific model, with optional wildcards (e.g., !=Tesla P100-SXM2-16GB or !=*P100*)")
+                                   "The json-serialized dictionary format supports regular expressions in the gpu_spec model field "
+                                   "for flexible matching or exclusion (e.g., Tesla P100-SXM2-16GB for exact match, "
+                                   "or ^(?!.*P100).*$ to exclude P100 models)")
     group_config.add_argument('--segmentSpecFile', action='store', dest='segmentSpecFile', default=None,
                               help='External json filename to define segments for segmented HPO which has one model '
                                    'for each segment to be optimized independently. The file '
