@@ -1069,8 +1069,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
         "CPU with avx2 support and nvidia GPU. "
         "This option also allows to specify a json-serialized dictionary, where the gpu_spec model field "
-        "accepts a regular expression for flexible matching or exclusion (e.g., Tesla P100-SXM2-16GB for exact match, "
-        "or ^(?!.*P100).*$ to exclude P100 models). "
+        "accepts a regular expression, and the optional excl field (bool) controls inclusion/exclusion "
+        "(e.g., {\"model\": \".*A100.*\"} to require an A100, or {\"model\": \".*P100.*\", \"excl\": true} to exclude P100 queues). "
         "See https://panda-wms.readthedocs.io/en/latest/advanced/brokerage.html#checks-for-cpu-and-or-gpu-hardware",
     )
     group_containerJob.add_argument(
