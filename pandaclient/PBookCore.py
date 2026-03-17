@@ -317,7 +317,10 @@ class PBookCore(object):
     ):
         # user name
         if username is None:
-            username = self.username
+            # if the task ID or task name are specified, ignore the username to avoid strange behaviour
+            if not some_ids and not taskname and not jeditaskid:
+                username = self.username
+
         # shortcut of jeditaskid and reqid
         if isinstance(some_ids, (int, long)):
             if is_reqid(some_ids):
