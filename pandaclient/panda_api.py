@@ -94,6 +94,7 @@ class PandaAPI(object):
         """
         if not self.pbook:
             self.pbook = PBookCore.PBookCore()
+            self.pbook.init()
         return self.pbook.show(task_ids, limit=limit, days=days, format="json", status=status, username=username)
 
     # show tasks
@@ -111,6 +112,7 @@ class PandaAPI(object):
         """
         if not self.pbook:
             self.pbook = PBookCore.PBookCore()
+            self.pbook.init()
         self.pbook.show(task_ids, limit=limit, days=days, format=format, status=status, username=username)
 
     # submit a task
@@ -141,6 +143,7 @@ class PandaAPI(object):
         """
         if not self.pbook:
             self.pbook = PBookCore.PBookCore()
+            self.pbook.init()
         return self.pbook.getUserJobMetadata(task_id, output_json_filename)
 
     # execute xyz
