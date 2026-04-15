@@ -1240,8 +1240,8 @@ group_containerJob.add_argument(
     "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
     "CPU with avx2 support and nvidia GPU. "
     "This option also allows to specify a json-serialized dictionary, where the gpu_spec model field "
-    "accepts either a plain regexp string for inclusion (e.g., {\"model\": \".*A100.*\"} to require an A100), "
-    "or a dict with pattern and excl fields for exclusion (e.g., {\"model\": {\"pattern\": \".*P100.*\", \"excl\": true}} to exclude P100 queues). "
+    'accepts either a plain regexp string for inclusion (e.g., {"model": ".*A100.*"} to require an A100), '
+    'or a dict with pattern and excl fields for exclusion (e.g., {"model": {"pattern": ".*P100.*", "excl": true}} to exclude P100 queues). '
     "Matching is case-insensitive. Queues that do not publish model info in CRIC are skipped for any model constraint. "
     "See https://panda-wms.readthedocs.io/en/latest/advanced/brokerage.html#checks-for-cpu-and-or-gpu-hardware",
 )
@@ -1643,6 +1643,8 @@ try:
     options.extFile.remove("")
 except Exception:
     pass
+AthenaUtils.set_user_set_ext_files(options.extFile)
+
 options.extOutFile = re.sub(" ", "", options.extOutFile)
 options.extOutFile = options.extOutFile.split(",")
 try:

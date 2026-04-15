@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import re
@@ -530,11 +531,17 @@ def deleteAthenaStuff(currentDir):
 
 # set extFile
 extFile = []
+user_set_ext_files = []
 
 
 def setExtFile(v_extFile):
     global extFile
     extFile = v_extFile
+
+
+def set_user_set_ext_files(v_user_set_ext_files):
+    global user_set_ext_files
+    user_set_ext_files = copy.copy(v_user_set_ext_files)
 
 
 # set excludeFile
@@ -853,6 +860,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
     files = []
     os.chdir(workArea)
     getFileList("%s/%s" % (workArea, runDir), files, False, False)
+    files_in_run_dir = []
     for file in files:
         # remove special characters
         sString = re.sub("[\+]", ".", os.path.realpath(workArea))
@@ -891,6 +899,16 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                 print(relPath)
 
             commands_fail_on_non_zero_exit_status(comStr, EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+            files_in_run_dir.append(os.path.abspath(file))
+    # check if extFile is includedor tmp_file_path in files_in_run_dir):
+    for tmp_ext_file in user_set_ext_files:
+        is_included = False
+        for tmp_file_path in files_in_run_dir:
+            if re.search(tmp_ext_file, tmp_file_path):
+                is_included = True
+                break
+        if not is_included:
+            tmpLog.warning("%s is specified as extFile but not found in the current dir" % tmp_ext_file)
     # back to current dir
     os.chdir(currentDir)
     # return
