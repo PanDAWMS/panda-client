@@ -70,5 +70,5 @@ class CustomBuildHook(BuildHookInterface):
         # post install only for client installation
         if not os.path.exists(os.path.join(self.params["install_purelib"], "pandacommon")):
             target = "pandatools"
-            if not os.path.exists(os.path.join(self.params["install_purelib"], target)):
+            if not os.path.exists(os.path.join(self.params["install_purelib"], target)) and not os.path.exists(target):
                 os.symlink("pandaclient", target)
