@@ -30,7 +30,7 @@ def add_transfertype_argument(group):
         dest="transferType",
         default=None,
         metavar="TYPE[,TYPE...]",
-        help="Comma-separated transfer types to restrict input access. Allowed values: root, direct, davs, file",
+        help="Comma-separated transfer types to restrict input access. Allowed values: root, direct, davs, file. If not specified, all transfer types are allowed.",
     )
 
 
