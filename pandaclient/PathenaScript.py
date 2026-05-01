@@ -1063,6 +1063,14 @@ group_job.add_argument(
     default=False,
     help='run transformation, e.g. --trf "csc_atlfast_trf.py %%IN %%OUT.AOD.root %%OUT.ntuple.root -1 0"',
 )
+group_job.add_argument(
+    "--useArgJson",
+    action="store_const",
+    const=True,
+    dest="useArgJson",
+    default=None,
+    help="convert --key=value arguments in --trf into a JSON dict and pass it to the transformation via --argjson. This is useful to avoid the command line length limit on the shell",
+)
 group_output.add_argument(
     "--spaceToken",
     action="store",
@@ -2629,6 +2637,9 @@ if options.pfnList != "":
 # run TRF
 if options.trf:
     param += "--trf "
+# use arg json
+if options.useArgJson:
+    param += "--useArgJson "
 # general input format
 if options.generalInput:
     param += "--generalInput "
