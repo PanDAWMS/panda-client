@@ -1501,6 +1501,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
         )
 
+    # warning for nFilesPerJob
+    if options.nFilesPerJob and options.nFilesPerJob > options.maxNFilesPerJob:
+        tmpLog.warning("--nFilesPerJob cannot be larger than --maxNFilesPerJob. It is set to the value of --maxNFilesPerJob")
+        options.nFilesPerJob = options.maxNFilesPerJob
+
     # check grid-proxy
     if not dry_mode:
         PsubUtils.check_proxy(options.verbose, options.vomsRoles)
