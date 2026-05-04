@@ -16,6 +16,11 @@ except ImportError:
 import copy
 import json
 
+from pandaclient.CommonArgs import (
+    VALID_TRANSFER_TYPES,
+    add_common_arguments,
+    get_invalid_transfer_types,
+)
 from pandaclient.MiscUtils import (
     commands_get_output,
     commands_get_status_output,
@@ -72,6 +77,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         "--eventPickNumSites",
         "--eventPickSkipDaTRI",
         "--eventPickStagedDS",
+        "--forceStagedSecondary",
         "--individualOutDS",
         "--libDS",
         "--long",
@@ -109,6 +115,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     group_submit = optP.add_group("submit", "job submission/site/retry")
     group_evtFilter = optP.add_group("evtFilter", "event filter such as good run and event pick")
     group_expert = optP.add_group("expert", "for experts/developers only")
+
+    add_common_arguments(group_submit, group_input)
 
     usage_containerJob = """Visit the following wiki page for examples:
       https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
@@ -484,14 +492,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         dest="noLoopingCheck",
         default=False,
         help="Disable looping job check",
-    )
-    group_submit.add_argument(
-        "--useDirectIOSites",
-        action="store_const",
-        const=True,
-        dest="useDirectIOSites",
-        default=False,
-        help="Use only sites which use directIO to read input files",
     )
     group_submit.add_argument(
         "--outDiskCount",
@@ -978,22 +978,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         help="Use secrets",
     )
     group_input.add_argument(
-        "--forceStaged",
-        action="store_const",
-        const=True,
-        dest="forceStaged",
-        default=False,
-        help="Force files from primary DS to be staged to local disk, even if direct-access is possible",
-    )
-    group_input.add_argument(
-        "--forceStagedSecondary",
-        action="store_const",
-        const=True,
-        dest="forceStagedSecondary",
-        default=False,
-        help="Force files from secondary DSs to be staged to local disk, even if direct-access is possible",
-    )
-    group_input.add_argument(
         "--avoidVP",
         action="store_const",
         const=True,
@@ -1069,8 +1053,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
         "CPU with avx2 support and nvidia GPU. "
         "This option also allows to specify a json-serialized dictionary, where the gpu_spec model field "
-        "accepts either a plain regexp string for inclusion (e.g., {\"model\": \".*A100.*\"} to require an A100), "
-        "or a dict with pattern and excl fields for exclusion (e.g., {\"model\": {\"pattern\": \".*P100.*\", \"excl\": true}} to exclude P100 queues). "
+        'accepts either a plain regexp string for inclusion (e.g., {"model": ".*A100.*"} to require an A100), '
+        'or a dict with pattern and excl fields for exclusion (e.g., {"model": {"pattern": ".*P100.*", "excl": true}} to exclude P100 queues). '
         "Matching is case-insensitive. Queues that do not publish model info in CRIC are skipped for any model constraint. "
         "See https://panda-wms.readthedocs.io/en/latest/advanced/brokerage.html#checks-for-cpu-and-or-gpu-hardware",
     )
@@ -1334,6 +1318,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 "Please use --useSandbox if you need those files on the grid."
             )
 
+    # validate --transferType
+    invalid = get_invalid_transfer_types(options.transferType)
+    if invalid:
+        optP.error("--transferType: invalid value(s) {0}. Allowed: {1}".format(", ".join(sorted(invalid)), ", ".join(sorted(VALID_TRANSFER_TYPES))))
+
     # files to be deleted
     delFilesOnExit = []
 
@@ -1511,6 +1500,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             "Very small --maxNFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
             "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
         )
+
+    # warning for nFilesPerJob
+    if options.nFilesPerJob and options.nFilesPerJob > options.maxNFilesPerJob:
+        tmpLog.warning("--nFilesPerJob cannot be larger than --maxNFilesPerJob. It is set to the value of --maxNFilesPerJob")
+        options.nFilesPerJob = options.maxNFilesPerJob
 
     # check grid-proxy
     if not dry_mode:
@@ -2626,8 +2620,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         ]
 
     # force stage-in
-    if options.forceStaged or options.forceStagedSecondary:
+    if options.forceStaged or options.transferType == "file":
         taskParamMap["useLocalIO"] = 1
+    elif options.useDirectIOSites or options.transferType == "direct":
+        taskParamMap["allowInputLAN"] = "only"
+
+    # transfer type
+    if options.transferType is not None:
+        taskParamMap["transferType"] = options.transferType
 
     # avoid VP
     if options.avoidVP:

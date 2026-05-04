@@ -10,6 +10,11 @@ import shutil
 import sys
 import time
 
+from pandaclient.CommonArgs import (
+    VALID_TRANSFER_TYPES,
+    add_common_arguments,
+    get_invalid_transfer_types,
+)
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import parse_secondary_datasets_opt
 
@@ -104,7 +109,6 @@ removedOpts = [  # list of deprecated options w.r.t version 0.4.9
     "--useAIDA",
     "--useChirpServer",
     "--useContElementBoundary",
-    "--useDirectIOSites",
     "--useExperimental",
     "--useGOForOutput",
     "--useNthFieldForLFN",
@@ -129,6 +133,8 @@ group_build = optP.add_group("build", "build/compile the package and env setup")
 group_submit = optP.add_group("submit", "job submission/site/retry")
 group_evtFilter = optP.add_group("evtFilter", "event filter such as good run and event pick")
 group_expert = optP.add_group("expert", "for experts/developers only")
+
+add_common_arguments(group_submit, group_input)
 
 usage_containerJob = """Visit the following wiki page for examples:
   https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
@@ -835,14 +841,6 @@ action = group_job.add_argument(
 )
 group_submit.shareWithMe(action)
 group_input.add_argument(
-    "--forceStaged",
-    action="store_const",
-    const=True,
-    dest="forceStaged",
-    default=False,
-    help="Force files from primary DS to be staged to local disk, even if direct-access is possible",
-)
-group_input.add_argument(
     "--avoidVP",
     action="store_const",
     const=True,
@@ -1064,6 +1062,14 @@ group_job.add_argument(
     dest="trf",
     default=False,
     help='run transformation, e.g. --trf "csc_atlfast_trf.py %%IN %%OUT.AOD.root %%OUT.ntuple.root -1 0"',
+)
+group_job.add_argument(
+    "--useArgJson",
+    action="store_const",
+    const=True,
+    dest="useArgJson",
+    default=None,
+    help="convert --key=value arguments in --trf into a JSON dict and pass it to the transformation via --argjson. This is useful to avoid the command line length limit on the shell",
 )
 group_output.add_argument(
     "--spaceToken",
@@ -1481,6 +1487,12 @@ if options.noCompile:
 # set noBuild for container
 if options.containerImage != "":
     options.noBuild = True
+
+# validate --transferType
+invalid = get_invalid_transfer_types(options.transferType)
+if invalid:
+    tmpLog.error("--transferType: invalid value(s) {0}. Allowed: {1}".format(", ".join(sorted(invalid)), ", ".join(sorted(VALID_TRANSFER_TYPES))))
+    sys.exit(EC_Config)
 
 # files to be deleted
 delFilesOnExit = []
@@ -2625,6 +2637,9 @@ if options.pfnList != "":
 # run TRF
 if options.trf:
     param += "--trf "
+# use arg json
+if options.useArgJson:
+    param += "--useArgJson "
 # general input format
 if options.generalInput:
     param += "--generalInput "
@@ -3099,8 +3114,14 @@ taskParamMap["jobParameters"] += [
 ]
 
 # use local IO for trf or BS
-if options.forceStaged or ((options.trf or runConfig.input.inBS) and not options.forceDirectIO):
+if options.forceStaged or ((options.trf or runConfig.input.inBS) and not options.forceDirectIO) or options.transferType == "file":
     taskParamMap["useLocalIO"] = 1
+elif options.useDirectIOSites or options.transferType == "direct":
+    taskParamMap["allowInputLAN"] = "only"
+
+# transfer type
+if options.transferType is not None:
+    taskParamMap["transferType"] = options.transferType
 
 # use AMI to get the number of events per file
 if options.useAMIEventLevelSplit == True:
