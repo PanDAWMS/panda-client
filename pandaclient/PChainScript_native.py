@@ -62,6 +62,7 @@ def main():
         "--debug", action="store_const", const=True, dest="debugCheck", default=False, help="verbose mode when checking workflow description locally"
     )
 
+    group_output.add_argument("--wfd", action="store", dest="wfd", default=None, help="Name of the main yaml workflow description file")
     group_output.add_argument("--cwl", action="store", dest="cwl", default=None, help="Name of the main CWL file to describe the workflow")
     group_output.add_argument("--yaml", action="store", dest="yaml", default=None, help="Name of the yaml file for workflow parameters")
     group_output.add_argument("--snakefile", action="store", dest="snakefile", default=None, help="Name of the main Snakefile to describe the workflow")
@@ -135,7 +136,12 @@ def main():
     options = optP.parse_args()
 
     # check
-    if options.cwl:
+    if options.wfd:
+        workflow_language = "yaml"
+        workflow_file = options.wfd
+        workflow_input = None
+        args_to_check = ["outDS"]
+    elif options.cwl:
         workflow_language = "cwl"
         workflow_file = options.cwl
         workflow_input = options.yaml
