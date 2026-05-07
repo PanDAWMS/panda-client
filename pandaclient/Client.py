@@ -16,6 +16,8 @@ import time
 import traceback
 from datetime import datetime
 
+from pandaclient.Client import get_cert_attributes
+
 try:
     # python 2
     from urllib import unquote_plus, urlencode
@@ -1503,6 +1505,10 @@ def hello(verbose=False):
 
 
 @curl_request_decorator(endpoint="system/get_attributes", method="get", json_out=True)
+def get_cert_attributes_internal(verbose=False):
+    return {}
+
+
 def get_cert_attributes(verbose=False):
     """Get certificate attributes from the PanDA server
     args:
@@ -1513,7 +1519,19 @@ def get_cert_attributes(verbose=False):
         255: communication failure
        a dictionary of attributes or diagnostic message
     """
-    return {}
+    status, output = get_cert_attributes_internal(verbose=verbose)
+
+    if status != 0:
+        return status, output
+
+    success, data = output
+    if success:
+        cert_attributes = {k: v for k, v in data["environment"].items() if k.startswith("GRST_CRED")}
+
+        return status, cert_attributes
+
+    # data should just be an error message
+    return status, "Could not retrieve certificate attributes"
 
 
 # get username from token
