@@ -1133,42 +1133,6 @@ def setCacheServer(host_name):
     cache_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
 
 
-# register proxy key
-# THIS API DOES NOT EXIST IN PANDA SERVER?!?
-def registerProxyKey(credname, origin, myproxy, verbose=False):
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    curl.verifyHost = True
-    # execute
-    url = baseURLSSL + "/registerProxyKey"
-    data = {"credname": credname, "origin": origin, "myproxy": myproxy}
-    return curl.post(url, data)
-
-
-# get proxy key
-# THIS API DOES NOT EXIST IN PANDA SERVER?!?
-def getProxyKey(verbose=False):
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/getProxyKey"
-    status, output = curl.post(url, {})
-    if status != 0:
-        print(output)
-        return status, None
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        dump_log("getProxyKey", e, output)
-        return EC_Failed, None
-
-
 @curl_request_decorator(endpoint="task/get_tasks_modified_since", method="get", json_out=True)
 def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=False, task_type="user"):
     return {"since": timeRange, "dn": dn, "full": True, "min_task_id": minTaskID, "prod_source_label": task_type}
