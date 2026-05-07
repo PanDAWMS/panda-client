@@ -1208,8 +1208,8 @@ def requestEventPicking(
     ei_api,
     verbose=False,
 ):
-    # get logger
     tmpLog = PLogger.getPandaLogger()
+
     # list of input files
     strInput = ""
     for tmpInput in fileList:
@@ -1221,15 +1221,19 @@ def requestEventPicking(
             if tmpInput != "":
                 strInput += "%s," % tmpInput
     strInput = strInput[:-1]
+
     # make dataset name
     userDatasetName = "%s.%s.%s/" % tuple(outDS.split(".")[:2] + [MiscUtils.wrappedUuidGen()])
+
     # open run/event number list
     evpFile = open(eventPickEvtList)
+
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/putEventPickingRequest"
     data = {
@@ -1250,12 +1254,14 @@ def requestEventPicking(
         data["ei_api"] = ei_api
     evpFile.close()
     status, output = curl.post(url, data)
+
     # failed
     if status != 0 or output is not True:
         print(output)
         errStr = "failed to request EventPicking"
         tmpLog.error(errStr)
         sys.exit(EC_Failed)
+
     # return user dataset name
     return True, userDatasetName
 
