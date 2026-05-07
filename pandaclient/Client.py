@@ -1496,51 +1496,6 @@ def hello(verbose=False):
         return EC_Failed, tmp_message
 
 
-# get certificate attributes
-def get_cert_attributes(verbose=False):
-    """Get certificate attributes from the PanDA server
-    args:
-       verbose: True to see verbose message
-    returns:
-       status code
-          0: communication succeeded to the panda server
-        255: communication failure
-       a dictionary of attributes or diagnostic message
-    """
-    tmp_log = PLogger.getPandaLogger()
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-
-    # execute
-    url = baseURLSSL + "/getAttr"
-    try:
-        status, output = curl.post(url, {})
-        output = str_decode(output)
-        if status != 0:
-            msg = "Not good. " + output
-            tmp_log.error(msg)
-            return EC_Failed, msg
-        else:
-            d = dict()
-            for line in output.split("\n"):
-                if ":" not in line:
-                    continue
-                print(line)
-                if not line.startswith("GRST_CRED"):
-                    continue
-                items = line.split(":")
-                d[items[0].strip()] = items[1].strip()
-            return 0, d
-    except Exception as e:
-        msg = "Too bad. {}".format(str(e))
-        tmp_log.error(msg)
-        print(traceback.format_exc())
-        return EC_Failed, msg
-
-
 @curl_request_decorator(endpoint="system/get_attributes", method="get", json_out=True)
 def get_cert_attributes(verbose=False):
     """Get certificate attributes from the PanDA server
@@ -1698,7 +1653,7 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
         return EC_Failed, msg
 
 
-# send file recovery request
+@curl_request_decorator(endpoint="file_server/upload_file_recovery_request", method="post", json_out=True, output_mode="extended")
 def send_file_recovery_request(task_id, dry_run=False, verbose=False):
     """Send a file recovery request
     args:
@@ -1711,34 +1666,7 @@ def send_file_recovery_request(task_id, dry_run=False, verbose=False):
         255: communication failure
        a tuple of (True/False and diagnostic message). True if the request was accepted
     """
-    tmp_log = PLogger.getPandaLogger()
-
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-
-    # execute
-    output = None
-    url = baseURLSSL + "/put_file_recovery_request"
-    try:
-        data = {"jediTaskID": task_id}
-        if dry_run:
-            data["dryRun"] = True
-        status, output = curl.post(url, data)
-        if status != 0:
-            output = str_decode(output)
-            tmp_log.error(output)
-            return EC_Failed, output
-        else:
-            return 0, json.loads(output)
-    except Exception as e:
-        msg = "{}.".format(str(e))
-        if output:
-            msg += ' raw output="{}"'.format(str(output))
-        tmp_log.error(msg)
-        return EC_Failed, msg
+    return {"task_id": task_id, "dry_run": dry_run}
 
 
 # send workflow request
