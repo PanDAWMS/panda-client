@@ -1502,7 +1502,7 @@ def hello(verbose=False):
         return EC_Failed, tmp_message
 
 
-@curl_request_decorator(endpoint="system/get_attributes", method="get", json_out=True)
+@curl_request_decorator(endpoint="system/get_attributes", method="get", json_out=True, output_mode="extended")
 def get_cert_attributes_internal(verbose=False):
     return {}
 
