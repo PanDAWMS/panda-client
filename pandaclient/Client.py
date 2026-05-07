@@ -1524,6 +1524,11 @@ def get_cert_attributes(verbose=False):
 
     success, data = output
     if success:
+        # Print all the environment seen server side
+        for k, v in data["environment"].items():
+            print(f"{k}: {v}")
+
+        # Return the certificate attributes
         cert_attributes = {k: v for k, v in data["environment"].items() if k.startswith("GRST_CRED")}
 
         return status, cert_attributes
