@@ -16,8 +16,6 @@ import time
 import traceback
 from datetime import datetime
 
-from pandaclient.Client import get_cert_attributes
-
 try:
     # python 2
     from urllib import unquote_plus, urlencode
