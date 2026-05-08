@@ -132,9 +132,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                                    "model (regexp, e.g. {\"model\": \".*A100.*\"} to require an A100, or {\"model\": {\"pattern\": \".*P100.*\", \"excl\": true}} to exclude P100 queues, case-insensitive); "
                                    "version (minimum CUDA version, e.g. {\"version\": \">=12.0\"}); "
                                    "vram (minimum GPU memory in MB, e.g. {\"vram\": 40960} for 40 GB); "
-                                   "architecture (GPU microarch generation, e.g. {\"architecture\": \"Ampere\"} or {\"architecture\": [\"Ampere\", \"Hopper\"]}); "
+                                   "microarchitecture (GPU microarch generation, e.g. {\"microarchitecture\": \"Ampere\"} or {\"microarchitecture\": [\"Ampere\", \"Hopper\"]}); "
                                    "driver_version (minimum NVIDIA kernel driver version, e.g. {\"driver_version\": \">=575.0\"}). "
-                                   "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, architecture, version, driver_version) use worker node GPU monitoring data.")
+                                   "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, microarchitecture, version, driver_version) use worker node GPU monitoring data.")
     group_config.add_argument('--segmentSpecFile', action='store', dest='segmentSpecFile', default=None,
                               help='External json filename to define segments for segmented HPO which has one model '
                                    'for each segment to be optimized independently. The file '
