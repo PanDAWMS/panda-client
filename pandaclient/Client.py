@@ -1133,42 +1133,6 @@ def setCacheServer(host_name):
     cache_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
 
 
-# register proxy key
-# THIS API DOES NOT EXIST IN PANDA SERVER?!?
-def registerProxyKey(credname, origin, myproxy, verbose=False):
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    curl.verifyHost = True
-    # execute
-    url = baseURLSSL + "/registerProxyKey"
-    data = {"credname": credname, "origin": origin, "myproxy": myproxy}
-    return curl.post(url, data)
-
-
-# get proxy key
-# THIS API DOES NOT EXIST IN PANDA SERVER?!?
-def getProxyKey(verbose=False):
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-    # execute
-    url = baseURLSSL + "/getProxyKey"
-    status, output = curl.post(url, {})
-    if status != 0:
-        print(output)
-        return status, None
-    try:
-        return status, pickle_loads(output)
-    except Exception as e:
-        dump_log("getProxyKey", e, output)
-        return EC_Failed, None
-
-
 @curl_request_decorator(endpoint="task/get_tasks_modified_since", method="get", json_out=True)
 def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=False, task_type="user"):
     return {"since": timeRange, "dn": dn, "full": True, "min_task_id": minTaskID, "prod_source_label": task_type}
@@ -1244,8 +1208,8 @@ def requestEventPicking(
     ei_api,
     verbose=False,
 ):
-    # get logger
     tmpLog = PLogger.getPandaLogger()
+
     # list of input files
     strInput = ""
     for tmpInput in fileList:
@@ -1257,15 +1221,19 @@ def requestEventPicking(
             if tmpInput != "":
                 strInput += "%s," % tmpInput
     strInput = strInput[:-1]
+
     # make dataset name
     userDatasetName = "%s.%s.%s/" % tuple(outDS.split(".")[:2] + [MiscUtils.wrappedUuidGen()])
+
     # open run/event number list
     evpFile = open(eventPickEvtList)
+
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
     curl.sslKey = _x509()
     curl.verbose = verbose
+
     # execute
     url = baseURLSSL + "/putEventPickingRequest"
     data = {
@@ -1286,12 +1254,14 @@ def requestEventPicking(
         data["ei_api"] = ei_api
     evpFile.close()
     status, output = curl.post(url, data)
+
     # failed
     if status != 0 or output is not True:
         print(output)
         errStr = "failed to request EventPicking"
         tmpLog.error(errStr)
         sys.exit(EC_Failed)
+
     # return user dataset name
     return True, userDatasetName
 
@@ -1532,63 +1502,39 @@ def hello(verbose=False):
         return EC_Failed, tmp_message
 
 
-# get certificate attributes
-def get_cert_attributes(verbose=False):
-    """Get certificate attributes from the PanDA server
-    args:
-       verbose: True to see verbose message
-    returns:
-       status code
-          0: communication succeeded to the panda server
-        255: communication failure
-       a dictionary of attributes or diagnostic message
-    """
-    tmp_log = PLogger.getPandaLogger()
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-
-    # execute
-    url = baseURLSSL + "/getAttr"
-    try:
-        status, output = curl.post(url, {})
-        output = str_decode(output)
-        if status != 0:
-            msg = "Not good. " + output
-            tmp_log.error(msg)
-            return EC_Failed, msg
-        else:
-            d = dict()
-            for line in output.split("\n"):
-                if ":" not in line:
-                    continue
-                print(line)
-                if not line.startswith("GRST_CRED"):
-                    continue
-                items = line.split(":")
-                d[items[0].strip()] = items[1].strip()
-            return 0, d
-    except Exception as e:
-        msg = "Too bad. {}".format(str(e))
-        tmp_log.error(msg)
-        print(traceback.format_exc())
-        return EC_Failed, msg
-
-
-@curl_request_decorator(endpoint="system/get_attributes", method="get", json_out=True)
-def get_cert_attributes(verbose=False):
-    """Get certificate attributes from the PanDA server
-    args:
-       verbose: True to see verbose message
-    returns:
-       status code
-          0: communication succeeded to the panda server
-        255: communication failure
-       a dictionary of attributes or diagnostic message
-    """
+@curl_request_decorator(endpoint="system/get_attributes", method="get", json_out=True, output_mode="extended")
+def get_cert_attributes_internal(verbose=False):
     return {}
+
+
+def get_cert_attributes(verbose=False):
+    """Get certificate attributes from the PanDA server
+    args:
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a dictionary of attributes or diagnostic message
+    """
+    status, output = get_cert_attributes_internal(verbose=verbose)
+
+    if status != 0:
+        return status, output
+
+    success, data = output
+    if success:
+        # Print all the environment seen server side
+        for k, v in data["environment"].items():
+            print("{0}: {1}".format(k, v))
+
+        # Return the certificate attributes
+        cert_attributes = {k: v for k, v in data["environment"].items() if k.startswith("GRST_CRED")}
+
+        return status, cert_attributes
+
+    # data should just be an error message
+    return status, "Could not retrieve certificate attributes"
 
 
 # get username from token
@@ -1734,7 +1680,7 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
         return EC_Failed, msg
 
 
-# send file recovery request
+@curl_request_decorator(endpoint="file_server/upload_file_recovery_request", method="post", json_out=True, output_mode="extended")
 def send_file_recovery_request(task_id, dry_run=False, verbose=False):
     """Send a file recovery request
     args:
@@ -1747,34 +1693,7 @@ def send_file_recovery_request(task_id, dry_run=False, verbose=False):
         255: communication failure
        a tuple of (True/False and diagnostic message). True if the request was accepted
     """
-    tmp_log = PLogger.getPandaLogger()
-
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
-
-    # execute
-    output = None
-    url = baseURLSSL + "/put_file_recovery_request"
-    try:
-        data = {"jediTaskID": task_id}
-        if dry_run:
-            data["dryRun"] = True
-        status, output = curl.post(url, data)
-        if status != 0:
-            output = str_decode(output)
-            tmp_log.error(output)
-            return EC_Failed, output
-        else:
-            return 0, json.loads(output)
-    except Exception as e:
-        msg = "{}.".format(str(e))
-        if output:
-            msg += ' raw output="{}"'.format(str(output))
-        tmp_log.error(msg)
-        return EC_Failed, msg
+    return {"task_id": task_id, "dry_run": dry_run}
 
 
 # send workflow request

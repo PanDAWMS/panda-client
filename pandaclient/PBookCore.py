@@ -70,7 +70,7 @@ def check_task_owner(func):
             if args:
                 taskid = args[0]
             if taskid is None:
-                tmpLog.error("no taskID sepcified, nothing done")
+                tmpLog.error("no taskID specified, nothing done")
                 return
             # taskspec = _get_one_task(self, taskid, self.verbose)
             if is_reqid(taskid):
