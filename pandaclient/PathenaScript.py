@@ -1249,8 +1249,9 @@ group_containerJob.add_argument(
     "model (regexp, e.g. {\"model\": \".*A100.*\"} to require an A100, or {\"model\": {\"pattern\": \".*P100.*\", \"excl\": true}} to exclude P100 queues, case-insensitive); "
     "version (minimum CUDA version, e.g. {\"version\": \">=12.0\"}); "
     "vram (minimum GPU memory in MB, e.g. {\"vram\": 40960} for 40 GB); "
-    "architecture (GPU microarch generation, e.g. {\"architecture\": \"Ampere\"} or {\"architecture\": [\"Ampere\", \"Hopper\"]}). "
-    "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, architecture, version) use worker node GPU monitoring data. "
+    "architecture (GPU microarch generation, e.g. {\"architecture\": \"Ampere\"} or {\"architecture\": [\"Ampere\", \"Hopper\"]}); "
+    "driver_version (minimum NVIDIA kernel driver version, e.g. {\"driver_version\": \">=575.0\"}). "
+    "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, architecture, version, driver_version) use worker node GPU monitoring data. "
     "See https://panda-wms.readthedocs.io/en/latest/advanced/brokerage.html#checks-for-cpu-and-or-gpu-hardware",
 )
 group_build.add_argument("-3", action="store_true", dest="python3", default=False, help="Use python3")
