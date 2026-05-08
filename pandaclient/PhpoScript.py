@@ -128,10 +128,12 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                                    "GPU_spec = vendor<-model>. A wildcard can be used if there is no special "
                                    "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
                                    "CPU with avx2 support and nvidia GPU. "
-                                   "The json-serialized dictionary format supports regular expressions in the gpu_spec model field: "
-                                   "a plain regexp string for inclusion (e.g., {\"model\": \".*A100.*\"} to require an A100), "
-                                   "or a dict with pattern and excl fields for exclusion (e.g., {\"model\": {\"pattern\": \".*P100.*\", \"excl\": true}} to exclude P100 queues). "
-                                   "Matching is case-insensitive. Queues that do not publish model info in CRIC are skipped for any model constraint.")
+                                   "The json-serialized dictionary format supports: "
+                                   "model (regexp, e.g. {\"model\": \".*A100.*\"} to require an A100, or {\"model\": {\"pattern\": \".*P100.*\", \"excl\": true}} to exclude P100 queues, case-insensitive); "
+                                   "version (minimum CUDA version, e.g. {\"version\": \">=12.0\"}); "
+                                   "vram (minimum GPU memory in MB, e.g. {\"vram\": 40960} for 40 GB); "
+                                   "architecture (GPU microarch generation, e.g. {\"architecture\": \"Ampere\"} or {\"architecture\": [\"Ampere\", \"Hopper\"]}). "
+                                   "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, architecture, version) use worker node GPU monitoring data.")
     group_config.add_argument('--segmentSpecFile', action='store', dest='segmentSpecFile', default=None,
                               help='External json filename to define segments for segmented HPO which has one model '
                                    'for each segment to be optimized independently. The file '
