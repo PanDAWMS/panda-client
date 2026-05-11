@@ -66,14 +66,14 @@ wf.add_input("input_ds", INPUT_DATASET)
 for i in range(1, n_steps + 1):
     step_name = f"step{i}"
     if i == 1:
-        in_ds = WorkflowDescription.input_ref("input_ds")
+        in_ds = wf.input_ref("input_ds")
     else:
-        in_ds = WorkflowDescription.step_output(f"step{i - 1}")
+        in_ds = wf.step_output(f"step{i - 1}")
 
     wf.add_prun_step(step_name, in_ds=in_ds, args=MERGE_ARGS, exec_str="merge.sh")
 
 last_step = f"step{n_steps}"
-wf.add_output("final_output", from_ref=WorkflowDescription.step_output(last_step), output_types=["merge.root"])
+wf.add_output("final_output", from_ref=wf.step_output(last_step), output_types=["merge.root"])
 
 # ---------------------------------------------------------------------------
 # Output
