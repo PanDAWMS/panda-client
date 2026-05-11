@@ -1055,7 +1055,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         "This option also allows to specify a json-serialized dictionary. The gpu_spec supports: "
         "model (regexp, e.g. {\"model\": \".*A100.*\"} to require an A100, or {\"model\": {\"pattern\": \".*P100.*\", \"excl\": true}} to exclude P100 queues, case-insensitive); "
         "version (minimum CUDA version, e.g. {\"version\": \">=12.0\"}); "
-        "vram (minimum GPU memory in MB, e.g. {\"vram\": 40960} for 40 GB); "
+        "vram (GPU memory in MB as an operator-prefixed string, e.g. {\"vram\": \">=40960\"} for at least 40 GB or {\"vram\": \"==40960\"} for exactly 40 GB); "
         "microarchitecture (GPU microarch generation, e.g. {\"microarchitecture\": \"Ampere\"} or {\"microarchitecture\": [\"Ampere\", \"Hopper\"]}); "
         "driver_version (minimum NVIDIA kernel driver version, e.g. {\"driver_version\": \">=575.0\"}). "
         "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, microarchitecture, version, driver_version) use worker node GPU monitoring data. "
