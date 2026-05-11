@@ -11,9 +11,9 @@ Typical usage:
         "step1",
         in_ds=WorkflowDescription.input_ref("raw"),
         args="--outputs out.root --nGBPerJob 10",
-        exec_str="run.sh",
+        executable="run.sh",
     )
-    wf.add_prun_step("step2", in_ds=WorkflowDescription.step_output("step1"), args="...", exec_str="run.sh")
+    wf.add_prun_step("step2", in_ds=WorkflowDescription.step_output("step1"), args="...", executable="run.sh")
     wf.add_output("result", from_ref=WorkflowDescription.step_output("step2"), output_types=["out.root"])
     wf.save("my_chain.yaml")
 """
@@ -132,11 +132,11 @@ class WorkflowStep:
 
     __slots__ = ("type", "in_ds", "args", "exec")
 
-    def __init__(self, step_type, in_ds, args=None, exec_str=None):
+    def __init__(self, step_type, in_ds, args=None, executable=None):
         self.type = step_type
         self.in_ds = in_ds
         self.args = args
-        self.exec = exec_str
+        self.exec = executable  # parameter named 'executable' to avoid shadowing the built-in exec()
 
     def to_dict(self):
         d = {"type": self.type, "inDS": self.in_ds}
@@ -187,14 +187,14 @@ class WorkflowDescription:
         self.inputs[name] = dataset
         return self
 
-    def add_step(self, name, step_type, in_ds, args=None, exec_str=None):
+    def add_step(self, name, step_type, in_ds, args=None, executable=None):
         """Add a workflow step of any type."""
-        self.steps[name] = WorkflowStep(step_type, in_ds, args, exec_str)
+        self.steps[name] = WorkflowStep(step_type, in_ds, args, executable)
         return self
 
-    def add_prun_step(self, name, in_ds, args=None, exec_str=None):
+    def add_prun_step(self, name, in_ds, args=None, executable=None):
         """Add a ``prun`` step (convenience wrapper around :meth:`add_step`)."""
-        return self.add_step(name, "prun", in_ds, args, exec_str)
+        return self.add_step(name, "prun", in_ds, args, executable)
 
     def add_output(self, name, from_ref, output_types=None):
         """Register a named workflow output."""
@@ -333,7 +333,7 @@ class WorkflowDescription:
                 step_type=sdata["type"],
                 in_ds=sdata.get("inDS", ""),
                 args=sdata.get("args"),
-                exec_str=sdata.get("exec"),
+                executable=sdata.get("exec"),
             )
         for oname, odata in d.get("outputs", {}).items():
             wf.add_output(oname, from_ref=odata["from"], output_types=odata.get("output_types"))

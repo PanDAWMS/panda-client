@@ -70,7 +70,7 @@ for i in range(1, n_steps + 1):
     else:
         in_ds = wf.step_output(f"step{i - 1}")
 
-    wf.add_prun_step(step_name, in_ds=in_ds, args=MERGE_ARGS, exec_str="merge.sh")
+    wf.add_prun_step(step_name, in_ds=in_ds, args=MERGE_ARGS, executable="merge.sh")
 
 last_step = f"step{n_steps}"
 wf.add_output("final_output", from_ref=wf.step_output(last_step), output_types=["merge.root"])

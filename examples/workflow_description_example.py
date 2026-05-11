@@ -38,19 +38,19 @@ wf = (
         "first",
         in_ds=WorkflowDescription.input_ref("input_to_merge"),
         args=MERGE_ARGS,
-        exec_str="merge.sh",
+        executable="merge.sh",
     )
     .add_prun_step(
         "second",
         in_ds=WorkflowDescription.step_output("first"),
         args=MERGE_ARGS,
-        exec_str="merge.sh",
+        executable="merge.sh",
     )
     .add_prun_step(
         "third",
         in_ds=WorkflowDescription.step_output("second"),
         args=MERGE_ARGS,
-        exec_str="merge.sh",
+        executable="merge.sh",
     )
     .add_output(
         "final_output",
@@ -107,7 +107,7 @@ wf_partial = (
         "process",
         in_ds=WorkflowDescription.input_ref("raw"),
         args="--outputs out.root --nGBPerJob 5",
-        exec_str="process.sh",
+        executable="process.sh",
     )
     .set_option("allow_partial_inputs", True)
     .set_option("min_input_files", 50)
