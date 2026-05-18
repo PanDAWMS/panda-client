@@ -309,7 +309,7 @@ def main():
         "taskParams": {},
         "sourceURL": sourceURL,
         "sandbox": archiveName,
-        "workflowSpecFile": workflow_file,
+        "workflowSpecFile": os.path.basename(workflow_file),
         "workflowInputFile": workflow_input,
         "language": workflow_language,
         "outDS": options.outDS,
