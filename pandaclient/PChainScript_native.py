@@ -41,6 +41,7 @@ def main():
 
     group_output = optP.add_group("output", "output dataset/files")
     group_config = optP.add_group("config", "workflow configuration")
+    group_template = optP.add_group("template", "workflow template options")
     group_submit = optP.add_group("submit", "job submission/site/retry")
     group_expert = optP.add_group("expert", "for experts/developers only")
     group_build = optP.add_group("build", "build/compile the package and env setup")
@@ -66,6 +67,35 @@ def main():
     group_output.add_argument("--cwl", action="store", dest="cwl", default=None, help="Name of the main CWL file to describe the workflow")
     group_output.add_argument("--yaml", action="store", dest="yaml", default=None, help="Name of the yaml file for workflow parameters")
     group_output.add_argument("--snakefile", action="store", dest="snakefile", default=None, help="Name of the main Snakefile to describe the workflow")
+
+    group_template.add_argument(
+        "--template",
+        action="store",
+        dest="template",
+        default=None,
+        metavar="TEMPLATE_NAME",
+        help="Use a predefined workflow template to generate the workflow description automatically "
+        "(mutually exclusive with --wfd/--cwl/--snakefile). Available: multistep_merge.",
+    )
+    group_template.add_argument(
+        "--inDS",
+        action="store",
+        dest="inDS",
+        default=None,
+        metavar="DATASET",
+        help="Input dataset for template-based workflows (required for --template).",
+    )
+    group_template.add_argument(
+        "--prunFlags",
+        action="store",
+        dest="prunFlags",
+        default=None,
+        nargs="+",
+        metavar="KEY=VALUE",
+        help="Space-separated key=value pairs forwarded as prun flags to every step in the "
+        "generated workflow (e.g. --prunFlags nGBPerJob=10 maxNFilesPerJob=50). "
+        "Required keys depend on the chosen template.",
+    )
     group_output.add_argument(
         "--maxSizeInSandbox",
         action="store",
@@ -151,8 +181,13 @@ def main():
         workflow_file = options.snakefile
         workflow_input = ""
         args_to_check = ["outDS"]
+    elif options.template:
+        workflow_language = "yaml"
+        workflow_file = None  # generated later from the template
+        workflow_input = None
+        args_to_check = ["outDS", "inDS"]
     else:
-        tmpLog.error("argument --cwl or --snakefile is required")
+        tmpLog.error("one of --wfd, --cwl, --snakefile, or --template is required")
         sys.exit(1)
 
     for arg_name in args_to_check:
@@ -180,6 +215,47 @@ def main():
         del_command("rm -rf %s" % dir)
 
     atexit.register(_onExit, tmpDir, MiscUtils.commands_get_output)
+
+    # build workflow description from template when --template is given
+    if options.template:
+        from pandaclient import workflow_native_utils
+
+        # parse --prunFlags key=value tokens into a dict
+        prun_flags = {}
+        for item in options.prunFlags or []:
+            if "=" not in item:
+                tmpLog.error("--prunFlags: '{0}' is not a valid key=value pair".format(item))
+                sys.exit(1)
+            k, v = item.split("=", 1)
+            prun_flags[k] = v
+
+        if options.verbose:
+            tmpLog.debug("building workflow from template '{0}'".format(options.template))
+        try:
+            wf = workflow_native_utils.build_workflow_from_template(
+                options.template,
+                in_ds=options.inDS,
+                prun_flags=prun_flags,
+                verbose=options.verbose,
+            )
+        except Exception as e:
+            tmpLog.error("failed to build workflow from template '{0}': {1}".format(options.template, e))
+            sys.exit(1)
+
+        # save to curDir (not tmpDir, which is removed before the file is needed)
+        workflow_file = os.path.join(curDir, "_pchain_wfd_{0}.yaml".format(MiscUtils.wrappedUuidGen()))
+        wf.save(workflow_file)
+
+        def _cleanup_wfd(path):
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+
+        atexit.register(_cleanup_wfd, workflow_file)
+
+        if options.verbose:
+            tmpLog.debug("generated WFD saved to {0}".format(workflow_file))
 
     # sandbox
     if options.verbose:
