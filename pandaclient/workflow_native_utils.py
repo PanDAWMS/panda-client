@@ -3,11 +3,11 @@ workflow_native_utils.py
 Dispatcher for native PanDA workflow templates.
 
 To add a new template:
-  1. Create pandaclient/templates/<name>.py exposing a ``build(**kwargs)`` function.
+  1. Create pandaclient/workflow_templates/<name>.py exposing a ``build(**kwargs)`` function.
   2. Import and register it in ``_TEMPLATE_REGISTRY`` below.
 """
 
-from pandaclient.templates import multistep_merge as _multistep_merge
+from pandaclient.workflow_templates import multistep_merge as _multistep_merge
 
 _TEMPLATE_REGISTRY = {
     "multistep_merge": _multistep_merge,
