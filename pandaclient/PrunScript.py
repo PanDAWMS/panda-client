@@ -1052,12 +1052,15 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         "GPU_spec = vendor<-model>. A wildcard can be used if there is no special "
         "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
         "CPU with avx2 support and nvidia GPU. "
+        "GPU attributes can also be appended as colon-separated key=value pairs in the shorthand "
+        "(e.g. #&nvidia:vram>=40960:driver>=575.0:model=.*A100.*); supported keys: vram, cuda, uarch, driver, model. "
+        "Use = or == for exact match. "
         "This option also allows to specify a json-serialized dictionary. The gpu_spec supports: "
         "model (regexp, e.g. {\"model\": \".*A100.*\"} to require an A100, or {\"model\": {\"pattern\": \".*P100.*\", \"excl\": true}} to exclude P100 queues, case-insensitive); "
         "version (minimum CUDA version, e.g. {\"version\": \">=12.0\"}); "
         "vram (GPU memory in MB as an operator-prefixed string, e.g. {\"vram\": \">=40960\"} for at least 40 GB or {\"vram\": \"==40960\"} for exactly 40 GB); "
         "microarchitecture (GPU microarch generation, e.g. {\"microarchitecture\": \"Ampere\"} or {\"microarchitecture\": [\"Ampere\", \"Hopper\"]}); "
-        "driver_version (minimum NVIDIA kernel driver version, e.g. {\"driver_version\": \">=575.0\"}). "
+        "driver_version (NVIDIA kernel driver version, e.g. {\"driver_version\": \">=575.0\"} for minimum or {\"driver_version\": \"==575.51.03\"} for exact). "
         "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, microarchitecture, version, driver_version) use worker node GPU monitoring data. "
         "See https://panda-wms.readthedocs.io/en/latest/advanced/brokerage.html#checks-for-cpu-and-or-gpu-hardware",
     )
