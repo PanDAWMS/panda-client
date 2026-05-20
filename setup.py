@@ -172,6 +172,7 @@ setup(
         "scripts/pathena",
         "scripts/phpo",
         "scripts/pchain",
+        "scripts/pchain_native",
     ],
     data_files=[
         (
