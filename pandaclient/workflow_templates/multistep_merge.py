@@ -10,6 +10,7 @@ Required --prunFlags keys: nGBPerJob, maxNFilesPerJob
 import math
 
 from pandaclient.workflow_description import WorkflowDescription
+from pandaclient.workflow_native_utils import extract_scope
 
 REQUIRED_FLAGS = frozenset({"nGBPerJob", "maxNFilesPerJob"})
 
@@ -73,11 +74,7 @@ def _count_rucio_files(in_ds):
     except ImportError as exc:
         raise ImportError("The 'rucio-clients' package is required for the multistep_merge template. " "Install it with: pip install rucio-clients") from exc
 
-    if ":" in in_ds:
-        scope, name = in_ds.split(":", 1)
-    else:
-        scope = in_ds.split(".")[0]
-        name = in_ds
+    scope, name = extract_scope(in_ds, strip_slash=True)
 
     client = RucioClient()
     return sum(1 for _ in client.list_files(scope, name))
