@@ -218,7 +218,7 @@ def main():
 
     # build workflow description from template when --template is given
     if options.template:
-        from pandaclient import workflow_utils
+        from pandaclient import workflow_template_dispatcher
 
         # parse --prunFlags key=value tokens into a dict
         prun_flags = {}
@@ -232,7 +232,7 @@ def main():
         if options.verbose:
             tmpLog.debug("building workflow from template '{0}'".format(options.template))
         try:
-            wf = workflow_utils.build_workflow_from_template(
+            wf = workflow_template_dispatcher.build_workflow_from_template(
                 options.template,
                 in_ds=options.inDS,
                 prun_flags=prun_flags,
