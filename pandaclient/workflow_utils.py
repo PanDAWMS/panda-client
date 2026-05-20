@@ -1,5 +1,5 @@
 """
-workflow_native_utils.py
+workflow_utils.py
 Dispatcher for native PanDA workflow templates.
 
 To add a new template:

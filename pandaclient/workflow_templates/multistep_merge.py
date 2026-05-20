@@ -10,7 +10,7 @@ Required --prunFlags keys: nGBPerJob, maxNFilesPerJob
 import math
 
 from pandaclient.workflow_description import WorkflowDescription
-from pandaclient.workflow_native_utils import extract_scope
+from pandaclient.workflow_utils import extract_scope
 
 REQUIRED_FLAGS = frozenset({"nGBPerJob", "maxNFilesPerJob"})
 
