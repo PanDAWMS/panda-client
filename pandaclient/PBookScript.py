@@ -373,7 +373,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
     # recover lost files
     def recover_lost_files(taskID, test_mode=False):
         """
-        Send a request to recove lost files produced by a task. Set test_mode=True for testing
+        Send a request to recover lost files produced by a task. Set test_mode=True for testing
 
         example:
           >>> recover_lost_files(123)
