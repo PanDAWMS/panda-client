@@ -1,0 +1,5 @@
+#!/bin/bash
+
+source ${PANDA_SYS}/etc/panda/share/functions.sh
+
+exec_p_command "import sys; from pandaclient.PChainScript_native import main; sys.exit(main())" "$@"

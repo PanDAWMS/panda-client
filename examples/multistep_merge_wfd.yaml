@@ -1,0 +1,45 @@
+# example of a multi-step merge workflow using the native YAML workflow description language
+
+name: multistep_merge_chain  # optional; defaults to filename stem
+
+inputs:
+  input_to_merge: "user.sgaid:user.sgaid.periodAllYear.physics_Main.DAOD_PHYS.grp23_v01_p6700.CNF_EMuJSMu_B_7cbc64d_output"
+
+outputs:
+  final_output:
+    from: third/outDS
+    output_types:
+      - merge.root
+
+steps:
+  first:
+    type: prun
+    inDS: "{input_to_merge}"
+    args: >-
+      --outputs merge.root --rootVer recommended --noBuild --notExpandInDS
+      --nGBPerJob 10 --maxNFilesPerJob 50 --respectSplitRule
+      --writeInputToTxt IN:input.lis --avoidVP
+    exec: merge.sh
+
+  second:
+    type: prun
+    inDS: first/outDS
+    args: >-
+      --outputs merge.root --rootVer recommended --noBuild --notExpandInDS
+      --nGBPerJob 10 --maxNFilesPerJob 50 --respectSplitRule
+      --writeInputToTxt IN:input.lis --avoidVP
+    exec: merge.sh
+
+  third:
+    type: prun
+    inDS: second/outDS
+    args: >-
+      --outputs merge.root --rootVer recommended --noBuild --notExpandInDS
+      --nGBPerJob 10 --maxNFilesPerJob 50 --respectSplitRule
+      --writeInputToTxt IN:input.lis --avoidVP
+    exec: merge.sh
+
+options:
+  # specify any workflow-level options here
+  # allow_partial_inputs: true  # allow steps to run even if inputs are not complete yet
+  # min_input_files: 50  # for partial inputs, require at least 50 files before starting steps
