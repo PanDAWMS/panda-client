@@ -85,14 +85,19 @@ def build(in_ds, prun_flags, verbose=False, output_file=DEFAULT_OUTPUT_FILE, inp
     user_flags_str = " ".join(f"--{k} {v}" for k, v in effective_flags.items())
     merge_args = f"--outputs {output_file} --writeInputToTxt IN:{input_file} {_FIXED_ARGS_TEMPLATE} {user_flags_str}"
 
-    # Copy the merge script into cwd so the prun sandbox tarball includes it
+    # Copy the merge script into cwd so the prun sandbox tarball includes it.
+    # Skip if the script already exists in cwd so users can pre-place a custom version.
     exec_basename = os.path.basename(executable)
-    script_src = executable if (os.path.isabs(executable) or os.path.exists(executable)) else _locate_workflow_script(exec_basename)
     script_dest = os.path.join(os.getcwd(), exec_basename)
-    shutil.copy2(script_src, script_dest)
-    os.chmod(script_dest, os.stat(script_dest).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
-    if verbose:
-        print(f"multistep_merge: copied '{script_src}' -> '{script_dest}'")
+    if os.path.exists(script_dest):
+        if verbose:
+            print(f"multistep_merge: '{exec_basename}' already exists in cwd, skipping copy")
+    else:
+        script_src = executable if (os.path.isabs(executable) or os.path.exists(executable)) else _locate_workflow_script(exec_basename)
+        shutil.copy2(script_src, script_dest)
+        os.chmod(script_dest, os.stat(script_dest).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+        if verbose:
+            print(f"multistep_merge: copied '{script_src}' -> '{script_dest}'")
 
     wf = WorkflowDescription(name=f"multistep_merge_{n_steps}steps")
     wf.add_input("input_ds", in_ds)
