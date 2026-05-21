@@ -4,20 +4,47 @@ Chain of prun merge steps that reduces a dataset to a single output file.
 The number of steps is computed automatically from the file count of the
 input dataset via Rucio.
 
-Required --prunFlags keys: nGBPerJob, maxNFilesPerJob
+Optional --prunFlags keys: nGBPerJob (default 10), maxNFilesPerJob (default 200)
 """
 
 import math
+import os
+import shutil
+import stat
 
 from pandaclient.workflow_description import WorkflowDescription
 from pandaclient.workflow_utils import extract_scope
 
-REQUIRED_FLAGS = frozenset({"nGBPerJob", "maxNFilesPerJob"})
+DEFAULT_FLAGS = {"nGBPerJob": "10", "maxNFilesPerJob": "200"}
 
-_FIXED_ARGS = "--outputs merge.root --rootVer recommended --noBuild --notExpandInDS" " --respectSplitRule --writeInputToTxt IN:input.lis --avoidVP"
+DEFAULT_OUTPUT_FILE = "merge.root"
+DEFAULT_INPUT_FILE = "input.lis"
+DEFAULT_EXECUTABLE = "merge.sh"
+
+_FIXED_ARGS_TEMPLATE = "--rootVer recommended --noBuild --notExpandInDS --respectSplitRule --avoidVP"
+
+_WORKFLOW_SCRIPTS_SUBPATH = os.path.join("etc", "panda", "share", "workflow_scripts")
 
 
-def build(in_ds, prun_flags, verbose=False):
+def _locate_workflow_script(script_name):
+    """Return the absolute path of script_name from the installed or source-tree location."""
+    panda_sys = os.environ.get("PANDA_SYS", "")
+    if panda_sys:
+        candidate = os.path.join(panda_sys, _WORKFLOW_SCRIPTS_SUBPATH, script_name)
+        if os.path.exists(candidate):
+            return candidate
+    # Development / editable install: share/ lives two package levels above this file
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    candidate = os.path.join(repo_root, "share", "workflow_scripts", script_name)
+    if os.path.exists(candidate):
+        return candidate
+    raise FileNotFoundError(
+        f"Cannot find workflow script '{script_name}'. "
+        f"Checked $PANDA_SYS/{_WORKFLOW_SCRIPTS_SUBPATH}/ and {os.path.join(repo_root, 'share', 'workflow_scripts')}/"
+    )
+
+
+def build(in_ds, prun_flags, verbose=False, output_file=DEFAULT_OUTPUT_FILE, input_file=DEFAULT_INPUT_FILE, executable=DEFAULT_EXECUTABLE):
     """
     Build a multistep merge :class:`WorkflowDescription`.
 
@@ -27,20 +54,24 @@ def build(in_ds, prun_flags, verbose=False):
         Input dataset (``scope:name`` or plain name).
     prun_flags : dict[str, str]
         Key/value pairs forwarded as ``--key value`` to every prun step.
-        Must include ``nGBPerJob`` and ``maxNFilesPerJob``; the latter also
-        drives the step-count calculation.
+        ``nGBPerJob`` defaults to 10 and ``maxNFilesPerJob`` defaults to 200;
+        the latter also drives the step-count calculation.
     verbose : bool
         When True, print progress information to stdout.
+    output_file : str
+        Name of the merged output file (default ``merge.root``).
+    input_file : str
+        Name of the per-job input filename written by prun (default ``input.lis``).
+    executable : str
+        Merge script to run on the worker node (default ``merge.sh``).
 
     Returns
     -------
     WorkflowDescription
     """
-    missing = REQUIRED_FLAGS - set(prun_flags)
-    if missing:
-        raise ValueError(f"multistep_merge template requires the following --prunFlags keys: {', '.join(sorted(missing))}")
+    effective_flags = {**DEFAULT_FLAGS, **prun_flags}
 
-    max_n_files_per_job = int(prun_flags["maxNFilesPerJob"])
+    max_n_files_per_job = int(effective_flags["maxNFilesPerJob"])
 
     n_files = _count_rucio_files(in_ds)
     if n_files == 0:
@@ -51,8 +82,17 @@ def build(in_ds, prun_flags, verbose=False):
     if verbose:
         print(f"multistep_merge: found {n_files} file(s) in '{in_ds}', using {n_steps} merge step(s)")
 
-    user_flags_str = " ".join(f"--{k} {v}" for k, v in prun_flags.items())
-    merge_args = f"{_FIXED_ARGS} {user_flags_str}"
+    user_flags_str = " ".join(f"--{k} {v}" for k, v in effective_flags.items())
+    merge_args = f"--outputs {output_file} --writeInputToTxt IN:{input_file} {_FIXED_ARGS_TEMPLATE} {user_flags_str}"
+
+    # Copy the merge script into cwd so the prun sandbox tarball includes it
+    exec_basename = os.path.basename(executable)
+    script_src = executable if (os.path.isabs(executable) or os.path.exists(executable)) else _locate_workflow_script(exec_basename)
+    script_dest = os.path.join(os.getcwd(), exec_basename)
+    shutil.copy2(script_src, script_dest)
+    os.chmod(script_dest, os.stat(script_dest).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+    if verbose:
+        print(f"multistep_merge: copied '{script_src}' -> '{script_dest}'")
 
     wf = WorkflowDescription(name=f"multistep_merge_{n_steps}steps")
     wf.add_input("input_ds", in_ds)
@@ -60,10 +100,10 @@ def build(in_ds, prun_flags, verbose=False):
     for i in range(1, n_steps + 1):
         step_name = f"step{i}"
         in_ref = wf.input_ref("input_ds") if i == 1 else wf.step_output(f"step{i - 1}")
-        wf.add_prun_step(step_name, in_ds=in_ref, args=merge_args, executable="merge.sh")
+        wf.add_prun_step(step_name, in_ds=in_ref, args=merge_args, executable=f"{exec_basename} {output_file} {input_file}")
 
     last_step = f"step{n_steps}"
-    wf.add_output("final_output", from_ref=wf.step_output(last_step), output_types=["merge.root"])
+    wf.add_output("final_output", from_ref=wf.step_output(last_step), output_types=[output_file])
 
     return wf
 
