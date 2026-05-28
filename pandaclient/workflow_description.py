@@ -33,7 +33,7 @@ Typical usage:
         in_ds=WorkflowDescription.step_output("make_signal"),
         in_ds_type="def.zip",
         secondary_dss=[WorkflowDescription.step_output("make_background_1")],
-        secondary_ds_types={WorkflowDescription.step_output("make_background_1"): "xyz.pool"},
+        secondary_ds_types=["xyz.pool"],
         args="--outputs klm.root --secondaryDSs IN2:13:%{SECDS1}",
         executable="echo %IN %IN2 > klm.root",
     )
@@ -173,7 +173,7 @@ class WorkflowStep:
         self.exec = executable  # parameter named 'executable' to avoid shadowing the built-in exec()
         self.in_ds_type = in_ds_type
         self.secondary_dss = list(secondary_dss) if secondary_dss else []
-        self.secondary_ds_types = dict(secondary_ds_types) if secondary_ds_types else {}
+        self.secondary_ds_types = list(secondary_ds_types) if secondary_ds_types else []
         self.use_athena_packages = use_athena_packages
         self.container_image = container_image
 
@@ -407,6 +407,13 @@ class WorkflowDescription:
         for k, v in d.get("inputs", {}).items():
             wf.add_input(k, v)
         for sname, sdata in d.get("steps", {}).items():
+            raw_sec = sdata.get("secondaryDSs")
+            if isinstance(raw_sec, dict):
+                secondary_dss = list(raw_sec.keys())
+                secondary_ds_types = list(raw_sec.values())
+            else:
+                secondary_dss = raw_sec
+                secondary_ds_types = sdata.get("secondaryDsTypes")
             wf.add_step(
                 sname,
                 step_type=sdata["type"],
@@ -414,8 +421,8 @@ class WorkflowDescription:
                 args=sdata.get("args"),
                 executable=sdata.get("exec"),
                 in_ds_type=sdata.get("inDsType"),
-                secondary_dss=sdata.get("secondaryDSs"),
-                secondary_ds_types=sdata.get("secondaryDsTypes"),
+                secondary_dss=secondary_dss,
+                secondary_ds_types=secondary_ds_types,
                 use_athena_packages=sdata.get("useAthenaPackages", False),
                 container_image=sdata.get("containerImage"),
             )

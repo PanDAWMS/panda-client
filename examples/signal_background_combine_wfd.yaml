@@ -43,7 +43,7 @@ steps:
     secondaryDSs:
       - make_background_1/outDS
     secondaryDsTypes:
-      make_background_1/outDS: xyz.pool
+      - xyz.pool
     exec: "echo %IN %IN2 > klm.root"
     args: "--outputs klm.root --secondaryDSs IN2:13:%{SECDS1}"
 
@@ -54,7 +54,7 @@ steps:
     secondaryDSs:
       - generate_some/outDS
     secondaryDsTypes:
-      generate_some/outDS: gen.root
+      - gen.root
     exec: "echo %IN > ooo.root; echo %IN2 > jjj.txt"
     args: "--outputs ooo.root,jjj.txt --secondaryDSs IN2:10:%{SECDS1}"
 
@@ -66,7 +66,7 @@ steps:
       - premix/outDS
       - make_background_2/outDS
     secondaryDsTypes:
-      premix/outDS: klm.root
-      make_background_2/outDS: ooo.root
+      - klm.root
+      - ooo.root
     exec: "echo %IN %IN2 %IN3 > aaa.root"
     args: "--outputs aaa.root --secondaryDSs IN2:2:%{SECDS1},IN3:5:%{SECDS2}"
