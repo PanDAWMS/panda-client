@@ -155,6 +155,12 @@ class WorkflowStep:
 
     __slots__ = ("type", "in_ds", "args", "exec", "in_ds_type", "secondary_dss", "secondary_ds_types", "use_athena_packages", "container_image")
 
+    @staticmethod
+    def _check(val, name, *types):
+        if not isinstance(val, types):
+            expected = " or ".join(t.__name__ for t in types)
+            raise TypeError(f"{name} must be {expected}, got {type(val).__name__}")
+
     def __init__(
         self,
         step_type,
@@ -167,6 +173,26 @@ class WorkflowStep:
         use_athena_packages=False,
         container_image=None,
     ):
+        self._check(step_type, "type", str)
+        self._check(in_ds, "inDS", str)
+        if args is not None:
+            self._check(args, "args", str)
+        if executable is not None:
+            self._check(executable, "exec", str)
+        if in_ds_type is not None:
+            self._check(in_ds_type, "inDsType", str)
+        if secondary_dss is not None:
+            self._check(secondary_dss, "secondaryDSs", list)
+            for i, item in enumerate(secondary_dss):
+                self._check(item, f"secondaryDSs[{i}]", str)
+        if secondary_ds_types is not None:
+            self._check(secondary_ds_types, "secondaryDsTypes", list)
+            for i, item in enumerate(secondary_ds_types):
+                self._check(item, f"secondaryDsTypes[{i}]", str)
+        self._check(use_athena_packages, "useAthenaPackages", bool)
+        if container_image is not None:
+            self._check(container_image, "containerImage", str)
+
         self.type = step_type
         self.in_ds = in_ds
         self.args = args
@@ -317,6 +343,8 @@ class WorkflowDescription:
             m = re.match(r"^(\w+)/outDS$", step.in_ds)
             if m and m.group(1) not in step_names:
                 errors.append(f"step '{sname}': unknown step reference '{m.group(1)}/outDS'")
+            if step.secondary_ds_types and len(step.secondary_ds_types) != len(step.secondary_dss):
+                errors.append(f"step '{sname}': secondaryDsTypes has {len(step.secondary_ds_types)} entries " f"but secondaryDSs has {len(step.secondary_dss)}")
             for ds_ref in step.secondary_dss:
                 for ref in re.findall(r"\{(\w+)\}", ds_ref):
                     if ref not in input_names:
