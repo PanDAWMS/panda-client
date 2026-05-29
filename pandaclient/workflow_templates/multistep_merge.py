@@ -71,7 +71,12 @@ def build(in_ds, prun_flags, verbose=False, output_file=DEFAULT_OUTPUT_FILE, inp
     """
     effective_flags = {**DEFAULT_FLAGS, **prun_flags}
 
-    max_n_files_per_job = int(effective_flags["maxNFilesPerJob"])
+    try:
+        max_n_files_per_job = int(effective_flags["maxNFilesPerJob"])
+    except (ValueError, TypeError):
+        raise ValueError(f"maxNFilesPerJob must be an integer, got {effective_flags['maxNFilesPerJob']!r}")
+    if max_n_files_per_job < 2:
+        raise ValueError(f"maxNFilesPerJob must be at least 2 (got {max_n_files_per_job}); values < 2 cannot reduce a dataset to a single output")
 
     n_files = _count_rucio_files(in_ds)
     if n_files == 0:
