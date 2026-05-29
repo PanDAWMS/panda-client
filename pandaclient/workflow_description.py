@@ -29,6 +29,12 @@ Typical usage:
         container_image="docker://busybox",
     )
     wf2.add_prun_step(
+        "make_background_1",
+        in_ds=WorkflowDescription.input_ref("background"),
+        args="--outputs opq.root,xyz.pool --nGBPerJob 10",
+        executable="echo %IN > opq.root; echo %IN > xyz.pool",
+    )
+    wf2.add_prun_step(
         "premix",
         in_ds=WorkflowDescription.step_output("make_signal"),
         in_ds_type="def.zip",
