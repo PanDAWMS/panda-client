@@ -6,5 +6,4 @@
 OUTPUT=${1:-merge.root}
 INPUT_FILE=${2:-input.lis}
 sed -i 's/,/\n/g' "$INPUT_FILE"
-cat "$INPUT_FILE"
 hadd -f "$OUTPUT" "@$INPUT_FILE"
