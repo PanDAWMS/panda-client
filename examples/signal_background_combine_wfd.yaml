@@ -1,0 +1,72 @@
+# Signal and background processing workflow translated from CWL.
+# Two independent branches (make_signal, make_background_1) feed into premix,
+# while a separate generate_some branch feeds make_background_2; all streams
+# are combined in the final combine step.
+#
+# Fill in the input dataset names before submitting.
+
+name: signal_background_combine
+
+inputs:
+  signal: "<signal input dataset>"
+  background: "<background input dataset>"
+
+outputs:
+  outDS:
+    from: combine/outDS
+    output_types:
+      - aaa.root
+
+steps:
+  make_signal:
+    type: prun
+    inDS: "{signal}"
+    containerImage: docker://busybox
+    exec: "echo %IN > abc.dat; echo 123 > def.zip"
+    args: "--outputs abc.dat,def.zip --nFilesPerJob 5"
+
+  make_background_1:
+    type: prun
+    inDS: "{background}"
+    exec: "echo %IN > opq.root; echo %IN > xyz.pool"
+    args: "--outputs opq.root,xyz.pool --nGBPerJob 10"
+
+  generate_some:
+    type: prun
+    exec: "echo %RNDM:10 > gen.root"
+    args: "--outputs gen.root --nJobs 10"
+
+  premix:
+    type: prun
+    inDS: make_signal/outDS
+    inDsType: def.zip
+    secondaryDSs:
+      - make_background_1/outDS
+    secondaryDsTypes:
+      - xyz.pool
+    exec: "echo %IN %IN2 > klm.root"
+    args: "--outputs klm.root --secondaryDSs IN2:13:%{SECDS1}"
+
+  make_background_2:
+    type: prun
+    inDS: "{background}"
+    containerImage: docker://alpine
+    secondaryDSs:
+      - generate_some/outDS
+    secondaryDsTypes:
+      - gen.root
+    exec: "echo %IN > ooo.root; echo %IN2 > jjj.txt"
+    args: "--outputs ooo.root,jjj.txt --secondaryDSs IN2:10:%{SECDS1}"
+
+  combine:
+    type: prun
+    inDS: make_signal/outDS
+    inDsType: abc.dat
+    secondaryDSs:
+      - premix/outDS
+      - make_background_2/outDS
+    secondaryDsTypes:
+      - klm.root
+      - ooo.root
+    exec: "echo %IN %IN2 %IN3 > aaa.root"
+    args: "--outputs aaa.root --secondaryDSs IN2:2:%{SECDS1},IN3:5:%{SECDS2}"

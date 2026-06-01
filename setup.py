@@ -204,6 +204,7 @@ setup(
             ],
         ),
         ("etc/panda/share", ["share/FakeAppMgr.py", "share/ConfigExtractor.py", "share/functions.sh"]),
+        ("etc/panda/share/workflow_scripts", ["share/workflow_scripts/merge.sh"]),
     ],
     cmdclass={"install": install_panda, "install_data": install_data_panda},
 )

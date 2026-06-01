@@ -7,6 +7,13 @@ import shlex
 import shutil
 import sys
 
+# exec_p_command resets PYTHONPATH to PANDA_PYTHONPATH; restore rucio-clients paths from the original environment so workflow templates can import rucio
+_pythonpath_orig = os.environ.get("PYTHONPATH_ORIG", "")
+for _p in _pythonpath_orig.split(os.pathsep):
+    if _p and _p not in sys.path:
+        if any(c.lower().startswith("rucio") for c in _p.split(os.sep) if c):
+            sys.path.append(_p)
+
 from pandaclient import (
     Client,
     MiscUtils,

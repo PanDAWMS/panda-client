@@ -16,6 +16,35 @@ Typical usage:
     wf.add_prun_step("step2", in_ds=WorkflowDescription.step_output("step1"), args="...", executable="run.sh")
     wf.add_output("result", from_ref=WorkflowDescription.step_output("step2"), output_types=["out.root"])
     wf.save("my_chain.yaml")
+
+    # prun step with container, secondary datasets, and file-type filters:
+    wf2 = WorkflowDescription(name="signal_background_combine")
+    wf2.add_input("signal", "user.me:signal.dataset")
+    wf2.add_input("background", "user.me:background.dataset")
+    wf2.add_prun_step(
+        "make_signal",
+        in_ds=WorkflowDescription.input_ref("signal"),
+        args="--outputs abc.dat,def.zip --nFilesPerJob 5",
+        executable="echo %IN > abc.dat; echo 123 > def.zip",
+        container_image="docker://busybox",
+    )
+    wf2.add_prun_step(
+        "make_background_1",
+        in_ds=WorkflowDescription.input_ref("background"),
+        args="--outputs opq.root,xyz.pool --nGBPerJob 10",
+        executable="echo %IN > opq.root; echo %IN > xyz.pool",
+    )
+    wf2.add_prun_step(
+        "premix",
+        in_ds=WorkflowDescription.step_output("make_signal"),
+        in_ds_type="def.zip",
+        secondary_dss=[WorkflowDescription.step_output("make_background_1")],
+        secondary_ds_types=["xyz.pool"],
+        args="--outputs klm.root --secondaryDSs IN2:13:%{SECDS1}",
+        executable="echo %IN %IN2 > klm.root",
+    )
+    wf2.add_output("outDS", from_ref=WorkflowDescription.step_output("premix"), output_types=["klm.root"])
+    wf2.save("signal_background_combine.yaml")
 """
 
 import json
@@ -130,20 +159,72 @@ _default_writer = _YAMLWriter()
 class WorkflowStep:
     """A single step in a PanDA workflow."""
 
-    __slots__ = ("type", "in_ds", "args", "exec")
+    __slots__ = ("type", "in_ds", "args", "exec", "in_ds_type", "secondary_dss", "secondary_ds_types", "use_athena_packages", "container_image")
 
-    def __init__(self, step_type, in_ds, args=None, executable=None):
+    @staticmethod
+    def _check(val, name, *types):
+        if not isinstance(val, types):
+            expected = " or ".join(t.__name__ for t in types)
+            raise TypeError(f"{name} must be {expected}, got {type(val).__name__}")
+
+    def __init__(
+        self,
+        step_type,
+        in_ds,
+        args=None,
+        executable=None,
+        in_ds_type=None,
+        secondary_dss=None,
+        secondary_ds_types=None,
+        use_athena_packages=False,
+        container_image=None,
+    ):
+        self._check(step_type, "type", str)
+        self._check(in_ds, "inDS", str)
+        if args is not None:
+            self._check(args, "args", str)
+        if executable is not None:
+            self._check(executable, "exec", str)
+        if in_ds_type is not None:
+            self._check(in_ds_type, "inDsType", str)
+        if secondary_dss is not None:
+            self._check(secondary_dss, "secondaryDSs", list)
+            for i, item in enumerate(secondary_dss):
+                self._check(item, f"secondaryDSs[{i}]", str)
+        if secondary_ds_types is not None:
+            self._check(secondary_ds_types, "secondaryDsTypes", list)
+            for i, item in enumerate(secondary_ds_types):
+                self._check(item, f"secondaryDsTypes[{i}]", str)
+        self._check(use_athena_packages, "useAthenaPackages", bool)
+        if container_image is not None:
+            self._check(container_image, "containerImage", str)
+
         self.type = step_type
         self.in_ds = in_ds
         self.args = args
         self.exec = executable  # parameter named 'executable' to avoid shadowing the built-in exec()
+        self.in_ds_type = in_ds_type
+        self.secondary_dss = list(secondary_dss) if secondary_dss else []
+        self.secondary_ds_types = list(secondary_ds_types) if secondary_ds_types else []
+        self.use_athena_packages = use_athena_packages
+        self.container_image = container_image
 
     def to_dict(self):
         d = {"type": self.type, "inDS": self.in_ds}
+        if self.in_ds_type is not None:
+            d["inDsType"] = self.in_ds_type
+        if self.container_image is not None:
+            d["containerImage"] = self.container_image
+        if self.secondary_dss:
+            d["secondaryDSs"] = self.secondary_dss
+        if self.secondary_ds_types:
+            d["secondaryDsTypes"] = self.secondary_ds_types
         if self.args is not None:
             d["args"] = self.args
         if self.exec is not None:
             d["exec"] = self.exec
+        if self.use_athena_packages:
+            d["useAthenaPackages"] = self.use_athena_packages
         return d
 
 
@@ -187,14 +268,37 @@ class WorkflowDescription:
         self.inputs[name] = dataset
         return self
 
-    def add_step(self, name, step_type, in_ds, args=None, executable=None):
+    def add_step(
+        self,
+        name,
+        step_type,
+        in_ds,
+        args=None,
+        executable=None,
+        in_ds_type=None,
+        secondary_dss=None,
+        secondary_ds_types=None,
+        use_athena_packages=False,
+        container_image=None,
+    ):
         """Add a workflow step of any type."""
-        self.steps[name] = WorkflowStep(step_type, in_ds, args, executable)
+        self.steps[name] = WorkflowStep(step_type, in_ds, args, executable, in_ds_type, secondary_dss, secondary_ds_types, use_athena_packages, container_image)
         return self
 
-    def add_prun_step(self, name, in_ds, args=None, executable=None):
+    def add_prun_step(
+        self,
+        name,
+        in_ds,
+        args=None,
+        executable=None,
+        in_ds_type=None,
+        secondary_dss=None,
+        secondary_ds_types=None,
+        use_athena_packages=False,
+        container_image=None,
+    ):
         """Add a ``prun`` step (convenience wrapper around :meth:`add_step`)."""
-        return self.add_step(name, "prun", in_ds, args, executable)
+        return self.add_step(name, "prun", in_ds, args, executable, in_ds_type, secondary_dss, secondary_ds_types, use_athena_packages, container_image)
 
     def add_output(self, name, from_ref, output_types=None):
         """Register a named workflow output."""
@@ -245,6 +349,15 @@ class WorkflowDescription:
             m = re.match(r"^(\w+)/outDS$", step.in_ds)
             if m and m.group(1) not in step_names:
                 errors.append(f"step '{sname}': unknown step reference '{m.group(1)}/outDS'")
+            if step.secondary_ds_types and len(step.secondary_ds_types) != len(step.secondary_dss):
+                errors.append(f"step '{sname}': secondaryDsTypes has {len(step.secondary_ds_types)} entries " f"but secondaryDSs has {len(step.secondary_dss)}")
+            for ds_ref in step.secondary_dss:
+                for ref in re.findall(r"\{(\w+)\}", ds_ref):
+                    if ref not in input_names:
+                        errors.append(f"step '{sname}': secondaryDSs: undefined input reference '{{{ref}}}'")
+                m2 = re.match(r"^(\w+)/outDS$", ds_ref)
+                if m2 and m2.group(1) not in step_names:
+                    errors.append(f"step '{sname}': secondaryDSs: unknown step reference '{m2.group(1)}/outDS'")
 
         for oname, out in self.outputs.items():
             m = re.match(r"^(\w+)/outDS$", out.from_ref)
@@ -328,12 +441,24 @@ class WorkflowDescription:
         for k, v in d.get("inputs", {}).items():
             wf.add_input(k, v)
         for sname, sdata in d.get("steps", {}).items():
+            raw_sec = sdata.get("secondaryDSs")
+            if isinstance(raw_sec, dict):
+                secondary_dss = list(raw_sec.keys())
+                secondary_ds_types = list(raw_sec.values())
+            else:
+                secondary_dss = raw_sec
+                secondary_ds_types = sdata.get("secondaryDsTypes")
             wf.add_step(
                 sname,
                 step_type=sdata["type"],
                 in_ds=sdata.get("inDS", ""),
                 args=sdata.get("args"),
                 executable=sdata.get("exec"),
+                in_ds_type=sdata.get("inDsType"),
+                secondary_dss=secondary_dss,
+                secondary_ds_types=secondary_ds_types,
+                use_athena_packages=sdata.get("useAthenaPackages", False),
+                container_image=sdata.get("containerImage"),
             )
         for oname, odata in d.get("outputs", {}).items():
             wf.add_output(oname, from_ref=odata["from"], output_types=odata.get("output_types"))
