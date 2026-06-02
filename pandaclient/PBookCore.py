@@ -10,7 +10,7 @@ try:
 except Exception:
     long = int
 
-from pandaclient import PsubUtils, localSpecs, queryPandaMonUtils
+from pandaclient import PsubUtils, localSpecs
 
 from . import Client, PLogger
 
@@ -22,15 +22,41 @@ def is_reqid(id):
     return id < 10**7
 
 
+def _query_task_dicts(self, filters=None, since=None, n_tasks=1000):
+    """
+    query detailed task info owned by the user from the PanDA server and return a
+    merged list of task dicts.
+
+    Filter values are always sent as strings. Values containing '|' are expanded into
+    separate equality queries and the results are merged, since the server applies '|'
+    patterns as python regex only after truncating to n_tasks, which could drop matches.
+    """
+    filters = filters or {}
+    # expand pipe-separated (OR) values into combinations of single-value equality filters
+    combinations = [{}]
+    for key, value in filters.items():
+        if value is None:
+            continue
+        values = str(value).split("|")
+        combinations = [dict(combo, **{key: v}) for combo in combinations for v in values]
+    # query each combination and merge by jediTaskID
+    merged = {}
+    for combo in combinations:
+        status, data = Client.get_tasks_detailed_info_since(since=since, filters=(combo or None), n_tasks=n_tasks, verbose=self.verbose)
+        if status != 0 or not isinstance(data, list):
+            continue
+        for task in data:
+            merged[task["jediTaskID"]] = task
+    return list(merged.values())
+
+
 def _get_one_task(self, taskID, verbose=False):
     """
     get one task spec by ID
     """
-    ts, url, data = queryPandaMonUtils.query_tasks(username=self.username, jeditaskid=taskID, verbose=verbose)
-    if isinstance(data, list) and data:
-        task = data[0]
-        taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)
-        return taskspec
+    data = _query_task_dicts(self, filters={"jediTaskID": taskID})
+    if data:
+        return localSpecs.LocalTaskSpec(data[0])
     else:
         return None
 
@@ -39,13 +65,9 @@ def _get_tasks_from_reqid(self, reqID, verbose=False):
     """
     get a list of task spec by reqID
     """
-    ts, url, data = queryPandaMonUtils.query_tasks(username=self.username, reqid=reqID, verbose=verbose)
-    if isinstance(data, list) and data:
-        taskspec_list = []
-        for task in data:
-            taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)
-            taskspec_list.append(taskspec)
-        return taskspec_list
+    data = _query_task_dicts(self, filters={"reqID": reqID})
+    if data:
+        return [localSpecs.LocalTaskSpec(task) for task in data]
     else:
         return None
 
@@ -288,13 +310,9 @@ class PBookCore(object):
         get all reachable task specs of the user
         """
         active_superstatus_str = "|".join(localSpecs.task_active_superstatus_list)
-        ts, url, data = queryPandaMonUtils.query_tasks(
-            username=self.username,
-            superstatus=active_superstatus_str,
-            verbose=self.verbose,
-        )
-        if isinstance(data, list) and list:
-            taskspec_list = [localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts) for task in data]
+        data = _query_task_dicts(self, filters={"superStatus": active_superstatus_str})
+        if data:
+            taskspec_list = [localSpecs.LocalTaskSpec(task) for task in data]
             return taskspec_list
         else:
             return None
@@ -345,20 +363,28 @@ class PBookCore(object):
                     days=days, limit=limit
                 )
             )
+        # build server-side filters (keys are JediTaskSpec attribute names)
+        filters = {}
+        # userName is scoped to the authenticated user by default; only set it to query another user
+        if username is not None and username != self.username:
+            filters["userName"] = username
+        if reqid:
+            filters["reqID"] = reqid
+        if jeditaskid:
+            filters["jediTaskID"] = jeditaskid
+        if status:
+            filters["status"] = status
+        if superstatus:
+            filters["superStatus"] = superstatus
+        if taskname:
+            filters["taskName"] = taskname
+        # time window from days (None means no time-window cap)
+        if days is not None:
+            since = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - days * 86400))
+        else:
+            since = None
         # query
-        ts, url, data = queryPandaMonUtils.query_tasks(
-            username=username,
-            limit=limit,
-            reqid=reqid,
-            status=status,
-            superstatus=superstatus,
-            taskname=taskname,
-            days=days,
-            jeditaskid=jeditaskid,
-            metadata=metadata,
-            sync=sync,
-            verbose=self.verbose,
-        )
+        data = _query_task_dicts(self, filters=filters, since=since, n_tasks=limit)
         # print header row
         _tmpts = localSpecs.LocalTaskSpec
         if format in ["json", "plain"]:
@@ -372,19 +398,19 @@ class PBookCore(object):
             return data
         elif format == "plain":
             for task in data:
-                taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)
+                taskspec = localSpecs.LocalTaskSpec(task)
                 taskspec.print_plain()
         elif format == "long":
             i_count = 1
             for task in data:
-                taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)
+                taskspec = localSpecs.LocalTaskSpec(task)
                 if i_count % 10 == 0:
                     print(_tmpts.head_dict["long"])
                 taskspec.print_long()
                 i_count += 1
         else:
             for task in data:
-                taskspec = localSpecs.LocalTaskSpec(task, source_url=url, timestamp=ts)
+                taskspec = localSpecs.LocalTaskSpec(task)
                 taskspec.print_standard()
 
     # execute workflow command
