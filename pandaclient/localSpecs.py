@@ -54,10 +54,9 @@ class LocalTaskSpec(object):
         modt="ModificationTime",
     )
 
-    def __init__(self, task_dict, source_url=None, timestamp=None, pandaserver="https://pandaserver.cern.ch:25443/server/panda"):
+    def __init__(self, task_dict, source_url=None, timestamp=None):
         self._timestamp = timestamp
         self._sourceurl = source_url
-        self._pandaserver = pandaserver
         # normalize the PanDA server's camelCase keys to lowercase attribute names
         self._fulldict = {k.lower(): v for k, v in task_dict.items()}
         for aname in self._attributes_direct:
