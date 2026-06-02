@@ -1138,6 +1138,35 @@ def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=Fa
     return {"since": timeRange, "dn": dn, "full": True, "min_task_id": minTaskID, "prod_source_label": task_type}
 
 
+@curl_request_decorator(endpoint="task/get_tasks_detailed_info_since", method="get", json_out=True)
+def get_tasks_detailed_info_since(since=None, filters=None, n_tasks=500, verbose=False):
+    """Get detailed info of tasks owned by the user from the PanDA server.
+
+    args:
+       since: lower bound on modificationTime in the format '%Y-%m-%d %H:%M:%S'.
+              When None the time-window cap is removed so tasks of any age are returned,
+              which is useful for by-jediTaskID / by-reqID lookups.
+       filters: dict of {JediTaskSpec attribute: value} equality conditions, e.g.
+              {"jediTaskID": "123"}, {"reqID": "45"}, {"status": "done"}. Values are
+              sent as strings. Note that the server applies '|' patterns as python regex
+              after truncating to n_tasks, so callers should expand OR-values into
+              separate queries rather than passing a single '|'-joined value.
+       n_tasks: maximum number of tasks to retrieve
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a list of task detail dictionaries, or None if failed
+    """
+    data = {"n_tasks": n_tasks}
+    if since is not None:
+        data["since"] = since
+    if filters:
+        data["filters"] = json.dumps(filters)
+    return data
+
+
 @curl_request_decorator(endpoint="task/get_details", method="get", json_out=True)
 def getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose=False):
     return {"task_id": taskDict["jediTaskID"], "include_parameters": fullFlag, "include_status": withTaskInfo}

@@ -148,10 +148,10 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
     # show status
     def show(*args, **kwargs):
         """
-        Print task records. The first argument (non-keyword) can be an jediTaskID or reqID, or 'run' (show active tasks only), or 'fin' (show terminated tasks only), or can be omitted. The following keyword arguments are available in the way of panda monitor url query: [username, limit, taskname, days, jeditaskid].
-        If sync=True, it forces panda monitor to get the latest records rather than get from cache.
+        Print task records. The first argument (non-keyword) can be an jediTaskID or reqID, or 'run' (show active tasks only), or 'fin' (show terminated tasks only), or can be omitted. The following keyword arguments are available to filter the tasks: [username, limit, taskname, days, jeditaskid, reqid, status, superstatus].
+        Records are fetched directly from the PanDA server, so they are always up to date (the sync keyword is kept for backward compatibility but has no effect). Note that days is capped at 90 days unless a jediTaskID or reqID is specified, in which case tasks of any age are returned.
         Specify display format with format='xxx', available formats are ['standard', 'long', 'json', 'plain'].
-        The default filter conditions are: username=(name from user voms proxy), limit=1000, days=14, sync=False, format='standard'.
+        The default filter conditions are: username=(name from user voms proxy), limit=1000, days=14, format='standard'.
 
         example:
         >>> show()
@@ -160,7 +160,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
         >>> show(taskname='my_task_name')
         >>> show('run')
         >>> show('fin', days=7, limit=100)
-        >>> show(format='json', sync=True)
+        >>> show(format='json')
         """
         return pbookCore.show(*args, **kwargs)
 
@@ -295,9 +295,9 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
         elif isinstance(taskIDs, (int, long)):
             ret = [pbookCore.retry(taskIDs, newOpts=newOpts)]
         elif taskIDs == "all":
-            dataList = pbookCore.show(status="finished", days=days, limit=limit, sync=True, format="json")
+            dataList = pbookCore.show(status="finished", days=days, limit=limit, format="json")
             ret = list_parallel_exec(
-                lambda data: pbookCore.retry.original_func(pbookCore, data["jeditaskid"], newOpts=newOpts),
+                lambda data: pbookCore.retry.original_func(pbookCore, data["jediTaskID"], newOpts=newOpts),
                 dataList,
             )
         else:
