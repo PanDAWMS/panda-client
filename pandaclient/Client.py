@@ -101,14 +101,21 @@ def decode_special_cases(obj):
 def curl_request_decorator(endpoint, method="post", via_file=False, json_out=False, output_mode="basic"):
     def decorator(func):
         def wrapper(*args, **kwargs):
-            # Extract arguments
-            try:
+            # Extract verbose flag from kwargs, args, or function signature
+            verbose = None
+            if "verbose" in kwargs:
+                verbose = kwargs.get("verbose")
+            else:
                 sig = inspect.signature(func)
-                default_verbose = sig.parameters["verbose"].default
-            except Exception:
-                default_verbose = False
+                for arg, param_name in zip(args, sig.parameters):
+                    if param_name == "verbose":
+                        verbose = arg
+                        break
+                if verbose is None and "verbose" in sig.parameters:
+                    verbose = sig.parameters["verbose"].default
 
-            verbose = kwargs.get("verbose", default_verbose)
+            if verbose is None:
+                verbose = False
             data = func(*args, **kwargs)
 
             # Instantiate curl
