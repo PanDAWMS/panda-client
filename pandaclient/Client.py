@@ -146,19 +146,13 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
             if not success:
                 # dump_log(func.__name__, None, output.get("message"))
                 if output_mode == "extended":
-                    if verbose:
-                        output_status = output.get("data", False)
-                    else:
-                        output_status = False
+                    output_status = False
                     return status, (output_status, output.get("message"))
 
                 return EC_Failed, None
 
             if output_mode == "extended":
-                if verbose:
-                    output_status = output.get("data")
-                else:
-                    output_status = True
+                output_status = True
                 return status, (output_status, output.get("data"))
 
             # output_mode == 'basic'
