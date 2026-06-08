@@ -94,26 +94,23 @@ def check_task_owner(func):
             if taskid is None:
                 tmpLog.error("no taskID specified, nothing done")
                 return
-            # taskspec = _get_one_task(self, taskid, self.verbose)
+            # get taskID list (expand reqID to taskIDs if needed)
             if is_reqid(taskid):
                 taskspec_list = _get_tasks_from_reqid(self, taskid, self.verbose)
+                taskid_list = [t.jeditaskid for t in taskspec_list] if taskspec_list else []
             else:
-                taskspec_list = [_get_one_task(self, taskid, self.verbose)]
+                taskid_list = [taskid]
         except Exception as e:
             tmpLog.error("got {0}: {1}".format(e.__class__.__name__, e))
         else:
             ret = True
-            if taskspec_list is None:
+            if not taskid_list:
                 sys.stdout.write("Permission denied: reqID={0} is not owned by {1} \n".format(taskid, self.username))
                 ret = False
             else:
-                for taskspec in taskspec_list:
-                    if taskspec is not None and taskspec.username == self.username:
-                        args_new = (taskspec.jeditaskid,) + args[1:]
-                        ret = ret and func(self, *args_new, **kwargs)
-                    else:
-                        sys.stdout.write("Permission denied: taskID={0} is not owned by {1} \n".format(taskid, self.username))
-                        ret = False
+                for taskid in taskid_list:
+                    args_new = (taskid,) + args[1:]
+                    ret = ret and func(self, *args_new, **kwargs)
         global func_return_value
         func_return_value = ret
         return ret
