@@ -57,7 +57,6 @@ packages = ["pandaclient", "pandatools", "pandaserver", "taskbuffer"]
 "templates" = "etc/panda"
 "scripts" = "bin"
 "share" = "etc/panda/share"
-"share/workflow_scripts" = "etc/panda/share/workflow_scripts"
 
 [tool.hatch.build.targets.wheel.hooks.custom]
 path = "packages/hatch_build.py"
