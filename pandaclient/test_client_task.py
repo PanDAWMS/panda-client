@@ -1,7 +1,20 @@
 import argparse
-import subprocess, re, uuid, tempfile, sys, os
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import uuid
 
-from pandaclient.Client import insertTaskParams, getTaskParamsMap, killTask, pauseTask, resumeTask, getTaskStatus, finishTask, retryTask, reactivateTask, increase_attempt_nr, reload_input, getJediTaskDetails, get_files_in_datasets, getJobIDsJediTasksInTimeRange, getPandaIDsWithTaskID, getUserJobMetadata
+from pandaclient.Client import (finishTask, get_files_in_datasets,
+                                getJediTaskDetails,
+                                getJobIDsJediTasksInTimeRange,
+                                getPandaIDsWithTaskID, getTaskParamsMap,
+                                getTaskStatus, getUserJobMetadata,
+                                increase_attempt_nr, insertTaskParams,
+                                killTask, pauseTask, reactivateTask,
+                                reload_input, resumeTask, retryTask)
+
 
 def main(task_id):
     outds = f"user.pandasv2.{uuid.uuid4()}"

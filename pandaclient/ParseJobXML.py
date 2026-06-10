@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import sys
-
-from urllib.parse import quote
 import xml.dom.minidom
+from urllib.parse import quote
+
 
 class dom_job:
     """ infiles[inds]=[file1,file2...]

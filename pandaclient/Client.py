@@ -7,24 +7,21 @@ import gzip
 import inspect
 import json
 import os
+import random
 import re
+import socket
 import ssl
 import stat
 import string
+import struct
 import sys
+import tempfile
 import time
 import traceback
 from datetime import datetime
-
-from urllib.parse import urlencode, unquote_plus, urlparse
-from urllib.request import urlopen, Request
-
-import struct
-
-import random
-import socket
-import tempfile
 from io import BytesIO
+from urllib.parse import unquote_plus, urlencode, urlparse
+from urllib.request import Request, urlopen
 
 from . import MiscUtils, PLogger, openidc_utils
 from .MiscUtils import commands_get_output, commands_get_status_output

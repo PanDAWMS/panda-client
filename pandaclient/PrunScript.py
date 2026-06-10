@@ -1,28 +1,21 @@
 import argparse
 import atexit
+import copy
+import json
 import os
 import re
 import shutil
 import sys
 import time
-
-from pandaclient.Group_argparse import get_parser
-
 from urllib.parse import quote
 
-import copy
-import json
+from pandaclient.CommonArgs import (VALID_TRANSFER_TYPES, add_common_arguments,
+                                    get_invalid_transfer_types)
+from pandaclient.Group_argparse import get_parser
+from pandaclient.MiscUtils import (commands_get_output,
+                                   commands_get_status_output,
+                                   parse_secondary_datasets_opt)
 
-from pandaclient.CommonArgs import (
-    VALID_TRANSFER_TYPES,
-    add_common_arguments,
-    get_invalid_transfer_types,
-)
-from pandaclient.MiscUtils import (
-    commands_get_output,
-    commands_get_status_output,
-    parse_secondary_datasets_opt,
-)
 
 # main
 def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False):

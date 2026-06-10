@@ -1,16 +1,14 @@
-import json
-import sys
-import re
-import os
-import copy
 import atexit
+import copy
+import json
+import os
+import re
+import sys
 
+from pandaclient import (Client, MiscUtils, PandaToolsPkgInfo, PLogger,
+                         PsubUtils)
 from pandaclient.Group_argparse import get_parser
-from pandaclient import PLogger
-from pandaclient import PandaToolsPkgInfo
-from pandaclient import MiscUtils
-from pandaclient import Client
-from pandaclient import PsubUtils
+
 
 # main
 def main(get_taskparams=False, ext_args=None, dry_mode=False):

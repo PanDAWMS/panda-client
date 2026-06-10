@@ -2,6 +2,7 @@ import argparse
 import sys
 from collections import OrderedDict
 
+
 # check string args if they can be encoded with utf-8
 class ActionWithUnicodeCheck(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):

@@ -1,5 +1,6 @@
 import argparse
-from pandaclient.Client import getJobStatus, getFullJobStatus, killJobs
+
+from pandaclient.Client import getFullJobStatus, getJobStatus, killJobs
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Process panda IDs.")

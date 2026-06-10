@@ -1,10 +1,11 @@
-import os
-import sys
+import configparser
 import getpass
+import os
 import subprocess
+import sys
+
 from IPython.core.magic import register_line_magic
 
-import configparser
 from . import PLogger
 
 

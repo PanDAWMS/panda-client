@@ -1,7 +1,6 @@
+import logging
 import os
 import sys
-import logging
-
 
 rootLog = None
 

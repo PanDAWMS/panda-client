@@ -7,15 +7,10 @@ import shlex
 import shutil
 import sys
 
-from pandaclient import (
-    Client,
-    MiscUtils,
-    PandaToolsPkgInfo,
-    PLogger,
-    PrunScript,
-    PsubUtils,
-)
+from pandaclient import (Client, MiscUtils, PandaToolsPkgInfo, PLogger,
+                         PrunScript, PsubUtils)
 from pandaclient.Group_argparse import get_parser
+
 
 # main
 def main():

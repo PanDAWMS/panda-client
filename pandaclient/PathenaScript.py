@@ -10,11 +10,8 @@ import shutil
 import sys
 import time
 
-from pandaclient.CommonArgs import (
-    VALID_TRANSFER_TYPES,
-    add_common_arguments,
-    get_invalid_transfer_types,
-)
+from pandaclient.CommonArgs import (VALID_TRANSFER_TYPES, add_common_arguments,
+                                    get_invalid_transfer_types)
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import parse_secondary_datasets_opt
 
@@ -1383,11 +1380,9 @@ group_job.add_argument(
 )
 
 from pandaclient import MiscUtils
-from pandaclient.MiscUtils import (
-    commands_get_output,
-    commands_get_status_output,
-    commands_get_status_output_with_env,
-)
+from pandaclient.MiscUtils import (commands_get_output,
+                                   commands_get_status_output,
+                                   commands_get_status_output_with_env)
 
 # parse options
 # check against the removed options first

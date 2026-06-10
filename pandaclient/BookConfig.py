@@ -1,6 +1,6 @@
+import configparser
 import os
 import re
-import configparser
 
 sectionName = 'book'
 confFile = os.path.expanduser('%s/panda.cfg' % os.environ['PANDA_CONFIG_ROOT'])

@@ -1,8 +1,9 @@
-import os
-import json
 import argparse
-import tempfile
+import json
+import os
 import subprocess
+import tempfile
+
 
 # make arg parse with option definitions
 def make_arg_parse():

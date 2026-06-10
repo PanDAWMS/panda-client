@@ -3,9 +3,9 @@ local job specification
 
 """
 
+import datetime
 import re
 from urllib.parse import quote, unquote
-import datetime
 
 
 class LocalJobSpec:

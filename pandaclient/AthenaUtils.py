@@ -5,11 +5,8 @@ import re
 import sys
 
 from . import MiscUtils, PLogger
-from .MiscUtils import (
-    commands_fail_on_non_zero_exit_status,
-    commands_get_output,
-    commands_get_output_with_env,
-)
+from .MiscUtils import (commands_fail_on_non_zero_exit_status,
+                        commands_get_output, commands_get_output_with_env)
 from .PsubUtils import check_invalid_char
 
 # error code

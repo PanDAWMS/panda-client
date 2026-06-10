@@ -1,5 +1,7 @@
 import argparse
-from pandaclient.Client import set_user_secret, get_user_secrets, get_events_status
+
+from pandaclient.Client import (get_events_status, get_user_secrets,
+                                set_user_secret)
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Process panda IDs.")
