@@ -322,6 +322,7 @@ class PBookCore:
         status=None,
         superstatus=None,
         metadata=False,
+        sync=False,
         format="standard",
     ):
         # user name
