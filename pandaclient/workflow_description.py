@@ -498,7 +498,7 @@ class WorkflowDescription:
     @classmethod
     def load(cls, filepath):
         """Load a workflow description from a YAML or JSON file."""
-        with open(filepath, "r") as fh:
+        with open(filepath) as fh:
             content = fh.read()
         if filepath.endswith(".json"):
             return cls.from_json(content)

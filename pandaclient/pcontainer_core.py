@@ -115,7 +115,7 @@ def submit(options):
         options['dumpJson'] = tmpDumpJson
     tmpLoadJson = construct_cli_options(options)
     com = ['prun']
-    com += ['--loadJson={0}'.format(tmpLoadJson)]
+    com += [f'--loadJson={tmpLoadJson}']
     ret_val = subprocess.call(com)
     ret_dict = None
     if ret_val == 0:

@@ -110,9 +110,9 @@ def check_proxy(verbose, voms_role, refresh_info=False, generate_new=True):
 
     tmpLog = PLogger.getPandaLogger()
     tmpLog.info("Need to generate a grid proxy")
-    gridPassPhrase = getpass.getpass("Enter GRID pass phrase for this identity:\n").replace("$", "\$").replace('"', r"\"")
+    gridPassPhrase = getpass.getpass("Enter GRID pass phrase for this identity:\n").replace("$", r"\$").replace('"', r"\"")
     gridSrc = Client._getGridSrc()
-    com = '%s echo "%s" | voms-proxy-init -pwstdin ' % (gridSrc, gridPassPhrase)
+    com = '{} echo "{}" | voms-proxy-init -pwstdin '.format(gridSrc, gridPassPhrase)
     com_msg = '%s echo "*****" | voms-proxy-init -pwstdin ' % gridSrc
     if voms_role is None:
         com += "-voms atlas"
@@ -145,7 +145,7 @@ def getNickname(verbose=False):
     # X509
     for line in output.split("\n"):
         if line.startswith("attribute"):
-            match = re.search("nickname =\s*([^\s]+)\s*\(.*\)", line)
+            match = re.search(r"nickname =\s*([^\s]+)\s*\(.*\)", line)
             if match is not None:
                 nickName = match.group(1)
                 break
@@ -262,15 +262,15 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
         allowedPrefix = ["group"]
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
-                tmpPattO = "^" + tmpPrefix + "\d{2}" + "\." + tmpGroup + "\."
-                tmpPattN = "^" + tmpPrefix + "\." + tmpGroup + "\."
+                tmpPattO = "^" + tmpPrefix + r"\d{2}" + r"\." + tmpGroup + r"\."
+                tmpPattN = "^" + tmpPrefix + r"\." + tmpGroup + r"\."
                 if re.search(tmpPattO, outDS) is not None or re.search(tmpPattN, outDS) is not None:
                     return True
         # didn't match
         errStr = "You are allowed to produce official datasets with the following prefix\n"
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
-                tmpPattN = "%s.%s" % (tmpPrefix, tmpGroup)
+                tmpPattN = "{}.{}".format(tmpPrefix, tmpGroup)
                 errStr += "          %s\n" % tmpPattN
         if not Client.use_oidc():
             errStr += "If you have production role for another group please use the --voms option to set the role\n"
@@ -278,7 +278,7 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
         tmpLog.error(errStr)
         return False
     # check output dataset format
-    matStrN = "^user\." + nickName + "\."
+    matStrN = r"^user\." + nickName + r"\."
     if nickName == "" or re.match(matStrN, outDS) is None:
         if nickName == "":
             errStr = "Could not get nickname from voms proxy\n"
@@ -309,7 +309,7 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
     else:
         # dataset
         if len(outDS) > maxLength:
-            tmpLog.error("output datasetname is too long (%s). The length must be less than %s" % (len(outDS), maxLength))
+            tmpLog.error("output datasetname is too long ({}). The length must be less than {}".format(len(outDS), maxLength))
             return False
     return True
 
@@ -333,7 +333,7 @@ def convSysArgv(argv=None):
             noSpace = True
         if not noSpace:
             paramStr += " "
-        match = re.search("(\*| |')", item)
+        match = re.search(r"(\*| |')", item)
         if match is None:
             # normal parameters
             paramStr += "%s" % item
@@ -349,14 +349,14 @@ def isLatestVersion(latestVer):
     # extract local version numbers
     import PandaToolsPkgInfo
 
-    match = re.search("^(\d+)\.(\d+)\.(\d+)$", PandaToolsPkgInfo.release_version)
+    match = re.search(r"^(\d+)\.(\d+)\.(\d+)$", PandaToolsPkgInfo.release_version)
     if match is None:
         return True
     localMajorVer = int(match.group(1))
     localMinorVer = int(match.group(2))
     localBugfixVer = int(match.group(3))
     # extract local version numbers
-    match = re.search("^(\d+)\.(\d+)\.(\d+)$", latestVer)
+    match = re.search(r"^(\d+)\.(\d+)\.(\d+)$", latestVer)
     if match is None:
         return True
     latestMajorVer = int(match.group(1))
@@ -437,7 +437,7 @@ def readDsFromFile(txtName):
     except Exception:
         errType, errValue = sys.exc_info()[:2]
         tmpLog = PLogger.getPandaLogger()
-        tmpLog.error("cannot read datasets from %s due to %s:%s" % (txtName, errType, errValue))
+        tmpLog.error("cannot read datasets from {} due to {}:{}".format(txtName, errType, errValue))
         sys.exit(EC_Config)
     return dsList
 
@@ -499,9 +499,9 @@ def convertParamStrToJediParam(
         # with extension
         if newH in allExList:
             if newH in digExList:
-                oldH += "(:|=)(\d+)%{0,1}"
+                oldH += r"(:|=)(\d+)%{0,1}"
             else:
-                oldH += "(:|=)([^ '\"\}]+)"
+                oldH += "(:|=)([^ '\"\\}]+)"
             # look for extension
             tmpM = re.search(oldH, encStr)
             if tmpM is not None:
@@ -520,7 +520,7 @@ def convertParamStrToJediParam(
         allKeys += inList
         allKeys += [outHolder]
     for tmpH in allKeys:
-        patS += "[^=,\"' \(\{;]*\$\{" + tmpH + "[^\}]*\}[^,\"' \)\};]*|"
+        patS += "[^=,\"' \\(\\{;]*\\$\\{" + tmpH + "[^\\}]*\\}[^,\"' \\)\\};]*|"
     patS = patS[:-1]
     patS += ")"
     # split
@@ -529,7 +529,7 @@ def convertParamStrToJediParam(
     jobParams = []
     for tmpItem in tmpItems:
         # check if a placeholder
-        matchP = re.search("\$\{([^:\}]+)", tmpItem)
+        matchP = re.search(r"\$\{([^:\}]+)", tmpItem)
         if re.search(patS, tmpItem) is not None and matchP is not None:
             tmpHolder = matchP.group(1)
             # set attributes
@@ -610,10 +610,10 @@ def uploadGzippedFile(origFileName, currentDir, tmpLog, delFilesOnExit, nosubmit
         tmpIn = open(origFileName, "rb")
     else:
         # relative path
-        tmpIn = open("%s/%s" % (currentDir, origFileName), "rb")
+        tmpIn = open("{}/{}".format(currentDir, origFileName), "rb")
     # use unique name for gzip
     newFileName = "pre_%s.dat" % MiscUtils.wrappedUuidGen()
-    gzipFullPath = "%s/%s.gz" % (currentDir, newFileName)
+    gzipFullPath = "{}/{}.gz".format(currentDir, newFileName)
     delFilesOnExit.append(gzipFullPath)
     # make gzip
     tmpOut = gzip.open(gzipFullPath, "wb")
@@ -649,7 +649,7 @@ def getListPFN(pfnFile):
     if len(inputFileList) == 0:
         # get logger
         tmpLog = PLogger.getPandaLogger()
-        tmpLog.error("{0} doesn't contain any PFNs".format(pfnFile))
+        tmpLog.error(f"{pfnFile} doesn't contain any PFNs")
         sys.exit(EC_Config)
     return inputFileList
 
@@ -668,7 +668,7 @@ def checkTaskParam(taskParamMap, unlimitNumOutputs):
             tmpErrStr = None
             # check length of dataset name
             if len(tmpDict["dataset"]) > maxLengthCont:
-                tmpErrStr = "The name of an output or log dataset container (%s) is too long (%s). " % (tmpDict["dataset"], len(tmpDict["dataset"]))
+                tmpErrStr = "The name of an output or log dataset container ({}) is too long ({}). ".format(tmpDict["dataset"], len(tmpDict["dataset"]))
                 tmpErrStr += "The length must be less than %s following DDM definition. " % maxLengthCont
                 tmpErrStr += "Please note that one dataset container is creted per output/log type and "
                 tmpErrStr += "each name is <outDS>_<extension made from the output filename>/ or <outDS>.log/. "
@@ -677,18 +677,18 @@ def checkTaskParam(taskParamMap, unlimitNumOutputs):
                 try:
                     tmpDict["value"].encode("ascii")
                 except Exception:
-                    tmpErrStr = "Output name {0} contains non-ascii charters that are forbidden since they screw up " "the storage".format(tmpDict["value"])
+                    tmpErrStr = "Output name {} contains non-ascii charters that are forbidden since they screw up " "the storage".format(tmpDict["value"])
             if not tmpErrStr:
                 try:
                     tmpDict["dataset"].encode("ascii")
                 except Exception:
-                    tmpErrStr = "Dataset name {0} contains non-ascii charters that are forbidden since they screw up " "the storage".format(tmpDict["dataset"])
+                    tmpErrStr = "Dataset name {} contains non-ascii charters that are forbidden since they screw up " "the storage".format(tmpDict["dataset"])
             if tmpErrStr:
                 tmpLog = PLogger.getPandaLogger()
                 tmpLog.error(tmpErrStr)
                 return (EC_Config, tmpErrStr)
     if not unlimitNumOutputs and nOutputs > maxNumOutputs:
-        errStr = "Too many output files (=%s) per job. The default limit is %s. " % (
+        errStr = "Too many output files (={}) per job. The default limit is {}. ".format(
             nOutputs,
             maxNumOutputs,
         )
@@ -757,7 +757,7 @@ def extract_voms_proxy_username():
             subj = line.split(":", 1)[-1].lstrip()
             user_dn = re.sub(r"(/CN=\d+)+$", "", subj.replace("/CN=proxy", ""))
             username = user_dn.split("=")[-1]
-            username = re.sub("[ |_]\d+", "", username)
+            username = re.sub(r"[ |_]\d+", "", username)
             username = re.sub("[()']", "", username)
             break
     name_wo_email = re.sub(r" [a-z][\w\.-]+@[\w\.-]+(?:\.\w+)+", "", username).strip()
@@ -781,7 +781,7 @@ def get_warning_for_pq(site, excluded_site, tmp_log):
 def get_warning_for_memory(memory, is_confirmed, n_core, tmp_log):
     if memory > 4000:
         tmp_str = (
-            "You are requesting {0} MB/core which severely restricts the available resources to run on. "
+            "You are requesting {} MB/core which severely restricts the available resources to run on. "
             "Your task will take longer or may not run at all. Check if you really need this. "
             "Maybe improve the code".format(memory)
         )

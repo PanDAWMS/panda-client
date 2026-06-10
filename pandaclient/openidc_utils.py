@@ -51,7 +51,7 @@ class OpenIdConnect_Utils:
         data = {"client_id": client_id, "scope": scopes, "audience": audience}  # iam",
         rdata = urlencode(data).encode()
         if self.verbose:
-            self.log_stream.debug("request url: {0} data: {1}".format(device_auth_endpoint, rdata))
+            self.log_stream.debug(f"request url: {device_auth_endpoint} data: {rdata}")
         req = Request(device_auth_endpoint, rdata)
         req.add_header("content-type", "application/x-www-form-urlencoded")
         try:
@@ -61,7 +61,7 @@ class OpenIdConnect_Utils:
                 self.log_stream.debug(text)
             return True, json.loads(text)
         except HTTPError as e:
-            return False, "code={0}. reason={1}. description={2}".format(e.code, e.reason, e.read())
+            return False, f"code={e.code}. reason={e.reason}. description={e.read()}"
         except Exception as e:
             return False, str(e)
 
@@ -108,7 +108,7 @@ class OpenIdConnect_Utils:
                         continue
                 except Exception:
                     pass
-                return False, "code={0}. reason={1}. description={2}".format(e.code, e.reason, text)
+                return False, f"code={e.code}. reason={e.reason}. description={text}"
             except Exception as e:
                 return False, str(e)
 
@@ -130,7 +130,7 @@ class OpenIdConnect_Utils:
                 f.write(text)
             return True, id_token
         except HTTPError as e:
-            return False, "code={0}. reason={1}. description={2}".format(e.code, e.reason, e.read())
+            return False, f"code={e.code}. reason={e.reason}. description={e.read()}"
         except Exception as e:
             return False, str(e)
 
@@ -142,9 +142,9 @@ class OpenIdConnect_Utils:
                 with open(path) as f:
                     return True, json.load(f)
             except Exception as e:
-                self.log_stream.debug("cached {0} is corrupted: {1}".format(os.path.basename(url), str(e)))
+                self.log_stream.debug(f"cached {os.path.basename(url)} is corrupted: {str(e)}")
         if self.verbose:
-            self.log_stream.debug("fetching {0}".format(url))
+            self.log_stream.debug(f"fetching {url}")
         try:
             context = ssl._create_unverified_context()
             conn = urlopen(url, context=context)
@@ -156,7 +156,7 @@ class OpenIdConnect_Utils:
             with open(path) as f:
                 return True, json.load(f)
         except HTTPError as e:
-            return False, "code={0}. reason={1}. description={2}".format(e.code, e.reason, e.read())
+            return False, f"code={e.code}. reason={e.reason}. description={e.read()}"
         except Exception as e:
             return False, str(e)
 
@@ -166,7 +166,7 @@ class OpenIdConnect_Utils:
         if os.path.exists(token_file):
             with open(token_file) as f:
                 if self.verbose:
-                    self.log_stream.debug("check {0}".format(token_file))
+                    self.log_stream.debug(f"check {token_file}")
                 try:
                     # decode ID token
                     data = json.load(f)
@@ -174,7 +174,7 @@ class OpenIdConnect_Utils:
                     exp_time = datetime.datetime.utcfromtimestamp(dec["exp"])
                     delta = exp_time - datetime.datetime.utcnow()
                     if self.verbose:
-                        self.log_stream.debug("token expiration time : {0} UTC".format(exp_time.strftime("%Y-%m-%d %H:%M:%S")))
+                        self.log_stream.debug("token expiration time : {} UTC".format(exp_time.strftime("%Y-%m-%d %H:%M:%S")))
                     # check expiration time
                     if delta < datetime.timedelta(minutes=5):
                         # return refresh token
@@ -188,7 +188,7 @@ class OpenIdConnect_Utils:
                             self.log_stream.debug("valid token is available")
                         return True, data["id_token"], dec
                 except Exception as e:
-                    self.log_stream.error("failed to decode cached token with {0}".format(e))
+                    self.log_stream.error(f"failed to decode cached token with {e}")
         if self.verbose:
             self.log_stream.debug("cached token unavailable")
         return False, None, None
@@ -219,14 +219,14 @@ class OpenIdConnect_Utils:
                 return True, o
             else:
                 if self.verbose:
-                    self.log_stream.debug("failed to refresh token: {0}".format(o))
+                    self.log_stream.debug(f"failed to refresh token: {o}")
         # get device code
         jwt_profile = auth_config.get("jwt_profile")
         s, o = self.get_device_code(endpoint_config["device_authorization_endpoint"], auth_config["client_id"], auth_config["audience"], jwt_profile)
         if not s:
             return False, "Failed to get device code: " + o
         # get ID token
-        self.log_stream.info(("Please go to {0} and sign in. " "Waiting until authentication is completed").format(o["verification_uri_complete"]))
+        self.log_stream.info(("Please go to {} and sign in. " "Waiting until authentication is completed").format(o["verification_uri_complete"]))
         if "interval" in o:
             interval = o["interval"]
         else:

@@ -14,7 +14,7 @@ def setup():
     # parse config file
     conf_file = os.path.expanduser('~/.panda/panda_setup.cfg')
     if not os.path.exists(conf_file):
-        tmp_log.error('panda conifg file is missing at {}'.format(conf_file))
+        tmp_log.error(f'panda conifg file is missing at {conf_file}')
         return False
     parser = configparser.ConfigParser()
     parser.read(conf_file)

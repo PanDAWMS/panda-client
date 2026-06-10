@@ -2,12 +2,12 @@ from . import Client
 
 
 # API call class
-class IddsApi(object):
+class IddsApi:
 
     def __init__(self, name, dumper, verbose, idds_host, compress, manager, loader):
         self.name = name
         if idds_host is not None:
-            self.name += '+{}'.format(idds_host)
+            self.name += f'+{idds_host}'
         self.dumper = dumper
         self.verbose = verbose
         self.compress = compress
@@ -20,7 +20,7 @@ class IddsApi(object):
 
 
 # interface to API
-class IddsApiInteface(object):
+class IddsApiInteface:
     def __init__(self):
         self.dumper = None
         self.loader = None

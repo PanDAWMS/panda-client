@@ -140,7 +140,7 @@ def main():
 
     for arg_name in args_to_check:
         if not getattr(options, arg_name):
-            tmpLog.error("argument --{0} is required".format(arg_name))
+            tmpLog.error(f"argument --{arg_name} is required")
             sys.exit(1)
 
     # check grid-proxy
@@ -169,13 +169,13 @@ def main():
         tmpLog.debug("making sandbox")
     archiveName = "jobO.%s.tar.gz" % MiscUtils.wrappedUuidGen()
     archiveFullName = os.path.join(tmpDir, archiveName)
-    find_opt = " -type f -size -{0}k".format(options.maxSizeInSandbox * 1024)
-    tmpOut = MiscUtils.commands_get_output("find . {0} | tar cvfz {1} --files-from - ".format(find_opt, archiveFullName))
+    find_opt = f" -type f -size -{options.maxSizeInSandbox * 1024}k"
+    tmpOut = MiscUtils.commands_get_output(f"find . {find_opt} | tar cvfz {archiveFullName} --files-from - ")
 
     if options.verbose:
         print(tmpOut + "\n")
         tmpLog.debug("checking sandbox")
-        tmpOut = MiscUtils.commands_get_output("tar tvfz {0}".format(archiveFullName))
+        tmpOut = MiscUtils.commands_get_output(f"tar tvfz {archiveFullName}")
         print(tmpOut + "\n")
 
     if not options.noSubmit:
@@ -203,7 +203,7 @@ def main():
 
     # check if the workflow uses athena packages
     if not options.useAthenaPackages:
-        with open(workflow_file, "r") as f:
+        with open(workflow_file) as f:
             for line in f.readlines():
                 if re.search(r"^\s*[^#]\s*opt_useAthenaPackages", line):
                     options.useAthenaPackages = True
@@ -231,21 +231,21 @@ def main():
         task_type_args["athena"] = "--useAthenaPackages"
     for task_type in task_type_args:
         os.chdir(curDir)
-        prun_exec_str = "--exec __dummy_exec_str__ --outDS {0} {1}".format(options.outDS, task_type_args[task_type])
+        prun_exec_str = f"--exec __dummy_exec_str__ --outDS {options.outDS} {task_type_args[task_type]}"
         if options.noSubmit:
             prun_exec_str += " --noSubmit"
         if options.verbose:
             prun_exec_str += " -v"
         if options.vo:
-            prun_exec_str += " --vo {0}".format(options.vo)
+            prun_exec_str += f" --vo {options.vo}"
         if options.prodSourceLabel:
-            prun_exec_str += " --prodSourceLabel {0}".format(options.prodSourceLabel)
+            prun_exec_str += f" --prodSourceLabel {options.prodSourceLabel}"
         if options.workingGroup:
-            prun_exec_str += " --workingGroup {0}".format(options.workingGroup)
+            prun_exec_str += f" --workingGroup {options.workingGroup}"
         if options.official:
             prun_exec_str += " --official"
         if options.extFile:
-            prun_exec_str += " --extFile {0}".format(options.extFile)
+            prun_exec_str += f" --extFile {options.extFile}"
         arg_dict = {"get_taskparams": True, "ext_args": shlex.split(prun_exec_str)}
         if options.checkOnly:
             arg_dict["dry_mode"] = True
@@ -266,7 +266,7 @@ def main():
                 for tmpKey in tmpKeys:
                     if tmpKey in ["taskParams"]:
                         continue
-                    print("%s : %s" % (tmpKey, taskParamMap[tmpKey]))
+                    print("{} : {}".format(tmpKey, taskParamMap[tmpKey]))
         sys.exit(0)
 
     data = {"relay_host": options.relayHost, "verbose": options.verbose}
@@ -281,7 +281,7 @@ def main():
         Client.useIntrServer()
 
     # action
-    tmpLog.info("{0} workflow {1}".format(action_type, options.outDS))
+    tmpLog.info(f"{action_type} workflow {options.outDS}")
     tmpStat, tmpOut = Client.send_workflow_request(params, **data)
 
     # result
@@ -289,7 +289,7 @@ def main():
     request_id = None
     tmp_str = ""
     if tmpStat != 0:
-        tmp_str = "workflow {0} failed with {1}".format(action_type, tmpStat)
+        tmp_str = f"workflow {action_type} failed with {tmpStat}"
         tmpLog.error(tmp_str)
         exit_code = 1
     else:
@@ -305,15 +305,15 @@ def main():
             else:
                 if stat_code:
                     request_id = tmpOut[1]["request_id"]
-                    tmp_str = "successfully submitted with request_id={0}".format(request_id)
+                    tmp_str = f"successfully submitted with request_id={request_id}"
                     tmpLog.info(tmp_str)
                 else:
                     tmpLog.info(check_log)
-                    tmp_str = "workflow submission failed with {0}".format(stat_code)
+                    tmp_str = f"workflow submission failed with {stat_code}"
                     tmpLog.error(tmp_str)
                     exit_code = stat_code
         else:
-            tmp_str = "workflow {0} failed. {1}".format(action_type, tmpOut[1])
+            tmp_str = f"workflow {action_type} failed. {tmpOut[1]}"
             tmpLog.error(tmp_str)
             exit_code = 1
 

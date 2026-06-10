@@ -188,7 +188,7 @@ def main():
 
     for arg_name in args_to_check:
         if not getattr(options, arg_name):
-            tmpLog.error("argument --{0} is required".format(arg_name))
+            tmpLog.error(f"argument --{arg_name} is required")
             sys.exit(1)
 
     # check grid-proxy
@@ -220,13 +220,13 @@ def main():
         prun_flags = {}
         for item in options.prunFlags or []:
             if "=" not in item:
-                tmpLog.error("--prunFlags: '{0}' is not a valid key=value pair".format(item))
+                tmpLog.error(f"--prunFlags: '{item}' is not a valid key=value pair")
                 sys.exit(1)
             k, v = item.split("=", 1)
             prun_flags[k] = v
 
         if options.verbose:
-            tmpLog.debug("building workflow from template '{0}'".format(options.template))
+            tmpLog.debug(f"building workflow from template '{options.template}'")
         try:
             wf = workflow_template_dispatcher.build_workflow_from_template(
                 options.template,
@@ -235,11 +235,11 @@ def main():
                 verbose=options.verbose,
             )
         except Exception as e:
-            tmpLog.error("failed to build workflow from template '{0}': {1}".format(options.template, e))
+            tmpLog.error(f"failed to build workflow from template '{options.template}': {e}")
             sys.exit(1)
 
         # save to curDir (not tmpDir, which is removed before the file is needed)
-        workflow_file = os.path.join(curDir, "_pchain_wfd_{0}.yaml".format(MiscUtils.wrappedUuidGen()))
+        workflow_file = os.path.join(curDir, f"_pchain_wfd_{MiscUtils.wrappedUuidGen()}.yaml")
         wf.save(workflow_file)
 
         def _cleanup_wfd(path):
@@ -251,20 +251,20 @@ def main():
         atexit.register(_cleanup_wfd, workflow_file)
 
         if options.verbose:
-            tmpLog.debug("generated WFD saved to {0}".format(workflow_file))
+            tmpLog.debug(f"generated WFD saved to {workflow_file}")
 
     # sandbox
     if options.verbose:
         tmpLog.debug("making sandbox")
     archiveName = "jobO.%s.tar.gz" % MiscUtils.wrappedUuidGen()
     archiveFullName = os.path.join(tmpDir, archiveName)
-    find_opt = " -type f -size -{0}k".format(options.maxSizeInSandbox * 1024)
-    tmpOut = MiscUtils.commands_get_output("find . {0} | tar cvfz {1} --files-from - ".format(find_opt, archiveFullName))
+    find_opt = f" -type f -size -{options.maxSizeInSandbox * 1024}k"
+    tmpOut = MiscUtils.commands_get_output(f"find . {find_opt} | tar cvfz {archiveFullName} --files-from - ")
 
     if options.verbose:
         print(tmpOut + "\n")
         tmpLog.debug("checking sandbox")
-        tmpOut = MiscUtils.commands_get_output("tar tvfz {0}".format(archiveFullName))
+        tmpOut = MiscUtils.commands_get_output(f"tar tvfz {archiveFullName}")
         print(tmpOut + "\n")
 
     if not options.noSubmit:
@@ -292,7 +292,7 @@ def main():
 
     # check if the workflow uses athena packages
     if not options.useAthenaPackages:
-        with open(workflow_file, "r") as f:
+        with open(workflow_file) as f:
             for line in f.readlines():
                 if re.search(r"^\s*[^#]\s*opt_useAthenaPackages", line):
                     options.useAthenaPackages = True
@@ -320,21 +320,21 @@ def main():
         task_type_args["athena"] = "--useAthenaPackages"
     for task_type in task_type_args:
         os.chdir(curDir)
-        prun_exec_str = "--exec __dummy_exec_str__ --outDS {0} {1}".format(options.outDS, task_type_args[task_type])
+        prun_exec_str = f"--exec __dummy_exec_str__ --outDS {options.outDS} {task_type_args[task_type]}"
         if options.noSubmit:
             prun_exec_str += " --noSubmit"
         if options.verbose:
             prun_exec_str += " -v"
         if options.vo:
-            prun_exec_str += " --vo {0}".format(options.vo)
+            prun_exec_str += f" --vo {options.vo}"
         if options.prodSourceLabel:
-            prun_exec_str += " --prodSourceLabel {0}".format(options.prodSourceLabel)
+            prun_exec_str += f" --prodSourceLabel {options.prodSourceLabel}"
         if options.workingGroup:
-            prun_exec_str += " --workingGroup {0}".format(options.workingGroup)
+            prun_exec_str += f" --workingGroup {options.workingGroup}"
         if options.official:
             prun_exec_str += " --official"
         if options.extFile:
-            prun_exec_str += " --extFile {0}".format(options.extFile)
+            prun_exec_str += f" --extFile {options.extFile}"
         arg_dict = {"get_taskparams": True, "ext_args": shlex.split(prun_exec_str)}
         if options.checkOnly:
             arg_dict["dry_mode"] = True
@@ -355,7 +355,7 @@ def main():
                 for tmpKey in tmpKeys:
                     if tmpKey in ["taskParams"]:
                         continue
-                    print("%s : %s" % (tmpKey, taskParamMap[tmpKey]))
+                    print("{} : {}".format(tmpKey, taskParamMap[tmpKey]))
         sys.exit(0)
 
     data = {"relay_host": options.relayHost, "verbose": options.verbose}
@@ -370,7 +370,7 @@ def main():
         Client.useIntrServer()
 
     # action
-    tmpLog.info("{0} workflow {1}".format(action_type, options.outDS))
+    tmpLog.info(f"{action_type} workflow {options.outDS}")
     # tmpStat, tmpOut = Client.submit_workflow_tmp(params, **data)
     tmpStat, tmpOut = Client.submit_workflow(params, **data)
 
@@ -379,7 +379,7 @@ def main():
     request_id = None
     tmp_str = ""
     if tmpStat != 0:
-        tmp_str = "workflow {0} failed with {1}".format(action_type, tmpStat)
+        tmp_str = f"workflow {action_type} failed with {tmpStat}"
         tmpLog.error(tmp_str)
         exit_code = 1
     else:

@@ -4,7 +4,7 @@ import subprocess, re, uuid, tempfile, sys, os
 from pandaclient.Client import insertTaskParams, getTaskParamsMap, killTask, pauseTask, resumeTask, getTaskStatus, finishTask, retryTask, reactivateTask, increase_attempt_nr, reload_input, getJediTaskDetails, get_files_in_datasets, getJobIDsJediTasksInTimeRange, getPandaIDsWithTaskID, getUserJobMetadata
 
 def main(task_id):
-    outds = "user.pandasv2.{0}".format(uuid.uuid4())
+    outds = f"user.pandasv2.{uuid.uuid4()}"
     with tempfile.TemporaryDirectory() as tmpdir:
         # go into temp dir
         cwd = os.getcwd()
@@ -44,21 +44,21 @@ def main(task_id):
     files_ret_old = get_files_in_datasets(task_id)
     metadata_old = getUserJobMetadata(task_id, verbose=True)
 
-    print("getTaskStatus returned: {0}".format(status_ret_old))
-    print("getTaskParams returned: {0}".format(params_ret_old))
-    print("getJediTaskDetails returned: {0}".format(details_ret_old))
-    print("pauseTask returned: {0}".format(pause_ret_old))
-    print("resumeTask returned: {0}".format(resume_ret_old))
-    print("killTask returned: {0}".format(kill_ret_old))
-    print("finishTask returned: {0}".format(finish_ret_old))
-    print("retryTask returned: {0}".format(retry_ret_old))
-    print("reactivateTask returned: {0}".format(reactivate_ret_old))
-    print("getJobIDsJediTasksInTimeRange returned: {0}".format(get_jobs_old))
-    print("getPandaIDsWithTaskID returned: {0}".format(get_ids_old))
-    print("increaseAttemptNr returned: {0}".format(increase_ret_old))
-    print("reloadInput returned: {0}".format(reload_ret_old))
-    print("get_files_in_datasets returned: {0}".format(files_ret_old))
-    print("getUserJobMetadata returned: {0}".format(metadata_old))
+    print(f"getTaskStatus returned: {status_ret_old}")
+    print(f"getTaskParams returned: {params_ret_old}")
+    print(f"getJediTaskDetails returned: {details_ret_old}")
+    print(f"pauseTask returned: {pause_ret_old}")
+    print(f"resumeTask returned: {resume_ret_old}")
+    print(f"killTask returned: {kill_ret_old}")
+    print(f"finishTask returned: {finish_ret_old}")
+    print(f"retryTask returned: {retry_ret_old}")
+    print(f"reactivateTask returned: {reactivate_ret_old}")
+    print(f"getJobIDsJediTasksInTimeRange returned: {get_jobs_old}")
+    print(f"getPandaIDsWithTaskID returned: {get_ids_old}")
+    print(f"increaseAttemptNr returned: {increase_ret_old}")
+    print(f"reloadInput returned: {reload_ret_old}")
+    print(f"get_files_in_datasets returned: {files_ret_old}")
+    print(f"getUserJobMetadata returned: {metadata_old}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

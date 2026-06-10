@@ -2,7 +2,7 @@ import uuid
 
 inFileList = ['file1','file2','file3']
 
-logDatasetName = 'panda.jeditest.log.{0}'.format(uuid.uuid4())
+logDatasetName = f'panda.jeditest.log.{uuid.uuid4()}'
 
 taskParamMap = {}
 
@@ -36,8 +36,8 @@ taskParamMap['log'] = {'dataset': logDatasetName,
                        'param_type':'log',
                        'token':'local',
                        'destination':'local',
-                       'value':'{0}.${{SN}}.log.tgz'.format(logDatasetName)}
-outDatasetName = 'panda.jeditest.{0}'.format(uuid.uuid4())
+                       'value':f'{logDatasetName}.${{SN}}.log.tgz'}
+outDatasetName = f'panda.jeditest.{uuid.uuid4()}'
 
 
 taskParamMap['jobParameters'] = [
@@ -51,7 +51,7 @@ taskParamMap['jobParameters'] = [
      'param_type':'output',
      'token':'local',     
      'destination':'local',
-     'value':'outputEVNTFile={0}.${{SN}}.root'.format(outDatasetName),
+     'value':f'outputEVNTFile={outDatasetName}.${{SN}}.root',
      'dataset':outDatasetName,
      'offset':1000,
      },

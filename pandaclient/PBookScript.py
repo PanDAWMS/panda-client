@@ -109,7 +109,7 @@ def intmain(pbookCore, comString, args_list):
                 print(pydoc.plain(pydoc.render_doc(func)))
                 return
             except Exception:
-                print("Unknown command : {0}".format(str(arg[0])))
+                print(f"Unknown command : {str(arg[0])}")
         # print available methods
         tmp_str = """
 The following commands are available:
@@ -492,7 +492,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
     if args_list:
         func_name = args_list.pop(0)
         if func_name not in locals():
-            print("ERROR : function {0} is undefined".format(func_name))
+            print(f"ERROR : function {func_name} is undefined")
             sys.exit(1)
 
         # convert arg string

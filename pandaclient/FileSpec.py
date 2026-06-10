@@ -3,7 +3,7 @@ file specification
 
 """
 
-class FileSpec(object):
+class FileSpec:
     # attributes
     _attributes = ('rowID','PandaID','GUID','lfn','type','dataset','status','prodDBlock',
                    'prodDBlockToken','dispatchDBlock','dispatchDBlockToken','destinationDBlock',

@@ -43,7 +43,7 @@ def getCmtProjects(dir="."):
     else:
         lines = []
         # use current dir as test area
-        tmpStr = "(in {0})".format(os.getcwd())
+        tmpStr = f"(in {os.getcwd()})"
         lines.append(tmpStr)
         # AtlasProject
         if not "AtlasProject" in os.environ:
@@ -53,7 +53,7 @@ def getCmtProjects(dir="."):
         if "AtlasOffline_VERSION" in os.environ:
             tmpStr = "{0} (in {0}/{1})".format("AtlasOffline", os.environ["AtlasOffline_VERSION"])
             lines.append(tmpStr)
-        prodVerStr = "{0}_VERSION".format(os.environ["AtlasProject"])
+        prodVerStr = "{}_VERSION".format(os.environ["AtlasProject"])
         if prodVerStr in os.environ:
             tmpStr = "{0} (in {0}/{1})".format(os.environ["AtlasProject"], os.environ[prodVerStr])
             lines.append(tmpStr)
@@ -90,7 +90,7 @@ def getAthenaVer(verbose=True):
                 tmpLog.error("cmt gave wrong info")
             return False, {}
     # private work area
-    res = re.search("\(in ([^\)]+)\)", lines[0])
+    res = re.search(r"\(in ([^\)]+)\)", lines[0])
     if res == None:
         print(lines[0])
         tmpLog.error("no TestArea. could not get path to private work area")
@@ -103,7 +103,7 @@ def getAthenaVer(verbose=True):
     nightVer = ""
     cmtConfig = ""
     for line in lines[1:]:
-        res = re.search("\(in ([^\)]+)\)", line)
+        res = re.search(r"\(in ([^\)]+)\)", line)
         if res is not None:
             items = line.split()
             if (
@@ -127,7 +127,7 @@ def getAthenaVer(verbose=True):
                 if athenaVer.startswith("rel") or useBuildStamp or isGitBase:
                     # extract base release
                     if not useCMake():
-                        tmpMatch = re.search("/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+", line)
+                        tmpMatch = re.search(r"/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+", line)
                         if tmpMatch is None:
                             tmpLog.error("unsupported nightly %s" % line)
                             return False, {}
@@ -139,7 +139,7 @@ def getAthenaVer(verbose=True):
                             tmpLog.error("Nightlies with AFS setup are unsupported on the grid. Setup with CVMFS")
                             return False, {}
                         if isGitBase:
-                            cacheVer = "-{0}_{1}".format(items[0], athenaVer)
+                            cacheVer = f"-{items[0]}_{athenaVer}"
                         else:
                             cacheVer = "-AtlasOffline_%s" % athenaVer
                         if useBuildStamp:
@@ -158,7 +158,7 @@ def getAthenaVer(verbose=True):
                 cacheTag = os.path.basename(res.group(1))
                 if items[0] == "AtlasProduction" and cacheTag.startswith("rel"):
                     # nightlies for cache
-                    tmpMatch = re.search("/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+", line)
+                    tmpMatch = re.search(r"/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+", line)
                     if tmpMatch is None:
                         tmpLog.error("unsupported nightly %s" % line)
                         return False, {}
@@ -167,19 +167,19 @@ def getAthenaVer(verbose=True):
                     break
                 elif items[0] == "TrigMC" and cacheTag.startswith("rel"):
                     # nightlies for cache
-                    tmpMatch = re.search("/([^/]+)(/rel_\d+)*/[^/]+/rel_\d+", line)
+                    tmpMatch = re.search(r"/([^/]+)(/rel_\d+)*/[^/]+/rel_\d+", line)
                     if tmpMatch is None:
                         tmpLog.error("unsupported nightly %s" % line)
                         return False, {}
-                    cacheVer = "-%s_%s" % (items[0], cacheTag)
+                    cacheVer = "-{}_{}".format(items[0], cacheTag)
                     athenaVer = tmpMatch.group(1)
                     break
                 elif isAthRelease(items[0]):
-                    cacheVer = "-%s_%s" % (items[0], cacheTag)
+                    cacheVer = "-{}_{}".format(items[0], cacheTag)
                 else:
                     # doesn't use when it is a base release since it is not installed in EGEE
-                    if re.search("^\d+\.\d+\.\d+$", cacheTag) is None:
-                        cacheVer = "-%s_%s" % (items[0], cacheTag)
+                    if re.search(r"^\d+\.\d+\.\d+$", cacheTag) is None:
+                        cacheVer = "-{}_{}".format(items[0], cacheTag)
                 # no more check for AthAnalysis
                 if isAthRelease(items[0]):
                     break
@@ -192,10 +192,10 @@ def getAthenaVer(verbose=True):
     # last resort
     if athenaVer == "":
         if "AtlasProject" in os.environ and "AtlasBuildBranch" in os.environ:
-            prodVerStr = "{0}_VERSION".format(os.environ["AtlasProject"])
+            prodVerStr = "{}_VERSION".format(os.environ["AtlasProject"])
             if prodVerStr in os.environ:
                 athenaVer = os.environ["AtlasBuildBranch"]
-                cacheVer = "-{0}_{1}".format(os.environ["AtlasProject"], os.environ[prodVerStr])
+                cacheVer = "-{}_{}".format(os.environ["AtlasProject"], os.environ[prodVerStr])
                 groupArea = ""
     # pack return values
     retVal = {
@@ -260,7 +260,7 @@ def extractRunConfig(jobO, supStream, shipinput, trf, verbose=False, useAMI=Fals
         com = "athena.py "
         if one_liner:
             com += '-c "%s" ' % one_liner
-        com += "%s %s/FakeAppMgr.py %s" % (amiJobO, baseName, jobO)
+        com += "{} {}/FakeAppMgr.py {}".format(amiJobO, baseName, jobO)
         if verbose:
             tmpLog.debug(com)
         # run ConfigExtractor for normal jobO
@@ -493,7 +493,7 @@ def convFullPathJobOsToStr():
     tmpStr = ""
     for fullJobO in fullPathJobOs:
         localName = fullPathJobOs[fullJobO]
-        tmpStr += "%s:%s," % (fullJobO, localName)
+        tmpStr += "{}:{},".format(fullJobO, localName)
     tmpStr = tmpStr[:-1]
     return tmpStr
 
@@ -511,21 +511,21 @@ def convStrToFullPathJobOs(tmpStr):
 def copyAthenaStuff(currentDir):
     baseName = os.environ["PANDA_SYS"] + "/etc/panda/share"
     for tmpFile in athenaStuff:
-        com = "cp -p %s/%s %s" % (baseName, tmpFile, currentDir)
+        com = "cp -p {}/{} {}".format(baseName, tmpFile, currentDir)
         commands_get_output(com)
     for fullJobO in fullPathJobOs:
         localName = fullPathJobOs[fullJobO]
-        com = "cp -p %s %s/%s" % (fullJobO, currentDir, localName)
+        com = "cp -p {} {}/{}".format(fullJobO, currentDir, localName)
         commands_get_output(com)
 
 
 # delete some athena specific files and copied jobOs
 def deleteAthenaStuff(currentDir):
     for tmpFile in athenaStuff:
-        com = "rm -f %s/%s" % (currentDir, tmpFile)
+        com = "rm -f {}/{}".format(currentDir, tmpFile)
         commands_get_output(com)
     for tmpFile in fullPathJobOs.values():
-        com = "rm -f %s/%s" % (currentDir, tmpFile)
+        com = "rm -f {}/{}".format(currentDir, tmpFile)
         commands_get_output(com)
 
 
@@ -561,7 +561,7 @@ def setExcludeFile(strExcludeFile):
         if tmpItem == "":
             continue
         # change . to \. for regexp
-        tmpItem = tmpItem.replace(".", "\.")
+        tmpItem = tmpItem.replace(".", r"\.")
         # change * to .* for regexp
         tmpItem = tmpItem.replace("*", ".*")
         # append
@@ -699,14 +699,14 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
             # converted to real path
             file = os.path.realpath(iFile)
             # remove special characters
-            sString = re.sub("[\+]", ".", os.path.realpath(_workArea))
+            sString = re.sub(r"[\+]", ".", os.path.realpath(_workArea))
             # look for /share/ , /python/, /i686-slc3-gcc323-opt/, .h
-            for target in ("share/", "python/", cmt_config + "/", "[^/]+\.h"):
+            for target in ("share/", "python/", cmt_config + "/", r"[^/]+\.h"):
                 res = re.search(sString + "/(.+)/" + target, file)
                 if res:
                     # append
                     pName = res.group(1)
-                    if target in ["[^/]+\.h"]:
+                    if target in [r"[^/]+\.h"]:
                         # convert PackageDir/PackageName/PackageName to PackageDir/PackageName
                         pName = re.sub("/[^/]+$", "", pName)
                     if pName not in _packages:
@@ -724,7 +724,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                             tmpDirList = os.listdir(_workArea + "/" + pName)
                             useSS = False
                             for tmpDir in tmpDirList:
-                                if re.search("-\d+-\d+-\d+$", tmpDir) is not None:
+                                if re.search(r"-\d+-\d+-\d+$", tmpDir) is not None:
                                     _packages.append(pName + "/" + tmpDir)
                                     useSS = True
                                     break
@@ -742,7 +742,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                     tmpDirList = os.listdir(_workArea + "/" + pName)
                     useSS = False
                     for tmpDir in tmpDirList:
-                        if re.search("-\d+-\d+-\d+$", tmpDir) is not None:
+                        if re.search(r"-\d+-\d+-\d+$", tmpDir) is not None:
                             fullPName = pName + "/" + tmpDir
                             if fullPName not in _packages:
                                 _packages.append(fullPName)
@@ -752,7 +752,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                     if not useSS:
                         _packages.append(pName)
                 else:
-                    tmpLog.warning("glue package %s not found under %s" % (pName, _workArea))
+                    tmpLog.warning("glue package {} not found under {}".format(pName, _workArea))
         # return
         return _packages
 
@@ -762,7 +762,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
         for tmpPatt in excludeFile:
             # reverse regexp change
             tmpPatt = tmpPatt.replace(".*", "*")
-            tmpPatt = tmpPatt.replace("\.", ".")
+            tmpPatt = tmpPatt.replace(r"\.", ".")
             excludePattern += " --exclude '%s'" % tmpPatt
         _curdir = os.getcwd()
         # change dir
@@ -785,7 +785,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                 # check exclude files
                 excludeFileFlag = False
                 for tmpPatt in excludeFile:
-                    if re.search(tmpPatt, "%s/%s" % (pack, item)) is not None:
+                    if re.search(tmpPatt, "{}/{}".format(pack, item)) is not None:
                         excludeFileFlag = True
                         break
                 if excludeFileFlag:
@@ -793,10 +793,10 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                 # run dir
                 if item == "run":
                     files = []
-                    getFileList("%s/%s/run" % (_workArea, pack), files, False)
+                    getFileList("{}/{}/run".format(_workArea, pack), files, False)
                     # not resolve symlink (appending instead of replacing for backward compatibility)
                     tmpFiles = []
-                    getFileList("%s/%s/run" % (_workArea, pack), tmpFiles, False, False)
+                    getFileList("{}/{}/run".format(_workArea, pack), tmpFiles, False, False)
                     for tmpFile in tmpFiles:
                         if tmpFile not in files:
                             files.append(tmpFile)
@@ -806,16 +806,16 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                         # archive .py/.dat/.C files only
                         if matchExtFile(file):
                             # remove special characters
-                            sString = re.sub("[\+]", ".", os.path.realpath(_workArea))
+                            sString = re.sub(r"[\+]", ".", os.path.realpath(_workArea))
                             relPath = re.sub("^%s/" % sString, "", file)
                             # if replace is failed or the file is symlink, try non-converted path names
                             if relPath.startswith("/") or os.path.islink(iFile):
-                                sString = re.sub("[\+]", ".", workArea)
+                                sString = re.sub(r"[\+]", ".", workArea)
                                 relPath = re.sub(sString + "/", "", iFile)
                             if os.path.islink(iFile):
-                                comStr = "tar -rh '%s' -f '%s' --exclude '%s'" % (relPath, _archiveFullName, excludePattern)
+                                comStr = "tar -rh '{}' -f '{}' --exclude '{}'".format(relPath, _archiveFullName, excludePattern)
                             else:
-                                comStr = "tar rf '%s' '%s' --exclude '%s'" % (_archiveFullName, relPath, excludePattern)
+                                comStr = "tar rf '{}' '{}' --exclude '{}'".format(_archiveFullName, relPath, excludePattern)
                             if verbose:
                                 print(relPath)
 
@@ -823,12 +823,12 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                     continue
                 # else
                 if dereferenceSymLinks:
-                    comStr = "tar rfh '%s' '%s/%s' --exclude '%s'" % (_archiveFullName, pack, item, excludePattern)
+                    comStr = "tar rfh '{}' '{}/{}' --exclude '{}'".format(_archiveFullName, pack, item, excludePattern)
                 else:
-                    comStr = "tar rf '%s' '%s/%s' --exclude '%s'" % (_archiveFullName, pack, item, excludePattern)
+                    comStr = "tar rf '{}' '{}/{}' --exclude '{}'".format(_archiveFullName, pack, item, excludePattern)
 
                 if verbose:
-                    print("%s/%s" % (pack, item))
+                    print("{}/{}".format(pack, item))
 
                 commands_fail_on_non_zero_exit_status(comStr, EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
         # back to previous dir
@@ -853,21 +853,21 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
     # create archive
     if archiveName == "":
         archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
-    archiveFullName = "%s/%s" % (tmpDir, archiveName)
+    archiveFullName = "{}/{}".format(tmpDir, archiveName)
     # archive private area
     archiveFiles(workArea, packages, archiveFullName)
     # archive current (run) dir
     files = []
     os.chdir(workArea)
-    getFileList("%s/%s" % (workArea, runDir), files, False, False)
+    getFileList("{}/{}".format(workArea, runDir), files, False, False)
     files_in_run_dir = []
     for file in files:
         # remove special characters
-        sString = re.sub("[\+]", ".", os.path.realpath(workArea))
+        sString = re.sub(r"[\+]", ".", os.path.realpath(workArea))
         relPath = re.sub(sString + "/", "", os.path.realpath(file))
         # if replace is failed or the file is symlink, try non-converted path names
         if relPath.startswith("/") or os.path.islink(file):
-            sString = re.sub("[\+]", ".", workArea)
+            sString = re.sub(r"[\+]", ".", workArea)
             relPath = re.sub(sString + "/", "", file)
         # archive .py/.dat/.C/.xml files only
         if not matchExtFile(relPath):
@@ -892,9 +892,9 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
         # archive
         if not alreadyFlag:
             if os.path.islink(file):
-                comStr = "tar -rh '%s' -f '%s'" % (relPath, archiveFullName)
+                comStr = "tar -rh '{}' -f '{}'".format(relPath, archiveFullName)
             else:
-                comStr = "tar rf '%s' '%s'" % (archiveFullName, relPath)
+                comStr = "tar rf '{}' '{}'".format(archiveFullName, relPath)
             if verbose:
                 print(relPath)
 
@@ -946,16 +946,16 @@ def archiveJobOFiles(workArea, runDir, currentDir, tmpDir, verbose, archiveName=
     # create archive
     if archiveName == "":
         archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
-    archiveFullName = "%s/%s" % (tmpDir, archiveName)
+    archiveFullName = "{}/{}".format(tmpDir, archiveName)
     # archive
     if verbose:
         tmpLog.debug("== py files ==")
     for file in files:
         # remove special characters
-        sString = re.sub("[\+]", ".", workArea)
+        sString = re.sub(r"[\+]", ".", workArea)
         relPath = re.sub(sString + "/", "", file)
         # append
-        comStr = "tar -rh '%s' -f '%s'" % (relPath, archiveFullName)
+        comStr = "tar -rh '{}' -f '{}'".format(relPath, archiveFullName)
         if verbose:
             print(relPath)
 
@@ -1012,7 +1012,7 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
         areaList.append(groupArea)
     # groupArea archive
     groupFileName = re.sub("^sources", "groupArea", archiveName)
-    groupFullName = "%s/%s" % (tmpDir, groupFileName)
+    groupFullName = "{}/{}".format(tmpDir, groupFileName)
     allFiles = []
     for areaName in areaList:
         # archive
@@ -1040,7 +1040,7 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
                 if itemDir != "InstallArea" and os.path.isdir(itemDir) and (not os.path.islink(itemDir)):
                     getCMTFiles(itemDir, cmtFiles)
         # remove special characters
-        sString = re.sub("[\+]", ".", os.path.realpath(areaName))
+        sString = re.sub(r"[\+]", ".", os.path.realpath(areaName))
         # archive files if they are under the area
         for file in files + cmtFiles:
             relPath = re.sub(sString + "/", "", os.path.realpath(file))
@@ -1057,10 +1057,10 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
                 if file not in allFiles:
                     # append
                     if file in files:
-                        comStr = "tar -rh '%s' -f '%s'" % (file, archiveFullName)
+                        comStr = "tar -rh '{}' -f '{}'".format(file, archiveFullName)
                     else:
                         # requirements files
-                        comStr = "tar -rh '%s' -f '%s'" % (file, groupFullName)
+                        comStr = "tar -rh '{}' -f '{}'".format(file, groupFullName)
                     allFiles.append(file)
                     if verbose:
                         print(file)
@@ -1071,7 +1071,7 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
     if groupArea != "" and (not nobuild):
         os.chdir(tmpDir)
         if os.path.exists(groupFileName):
-            comStr = "tar -rh '%s' -f '%s'" % (groupFileName, archiveFullName)
+            comStr = "tar -rh '{}' -f '{}'".format(groupFileName, archiveFullName)
             commands_fail_on_non_zero_exit_status(comStr, EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
             commands_get_output("rm -rf %s" % groupFullName)
@@ -1087,17 +1087,17 @@ def archiveWithCpack(withSource, tmpDir, verbose):
     else:
         tmpLog.info("archiving jobOs and modules with cpack")
         archiveName = "jobO.%s" % MiscUtils.wrappedUuidGen()
-    archiveFullName = "%s/%s" % (tmpDir, archiveName)
+    archiveFullName = "{}/{}".format(tmpDir, archiveName)
     # extract build dir
     buildDir = os.environ["CMAKE_PREFIX_PATH"]
     buildDir = os.path.dirname(buildDir.split(":")[0])
     _curdir = os.getcwd()
     os.chdir(buildDir)
-    tmpLog.info("the build directory is {0}".format(buildDir))
+    tmpLog.info(f"the build directory is {buildDir}")
     check_file = "CPackConfig.cmake"
     if os.path.exists(os.path.join(buildDir, check_file)):
         use_cpack = True
-        comStr = "cpack -B {0} -D CPACK_PACKAGE_FILE_NAME={1} -G TGZ ".format(tmpDir, archiveName)
+        comStr = f"cpack -B {tmpDir} -D CPACK_PACKAGE_FILE_NAME={archiveName} -G TGZ "
         comStr += '-D CPACK_PACKAGE_NAME="" -D CPACK_PACKAGE_VERSION="" -D CPACK_PACKAGE_VERSION_MAJOR="" '
         comStr += '-D CPACK_PACKAGE_VERSION_MINOR="" -D CPACK_PACKAGE_VERSION_PATCH="" '
         comStr += '-D CPACK_PACKAGE_DESCRIPTION="" '
@@ -1106,7 +1106,7 @@ def archiveWithCpack(withSource, tmpDir, verbose):
 
     else:
         use_cpack = False
-        tmpLog.info("skip cpack since {0} is missing in the build directory".format(check_file))
+        tmpLog.info(f"skip cpack since {check_file} is missing in the build directory")
 
     archiveName += ".tar"
     archiveFullName += ".tar"
@@ -1115,7 +1115,7 @@ def archiveWithCpack(withSource, tmpDir, verbose):
         # recreate tar to allow appending other files in the subsequent steps, as gzip decompress is not enough
         comStr = "tar xfz {0}.gz; tar cf {0} usr > /dev/null 2>&1; rm -rf usr _CPack_Packages {0}.gz".format(archiveName)
     else:
-        comStr = "tar cf {0} -T /dev/null > /dev/null 2>&1".format(archiveName)
+        comStr = f"tar cf {archiveName} -T /dev/null > /dev/null 2>&1"
 
     commands_fail_on_non_zero_exit_status(comStr, EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
@@ -1145,16 +1145,16 @@ def convertConfToOutput(
     # remove /
     outDSwoSlash = re.sub("/$", "", original_outDS)
     outDsNameBase = outDSwoSlash
-    tmpMatch = re.search("^([^\.]+)\.([^\.]+)\.", original_outDS)
+    tmpMatch = re.search(r"^([^\.]+)\.([^\.]+)\.", original_outDS)
     if tmpMatch is not None and original_outDS.endswith("/"):
-        outDSwoSlash = "%s.%s" % (tmpMatch.group(1), tmpMatch.group(2))
+        outDSwoSlash = "{}.{}".format(tmpMatch.group(1), tmpMatch.group(2))
         if descriptionInLFN != "":
             outDSwoSlash += descriptionInLFN
         outDSwoSlash += ".$JEDITASKID"
     # start conversion
     if runConfig.output.outNtuple:
         for sName in runConfig.output.outNtuple:
-            lfn = "%s.%s._${SN/P}.root" % (outDSwoSlash, sName)
+            lfn = "{}.{}._${{SN/P}}.root".format(outDSwoSlash, sName)
             tmpSuffix = "_%s" % sName
             dataset = outDsNameBase + tmpSuffix + "/"
             if "ntuple" not in outMap:
@@ -1201,7 +1201,7 @@ def convertConfToOutput(
                 sName = fsNameMap[fName]
             else:
                 fsNameMap[fName] = sName
-            lfn = "%s.%s._${SN/P}.root" % (outDSwoSlash, sName)
+            lfn = "{}.{}._${{SN/P}}.root".format(outDSwoSlash, sName)
             tmpSuffix = "_%s" % sName
             dataset = outDsNameBase + tmpSuffix + "/"
             if sName not in sNameList:
@@ -1212,7 +1212,7 @@ def convertConfToOutput(
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outTHIST:
         for sName in runConfig.output.outTHIST:
-            lfn = "%s.%s._${SN/P}.root" % (outDSwoSlash, sName)
+            lfn = "{}.{}._${{SN/P}}.root".format(outDSwoSlash, sName)
             tmpSuffix = "_%s" % sName
             dataset = outDsNameBase + tmpSuffix + "/"
             if "THIST" not in outMap:
@@ -1221,7 +1221,7 @@ def convertConfToOutput(
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outIROOT:
         for sIndex, sName in enumerate(runConfig.output.outIROOT):
-            lfn = "%s.iROOT%s._${SN/P}.%s" % (outDSwoSlash, sIndex, sName)
+            lfn = "{}.iROOT{}._${{SN/P}}.{}".format(outDSwoSlash, sIndex, sName)
             tmpSuffix = "_iROOT%s" % sIndex
             dataset = outDsNameBase + tmpSuffix + "/"
             outMap["IROOT"].append((sName, lfn))
@@ -1245,7 +1245,7 @@ def convertConfToOutput(
                 getExtendedExtStreamName(sIndex, sName, appendFileFieldToStreamName, useEXTStreamName) if extOutStreams is None else extOutStreams[sIndex]
             )
             streams.append(tmpStreamName)
-            lfn = "%s.%s._${SN/P}.%s" % (outDSwoSlash, tmpStreamName, sName)
+            lfn = "{}.{}._${{SN/P}}.{}".format(outDSwoSlash, tmpStreamName, sName)
             tmpSuffix = "_%s" % tmpStreamName
             dataset = outDsNameBase + tmpSuffix + "/"
             outMap["IROOT"].append((origSName, lfn))
@@ -1255,7 +1255,7 @@ def convertConfToOutput(
             sys.exit(EC_Config)
     if runConfig.output.outTAGX:
         for sName, oName in runConfig.output.outTAGX:
-            lfn = "%s.%s._${SN/P}.%s" % (outDSwoSlash, sName, oName)
+            lfn = "{}.{}._${{SN/P}}.{}".format(outDSwoSlash, sName, oName)
             tmpSuffix = "_%s" % sName
             dataset = outDsNameBase + tmpSuffix + "/"
             if "IROOT" not in outMap:
@@ -1281,7 +1281,7 @@ def convertConfToOutput(
         outMap["BS"] = lfn
         paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outSelBS:
-        lfn = "%s.%s._${SN/P}.data" % (outDSwoSlash, runConfig.output.outSelBS)
+        lfn = "{}.{}._${{SN/P}}.data".format(outDSwoSlash, runConfig.output.outSelBS)
         tmpSuffix = "_SelBS"
         dataset = outDsNameBase + tmpSuffix + "/"
         if "IROOT" not in outMap:
@@ -1290,7 +1290,7 @@ def convertConfToOutput(
         paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outStreamG:
         for sName, sOrigFileName in runConfig.output.outStreamG:
-            lfn = "%s.%s._${SN/P}.pool.root" % (outDSwoSlash, sName)
+            lfn = "{}.{}._${{SN/P}}.pool.root".format(outDSwoSlash, sName)
             tmpSuffix = "_%s" % sName
             dataset = outDsNameBase + tmpSuffix + "/"
             outMap["IROOT"].append((sOrigFileName, lfn))
@@ -1301,7 +1301,7 @@ def convertConfToOutput(
             foundLFN = ""
             if sAsso == "None":
                 # non-associated metadata
-                lfn = "%s.META%s._${SN/P}.root" % (outDSwoSlash, iMeta)
+                lfn = "{}.META{}._${{SN/P}}.root".format(outDSwoSlash, iMeta)
                 tmpSuffix = "_META%s" % iMeta
                 dataset = outDsNameBase + tmpSuffix + "/"
                 paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
@@ -1338,7 +1338,7 @@ def convertConfToOutput(
                 outMap["Meta"].append((sName, foundLFN))
     if runConfig.output.outMS:
         for sName, sAsso in runConfig.output.outMS:
-            lfn = "%s.%s._${SN/P}.pool.root" % (outDSwoSlash, sName)
+            lfn = "{}.{}._${{SN/P}}.pool.root".format(outDSwoSlash, sName)
             tmpSuffix = "_%s" % sName
             dataset = outDsNameBase + tmpSuffix + "/"
             if "IROOT" not in outMap:
@@ -1377,7 +1377,7 @@ def convertConfToOutput(
                 checked = check_invalid_char(stream, is_file=True)
                 if checked is not None:
                     tmp_log = PLogger.getPandaLogger()
-                    tmp_log.error('Invalid character "%s" used in output filename %s' % (checked, stream))
+                    tmp_log.error('Invalid character "{}" used in output filename {}'.format(checked, stream))
                     sys.exit(EC_Config)
 
     # set destination
@@ -1402,7 +1402,7 @@ def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None
             is_json = True
         except Exception as e:
             tmp_log = PLogger.getPandaLogger()
-            tmp_log.error("failed to parse architecture %s : %s" % (architecture, e))
+            tmp_log.error("failed to parse architecture {} : {}".format(architecture, e))
             sys.exit(EC_Config)
     # get CMTCONFIG
     cmt_config = ""
@@ -1464,7 +1464,7 @@ def checkCmtConfig(localCmtConfig, userCmtConfig, noBuild):
     if userCmtConfig in ["", None]:
         return True
     # CVMFS version format
-    if re.search("-gcc\d+\.\d+$", userCmtConfig) is not None:
+    if re.search(r"-gcc\d+\.\d+$", userCmtConfig) is not None:
         return True
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -1473,7 +1473,7 @@ def checkCmtConfig(localCmtConfig, userCmtConfig, noBuild):
         return True
     # user-specified CMTCONFIG is inconsitent with local CMTCONFIG
     if userCmtConfig != localCmtConfig and noBuild:
-        errStr = "You cannot use --noBuild when --cmtConfig=%s is inconsistent with local CMTCONFIG=%s " % (userCmtConfig, localCmtConfig)
+        errStr = "You cannot use --noBuild when --cmtConfig={} is inconsistent with local CMTCONFIG={} ".format(userCmtConfig, localCmtConfig)
         errStr += "since you need re-compile source files on remote worker-node. Please remove --noBuild"
         tmpLog.error(errStr)
         return False

@@ -13,7 +13,7 @@ from .time_utils import naive_utcnow
 reserveChangedState = False
 
 
-class JobSpec(object):
+class JobSpec:
     # attributes
     _attributes = (
         "PandaID",
@@ -261,7 +261,7 @@ class JobSpec(object):
         Print all attributes of the JobSpec instance with their values.
         """
         for attr in self._attributes:
-            print("{0}: {1}".format(attr, getattr(self, attr)))
+            print(f"{attr}: {getattr(self, attr)}")
 
     # reset changed attribute list
     def resetChangedList(self):
@@ -401,7 +401,7 @@ class JobSpec(object):
     def bindUpdateExpression(cls):
         ret = ""
         for attr in cls._attributes:
-            ret += "%s=:%s," % (attr, attr)
+            ret += "{}=:{},".format(attr, attr)
         ret = ret[:-1]
         ret += " "
         return ret
@@ -431,7 +431,7 @@ class JobSpec(object):
         ret = ""
         for attr in self._attributes:
             if attr in self._changedAttrs:
-                ret += "%s=:%s," % (attr, attr)
+                ret += "{}=:{},".format(attr, attr)
         ret = ret[:-1]
         ret += " "
         return ret
@@ -466,9 +466,9 @@ class JobSpec(object):
     # set LB number
     def setLumiBlockNr(self, lumiBlockNr):
         if self.specialHandling in ["", None, "NULL"]:
-            self.specialHandling = "lb:{0}".format(lumiBlockNr)
+            self.specialHandling = f"lb:{lumiBlockNr}"
         else:
-            self.specialHandling += ",lb:{0}".format(lumiBlockNr)
+            self.specialHandling += f",lb:{lumiBlockNr}"
 
     # get LB number
     def getLumiBlockNr(self):
@@ -498,9 +498,9 @@ class JobSpec(object):
     # set home cloud
     def setHomeCloud(self, homeCloud):
         if self.specialHandling in ["", None, "NULL"]:
-            self.specialHandling = "hc:{0}".format(homeCloud)
+            self.specialHandling = f"hc:{homeCloud}"
         else:
-            self.specialHandling += ",hc:{0}".format(homeCloud)
+            self.specialHandling += f",hc:{homeCloud}"
 
     # get cloud
     def getCloud(self):
@@ -545,7 +545,7 @@ class JobSpec(object):
     def getAltStgOut(self):
         if self.specialHandling is not None:
             for tmpItem in self.specialHandling.split(","):
-                if tmpItem.startswith("{0}:".format(self._tagForSH["altStgOut"])):
+                if tmpItem.startswith("{}:".format(self._tagForSH["altStgOut"])):
                     return tmpItem.split(":")[-1]
         return None
 
@@ -558,10 +558,10 @@ class JobSpec(object):
         # remove old value
         newItems = []
         for tmpItem in items:
-            if tmpItem.startswith("{0}:".format(self._tagForSH["altStgOut"])):
+            if tmpItem.startswith("{}:".format(self._tagForSH["altStgOut"])):
                 continue
             newItems.append(tmpItem)
-        newItems.append("{0}:{1}".format(self._tagForSH["altStgOut"], mode))
+        newItems.append("{}:{}".format(self._tagForSH["altStgOut"], mode))
         self.specialHandling = ",".join(newItems)
 
     # put log files to OS
@@ -591,7 +591,7 @@ class JobSpec(object):
         for item in items:
             if not item.startswith(self._tagForSH["requestType"]):
                 newItems.append(item)
-        newItems.append("{0}={1}".format(self._tagForSH["requestType"], reqType))
+        newItems.append("{}={}".format(self._tagForSH["requestType"], reqType))
         self.specialHandling = ",".join(newItems)
 
     # sort files
@@ -854,7 +854,7 @@ class JobSpec(object):
     def get_ram_for_retry(self):
         if self.specialHandling is not None:
             for tmpItem in self.specialHandling.split(","):
-                if tmpItem.startswith("{0}:".format(self._tagForSH['retryRam'])):
+                if tmpItem.startswith("{}:".format(self._tagForSH['retryRam'])):
                     return int(tmpItem.split(":")[-1])
         return None
 
@@ -867,10 +867,10 @@ class JobSpec(object):
         # remove old value
         newItems = []
         for tmpItem in items:
-            if tmpItem.startswith("{0}:".format(self._tagForSH['retryRam'])):
+            if tmpItem.startswith("{}:".format(self._tagForSH['retryRam'])):
                 continue
             newItems.append(tmpItem)
-        newItems.append("{0}:{1}".format(self._tagForSH['retryRam'], val))
+        newItems.append("{}:{}".format(self._tagForSH['retryRam'], val))
         self.specialHandling = ",".join(newItems)
 
     # dump to json-serializable
@@ -959,7 +959,7 @@ class JobSpec(object):
             items = []
         else:
             items = self.specialHandling.split(",")
-        items.append("{0}={1}".format(self._tagForSH['taskQueuedTime'], queued_time))
+        items.append("{}={}".format(self._tagForSH['taskQueuedTime'], queued_time))
         self.specialHandling = ",".join(items)
 
 
@@ -985,7 +985,7 @@ def get_task_queued_time(special_handling):
     try:
         if special_handling is not None:
             for item in special_handling.split(","):
-                if item.startswith("{0}=".format(JobSpec._tagForSH['taskQueuedTime'])):
+                if item.startswith("{}=".format(JobSpec._tagForSH['taskQueuedTime'])):
                     return datetime.datetime.fromtimestamp(float(item.split("=")[-1]), datetime.timezone.utc)
     except Exception:
         pass

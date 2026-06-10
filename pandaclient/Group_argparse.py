@@ -9,7 +9,7 @@ class ActionWithUnicodeCheck(argparse.Action):
             try:
                 values.encode()
             except Exception:
-                parser.exit(1, message="ERROR: argument --{0} cannot be encoded with utf-8: '{1}'\n".format(self.dest, values))
+                parser.exit(1, message=f"ERROR: argument --{self.dest} cannot be encoded with utf-8: '{values}'\n")
         setattr(namespace, self.dest, values)
 
 
@@ -18,7 +18,7 @@ class GroupArgParser(argparse.ArgumentParser):
         self.groups_dict = OrderedDict()
         self.briefHelp = None
         self.examples =  ""
-        super(GroupArgParser, self).__init__(usage=usage, conflict_handler=conflict_handler)
+        super().__init__(usage=usage, conflict_handler=conflict_handler)
 
     def set_examples(self, examples):
         self.examples = examples
@@ -66,7 +66,7 @@ class GroupArgParser(argparse.ArgumentParser):
     class MyList(list):
         # list subclass that uses upper() when testing for 'in'
         def __contains__(self, other):
-            return super(GroupArgParser.MyList,self).__contains__(other.upper())
+            return super().__contains__(other.upper())
 
     class print_briefHelp(argparse.Action):
          def __call__(self, parser, namespace, values, option_string=None):
@@ -77,7 +77,7 @@ class GroupArgParser(argparse.ArgumentParser):
          def __init__(self, option_strings, dest, nargs=None, **kwargs):
              if nargs is not None:
                  raise ValueError("nargs not allowed")
-             super(GroupArgParser.print_groupHelp, self).__init__(option_strings, dest, **kwargs)
+             super().__init__(option_strings, dest, **kwargs)
 
          def __call__(self, parser, namespace, values, option_string=None):
              values = values.upper()

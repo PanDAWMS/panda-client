@@ -409,7 +409,7 @@ action = group_evtFilter.add_argument(
     dest="goodRunListDS",
     default="",
     type=str,
-    help='A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used',
+    help=r'A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used',
 )
 group_input.shareWithMe(action)
 group_evtFilter.add_argument(
@@ -450,7 +450,7 @@ action = group_evtFilter.add_argument(
     dest="eventPickDS",
     default="",
     type=str,
-    help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*',
+    help=r'A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*',
 )
 group_input.shareWithMe(action)
 group_evtFilter.add_argument(
@@ -459,7 +459,7 @@ group_evtFilter.add_argument(
     dest="eventPickAmiTag",
     default="",
     type=str,
-    help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*',
+    help=r'AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*',
 )
 group_evtFilter.add_argument(
     "--eventPickWithGUID",
@@ -896,21 +896,21 @@ group_build.add_argument(
     action="store",
     dest="excludeFile",
     default="",
-    help='specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C',
+    help=r'specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C',
 )
 group_output.add_argument(
     "--extOutFile",
     action="store",
     dest="extOutFile",
     default="",
-    help='A comma-separated list of extra output files which cannot be extracted automatically. Either \ or "" is required when a wildcard is used. e.g., output1.txt,output2.dat,JiveXML_\*.xml',
+    help=r'A comma-separated list of extra output files which cannot be extracted automatically. Either \ or "" is required when a wildcard is used. e.g., output1.txt,output2.dat,JiveXML_\*.xml',
 )
 group_output.add_argument(
     "--supStream",
     action="store",
     dest="supStream",
     default="",
-    help='suppress some output streams. Either \ or "" is required when a wildcard is used. e.g., ESD,TAG,GLOBAL,StreamDESD\* ',
+    help=r'suppress some output streams. Either \ or "" is required when a wildcard is used. e.g., ESD,TAG,GLOBAL,StreamDESD\* ',
 )
 group_build.add_argument(
     "--gluePackages",
@@ -1402,7 +1402,7 @@ options, args = optP.parse_known_args()
 
 if options.verbose:
     print(options)
-    print("args={0}".format(args))
+    print(f"args={args}")
     print("")
 
 # load json
@@ -1421,17 +1421,17 @@ if options.loadJson is not None:
             args = v
             continue
         if not hasattr(options, k):
-            print("ERROR: unknown parameter {0} in {1}".format(k, options.loadJson))
+            print(f"ERROR: unknown parameter {k} in {options.loadJson}")
             sys.exit(1)
         else:
             setattr(options, k, v)
         if v is True:
-            jsonExecStr += " --{0}".format(origK)
+            jsonExecStr += f" --{origK}"
         else:
             if isinstance(v, str):
-                jsonExecStr += " --{0}='{1}'".format(origK, v)
+                jsonExecStr += f" --{origK}='{v}'"
             else:
-                jsonExecStr += " --{0}={1}".format(origK, v)
+                jsonExecStr += f" --{origK}={v}"
     if options.verbose:
         print("options after loading json")
         print(options)
@@ -1459,7 +1459,7 @@ for tmp_arg in args:
     if tmp_arg == "--":
         break
     if tmp_arg.startswith("-"):
-        tmpLog.error("unrecognized argument: {0}".format(tmp_arg))
+        tmpLog.error(f"unrecognized argument: {tmp_arg}")
         sys.exit(EC_Config)
 
 # use dev server
@@ -1492,7 +1492,7 @@ if options.containerImage != "":
 # validate --transferType
 invalid = get_invalid_transfer_types(options.transferType)
 if invalid:
-    tmpLog.error("--transferType: invalid value(s) {0}. Allowed: {1}".format(", ".join(sorted(invalid)), ", ".join(sorted(VALID_TRANSFER_TYPES))))
+    tmpLog.error("--transferType: invalid value(s) {}. Allowed: {}".format(", ".join(sorted(invalid)), ", ".join(sorted(VALID_TRANSFER_TYPES))))
     sys.exit(EC_Config)
 
 # files to be deleted
@@ -1775,9 +1775,9 @@ if options.maxCpuCount > Client.maxCpuCountLimit:
 
 # create tmp dir
 if options.tmpDir == "":
-    tmpDir = "%s/%s" % (currentDir, MiscUtils.wrappedUuidGen())
+    tmpDir = "{}/{}".format(currentDir, MiscUtils.wrappedUuidGen())
 else:
-    tmpDir = "%s/%s" % (os.path.abspath(options.tmpDir), MiscUtils.wrappedUuidGen())
+    tmpDir = "{}/{}".format(os.path.abspath(options.tmpDir), MiscUtils.wrappedUuidGen())
 os.makedirs(tmpDir)
 
 # set tmp dir in Client
@@ -1838,7 +1838,7 @@ tmpLog.info("using CMTCONFIG=%s" % options.cmtConfig)
 
 # get run directory
 # remove special characters
-sString = re.sub("[\+]", ".", workArea)
+sString = re.sub(r"[\+]", ".", workArea)
 runDir = re.sub("^%s" % sString, "", currentDir)
 if runDir == currentDir and not AthenaUtils.useCMake() and options.containerImage == "":
     errMsg = "You need to run pathena in a directory under %s. " % workArea
@@ -1877,7 +1877,7 @@ if options.eventPickEvtList != "":
         options.inDS = "dummy"
     tmpLog.info("requested Event Picking service to stage input as %s" % options.inDS)
     # make run/event list file for event picking
-    eventPickRunEvtDat = "%s/ep_%s.dat" % (currentDir, MiscUtils.wrappedUuidGen())
+    eventPickRunEvtDat = "{}/ep_{}.dat".format(currentDir, MiscUtils.wrappedUuidGen())
     evI = open(options.eventPickEvtList)
     evO = open(eventPickRunEvtDat, "w")
     evO.write(evI.read())
@@ -1943,7 +1943,7 @@ if not options.trf:
         for fileName in runConfig.other.inputFiles:
             # append .root for tag files
             if runConfig.other.inColl:
-                match = re.search("\.root(\.\d+)*$", fileName)
+                match = re.search(r"\.root(\.\d+)*$", fileName)
                 if match is None:
                     fileName = "%s.root" % fileName
             # check ship files in the current dir
@@ -2049,13 +2049,13 @@ else:
                 if reductionItem == "":
                     continue
                 # make actual output names for derivation
-                tmpOutName = "{0}_{1}.{2}".format(dxaod_output_format, reductionItem, dxaod_output_filename)
+                tmpOutName = f"{dxaod_output_format}_{reductionItem}.{dxaod_output_filename}"
                 if tmpOutName not in options.extOutFile:
                     options.extOutFile.append(tmpOutName)
                     oneOut = True
     # look for %OUT
     for tmpItem in tmpString.split():
-        match = re.search("\%OUT\.([^ \"',]+)", tmpItem)
+        match = re.search("\\%OUT\\.([^ \"',]+)", tmpItem)
         if match:
             # append basenames to extOutFile
             tmpOutName = match.group(1)
@@ -2250,10 +2250,10 @@ if True:
     if options.inTarBall == "" and options.tarBallViaDDM == "":
         # extract jobOs with full pathnames
         for tmpItem in jobO.split():
-            if re.search("^/.*\.py$", tmpItem) is not None:
+            if re.search(r"^/.*\.py$", tmpItem) is not None:
                 # set random name to avoid overwriting
                 tmpName = tmpItem.split("/")[-1]
-                tmpName = "%s_%s" % (MiscUtils.wrappedUuidGen(), tmpName)
+                tmpName = "{}_{}".format(MiscUtils.wrappedUuidGen(), tmpName)
                 # set
                 AthenaUtils.fullPathJobOs[tmpItem] = tmpName
 
@@ -2307,7 +2307,7 @@ if True:
         # remove some athena specific files
         AthenaUtils.deleteAthenaStuff(currentDir)
         if not os.path.exists(archiveName):
-            commands_get_status_output("tar -cf {0} -T /dev/null".format(archiveName))
+            commands_get_status_output(f"tar -cf {archiveName} -T /dev/null")
         # compress
         status, out = commands_get_status_output("gzip -f %s" % archiveName)
         if status != 0 or options.verbose:
@@ -2328,7 +2328,7 @@ if True:
                 break
             time.sleep(5)
         if status != 0:
-            tmpLog.error("Failed to expand sandbox. {0}".format(out))
+            tmpLog.error(f"Failed to expand sandbox. {out}")
             sys.exit(EC_Archive)
         symlinks = []
         for line in out.split("\n"):
@@ -2353,10 +2353,10 @@ if True:
         # use a saved copy
         if not (options.noBuild and not options.noCompile):
             archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
-            archiveFullName = "%s/%s" % (tmpDir, archiveName)
+            archiveFullName = "{}/{}".format(tmpDir, archiveName)
         else:
             archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
-            archiveFullName = "%s/%s" % (tmpDir, archiveName)
+            archiveFullName = "{}/{}".format(tmpDir, archiveName)
         # make copy to avoid name duplication
         shutil.copy(options.inTarBall, archiveFullName)
 
@@ -2422,7 +2422,7 @@ else:
     taskParamMap["container_name"] = options.containerImage
 taskParamMap["transUses"] = athenaVer
 taskParamMap["transHome"] = "AnalysisTransforms" + cacheVer + nightVer
-taskParamMap["processingType"] = "panda-client-{0}-jedi-athena".format(PandaToolsPkgInfo.release_version)
+taskParamMap["processingType"] = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-athena"
 if options.trf:
     taskParamMap["processingType"] += "-trf"
 if options.eventPickEvtList != "":
@@ -2535,11 +2535,11 @@ taskParamMap["log"] = {
     "container": logDatasetName,
     "type": "template",
     "param_type": "log",
-    "value": "{0}.$JEDITASKID.${{SN}}.log.tgz".format(logDatasetName[:-1]),
+    "value": f"{logDatasetName[:-1]}.$JEDITASKID.${{SN}}.log.tgz",
 }
 
 if options.addNthFieldOfInFileToLFN != "":
-    loglfn = "{0}.{1}".format(*logDatasetName.split(".")[:2])
+    loglfn = "{}.{}".format(*logDatasetName.split(".")[:2])
     loglfn += "${MIDDLENAME}.$JEDITASKID._${SN}.log.tgz"
     taskParamMap["log"]["value"] = loglfn
 if options.spaceToken != "":
@@ -2565,7 +2565,7 @@ taskParamMap["jobParameters"] = []
 
 # build
 if options.noBuild and not options.noCompile:
-    tmp_str = "-a {0}".format(archiveName)
+    tmp_str = f"-a {archiveName}"
     if options.tarBallViaDDM:
         tmp_str += " --noTarballDownload"
 else:
@@ -2580,7 +2580,7 @@ if runConfig.other.rndmStream != []:
     pStr1 = "AtRndmGenSvc=Service('AtRndmGenSvc');AtRndmGenSvc.Seeds=["
     for stream in runConfig.other.rndmStream:
         num = runConfig.other.rndmNumbers[runConfig.other.rndmStream.index(stream)]
-        pStr1 += "'%s ${RNDMSEED} %s'," % (stream, num[1])
+        pStr1 += "'{} ${{RNDMSEED}} {}',".format(stream, num[1])
     pStr1 += "]"
     dictItem = {
         "type": "template",
@@ -2601,13 +2601,13 @@ if options.nEventsPerJob > 0 and (not options.trf):
     else:
         param2 = "EventSelector.SkipEvents=${SKIPEVENTS}"
         # @ Form a string to add to job parameters
-        pStr2 = "%s;%s" % (param1, param2)
+        pStr2 = "{};{}".format(param1, param2)
 # set pre execution parameter
 if pStr1 != "" or pStr2 != "":
     if pStr1 == "" or pStr2 == "":
         preStr = pStr1 + pStr2
     else:
-        preStr = "%s;%s" % (pStr1, pStr2)
+        preStr = "{};{}".format(pStr1, pStr2)
     taskParamMap["jobParameters"] += [
         {
             "type": "constant",
@@ -2625,7 +2625,7 @@ if pStr1 != "" or pStr2 != "":
 
 # misc
 param = "--sourceURL ${SURL} "
-param += "-r {0} ".format(runDir)
+param += f"-r {runDir} "
 # addPoolFC
 if options.addPoolFC != "":
     param += "--addPoolFC %s " % options.addPoolFC
@@ -2689,7 +2689,7 @@ if options.inDS != "":
         "value": '-i "${IN/T}"',
         "dataset": options.inDS,
         "expand": True,
-        "exclude": "\.log\.tgz(\.\d+)*$",
+        "exclude": r"\.log\.tgz(\.\d+)*$",
     }
     if options.notExpandInDS:
         del tmpDict["expand"]
@@ -2720,7 +2720,7 @@ elif options.goodRunListXML != "":
         "value": '-i "${IN/T}"',
         "dataset": "%%INDS%%",
         "expand": True,
-        "exclude": "\.log\.tgz(\.\d+)*$",
+        "exclude": r"\.log\.tgz(\.\d+)*$",
         "files": "%%INLFNLIST%%",
     }
     taskParamMap["jobParameters"].append(tmpDict)
@@ -2786,7 +2786,7 @@ if options.minDS != "":
         "input",
         hidden=True,
         expand=expand_flag,
-        exclude="\.log\.tgz(\.\d+)*$",
+        exclude=r"\.log\.tgz(\.\d+)*$",
         nFilesPerJob=options.nMin,
         useNumFilesAsRatio=True,
         randomAtt=options.randomMin,
@@ -2808,7 +2808,7 @@ if options.lowMinDS != "":
         "input",
         hidden=True,
         expand=expand_flag,
-        exclude="\.log\.tgz(\.\d+)*$",
+        exclude=r"\.log\.tgz(\.\d+)*$",
         nFilesPerJob=options.nLowMin,
         useNumFilesAsRatio=True,
         randomAtt=options.randomMin,
@@ -2830,7 +2830,7 @@ if options.highMinDS != "":
         "input",
         hidden=True,
         expand=expand_flag,
-        exclude="\.log\.tgz(\.\d+)*$",
+        exclude=r"\.log\.tgz(\.\d+)*$",
         nFilesPerJob=options.nHighMin,
         useNumFilesAsRatio=True,
         randomAtt=options.randomMin,
@@ -2845,7 +2845,7 @@ minBiasStream = minBiasStream[:-1]
 if minBiasStream != "":
     dictItem = {
         "type": "constant",
-        "value": '-m "${{{0}/T}}"'.format(minBiasStream),
+        "value": f'-m "${{{minBiasStream}/T}}"',
     }
     taskParamMap["jobParameters"] += [dictItem]
 
@@ -2861,7 +2861,7 @@ if options.cavDS != "":
         options.cavDS,
         "input",
         expand=expand_flag,
-        exclude="\.log\.tgz(\.\d+)*$",
+        exclude=r"\.log\.tgz(\.\d+)*$",
         nFilesPerJob=options.nCav,
         useNumFilesAsRatio=True,
         randomAtt=options.randomCav,
@@ -2881,7 +2881,7 @@ if options.beamHaloDS != "":
         "input",
         hidden=True,
         expand=True,
-        exclude="\.log\.tgz(\.\d+)*$",
+        exclude=r"\.log\.tgz(\.\d+)*$",
         nFilesPerJob=options.nBeamHalo,
         useNumFilesAsRatio=True,
     )
@@ -2897,7 +2897,7 @@ if options.beamHaloADS != "":
         "input",
         hidden=True,
         expand=True,
-        exclude="\.log\.tgz(\.\d+)*$",
+        exclude=r"\.log\.tgz(\.\d+)*$",
         nFilesPerJob=options.nBeamHaloA,
         useNumFilesAsRatio=True,
     )
@@ -2913,7 +2913,7 @@ if options.beamHaloCDS != "":
         "input",
         hidden=True,
         expand=True,
-        exclude="\.log\.tgz(\.\d+)*$",
+        exclude=r"\.log\.tgz(\.\d+)*$",
         nFilesPerJob=options.nBeamHaloC,
         useNumFilesAsRatio=True,
     )
@@ -2926,7 +2926,7 @@ beamHaloStream = beamHaloStream[:-1]
 if beamHaloStream != "":
     dictItem = {
         "type": "constant",
-        "value": '--beamHalo "${{{0}/T}}"'.format(beamHaloStream),
+        "value": f'--beamHalo "${{{beamHaloStream}/T}}"',
     }
     taskParamMap["jobParameters"] += [dictItem]
 
@@ -2940,7 +2940,7 @@ if options.beamGasDS != "":
         "input",
         hidden=True,
         expand=True,
-        exclude="\.log\.tgz(\.\d+)*$",
+        exclude=r"\.log\.tgz(\.\d+)*$",
         nFilesPerJob=options.nBeamGas,
         useNumFilesAsRatio=True,
     )
@@ -2954,7 +2954,7 @@ if options.beamGasHDS != "":
         "input",
         hidden=True,
         expand=True,
-        exclude="\.log\.tgz(\.\d+)*$",
+        exclude=r"\.log\.tgz(\.\d+)*$",
         nFilesPerJob=options.nBeamGasH,
         useNumFilesAsRatio=True,
     )
@@ -2968,7 +2968,7 @@ if options.beamGasCDS != "":
         "input",
         hidden=True,
         expand=True,
-        exclude="\.log\.tgz(\.\d+)*$",
+        exclude=r"\.log\.tgz(\.\d+)*$",
         nFilesPerJob=options.nBeamGasC,
         useNumFilesAsRatio=True,
     )
@@ -2982,7 +2982,7 @@ if options.beamGasODS != "":
         "input",
         hidden=True,
         expand=True,
-        exclude="\.log\.tgz(\.\d+)*$",
+        exclude=r"\.log\.tgz(\.\d+)*$",
         nFilesPerJob=options.nBeamGasO,
         useNumFilesAsRatio=True,
     )
@@ -2993,7 +2993,7 @@ beamGasStream = beamGasStream[:-1]
 if beamGasStream != "":
     dictItem = {
         "type": "constant",
-        "value": '--beamGas "${{{0}/T}}"'.format(beamGasStream),
+        "value": f'--beamGas "${{{beamGasStream}/T}}"',
     }
     taskParamMap["jobParameters"] += [dictItem]
 
@@ -3163,13 +3163,13 @@ else:
 
 # good run list
 if options.goodRunListXML != "":
-    jobParameters = "--goodRunListXML {0} ".format(options.goodRunListXML)
+    jobParameters = f"--goodRunListXML {options.goodRunListXML} "
     if options.goodRunDataType != "":
-        jobParameters += "--goodRunListDataType {0} ".format(options.goodRunDataType)
+        jobParameters += f"--goodRunListDataType {options.goodRunDataType} "
     if options.goodRunProdStep != "":
-        jobParameters += "--goodRunListProdStep {0} ".format(options.goodRunProdStep)
+        jobParameters += f"--goodRunListProdStep {options.goodRunProdStep} "
     if options.goodRunListDS != "":
-        jobParameters += "--goodRunListDS {0} ".format(options.goodRunListDS)
+        jobParameters += f"--goodRunListDS {options.goodRunListDS} "
     jobParameters += "--sourceURL ${SURL} "
     # set task param
     taskParamMap["preproSpec"] = {
@@ -3181,13 +3181,13 @@ if options.goodRunListXML != "":
 
 # merging
 if options.mergeOutput:
-    jobParameters = "-r {0} ".format(runDir)
+    jobParameters = f"-r {runDir} "
     if options.mergeScript != "":
-        jobParameters += '-j "{0}" '.format(options.mergeScript)
+        jobParameters += f'-j "{options.mergeScript}" '
     if not options.noBuild:
         jobParameters += "-l ${LIB} "
     else:
-        jobParameters += "-a {0} ".format(archiveName)
+        jobParameters += f"-a {archiveName} "
         jobParameters += "--sourceURL ${SURL} "
     jobParameters += "--useAthenaPackages "
     if AthenaUtils.useCMake() or options.containerImage != "":
@@ -3259,9 +3259,9 @@ for iSubmission, ioItem in enumerate(ioList):
             tmpKeys = list(newTaskParamMap)
             tmpKeys.sort()
             for tmpKey in tmpKeys:
-                print("%s : %s" % (tmpKey, newTaskParamMap[tmpKey]))
+                print("{} : {}".format(tmpKey, newTaskParamMap[tmpKey]))
     if not options.noSubmit and exitCode == 0:
-        tmpLog.info("submit {0}".format(options.outDS))
+        tmpLog.info(f"submit {options.outDS}")
         status, tmpOut = Client.insertTaskParams(
             newTaskParamMap,
             options.verbose,
@@ -3270,7 +3270,7 @@ for iSubmission, ioItem in enumerate(ioList):
         )
         # result
         if status != 0:
-            tmpStr = "task submission failed with {0}".format(status)
+            tmpStr = f"task submission failed with {status}"
             tmpLog.error(tmpStr)
             exitCode = EC_Submit
         else:
@@ -3278,12 +3278,12 @@ for iSubmission, ioItem in enumerate(ioList):
                 tmpStr = tmpOut[1]
                 tmpLog.info(tmpStr)
                 try:
-                    m = re.search("jediTaskID=(\d+)", tmpStr)
+                    m = re.search(r"jediTaskID=(\d+)", tmpStr)
                     taskID = int(m.group(1))
                 except Exception:
                     pass
             else:
-                tmpStr = "task submission failed. {0}".format(tmpOut[1])
+                tmpStr = f"task submission failed. {tmpOut[1]}"
                 tmpLog.error(tmpStr)
                 exitCode = EC_Submit
     dumpItem = copy.deepcopy(vars(options))

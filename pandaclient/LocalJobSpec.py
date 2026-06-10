@@ -8,7 +8,7 @@ from urllib.parse import quote, unquote
 import datetime
 
 
-class LocalJobSpec(object):
+class LocalJobSpec:
     # attributes
     _attributes = ('id','JobID','PandaID','jobStatus','site','cloud','jobType',
                    'jobName','inDS','outDS','libDS','provenanceID','creationTime',
@@ -46,7 +46,7 @@ class LocalJobSpec(object):
         # job status
         statusMap = {}
         for item in self.jobStatus.split(','):
-            match = re.search('^(\w+)\*(\d+)$',item)
+            match = re.search(r'^(\w+)\*(\d+)$',item)
             if match is None:
                 # non compact
                 if item not in statusMap:
@@ -212,7 +212,7 @@ class LocalJobSpec(object):
         # PandaID
         pStr = ''
         for item in self.PandaID.split(','):
-            match = re.search('^(\d+)-(\d+)$',item)
+            match = re.search(r'^(\d+)-(\d+)$',item)
             if match is None:
                 # non compact
                 pStr += (item+',')
@@ -226,7 +226,7 @@ class LocalJobSpec(object):
         # status
         sStr = ''
         for item in self.jobStatus.split(','):
-            match = re.search('^(\w+)\*(\d+)$',item)
+            match = re.search(r'^(\w+)\*(\d+)$',item)
             if match is None:
                 # non compact
                 sStr += (item+',')
@@ -245,7 +245,7 @@ class LocalJobSpec(object):
             if not isinstance(val, str):
                 continue
             # convert str to datetime
-            match = re.search('^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)$',val)
+            match = re.search(r'^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)$',val)
             if match is not None:
                 tmpDate = datetime.datetime(year   = int(match.group(1)),
                                             month  = int(match.group(2)),
@@ -299,7 +299,7 @@ class LocalJobSpec(object):
             if sID == eID:
                 pStr += '%s,' % sID
             else:
-                pStr += '%s-%s,' % (sID,eID)
+                pStr += '{}-{},'.format(sID,eID)
             # reset
             sID = tmpID
             eID = tmpID
@@ -307,7 +307,7 @@ class LocalJobSpec(object):
         if sID == eID:
             pStr += '%s,' % sID
         else:
-            pStr += '%s-%s,' % (sID,eID)
+            pStr += '{}-{},'.format(sID,eID)
         ret['PandaID'] = pStr[:-1]
         if self.isJEDI():
             return ret
@@ -333,7 +333,7 @@ class LocalJobSpec(object):
             if nStatus == 1:
                 sStr += '%s,' % sStatus
             else:
-                sStr += '%s*%s,' % (sStatus,nStatus)
+                sStr += '{}*{},'.format(sStatus,nStatus)
             # reset
             sStatus = tmpStatus
             nStatus = 1
@@ -341,7 +341,7 @@ class LocalJobSpec(object):
         if nStatus == 1:
             sStr += '%s,' % sStatus
         else:
-            sStr += '%s*%s,' % (sStatus,nStatus)
+            sStr += '{}*{},'.format(sStatus,nStatus)
         ret['jobStatus'] = sStr[:-1]
         # set merge job status
         if '--mergeOutput' in self.jobParams and self.jobType not in ['usermerge']:

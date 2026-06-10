@@ -33,7 +33,7 @@ from .MiscUtils import commands_get_output, commands_get_status_output
 try:
     baseURL = os.environ["PANDA_URL"]
     parsed = urlparse(baseURL)
-    server_base_path = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
+    server_base_path = f"{parsed.scheme}://{parsed.netloc}/api/v1"
 except Exception:
     baseURL = "http://pandaserver.cern.ch:25080/server/panda"
     server_base_path = "http://pandaserver.cern.ch:25080/api/v1"
@@ -41,7 +41,7 @@ except Exception:
 try:
     baseURLSSL = os.environ["PANDA_URL_SSL"]
     parsed = urlparse(baseURLSSL)
-    server_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
+    server_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
 except Exception:
     baseURLSSL = "https://pandaserver.cern.ch/server/panda"
     server_base_path_ssl = "https://pandaserver.cern.ch/api/v1"
@@ -49,7 +49,7 @@ except Exception:
 if "PANDACACHE_URL" in os.environ:
     baseURLCSRVSSL = os.environ["PANDACACHE_URL"]
     parsed = urlparse(baseURLCSRVSSL)
-    cache_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
+    cache_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
 else:
     baseURLCSRVSSL = "https://pandacache.cern.ch/server/panda"
     cache_base_path_ssl = "https://pandacache.cern.ch/api/v1"
@@ -69,12 +69,12 @@ if "PANDA_BEHIND_REAL_LB" not in os.environ:
     netloc = urlparse(baseURLCSRVSSL)
     tmp_host = socket.getfqdn(random.choice(socket.getaddrinfo(netloc.hostname, netloc.port))[-1][0])
     if netloc.port:
-        baseURLCSRVSSL = "%s://%s:%s%s" % (netloc.scheme, tmp_host, netloc.port, netloc.path)
+        baseURLCSRVSSL = "{}://{}:{}{}".format(netloc.scheme, tmp_host, netloc.port, netloc.path)
     else:
-        baseURLCSRVSSL = "%s://%s%s" % (netloc.scheme, tmp_host, netloc.path)
+        baseURLCSRVSSL = "{}://{}{}".format(netloc.scheme, tmp_host, netloc.path)
 
     parsed = urlparse(baseURLCSRVSSL)
-    cache_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
+    cache_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
 
 
 # Decoder: check marker and convert back
@@ -111,7 +111,7 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
             curl.verbose = verbose
 
             # Execute request
-            url = "{0}/{1}".format(server_base_path_ssl, endpoint)
+            url = f"{server_base_path_ssl}/{endpoint}"
             if method == "post":
                 status, output = curl.post(url, data, via_file=via_file, json_out=json_out)
             elif method == "get":
@@ -171,7 +171,7 @@ def _x509():
 # look for a CA certificate directory
 def _x509_CApath():
     if "X509_CERT_DIR" not in os.environ or os.environ["X509_CERT_DIR"] == "":
-        com = "{0} echo $X509_CERT_DIR".format(_getGridSrc())
+        com = f"{_getGridSrc()} echo $X509_CERT_DIR"
         output = commands_get_output(com)
         output = output.split("\n")[-1]
         if output == "":
@@ -267,9 +267,9 @@ class _Curl:
     def get_oidc(self, tmp_log):
         parsed = urlparse(baseURLSSL)
         if parsed.port:
-            auth_url = "{0}://{1}:{2}/auth/{3}_auth_config.json".format(parsed.scheme, parsed.hostname, parsed.port, self.authVO)
+            auth_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}/auth/{self.authVO}_auth_config.json"
         else:
-            auth_url = "{0}://{1}/auth/{3}_auth_config.json".format(parsed.scheme, parsed.hostname, parsed.port, self.authVO)
+            auth_url = f"{parsed.scheme}://{parsed.hostname}/auth/{self.authVO}_auth_config.json"
         oidc = openidc_utils.OpenIdConnect_Utils(auth_url, log_stream=tmp_log, verbose=self.verbose)
         return oidc
 
@@ -318,7 +318,7 @@ class _Curl:
                 port = 80
             else:
                 port = 443
-        host_names = [socket.getfqdn(vv) for vv in set([v[-1][0] for v in socket.getaddrinfo(host, port, socket.AF_INET)])]
+        host_names = [socket.getfqdn(vv) for vv in {v[-1][0] for v in socket.getaddrinfo(host, port, socket.AF_INET)}]
         return url.replace(host, random.choice(host_names))
 
     # GET method
@@ -338,8 +338,8 @@ class _Curl:
 
         if self.authMode == "oidc":
             self.get_id_token()
-            com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
-            com += ' -H "Origin: {0}"'.format(self.authVO)
+            com += f' -H "Authorization: Bearer {self.idToken}"'
+            com += f' -H "Origin: {self.authVO}"'
         elif use_https:
             if not self.sslCert:
                 self.sslCert = _x509()
@@ -380,10 +380,10 @@ class _Curl:
             tmp_file_descriptor, tmp_name = tempfile.mkstemp()
         os.write(tmp_file_descriptor, data_string.encode())
         os.close(tmp_file_descriptor)
-        tmp_name_out = "{0}.out".format(tmp_name)
+        tmp_name_out = f"{tmp_name}.out"
         com += " --config %s" % tmp_name
         if via_file:
-            com += " -o {0}".format(tmp_name_out)
+            com += f" -o {tmp_name_out}"
         com += " %s" % self.randomize_ip(url)
         # execute
         if self.verbose:
@@ -438,8 +438,8 @@ class _Curl:
             com += " --compressed"
         if self.authMode == "oidc":
             self.get_id_token()
-            com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
-            com += ' -H "Origin: {0}"'.format(self.authVO)
+            com += f' -H "Authorization: Bearer {self.idToken}"'
+            com += f' -H "Origin: {self.authVO}"'
         elif use_https:
             if not self.sslCert:
                 self.sslCert = _x509()
@@ -489,16 +489,16 @@ class _Curl:
             os.close(tmp_file_descriptor)
         except Exception:
             pass
-        tmp_name_out = "{0}.out".format(tmp_name)
+        tmp_name_out = f"{tmp_name}.out"
         if not compress_body:
             if not json_out:
                 com += " --config %s" % tmp_name
             else:
-                com += " --data @{}".format(tmp_name)
+                com += f" --data @{tmp_name}"
         else:
-            com += " --data-binary @{}".format(tmp_name)
+            com += f" --data-binary @{tmp_name}"
         if via_file:
-            com += " -o {0}".format(tmp_name_out)
+            com += f" -o {tmp_name_out}"
 
         # The new API requires POST method for json
         if json_out:
@@ -509,7 +509,7 @@ class _Curl:
         if self.verbose:
             print(hide_sensitive_info(com))
             for key in data:
-                print("{}={}".format(key, data[key]))
+                print(f"{key}={data[key]}")
         for i_try in range(n_try):
             s, o = commands_get_status_output(com)
             if s == 0 or i_try + 1 == n_try:
@@ -556,8 +556,8 @@ class _Curl:
             com += " --compressed"
         if self.authMode == "oidc":
             self.get_id_token()
-            com += ' -H "Authorization: Bearer {0}"'.format(self.idToken)
-            com += ' -H "Origin: {0}"'.format(self.authVO)
+            com += f' -H "Authorization: Bearer {self.idToken}"'
+            com += f' -H "Origin: {self.authVO}"'
         elif use_https:
             if not self.sslCert:
                 self.sslCert = _x509()
@@ -573,7 +573,7 @@ class _Curl:
 
         # emulate PUT
         for key in data.keys():
-            com += ' -F "%s=@%s"' % (key, data[key])
+            com += ' -F "{}=@{}"'.format(key, data[key])
         com += " %s" % self.randomize_ip(url)
         if self.verbose:
             print(hide_sensitive_info(com))
@@ -625,7 +625,7 @@ class _NativeCurl(_Curl):
                 header = {}
             if self.authMode == "oidc":
                 self.get_id_token()
-                header["Authorization"] = "Bearer {0}".format(self.idToken)
+                header["Authorization"] = f"Bearer {self.idToken}"
                 header["Origin"] = self.authVO
             if not file_upload and (compress_body or json_out):
                 header["Content-Type"] = "application/json"
@@ -653,9 +653,9 @@ class _NativeCurl(_Curl):
                     self.sslKey = _x509()
                 context.load_cert_chain(certfile=self.sslCert, keyfile=self.sslKey)
             if self.verbose:
-                print("url = {}".format(url))
-                print("header = {}".format(hide_sensitive_info(header)))
-                print("data = {}".format(str(data)))
+                print(f"url = {url}")
+                print(f"header = {hide_sensitive_info(header)}")
+                print(f"data = {str(data)}")
             conn = urlopen(req, context=context)
             code = conn.getcode()
             if code == 200:
@@ -670,13 +670,13 @@ class _NativeCurl(_Curl):
                 print(traceback.format_exc())
             error_message = str(e)
             if hasattr(e, "fp"):
-                error_message += ". {0}".format(e.fp.read().decode())
+                error_message += f". {e.fp.read().decode()}"
             return 1, error_message
 
     # GET method
     def get(self, url, data, rucio_account=False, via_file=False, output_name=None, n_try=1, json_out=False, repeating_keys=False):
         if data:
-            url = "{}?{}".format(url, urlencode(data, doseq=repeating_keys))
+            url = f"{url}?{urlencode(data, doseq=repeating_keys)}"
 
         method = None
         if json_out:
@@ -719,7 +719,7 @@ class _NativeCurl(_Curl):
         boundary = "".join(random.choice(string.ascii_letters) for ii in range(30 + 1))
         body = b""
         for k in data:
-            lines = ["--" + boundary, 'Content-Disposition: form-data; name="%s"; filename="%s"' % (k, data[k]), "Content-Type: application/octet-stream", ""]
+            lines = ["--" + boundary, 'Content-Disposition: form-data; name="{}"; filename="{}"'.format(k, data[k]), "Content-Type: application/octet-stream", ""]
             body += "\r\n".join(lines).encode()
             body += b"\r\n"
             body += open(data[k], "rb").read()
@@ -748,7 +748,7 @@ if "PANDA_USE_NATIVE_HTTPLIB" in os.environ:
 def dump_log(func_name, exception_obj, output):
     print(traceback.format_exc())
     print(output)
-    err_str = "{} failed : {}".format(func_name, str(exception_obj))
+    err_str = f"{func_name} failed : {str(exception_obj)}"
     tmp_log = PLogger.getPandaLogger()
     tmp_log.error(err_str)
     return err_str
@@ -937,11 +937,11 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
     exceeded_limit = False
     error_message = ""
     if os.path.basename(file).startswith("sources.") and file_size > SOURCES_LIMIT:
-        error_message = "Exceeded size limit for sandbox files (%sB >%sB). " % (file_size, SOURCES_LIMIT)
+        error_message = "Exceeded size limit for sandbox files ({}B >{}B). ".format(file_size, SOURCES_LIMIT)
         error_message += "Your working directory contains too large files which cannot be put on cache area. "
         exceeded_limit = True
     elif not os.path.basename(file).startswith("sources.") and file_size > NO_BUILD_LIMIT:
-        error_message = "Exceeded size limit (%sB >%sB). " % (file_size, NO_BUILD_LIMIT)
+        error_message = "Exceeded size limit ({}B >{}B). ".format(file_size, NO_BUILD_LIMIT)
         error_message += "Your working directory contains too large files which cannot be put on cache area. "
         error_message += "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
         exceeded_limit = True
@@ -969,7 +969,7 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
         # Execute request
         endpoint = "file_server/validate_cache_file"
         data = {"file_size": file_size, "checksum": checksum}
-        url = "{0}/{1}".format(server_base_path_ssl, endpoint)
+        url = f"{server_base_path_ssl}/{endpoint}"
         status, output = curl.post(url, data, via_file=True, json_out=True)
         if status != 0:
             return EC_Failed, "ERROR: Could not check sandbox duplication with %s" % output
@@ -984,13 +984,13 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
             # set cache server hostname
             setCacheServer(host_name)
             # return reusable filename
-            return 0, "NewFileName:{0}".format(reusable_file_name)
+            return 0, f"NewFileName:{reusable_file_name}"
 
     if not useCacheSrv:
         global cache_base_path_ssl
         cache_base_path_ssl = server_base_path_ssl
 
-    url = "{0}/{1}".format(cache_base_path_ssl, "file_server/upload_cache_file")
+    url = "{}/{}".format(cache_base_path_ssl, "file_server/upload_cache_file")
     data = {"file": file}
     s, o = curl.put(url, data, n_try=n_try, json_out=True)
 
@@ -1001,7 +1001,7 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
     # Status OK, but somehow not a json response
     if isinstance(o, str):
         tmp_logger = PLogger.getPandaLogger()
-        tmp_logger.error("{0}, {1}".format(s, o))
+        tmp_logger.error(f"{s}, {o}")
         return s, o
 
     success = o.get("success", False)
@@ -1034,7 +1034,7 @@ def getFile(filename, output_path=None, verbose=False, n_try=1):
     curl.verbose = verbose
     # execute
     netloc = urlparse(baseURLCSRVSSL)
-    url = "%s://%s" % (netloc.scheme, netloc.hostname)
+    url = "{}://{}".format(netloc.scheme, netloc.hostname)
     if netloc.port:
         url += ":%s" % netloc.port
     url = url + "/cache/" + filename
@@ -1061,8 +1061,8 @@ def getDN(origString):
     for line in origString.split("/"):
         if line.startswith("CN="):
             distinguishedName = re.sub("^CN=", "", line)
-            distinguishedName = re.sub("\d+$", "", distinguishedName)
-            distinguishedName = re.sub("\.", "", distinguishedName)
+            distinguishedName = re.sub(r"\d+$", "", distinguishedName)
+            distinguishedName = re.sub(r"\.", "", distinguishedName)
             distinguishedName = distinguishedName.strip()
             if re.search(" ", distinguishedName) is not None:
                 # look for full name
@@ -1110,12 +1110,12 @@ def setCacheServer(host_name):
 
     netloc = urlparse(baseURLCSRVSSL)
     if netloc.port:
-        baseURLCSRVSSL = "%s://%s:%s%s" % (netloc.scheme, host_name, netloc.port, netloc.path)
+        baseURLCSRVSSL = "{}://{}:{}{}".format(netloc.scheme, host_name, netloc.port, netloc.path)
     else:
-        baseURLCSRVSSL = "%s://%s%s" % (netloc.scheme, host_name, netloc.path)
+        baseURLCSRVSSL = "{}://{}{}".format(netloc.scheme, host_name, netloc.path)
 
     parsed = urlparse(baseURLCSRVSSL)
-    cache_base_path_ssl = "{0}://{1}/api/v1".format(parsed.scheme, parsed.netloc)
+    cache_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
 
 
 @curl_request_decorator(endpoint="task/get_tasks_modified_since", method="get", json_out=True)
@@ -1319,7 +1319,7 @@ def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_ti
         return status, (0, output["message"])
 
     except Exception:
-        return EC_Failed, "Impossible to parse server response. Output: {}".format(output)
+        return EC_Failed, f"Impossible to parse server response. Output: {output}"
 
 
 @curl_request_decorator(endpoint="task/get_job_ids", method="get", json_out=True)
@@ -1507,11 +1507,11 @@ def hello(verbose=False):
             tmp_log.error(tmp_message)
             return EC_Failed, tmp_message
 
-        tmp_log.info("Done with success={0} and message='{1}'".format(success, message))
+        tmp_log.info(f"Done with success={success} and message='{message}'")
         return 0, message
 
     except Exception as e:
-        tmp_message = "Exception. {}".format(str(e))
+        tmp_message = f"Exception. {str(e)}"
         tmp_log.error(tmp_message)
         return EC_Failed, tmp_message
 
@@ -1540,7 +1540,7 @@ def get_cert_attributes(verbose=False):
     if success:
         # Print all the environment seen server side
         for k, v in data["environment"].items():
-            print("{0}: {1}".format(k, v))
+            print(f"{k}: {v}")
 
         # Return the certificate attributes
         cert_attributes = {k: v for k, v in data["environment"].items() if k.startswith("GRST_CRED")}
@@ -1648,7 +1648,7 @@ def call_idds_command(
             except Exception:
                 return EC_Failed, output
     except Exception as e:
-        msg = "Failed with {}".format(str(e))
+        msg = f"Failed with {str(e)}"
         print(traceback.format_exc())
         return EC_Failed, msg
 
@@ -1689,7 +1689,7 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
         else:
             return 0, json.loads(output)
     except Exception as e:
-        msg = "Failed with {}".format(str(e))
+        msg = f"Failed with {str(e)}"
         print(traceback.format_exc())
         return EC_Failed, msg
 
@@ -1735,7 +1735,7 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
     # execute
     output = None
     if relay_host:
-        url = "https://{}:25443/server/panda".format(relay_host)
+        url = f"https://{relay_host}:25443/server/panda"
     else:
         url = baseURLSSL
     url += "/put_workflow_request"
@@ -1752,9 +1752,9 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
         else:
             return 0, output
     except Exception as e:
-        msg = "{}.".format(str(e))
+        msg = f"{str(e)}."
         if output:
-            msg += ' raw output="{}"'.format(str(output))
+            msg += f' raw output="{str(output)}"'
         tmp_log.error(msg)
         return EC_Failed, msg
 
@@ -1800,9 +1800,9 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
         else:
             return 0, output
     except Exception as e:
-        msg = "{}.".format(str(e))
+        msg = f"{str(e)}."
         if output:
-            msg += ' raw output="{}"'.format(str(output))
+            msg += f' raw output="{str(output)}"'
         tmp_log.error(msg)
         return EC_Failed, msg
 

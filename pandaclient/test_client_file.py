@@ -10,4 +10,4 @@ panda_ids = args.panda_ids
 print("=============================================================")
 
 file_ret = putFile("/root/test/a.py", verbose=True)
-print("putFile returned: {0}".format(file_ret))
+print(f"putFile returned: {file_ret}")

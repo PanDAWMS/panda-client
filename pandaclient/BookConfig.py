@@ -51,7 +51,7 @@ def getConfig():
     # expand sequencer section
     for key,val in parser.items(sectionName):
         # convert int/bool
-        if re.search('^\d+$',val) is not None:
+        if re.search(r'^\d+$',val) is not None:
             val = int(val)
         elif re.search('true',val,re.I) is not None:
             val = True
@@ -78,7 +78,7 @@ def updateConfig(bookConf):
     try:
         os.rename(confFile, '%s.back' % confFile)
     except Exception as e:
-        print("WARNING : cannot make backup for %s with %s" % (confFile, str(e)))
+        print("WARNING : cannot make backup for {} with {}".format(confFile, str(e)))
         return
     # update conf
     conFH = open(confFile,'w')

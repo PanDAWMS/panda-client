@@ -186,14 +186,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                             pass
                     setattr(options, k, v)
                     if v is True:
-                        jsonExecStr += ' --{0}'.format(k)
+                        jsonExecStr += f' --{k}'
                     else:
                         if isinstance(v, str):
-                            jsonExecStr += " --{0}='{1}'".format(k, v)
+                            jsonExecStr += f" --{k}='{v}'"
                         else:
-                            jsonExecStr += " --{0}={1}".format(k, v)
+                            jsonExecStr += f" --{k}={v}"
                 else:
-                    tmpLog.warning('ignore unknown option {0} in {1}'.format(k, options.loadJson))
+                    tmpLog.warning(f'ignore unknown option {k} in {options.loadJson}')
 
     if options.version:
         print("Version: %s" % PandaToolsPkgInfo.release_version)
@@ -208,7 +208,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     non_null_opts = ['outDS', 'evaluationContainer', 'evaluationExec', 'steeringExec']
     for opt_name in non_null_opts:
         if getattr(options, opt_name) is None:
-            tmpLog.error('--{0} is not specified'.format(opt_name))
+            tmpLog.error(f'--{opt_name} is not specified')
             sys.exit(1)
 
     if not options.outDS.endswith('/'):
@@ -255,13 +255,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     archiveFullName = os.path.join(tmpDir, archiveName)
     if not dry_mode:
         extensions = ['json', 'py', 'sh', 'yaml']
-        find_opt = ' -o '.join(['-name "*.{0}"'.format(e) for e in extensions])
-        tmpOut = MiscUtils.commands_get_output('find . {0} | tar cvfz {1} --files-from - '.format(find_opt, archiveFullName))
+        find_opt = ' -o '.join([f'-name "*.{e}"' for e in extensions])
+        tmpOut = MiscUtils.commands_get_output(f'find . {find_opt} | tar cvfz {archiveFullName} --files-from - ')
 
         if options.verbose:
             print(tmpOut + '\n')
             tmpLog.debug("=== checking sandbox ===")
-            tmpOut = MiscUtils.commands_get_output('tar tvfz {0}'.format(archiveFullName))
+            tmpOut = MiscUtils.commands_get_output(f'tar tvfz {archiveFullName}')
             print(tmpOut + '\n')
 
         if not options.noSubmit:
@@ -297,7 +297,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     taskParamMap['transUses'] = ''
     taskParamMap['transHome'] = ''
     taskParamMap['transPath'] = 'http://pandaserver.cern.ch:25080/trf/user/runHPO-00-00-01'
-    taskParamMap['processingType'] = 'panda-client-{0}-jedi-hpo'.format(PandaToolsPkgInfo.release_version)
+    taskParamMap['processingType'] = f'panda-client-{PandaToolsPkgInfo.release_version}-jedi-hpo'
     taskParamMap['prodSourceLabel'] = 'user'
     taskParamMap['useLocalIO'] = 1
     taskParamMap['cliParams'] = fullExecString
@@ -345,7 +345,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                            'container': logDatasetName,
                            'type': 'template',
                            'param_type': 'log',
-                           'value': '{0}.$JEDITASKID.${{SN}}.log.tgz'.format(logDatasetName[:-1])
+                           'value': f'{logDatasetName[:-1]}.$JEDITASKID.${{SN}}.log.tgz'
                            }
 
     taskParamMap['hpoRequestData'] = {'sandbox': options.steeringContainer,
@@ -364,11 +364,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
 
     taskParamMap['jobParameters'] = [
         {'type': 'constant',
-         'value': '-o {0} -j "" --inSampleFile {1}'.format(options.evaluationOutput,
+         'value': '-o {} -j "" --inSampleFile {}'.format(options.evaluationOutput,
                                                            options.evaluationInput)
          },
         {'type': 'constant',
-         'value': '-a {0} --sourceURL {1}'.format(archiveName, sourceURL)
+         'value': f'-a {archiveName} --sourceURL {sourceURL}'
          },
     ]
 
@@ -391,27 +391,27 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     if options.checkPointToSave is not None:
         taskParamMap['jobParameters'] += [
             {'type': 'constant',
-             'value': '--checkPointToSave {0}'.format(options.checkPointToSave)
+             'value': f'--checkPointToSave {options.checkPointToSave}'
              },
         ]
         if options.checkPointInterval is not None:
             taskParamMap['jobParameters'] += [
                 {'type': 'constant',
-                 'value': '--checkPointInterval {0}'.format(options.checkPointInterval)
+                 'value': f'--checkPointInterval {options.checkPointInterval}'
                  },
             ]
 
     if options.checkPointToLoad is not None:
         taskParamMap['jobParameters'] += [
             {'type': 'constant',
-             'value': '--checkPointToLoad {0}'.format(options.checkPointToLoad)
+             'value': f'--checkPointToLoad {options.checkPointToLoad}'
              },
         ]
 
     if options.trainingDS is not None:
         taskParamMap['jobParameters'] += [
             {'type': 'constant',
-             'value': '--writeInputToTxt IN_DATA:{0}'.format(options.evaluationTrainingData)
+             'value': f'--writeInputToTxt IN_DATA:{options.evaluationTrainingData}'
              },
             {'type': 'template',
              'param_type': 'input',
@@ -427,7 +427,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     if options.evaluationMeta is not None:
         taskParamMap['jobParameters'] += [
             {'type': 'constant',
-             'value': '--outMetaFile={0}'.format(options.evaluationMeta),
+             'value': f'--outMetaFile={options.evaluationMeta}',
              },
         ]
 
@@ -478,14 +478,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
              'allowNoOutput': True,
              },
             {'type': 'constant',
-             'value': '--outMetricsFile=${{OUTPUT0}}^{0}'.format(options.evaluationMetrics),
+             'value': f'--outMetricsFile=${{OUTPUT0}}^{options.evaluationMetrics}',
              },
         ]
 
     if options.maxPointsPerEvaluationJob:
         taskParamMap['jobParameters'] += [
             {'type': 'constant',
-             'value': '--maxLoopCount={}'.format(options.maxPointsPerEvaluationJob),
+             'value': f'--maxLoopCount={options.maxPointsPerEvaluationJob}',
              },
         ]
 
@@ -496,19 +496,19 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                 tmpKeys = list(taskParamMap)
                 tmpKeys.sort()
                 for tmpKey in tmpKeys:
-                    print('%s : %s' % (tmpKey, taskParamMap[tmpKey]))
+                    print('{} : {}'.format(tmpKey, taskParamMap[tmpKey]))
         sys.exit(0)
 
     if get_taskparams:
         return taskParamMap
 
-    tmpLog.info("submit {0}".format(options.outDS))
+    tmpLog.info(f"submit {options.outDS}")
     tmpStat, tmpOut = Client.insertTaskParams(taskParamMap, options.verbose, True)
     # result
     taskID = None
     exitCode = None
     if tmpStat != 0:
-        tmpStr = "task submission failed with {0}".format(tmpStat)
+        tmpStr = f"task submission failed with {tmpStat}"
         tmpLog.error(tmpStr)
         exitCode = 1
     else:
@@ -516,12 +516,12 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             tmpStr = tmpOut[1]
             tmpLog.info(tmpStr)
             try:
-                m = re.search('jediTaskID=(\d+)', tmpStr)
+                m = re.search(r'jediTaskID=(\d+)', tmpStr)
                 taskID = int(m.group(1))
             except Exception:
                 pass
         else:
-            tmpStr = "task submission failed. {0}".format(tmpOut[1])
+            tmpStr = f"task submission failed. {tmpOut[1]}"
             tmpLog.error(tmpStr)
             exitCode = 1
 

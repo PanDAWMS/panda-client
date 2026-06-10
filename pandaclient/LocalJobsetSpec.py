@@ -6,7 +6,7 @@ local jobset specification
 import re
 
 
-class LocalJobsetSpec(object):
+class LocalJobsetSpec:
     # attributes
     _attributes = ('JobsetID','dbStatus','JobMap','PandaID','inDS','outDS',
                    'parentSetID','retrySetID','creationTime','jobStatus',
@@ -86,7 +86,7 @@ class LocalJobsetSpec(object):
             # job status
             statusMap = {}
             for item in job.jobStatus.split(','):
-                match = re.search('^(\w+)\*(\d+)$',item)
+                match = re.search(r'^(\w+)\*(\d+)$',item)
                 if match is None:
                     # non compact
                     if item not in statusMap:

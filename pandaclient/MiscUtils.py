@@ -109,7 +109,7 @@ def getDatasetNameAndNumFiles(streamDS, nFilesPerJob, streamName):
         # read from stdin
         print("\nThis job uses %s stream" % streamName)
         while True:
-            streamDS = input("Enter dataset name for {0}: ".format(streamName))
+            streamDS = input(f"Enter dataset name for {streamName}: ")
             streamDS = streamDS.strip()
             if streamDS != "":
                 break
