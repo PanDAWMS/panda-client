@@ -18,11 +18,6 @@ from pandaclient.CommonArgs import (
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import parse_secondary_datasets_opt
 
-try:
-    unicode
-except Exception:
-    unicode = str
-
 ####################################################################
 
 # error code
@@ -1416,7 +1411,7 @@ if options.loadJson is not None:
     loadOpts = MiscUtils.decodeJSON(options.loadJson)
     for k in loadOpts:
         v = loadOpts[k]
-        if isinstance(v, (str, unicode)):
+        if isinstance(v, str):
             try:
                 v = int(v)
             except Exception:
@@ -1433,7 +1428,7 @@ if options.loadJson is not None:
         if v is True:
             jsonExecStr += " --{0}".format(origK)
         else:
-            if isinstance(v, (str, unicode)):
+            if isinstance(v, str):
                 jsonExecStr += " --{0}='{1}'".format(origK, v)
             else:
                 jsonExecStr += " --{0}={1}".format(origK, v)

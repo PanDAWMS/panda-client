@@ -1,12 +1,8 @@
 import os
 import re
 import sys
-import time
 
-try:
-    from urllib import quote
-except ImportError:
-    from urllib.parse import quote
+from urllib.parse import quote
 
 import copy
 import datetime
@@ -15,15 +11,9 @@ import platform
 
 from . import Client, MiscUtils, PLogger
 from .MiscUtils import (
-    commands_get_output,
     commands_get_status_output,
     commands_get_status_output_with_env,
 )
-
-try:
-    long()
-except Exception:
-    long = int
 
 # error code
 EC_Config = 10
@@ -561,7 +551,7 @@ def convertParamStrToJediParam(
                 tmpDict["dataset"] = "seq_number"
                 if tmpHolder in extensionMap:
                     try:
-                        tmpDict["offset"] = long(extensionMap[tmpHolder])
+                        tmpDict["offset"] = int(extensionMap[tmpHolder])
                     except Exception:
                         pass
             elif tmpHolder == outHolder:
@@ -576,7 +566,7 @@ def convertParamStrToJediParam(
                 tmpDict["param_type"] = "number"
                 if tmpHolder in extensionMap:
                     try:
-                        tmpDict["offset"] = long(extensionMap[tmpHolder])
+                        tmpDict["offset"] = int(extensionMap[tmpHolder])
                     except Exception:
                         pass
         else:

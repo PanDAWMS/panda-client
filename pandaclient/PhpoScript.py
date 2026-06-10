@@ -12,17 +12,6 @@ from pandaclient import MiscUtils
 from pandaclient import Client
 from pandaclient import PsubUtils
 
-try:
-    from urllib import quote
-except ImportError:
-    from urllib.parse import quote
-
-try:
-    unicode
-except Exception:
-    unicode = str
-
-
 # main
 def main(get_taskparams=False, ext_args=None, dry_mode=False):
 
@@ -190,7 +179,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             for k in json_options:
                 if k in option_names:
                     v = json_options[k]
-                    if isinstance(v, (str, unicode)):
+                    if isinstance(v, str):
                         try:
                             v = int(v)
                         except Exception:
@@ -199,7 +188,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                     if v is True:
                         jsonExecStr += ' --{0}'.format(k)
                     else:
-                        if isinstance(v, (str, unicode)):
+                        if isinstance(v, str):
                             jsonExecStr += " --{0}='{1}'".format(k, v)
                         else:
                             jsonExecStr += " --{0}={1}".format(k, v)

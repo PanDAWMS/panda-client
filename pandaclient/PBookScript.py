@@ -13,11 +13,6 @@ import tempfile
 from pandaclient.MiscUtils import commands_get_output
 
 try:
-    long()
-except Exception:
-    long = int
-
-try:
     from concurrent.futures import ThreadPoolExecutor
 except ImportError:
 
@@ -194,7 +189,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
             ret = list_parallel_exec(lambda task: pbookCore.kill(task.jeditaskid), task_list)
         elif isinstance(taskIDs, (list, tuple)):
             ret = list_parallel_exec(lambda taskID: pbookCore.kill(taskID), taskIDs)
-        elif isinstance(taskIDs, (int, long)):
+        elif isinstance(taskIDs, int):
             ret = [pbookCore.kill(taskIDs)]
         else:
             print("Error: Invalid argument")
@@ -224,7 +219,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
             )
         elif isinstance(taskIDs, (list, tuple)):
             ret = list_parallel_exec(lambda taskID: pbookCore.finish(taskID, soft=soft), taskIDs)
-        elif isinstance(taskIDs, (int, long)):
+        elif isinstance(taskIDs, int):
             ret = [pbookCore.finish(taskIDs, soft=soft)]
         else:
             print("Error: Invalid argument")
@@ -292,7 +287,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
                     return None
         if isinstance(taskIDs, (list, tuple)):
             ret = list_parallel_exec(lambda taskID: pbookCore.retry(taskID, newOpts=newOpts), taskIDs)
-        elif isinstance(taskIDs, (int, long)):
+        elif isinstance(taskIDs, int):
             ret = [pbookCore.retry(taskIDs, newOpts=newOpts)]
         elif taskIDs == "all":
             dataList = pbookCore.show(status="finished", days=days, limit=limit, format="json")
@@ -338,7 +333,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
             newOpts = {}
         if isinstance(taskIDs, (list, tuple)):
             ret = list_parallel_exec(lambda taskID: pbookCore.killAndRetry(taskID, newOpts=newOpts), taskIDs)
-        elif isinstance(taskIDs, (int, long)):
+        elif isinstance(taskIDs, int):
             ret = [pbookCore.killAndRetry(taskIDs, newOpts=newOpts)]
         else:
             print("Error: Invalid argument")

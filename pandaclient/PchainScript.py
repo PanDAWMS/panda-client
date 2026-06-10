@@ -17,17 +17,6 @@ from pandaclient import (
 )
 from pandaclient.Group_argparse import get_parser
 
-try:
-    from urllib import quote
-except ImportError:
-    from urllib.parse import quote
-
-try:
-    unicode
-except Exception:
-    unicode = str
-
-
 # main
 def main():
     # tweak sys.argv

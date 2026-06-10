@@ -1,16 +1,13 @@
 import os
 import re
-try:
-    import ConfigParser
-except ImportError:
-    import configparser as ConfigParser
+import configparser
 
 sectionName = 'book'
 confFile = os.path.expanduser('%s/panda.cfg' % os.environ['PANDA_CONFIG_ROOT'])
 
 
 # create config or add section when missing
-parser=ConfigParser.ConfigParser()
+parser=configparser.ConfigParser()
 newFlag = False
 if not os.path.exists(confFile):
     # create new config
@@ -45,7 +42,7 @@ if newFlag:
 # get config
 def getConfig():
     # instantiate parser
-    parser=ConfigParser.ConfigParser()
+    parser=configparser.ConfigParser()
     parser.read(confFile)
     # config class
     class _bookConfig:
@@ -69,7 +66,7 @@ def getConfig():
 # update
 def updateConfig(bookConf):
     # instantiate parser
-    parser=ConfigParser.ConfigParser()
+    parser=configparser.ConfigParser()
     parser.read(confFile)
     # set new values
     for attr in dir(bookConf):

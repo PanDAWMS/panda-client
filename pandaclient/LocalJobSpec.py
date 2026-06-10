@@ -4,19 +4,8 @@ local job specification
 """
 
 import re
-try:
-    from urllib import quote, unquote
-except ImportError:
-    from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote
 import datetime
-try:
-    long()
-except Exception:
-    long = int
-try:
-    unicode()
-except Exception:
-    unicode = str
 
 
 class LocalJobSpec(object):
@@ -229,8 +218,8 @@ class LocalJobSpec(object):
                 pStr += (item+',')
             else:
                 # compact
-                sID = long(match.group(1))
-                eID = long(match.group(2))
+                sID = int(match.group(1))
+                eID = int(match.group(2))
                 for tmpID in range(sID,eID+1):
                     pStr += "%s," % tmpID
         self.PandaID = pStr[:-1]
@@ -253,7 +242,7 @@ class LocalJobSpec(object):
         # datetime
         for attr in self._attributes:
             val = getattr(self, attr)
-            if not isinstance(val, (str, unicode)):
+            if not isinstance(val, str):
                 continue
             # convert str to datetime
             match = re.search('^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)$',val)
@@ -290,9 +279,9 @@ class LocalJobSpec(object):
         for item in tmpPandaIDs:
             if item in ['','None']:
                 continue
-            # convert to long
+            # convert to int
             try:
-                tmpID = long(item)
+                tmpID = int(item)
             except Exception:
                 sID = item
                 eID = item

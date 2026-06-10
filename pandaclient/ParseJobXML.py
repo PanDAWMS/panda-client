@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 import sys
-try:
-    from urllib import quote
-except ImportError:
-    from urllib.parse import quote
+
+from urllib.parse import quote
 import xml.dom.minidom
 
 class dom_job:

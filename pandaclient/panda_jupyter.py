@@ -4,10 +4,7 @@ import getpass
 import subprocess
 from IPython.core.magic import register_line_magic
 
-try:
-    import ConfigParser
-except ImportError:
-    import configparser as ConfigParser
+import configparser
 from . import PLogger
 
 
@@ -19,7 +16,7 @@ def setup():
     if not os.path.exists(conf_file):
         tmp_log.error('panda conifg file is missing at {}'.format(conf_file))
         return False
-    parser = ConfigParser.ConfigParser()
+    parser = configparser.ConfigParser()
     parser.read(conf_file)
     section = parser['main']
 
@@ -79,7 +76,7 @@ def _execute(command):
             nextline = p.stdout.readline()
             if nextline == '' and p.poll() is not None:
                 break
-            # check if uses getpass or raw_input
+            # check if uses getpass or input
             is_getpass = False
             is_raw_input = False
             for one_str in GETPASS_STRINGS:

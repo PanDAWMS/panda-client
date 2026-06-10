@@ -16,24 +16,10 @@ import time
 import traceback
 from datetime import datetime
 
-try:
-    # python 2
-    from urllib import unquote_plus, urlencode
-
-    from urllib2 import HTTPError, Request, urlopen
-    from urlparse import urlparse
-except ImportError:
-    # python 3
-    from urllib.parse import urlencode, unquote_plus, urlparse
-    from urllib.request import urlopen, Request
-    from urllib.error import HTTPError
+from urllib.parse import urlencode, unquote_plus, urlparse
+from urllib.request import urlopen, Request
 
 import struct
-
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 
 import random
 import socket
@@ -41,7 +27,7 @@ import tempfile
 from io import BytesIO
 
 from . import MiscUtils, PLogger, openidc_utils
-from .MiscUtils import commands_get_output, commands_get_status_output, pickle_loads
+from .MiscUtils import commands_get_output, commands_get_status_output
 
 # configuration
 try:
@@ -775,17 +761,16 @@ public methods
 
 
 @curl_request_decorator(endpoint="job/submit", method="post", json_out=True)
-def submitJobs_internal(jobs, verbose=False, no_pickle=False):
+def submitJobs_internal(jobs, verbose=False):
     return {"jobs": jobs}
 
 
-def submitJobs(jobs, verbose=False, no_pickle=False):
+def submitJobs(jobs, verbose=False):
     """Submit jobs
 
     args:
         jobs: a list of job specs
         verbose: True to see verbose messages
-        no_pickle: True to use json instead of pickle
     returns:
         status code
               0: communication succeeded to the panda server
@@ -798,28 +783,27 @@ def submitJobs(jobs, verbose=False, no_pickle=False):
         job.creationHost = hostname
 
     jobs_serialized = MiscUtils.dump_jobs_json(jobs)
-    return submitJobs_internal(jobs_serialized, verbose, no_pickle)
+    return submitJobs_internal(jobs_serialized, verbose)
 
 
 @curl_request_decorator(endpoint="job/get_description", method="post", json_out=True)
-def getJobStatus_internal(ids, verbose=False, no_pickle=False):
+def getJobStatus_internal(ids, verbose=False):
     return {"job_ids": ids}
 
 
-def getJobStatus(ids, verbose=False, no_pickle=False):
+def getJobStatus(ids, verbose=False):
     """Get status of jobs
 
     args:
         ids: a list of PanDA IDs
         verbose: True to see verbose messages
-        no_pickle: obsolete parameter left for backwards compatibility
     returns:
         status code
               0: communication succeeded to the panda server
               255: communication failure
         a list of job specs, or None if failed
     """
-    status, jobs = getJobStatus_internal(ids, verbose=verbose, no_pickle=no_pickle)
+    status, jobs = getJobStatus_internal(ids, verbose=verbose)
     if status != 0:
         return status, jobs
 

@@ -4,7 +4,7 @@ import os
 import re
 import sys
 
-from . import Client, MiscUtils, PLogger
+from . import MiscUtils, PLogger
 from .MiscUtils import (
     commands_fail_on_non_zero_exit_status,
     commands_get_output,

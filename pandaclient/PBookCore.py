@@ -5,11 +5,6 @@ import re
 import sys
 import time
 
-try:
-    long()
-except Exception:
-    long = int
-
 from pandaclient import PsubUtils, localSpecs
 
 from . import Client, PLogger
@@ -337,7 +332,7 @@ class PBookCore(object):
                 username = self.username
 
         # shortcut of jeditaskid and reqid
-        if isinstance(some_ids, (int, long)):
+        if isinstance(some_ids, int):
             if is_reqid(some_ids):
                 reqid = str(some_ids)
             else:
@@ -345,7 +340,7 @@ class PBookCore(object):
         elif isinstance(some_ids, (list, tuple)) and some_ids:
             first_id = some_ids[0]
             ids_str = "|".join([str(x) for x in some_ids])
-            if first_id and isinstance(first_id, (int, long)) and is_reqid(first_id):
+            if first_id and isinstance(first_id, int) and is_reqid(first_id):
                 reqid = ids_str
             else:
                 jeditaskid = ids_str

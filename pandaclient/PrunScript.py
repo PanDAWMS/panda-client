@@ -8,10 +8,7 @@ import time
 
 from pandaclient.Group_argparse import get_parser
 
-try:
-    from urllib import quote
-except ImportError:
-    from urllib.parse import quote
+from urllib.parse import quote
 
 import copy
 import json
@@ -26,12 +23,6 @@ from pandaclient.MiscUtils import (
     commands_get_status_output,
     parse_secondary_datasets_opt,
 )
-
-try:
-    unicode
-except Exception:
-    unicode = str
-
 
 # main
 def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False):
@@ -1240,7 +1231,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         loadOpts = MiscUtils.decodeJSON(options.loadJson)
         for k in loadOpts:
             v = loadOpts[k]
-            if isinstance(v, (str, unicode)):
+            if isinstance(v, str):
                 try:
                     v = int(v)
                 except Exception:
@@ -1256,7 +1247,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if v is True:
                 jsonExecStr += " --{0}".format(origK)
             else:
-                if isinstance(v, (str, unicode)):
+                if isinstance(v, str):
                     jsonExecStr += " --{0}='{1}'".format(origK, v)
                 else:
                     jsonExecStr += " --{0}={1}".format(origK, v)

@@ -8,17 +8,9 @@ import sys
 import time
 import uuid
 
-try:
-    from urllib import urlencode
-
-    from urllib2 import HTTPError, Request, urlopen
-except ImportError:
-    from urllib.error import HTTPError
-    from urllib.parse import urlencode
-    from urllib.request import Request, urlopen
-
-    raw_input = input
-
+from urllib.error import HTTPError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 TOKEN_BASENAME = ".token"
 CACHE_PREFIX = ".page_cache_"
@@ -78,7 +70,7 @@ class OpenIdConnect_Utils:
         self.log_stream.info("Ready to get ID token?")
         while True:
             sys.stdout.write("[y/n] \n")
-            choice = raw_input().lower()
+            choice = input().lower()
             if choice == "y":
                 break
             elif choice == "n":
