@@ -566,11 +566,11 @@ def main():
     E.g.
 
     $ pbook
-    >>> show(123, format='long', sync=True)
+    >>> show(123, format='long')
     
     is equivalent to    
 
-    $ pbook show 123 format='long' sync=True
+    $ pbook show 123 format='long'
     
     If arg or value is a list in interactive mode, it is represented as a comma-separate list in batch mode. E.g.
     to kill three tasks in interactive mode:

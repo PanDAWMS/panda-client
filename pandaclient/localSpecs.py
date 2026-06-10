@@ -70,7 +70,7 @@ class LocalTaskSpec:
                 setattr(self, aname, f"{self._fulldict.get(aname)}%")
             else:
                 setattr(self, aname, f"{self._fulldict.get(aname)}")
-        self._weburl = f"https://bigpanda.cern.ch/tasknew/{self.jeditaskid}/"
+        self._weburl = f"https://bigpanda.cern.ch/task/{self.jeditaskid}/"
 
     def is_terminated(self):
         if self.superstatus in task_final_superstatus_list:
