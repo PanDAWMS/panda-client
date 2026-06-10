@@ -2,7 +2,5 @@ include *.txt *.py *.cfg
 recursive-include pandaclient *.py
 recursive-include share *
 recursive-include scripts *
-recursive-include glade *
-recursive-include icons *.png
 recursive-include templates *.template
 
