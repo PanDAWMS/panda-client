@@ -8,8 +8,7 @@ import sys
 from urllib.parse import quote
 
 from . import Client, MiscUtils, PLogger
-from .MiscUtils import (commands_get_status_output,
-                        commands_get_status_output_with_env)
+from .MiscUtils import commands_get_status_output, commands_get_status_output_with_env
 
 # error code
 EC_Config = 10

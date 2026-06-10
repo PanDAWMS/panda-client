@@ -6,14 +6,24 @@ import sys
 import tempfile
 import uuid
 
-from pandaclient.Client import (finishTask, get_files_in_datasets,
-                                getJediTaskDetails,
-                                getJobIDsJediTasksInTimeRange,
-                                getPandaIDsWithTaskID, getTaskParamsMap,
-                                getTaskStatus, getUserJobMetadata,
-                                increase_attempt_nr, insertTaskParams,
-                                killTask, pauseTask, reactivateTask,
-                                reload_input, resumeTask, retryTask)
+from pandaclient.Client import (
+    finishTask,
+    get_files_in_datasets,
+    getJediTaskDetails,
+    getJobIDsJediTasksInTimeRange,
+    getPandaIDsWithTaskID,
+    getTaskParamsMap,
+    getTaskStatus,
+    getUserJobMetadata,
+    increase_attempt_nr,
+    insertTaskParams,
+    killTask,
+    pauseTask,
+    reactivateTask,
+    reload_input,
+    resumeTask,
+    retryTask,
+)
 
 
 def main(task_id):
@@ -23,10 +33,7 @@ def main(task_id):
         cwd = os.getcwd()
         os.chdir(tmpdir)
 
-        cmd = (
-            '''prun --exec "pwd; ls; echo Hello-world > myout.txt" '''
-            '''--outDS {outds} --nJobs 3 --output myout.txt'''.format(outds=outds)
-        )
+        cmd = """prun --exec "pwd; ls; echo Hello-world > myout.txt" """ """--outDS {outds} --nJobs 3 --output myout.txt""".format(outds=outds)
 
         res = subprocess.run(cmd, shell=True, text=True, capture_output=True)
         out = (res.stdout or "") + "\n" + (res.stderr or "")
@@ -50,7 +57,7 @@ def main(task_id):
     finish_ret_old = finishTask(task_id)
     retry_ret_old = retryTask(task_id)
     reactivate_ret_old = reactivateTask(task_id)
-    get_jobs_old = getJobIDsJediTasksInTimeRange('2025-08-01 14:30:45')
+    get_jobs_old = getJobIDsJediTasksInTimeRange("2025-08-01 14:30:45")
     get_ids_old = getPandaIDsWithTaskID(task_id)
     increase_ret_old = increase_attempt_nr(task_id)
     reload_ret_old = reload_input(task_id)
@@ -72,6 +79,7 @@ def main(task_id):
     print(f"reloadInput returned: {reload_ret_old}")
     print(f"get_files_in_datasets returned: {files_ret_old}")
     print(f"getUserJobMetadata returned: {metadata_old}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

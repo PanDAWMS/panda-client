@@ -19,4 +19,3 @@ def naive_utcnow():
         datetime: current UTC date and time, without tzinfo
     """
     return aware_utcnow().replace(tzinfo=None)
-

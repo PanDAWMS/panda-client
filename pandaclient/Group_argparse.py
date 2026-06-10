@@ -18,7 +18,7 @@ class GroupArgParser(argparse.ArgumentParser):
     def __init__(self, usage, conflict_handler):
         self.groups_dict = OrderedDict()
         self.briefHelp = None
-        self.examples =  ""
+        self.examples = ""
         super().__init__(usage=usage, conflict_handler=conflict_handler)
 
     def set_examples(self, examples):
@@ -36,11 +36,11 @@ class GroupArgParser(argparse.ArgumentParser):
             self._action_groups.append(group)
 
     def add_helpGroup(self, addHelp=None):
-        help='Print individual group help (the group name is not case-sensitive), where "ALL" will print all groups together.'
+        help = 'Print individual group help (the group name is not case-sensitive), where "ALL" will print all groups together.'
         if addHelp:
-           help += ' ' + addHelp
-        choices_m = self.MyList(list(self.groups_dict.keys()) + ['ALL'])
-        self.add_argument('--helpGroup', choices=choices_m, action=self.print_groupHelp, help=help)
+            help += " " + addHelp
+        choices_m = self.MyList(list(self.groups_dict.keys()) + ["ALL"])
+        self.add_argument("--helpGroup", choices=choices_m, action=self.print_groupHelp, help=help)
 
         try:
             from cStringIO import StringIO
@@ -52,13 +52,13 @@ class GroupArgParser(argparse.ArgumentParser):
         sys.stdout = old_stdout
 
         self.update_action_groups()
-        self.add_argument('-h', '--help', action=self.print_briefHelp, nargs=0, help="Print this help")
+        self.add_argument("-h", "--help", action=self.print_briefHelp, nargs=0, help="Print this help")
 
     def shareWithGroup(self, action, group):
         # share option action to another group
         if action and group:
-           if action not in group._group_actions:
-              group._group_actions.append(action)
+            if action not in group._group_actions:
+                group._group_actions.append(action)
 
     class MyArgGroup(argparse._ArgumentGroup):
         def shareWithMe(self, action):
@@ -70,22 +70,22 @@ class GroupArgParser(argparse.ArgumentParser):
             return super().__contains__(other.upper())
 
     class print_briefHelp(argparse.Action):
-         def __call__(self, parser, namespace, values, option_string=None):
-             parser.print_help()
-             sys.exit(0)
+        def __call__(self, parser, namespace, values, option_string=None):
+            parser.print_help()
+            sys.exit(0)
 
     class print_groupHelp(argparse.Action):
-         def __init__(self, option_strings, dest, nargs=None, **kwargs):
-             if nargs is not None:
-                 raise ValueError("nargs not allowed")
-             super().__init__(option_strings, dest, **kwargs)
+        def __init__(self, option_strings, dest, nargs=None, **kwargs):
+            if nargs is not None:
+                raise ValueError("nargs not allowed")
+            super().__init__(option_strings, dest, **kwargs)
 
-         def __call__(self, parser, namespace, values, option_string=None):
-             values = values.upper()
-             groups = parser.groups_dict
-             if values == 'ALL':
+        def __call__(self, parser, namespace, values, option_string=None):
+            values = values.upper()
+            groups = parser.groups_dict
+            if values == "ALL":
                 parser.print_help()
-             elif values in groups.keys():
+            elif values in groups.keys():
                 group = groups[values]
                 formatter = parser._get_formatter()
                 formatter.start_section(group.title)
@@ -94,14 +94,14 @@ class GroupArgParser(argparse.ArgumentParser):
                 formatter.end_section()
                 print(formatter.format_help())
                 if group.usage:
-                   print(group.usage)
-             else:
+                    print(group.usage)
+            else:
                 raise Exception("!!!ERROR!!! Unknown group name=%s" % values)
-             sys.exit(0)
+            sys.exit(0)
 
 
 # factory method
 def get_parser(usage, conflict_handler):
     p = GroupArgParser(usage, conflict_handler)
-    p.register('action', 'store', ActionWithUnicodeCheck)
+    p.register("action", "store", ActionWithUnicodeCheck)
     return p

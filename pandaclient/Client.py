@@ -716,7 +716,12 @@ class _NativeCurl(_Curl):
         boundary = "".join(random.choice(string.ascii_letters) for ii in range(30 + 1))
         body = b""
         for k in data:
-            lines = ["--" + boundary, 'Content-Disposition: form-data; name="{}"; filename="{}"'.format(k, data[k]), "Content-Type: application/octet-stream", ""]
+            lines = [
+                "--" + boundary,
+                'Content-Disposition: form-data; name="{}"; filename="{}"'.format(k, data[k]),
+                "Content-Type: application/octet-stream",
+                "",
+            ]
             body += "\r\n".join(lines).encode()
             body += b"\r\n"
             body += open(data[k], "rb").read()

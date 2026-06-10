@@ -854,7 +854,7 @@ class JobSpec:
     def get_ram_for_retry(self):
         if self.specialHandling is not None:
             for tmpItem in self.specialHandling.split(","):
-                if tmpItem.startswith("{}:".format(self._tagForSH['retryRam'])):
+                if tmpItem.startswith("{}:".format(self._tagForSH["retryRam"])):
                     return int(tmpItem.split(":")[-1])
         return None
 
@@ -867,10 +867,10 @@ class JobSpec:
         # remove old value
         newItems = []
         for tmpItem in items:
-            if tmpItem.startswith("{}:".format(self._tagForSH['retryRam'])):
+            if tmpItem.startswith("{}:".format(self._tagForSH["retryRam"])):
                 continue
             newItems.append(tmpItem)
-        newItems.append("{}:{}".format(self._tagForSH['retryRam'], val))
+        newItems.append("{}:{}".format(self._tagForSH["retryRam"], val))
         self.specialHandling = ",".join(newItems)
 
     # dump to json-serializable
@@ -959,7 +959,7 @@ class JobSpec:
             items = []
         else:
             items = self.specialHandling.split(",")
-        items.append("{}={}".format(self._tagForSH['taskQueuedTime'], queued_time))
+        items.append("{}={}".format(self._tagForSH["taskQueuedTime"], queued_time))
         self.specialHandling = ",".join(items)
 
 
@@ -985,7 +985,7 @@ def get_task_queued_time(special_handling):
     try:
         if special_handling is not None:
             for item in special_handling.split(","):
-                if item.startswith("{}=".format(JobSpec._tagForSH['taskQueuedTime'])):
+                if item.startswith("{}=".format(JobSpec._tagForSH["taskQueuedTime"])):
                     return datetime.datetime.fromtimestamp(float(item.split("=")[-1]), datetime.timezone.utc)
     except Exception:
         pass

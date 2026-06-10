@@ -343,6 +343,7 @@ def load_jobs_json(state):
         jobs.append(job_spec)
     return jobs
 
+
 # load dictionary list into jobs
 def load_jobs(job_dicts):
     jobs = []

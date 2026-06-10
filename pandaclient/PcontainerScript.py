@@ -3,7 +3,7 @@ import sys
 
 from pandaclient import pcontainer_core
 
-os.environ['PANDA_EXEC_STRING'] = 'pcontainer'
+os.environ["PANDA_EXEC_STRING"] = "pcontainer"
 
 optP = pcontainer_core.make_arg_parse()
 

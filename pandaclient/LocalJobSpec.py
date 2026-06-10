@@ -10,43 +10,59 @@ from urllib.parse import quote, unquote
 
 class LocalJobSpec:
     # attributes
-    _attributes = ('id','JobID','PandaID','jobStatus','site','cloud','jobType',
-                   'jobName','inDS','outDS','libDS','provenanceID','creationTime',
-                   'lastUpdate','jobParams','dbStatus','buildStatus','retryID',
-                   'commandToPilot')
+    _attributes = (
+        "id",
+        "JobID",
+        "PandaID",
+        "jobStatus",
+        "site",
+        "cloud",
+        "jobType",
+        "jobName",
+        "inDS",
+        "outDS",
+        "libDS",
+        "provenanceID",
+        "creationTime",
+        "lastUpdate",
+        "jobParams",
+        "dbStatus",
+        "buildStatus",
+        "retryID",
+        "commandToPilot",
+    )
     # appended attributes
     appended = {
-        'groupID'       : 'INTEGER',
-        'releaseVar'    : 'VARCHAR(128)',
-        'cacheVar'      : 'VARCHAR(128)',
-        'retryJobsetID' : 'INTEGER',
-        'parentJobsetID': 'INTEGER',
-        'mergeJobStatus': 'VARCHAR(20)',
-        'mergeJobID'    : 'TEXT',
-        'nRebro'        : 'INTEGER',
-        'jediTaskID'    : 'INTEGER',
-        'taskStatus'    : 'VARCHAR(16)',
-        }
+        "groupID": "INTEGER",
+        "releaseVar": "VARCHAR(128)",
+        "cacheVar": "VARCHAR(128)",
+        "retryJobsetID": "INTEGER",
+        "parentJobsetID": "INTEGER",
+        "mergeJobStatus": "VARCHAR(20)",
+        "mergeJobID": "TEXT",
+        "nRebro": "INTEGER",
+        "jediTaskID": "INTEGER",
+        "taskStatus": "VARCHAR(16)",
+    }
 
     _attributes += tuple(appended.keys())
     # slots
-    __slots__ = _attributes + ('flag_showSubstatus','flag_longFormat')
-
+    __slots__ = _attributes + ("flag_showSubstatus", "flag_longFormat")
 
     # constructor
     def __init__(self):
         # install attributes
         for attr in self._attributes:
-            setattr(self,attr,None)
-        self.flag_showSubstatus = ''
+            setattr(self, attr, None)
+        self.flag_showSubstatus = ""
         self.flag_longFormat = False
 
     # string format
     def __str__(self):
         # job status
         statusMap = {}
-        for item in self.jobStatus.split(','):
-            match = re.search(r'^(\w+)\*(\d+)$',item)
+        for item in self.jobStatus.split(","):
+            match = re.search(r"^(\w+)\*(\d+)$", item)
             if match is None:
                 # non compact
                 if item not in statusMap:
@@ -55,125 +71,122 @@ class LocalJobSpec:
             else:
                 # compact
                 tmpStatus = match.group(1)
-                tmpCount  = int(match.group(2))
+                tmpCount = int(match.group(2))
                 if tmpStatus not in statusMap:
                     statusMap[tmpStatus] = 0
                 statusMap[tmpStatus] += tmpCount
         # show PandaIDs in particular states
         pandaIDstatusMap = {}
-        if self.flag_showSubstatus != '':
+        if self.flag_showSubstatus != "":
             # get PandaIDs for each status
-            tmpStatusList  = self.jobStatus.split(',')
-            tmpPandaIDList = self.PandaID.split(',')
-            for tmpIndex,tmpPandaID in enumerate(tmpPandaIDList):
+            tmpStatusList = self.jobStatus.split(",")
+            tmpPandaIDList = self.PandaID.split(",")
+            for tmpIndex, tmpPandaID in enumerate(tmpPandaIDList):
                 if tmpIndex < len(tmpStatusList):
                     tmpStatus = tmpStatusList[tmpIndex]
                 else:
                     # use unknown for out-range
-                    tmpStatus = 'unknown'
+                    tmpStatus = "unknown"
                 # status of interest
-                if tmpStatus not in self.flag_showSubstatus.split(','):
+                if tmpStatus not in self.flag_showSubstatus.split(","):
                     continue
                 # append
                 if tmpStatus not in pandaIDstatusMap:
-                    pandaIDstatusMap[tmpStatus] = 'PandaID='
-                pandaIDstatusMap[tmpStatus] += '%s,' % tmpPandaID
+                    pandaIDstatusMap[tmpStatus] = "PandaID="
+                pandaIDstatusMap[tmpStatus] += "%s," % tmpPandaID
         statusStr = self.dbStatus
         for tmpStatus in statusMap:
             tmpCount = statusMap[tmpStatus]
-            statusStr += '\n%8s   %10s : %s' % ('',tmpStatus,tmpCount)
+            statusStr += "\n%8s   %10s : %s" % ("", tmpStatus, tmpCount)
             if self.flag_showSubstatus:
                 if tmpStatus in pandaIDstatusMap:
-                    statusStr += '\n%8s   %10s   %s' % ('','',pandaIDstatusMap[tmpStatus][:-1])
+                    statusStr += "\n%8s   %10s   %s" % ("", "", pandaIDstatusMap[tmpStatus][:-1])
         # disable showSubstatus
-        self.flag_showSubstatus = ''
+        self.flag_showSubstatus = ""
         # number of jobs
-        nJobs = len(self.PandaID.split(','))
-        if self.buildStatus != '':
+        nJobs = len(self.PandaID.split(","))
+        if self.buildStatus != "":
             # including buildJob
-            nJobsStr = "%d + 1(build)" % (nJobs-1)
+            nJobsStr = "%d + 1(build)" % (nJobs - 1)
         else:
             nJobsStr = "%d" % nJobs
         # remove duplication in inDS and outDS
-        strInDS = ''
+        strInDS = ""
         try:
             tmpInDSList = []
-            for tmpItem in str(self.inDS).split(','):
+            for tmpItem in str(self.inDS).split(","):
                 if tmpItem not in tmpInDSList:
                     tmpInDSList.append(tmpItem)
-                    strInDS += '%s,' % tmpItem
+                    strInDS += "%s," % tmpItem
             strInDS = strInDS[:-1]
         except Exception:
             pass
-        strOutDS = ''
+        strOutDS = ""
         try:
             tmpOutDSList = []
-            for tmpItem in str(self.outDS).split(','):
+            for tmpItem in str(self.outDS).split(","):
                 if tmpItem not in tmpOutDSList:
                     tmpOutDSList.append(tmpItem)
-                    strOutDS += '%s,' % tmpItem
+                    strOutDS += "%s," % tmpItem
             strOutDS = strOutDS[:-1]
         except Exception:
             pass
         # parse
-        relStr = ''
-        if self.releaseVar not in ['','NULL','None',None]:
+        relStr = ""
+        if self.releaseVar not in ["", "NULL", "None", None]:
             relStr = self.releaseVar
         # cache
-        cacheStr = ''
-        if self.cacheVar not in ['','NULL','None',None]:
+        cacheStr = ""
+        if self.cacheVar not in ["", "NULL", "None", None]:
             cacheStr = self.cacheVar
         # string representation
         strFormat = "%15s : %s\n"
-        strOut =  ""
-        strOut += strFormat % ("JobID",        self.JobID)
-        if self.groupID in ['','NULL',0,'0',-1,'-1']:
-            strOut += strFormat % ("JobsetID",     '')
+        strOut = ""
+        strOut += strFormat % ("JobID", self.JobID)
+        if self.groupID in ["", "NULL", 0, "0", -1, "-1"]:
+            strOut += strFormat % ("JobsetID", "")
         else:
             strOut += strFormat % ("JobsetID", self.groupID)
-        strOut += strFormat % ("type",         self.jobType)
-        strOut += strFormat % ("release",      relStr)
-        strOut += strFormat % ("cache",        cacheStr)
-        strOut += strFormat % ("PandaID",      self.encodeCompact()['PandaID'])
-        strOut += strFormat % ("nJobs",        nJobsStr)
-        strOut += strFormat % ("site",         self.site)
-        strOut += strFormat % ("cloud",        self.cloud)
-        strOut += strFormat % ("inDS",         strInDS)
-        strOut += strFormat % ("outDS",        strOutDS)
-        strOut += strFormat % ("libDS",        str(self.libDS))
-        strOut += strFormat % ("retryID",      self.retryID)
+        strOut += strFormat % ("type", self.jobType)
+        strOut += strFormat % ("release", relStr)
+        strOut += strFormat % ("cache", cacheStr)
+        strOut += strFormat % ("PandaID", self.encodeCompact()["PandaID"])
+        strOut += strFormat % ("nJobs", nJobsStr)
+        strOut += strFormat % ("site", self.site)
+        strOut += strFormat % ("cloud", self.cloud)
+        strOut += strFormat % ("inDS", strInDS)
+        strOut += strFormat % ("outDS", strOutDS)
+        strOut += strFormat % ("libDS", str(self.libDS))
+        strOut += strFormat % ("retryID", self.retryID)
         strOut += strFormat % ("provenanceID", self.provenanceID)
-        if self.mergeJobStatus not in ['NA']:
+        if self.mergeJobStatus not in ["NA"]:
             strOut += strFormat % ("mergeJobStatus", self.mergeJobStatus)
-            strOut += strFormat % ("mergeJobID",     self.mergeJobID)
-        strOut += strFormat % ("creationTime", self.creationTime.strftime('%Y-%m-%d %H:%M:%S'))
-        strOut += strFormat % ("lastUpdate",   self.lastUpdate.strftime('%Y-%m-%d %H:%M:%S'))
-        strOut += strFormat % ("params",       self.jobParams)
-        strOut += strFormat % ("jobStatus",    statusStr)
+            strOut += strFormat % ("mergeJobID", self.mergeJobID)
+        strOut += strFormat % ("creationTime", self.creationTime.strftime("%Y-%m-%d %H:%M:%S"))
+        strOut += strFormat % ("lastUpdate", self.lastUpdate.strftime("%Y-%m-%d %H:%M:%S"))
+        strOut += strFormat % ("params", self.jobParams)
+        strOut += strFormat % ("jobStatus", statusStr)
         # return
         return strOut
 
-
     # override __getattribute__ for SQL
-    def __getattribute__(self,name):
-        ret = object.__getattribute__(self,name)
+    def __getattribute__(self, name):
+        ret = object.__getattribute__(self, name)
         if ret is None:
             return "NULL"
         return ret
 
-
     # pack tuple into JobSpec
-    def pack(self,values):
+    def pack(self, values):
         for i in range(len(self._attributes)):
-            attr= self._attributes[i]
+            attr = self._attributes[i]
             val = values[i]
-            setattr(self,attr,val)
+            setattr(self, attr, val)
         # expand compact values
         self.decodeCompact()
 
-
     # return a tuple of values
-    def values(self,forUpdate=False):
+    def values(self, forUpdate=False):
         # make compact values
         encVal = self.encodeCompact()
         if forUpdate:
@@ -187,53 +200,52 @@ class LocalJobSpec:
             if attr in encVal:
                 val = encVal[attr]
             else:
-                val = getattr(self,attr)
+                val = getattr(self, attr)
             # convert datetime to str
             if type(val) == datetime.datetime:
-                val = val.strftime('%Y-%m-%d %H:%M:%S')
+                val = val.strftime("%Y-%m-%d %H:%M:%S")
             # add colum name for UPDATE
             if forUpdate:
-                if attr == 'id':
+                if attr == "id":
                     continue
-                retS += '%s=' % attr
+                retS += "%s=" % attr
             # value
-            if val == 'NULL':
-                retS += 'NULL,'
+            if val == "NULL":
+                retS += "NULL,"
             else:
                 retS += "'%s'," % str(val)
-        retS  = retS[:-1]
+        retS = retS[:-1]
         if not forUpdate:
-            retS += ')'
+            retS += ")"
         return retS
-
 
     # expand compact values
     def decodeCompact(self):
         # PandaID
-        pStr = ''
-        for item in self.PandaID.split(','):
-            match = re.search(r'^(\d+)-(\d+)$',item)
+        pStr = ""
+        for item in self.PandaID.split(","):
+            match = re.search(r"^(\d+)-(\d+)$", item)
             if match is None:
                 # non compact
-                pStr += (item+',')
+                pStr += item + ","
             else:
                 # compact
                 sID = int(match.group(1))
                 eID = int(match.group(2))
-                for tmpID in range(sID,eID+1):
+                for tmpID in range(sID, eID + 1):
                     pStr += "%s," % tmpID
         self.PandaID = pStr[:-1]
         # status
-        sStr = ''
-        for item in self.jobStatus.split(','):
-            match = re.search(r'^(\w+)\*(\d+)$',item)
+        sStr = ""
+        for item in self.jobStatus.split(","):
+            match = re.search(r"^(\w+)\*(\d+)$", item)
             if match is None:
                 # non compact
-                sStr += (item+',')
+                sStr += item + ","
             else:
                 # compact
                 tmpStatus = match.group(1)
-                tmpCount  = int(match.group(2))
+                tmpCount = int(match.group(2))
                 for tmpN in range(tmpCount):
                     sStr += "%s," % tmpStatus
         self.jobStatus = sStr[:-1]
@@ -245,39 +257,40 @@ class LocalJobSpec:
             if not isinstance(val, str):
                 continue
             # convert str to datetime
-            match = re.search(r'^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)$',val)
+            match = re.search(r"^(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)$", val)
             if match is not None:
-                tmpDate = datetime.datetime(year   = int(match.group(1)),
-                                            month  = int(match.group(2)),
-                                            day    = int(match.group(3)),
-                                            hour   = int(match.group(4)),
-                                            minute = int(match.group(5)),
-                                            second = int(match.group(6)))
-                setattr(self,attr,tmpDate)
+                tmpDate = datetime.datetime(
+                    year=int(match.group(1)),
+                    month=int(match.group(2)),
+                    day=int(match.group(3)),
+                    hour=int(match.group(4)),
+                    minute=int(match.group(5)),
+                    second=int(match.group(6)),
+                )
+                setattr(self, attr, tmpDate)
         # jobsetID
-        if self.groupID in ['','NULL']:
+        if self.groupID in ["", "NULL"]:
             self.groupID = 0
 
-
     # make compact values
-    def encodeCompact(self,includeMerge=False):
+    def encodeCompact(self, includeMerge=False):
         ret = {}
         if self.isJEDI():
-            if self.taskStatus in ['finished','failed','done','broken','aborted']:
-                self.dbStatus = 'frozen'
+            if self.taskStatus in ["finished", "failed", "done", "broken", "aborted"]:
+                self.dbStatus = "frozen"
             else:
-                self.dbStatus = 'running'
+                self.dbStatus = "running"
         # job parameters
-        ret['jobParams'] = quote(self.jobParams)
+        ret["jobParams"] = quote(self.jobParams)
         # PandaID
-        pStr = ''
+        pStr = ""
         sID = None
         eID = None
-        tmpPandaIDs = self.PandaID.split(',')
+        tmpPandaIDs = self.PandaID.split(",")
         if includeMerge:
-            tmpPandaIDs += self.mergeJobID.split(',')
+            tmpPandaIDs += self.mergeJobID.split(",")
         for item in tmpPandaIDs:
-            if item in ['','None']:
+            if item in ["", "None"]:
                 continue
             # convert to int
             try:
@@ -292,33 +305,33 @@ class LocalJobSpec:
                 eID = tmpID
                 continue
             # successive number
-            if eID+1 == tmpID:
+            if eID + 1 == tmpID:
                 eID = tmpID
                 continue
             # jump
             if sID == eID:
-                pStr += '%s,' % sID
+                pStr += "%s," % sID
             else:
-                pStr += '{}-{},'.format(sID,eID)
+                pStr += "{}-{},".format(sID, eID)
             # reset
             sID = tmpID
             eID = tmpID
         # last bunch
         if sID == eID:
-            pStr += '%s,' % sID
+            pStr += "%s," % sID
         else:
-            pStr += '{}-{},'.format(sID,eID)
-        ret['PandaID'] = pStr[:-1]
+            pStr += "{}-{},".format(sID, eID)
+        ret["PandaID"] = pStr[:-1]
         if self.isJEDI():
             return ret
         # job status
-        sStr = ''
+        sStr = ""
         sStatus = None
         nStatus = 0
         toBeFrozen = True
-        for tmpStatus in self.jobStatus.split(','):
+        for tmpStatus in self.jobStatus.split(","):
             # check if is should be frozen
-            if toBeFrozen and tmpStatus not in ['finished','failed','partial','cancelled']:
+            if toBeFrozen and tmpStatus not in ["finished", "failed", "partial", "cancelled"]:
                 toBeFrozen = False
             # set start status
             if sStatus is None:
@@ -331,61 +344,58 @@ class LocalJobSpec:
                 continue
             # jump
             if nStatus == 1:
-                sStr += '%s,' % sStatus
+                sStr += "%s," % sStatus
             else:
-                sStr += '{}*{},'.format(sStatus,nStatus)
+                sStr += "{}*{},".format(sStatus, nStatus)
             # reset
             sStatus = tmpStatus
             nStatus = 1
         # last bunch
         if nStatus == 1:
-            sStr += '%s,' % sStatus
+            sStr += "%s," % sStatus
         else:
-            sStr += '{}*{},'.format(sStatus,nStatus)
-        ret['jobStatus'] = sStr[:-1]
+            sStr += "{}*{},".format(sStatus, nStatus)
+        ret["jobStatus"] = sStr[:-1]
         # set merge job status
-        if '--mergeOutput' in self.jobParams and self.jobType not in ['usermerge']:
-            if self.mergeJobStatus not in ['NA','standby','generating','generated','aborted']:
-                self.mergeJobStatus = 'standby'
+        if "--mergeOutput" in self.jobParams and self.jobType not in ["usermerge"]:
+            if self.mergeJobStatus not in ["NA", "standby", "generating", "generated", "aborted"]:
+                self.mergeJobStatus = "standby"
         else:
-            self.mergeJobStatus = 'NA'
+            self.mergeJobStatus = "NA"
         # set dbStatus
         if toBeFrozen:
-            if self.mergeJobStatus in ['standby','generating']:
+            if self.mergeJobStatus in ["standby", "generating"]:
                 # intermediate state while generating merge jobs
-                self.dbStatus = 'running'
+                self.dbStatus = "running"
             else:
-                self.dbStatus = 'frozen'
+                self.dbStatus = "frozen"
         else:
-            if self.commandToPilot=='tobekilled':
-                self.dbStatus = 'killing'
+            if self.commandToPilot == "tobekilled":
+                self.dbStatus = "killing"
             else:
-                self.dbStatus = 'running'
+                self.dbStatus = "running"
         # return
         return ret
 
-
     # merge job generation is active
     def activeMergeGen(self):
-        if '--mergeOutput' in self.jobParams and self.mergeJobStatus in ['standby','generating'] \
-               and self.jobType not in ['usermerge']:
+        if "--mergeOutput" in self.jobParams and self.mergeJobStatus in ["standby", "generating"] and self.jobType not in ["usermerge"]:
             return True
         return False
-
 
     # return column names for INSERT or full SELECT
     def columnNames(cls):
         ret = ""
         for attr in cls._attributes:
             if ret != "":
-                ret += ','
+                ret += ","
             ret += attr
         return ret
-    columnNames = classmethod(columnNames)
 
+    columnNames = classmethod(columnNames)
 
     # check if JEDI
     def isJEDI(self):
-        if self.jediTaskID in [-1,'-1','']:
+        if self.jediTaskID in [-1, "-1", ""]:
             return False
         return True

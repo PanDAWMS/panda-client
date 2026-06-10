@@ -10,8 +10,7 @@ import shutil
 import sys
 import time
 
-from pandaclient.CommonArgs import (VALID_TRANSFER_TYPES, add_common_arguments,
-                                    get_invalid_transfer_types)
+from pandaclient.CommonArgs import VALID_TRANSFER_TYPES, add_common_arguments, get_invalid_transfer_types
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import parse_secondary_datasets_opt
 
@@ -1241,11 +1240,11 @@ group_containerJob.add_argument(
     "(e.g. #&nvidia:vram>=40960:driver>=575.0:model=.*A100.*); supported keys: vram, cuda, uarch, driver, model. "
     "Use = or == for exact match, != for model exclusion (e.g. model!=.*P100.* excludes P100 queues). "
     "This option also allows to specify a json-serialized dictionary. The gpu_spec supports: "
-    "model (regexp, e.g. {\"model\": \".*A100.*\"} to require an A100, or {\"model\": {\"pattern\": \".*P100.*\", \"excl\": true}} to exclude P100 queues, case-insensitive); "
-    "version (minimum CUDA version, e.g. {\"version\": \">=12.0\"}); "
-    "vram (GPU memory in MB as an operator-prefixed string, e.g. {\"vram\": \">=40960\"} for at least 40 GB or {\"vram\": \"==40960\"} for exactly 40 GB); "
-    "microarchitecture (GPU microarch generation, e.g. {\"microarchitecture\": \"Ampere\"} or {\"microarchitecture\": [\"Ampere\", \"Hopper\"]}); "
-    "driver_version (NVIDIA kernel driver version, e.g. {\"driver_version\": \">=575.0\"} for minimum or {\"driver_version\": \"==575.51.03\"} for exact). "
+    'model (regexp, e.g. {"model": ".*A100.*"} to require an A100, or {"model": {"pattern": ".*P100.*", "excl": true}} to exclude P100 queues, case-insensitive); '
+    'version (minimum CUDA version, e.g. {"version": ">=12.0"}); '
+    'vram (GPU memory in MB as an operator-prefixed string, e.g. {"vram": ">=40960"} for at least 40 GB or {"vram": "==40960"} for exactly 40 GB); '
+    'microarchitecture (GPU microarch generation, e.g. {"microarchitecture": "Ampere"} or {"microarchitecture": ["Ampere", "Hopper"]}); '
+    'driver_version (NVIDIA kernel driver version, e.g. {"driver_version": ">=575.0"} for minimum or {"driver_version": "==575.51.03"} for exact). '
     "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, microarchitecture, version, driver_version) use worker node GPU monitoring data. "
     "See https://panda-wms.readthedocs.io/en/latest/advanced/brokerage.html#checks-for-cpu-and-or-gpu-hardware",
 )
@@ -1380,9 +1379,7 @@ group_job.add_argument(
 )
 
 from pandaclient import MiscUtils
-from pandaclient.MiscUtils import (commands_get_output,
-                                   commands_get_status_output,
-                                   commands_get_status_output_with_env)
+from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, commands_get_status_output_with_env
 
 # parse options
 # check against the removed options first

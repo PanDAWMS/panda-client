@@ -14,8 +14,7 @@ for _p in _pythonpath_orig.split(os.pathsep):
         if any(c.lower().startswith("rucio") for c in _p.split(os.sep) if c):
             sys.path.append(_p)
 
-from pandaclient import (Client, MiscUtils, PandaToolsPkgInfo, PLogger,
-                         PrunScript, PsubUtils)
+from pandaclient import Client, MiscUtils, PandaToolsPkgInfo, PLogger, PrunScript, PsubUtils
 from pandaclient.Group_argparse import get_parser
 
 
