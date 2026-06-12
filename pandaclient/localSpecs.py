@@ -9,12 +9,12 @@ from rich.text import Text
 _console = Console()
 
 _STATUS_STYLE = {
-    "running": "green",
+    "running": "blue",
     "submitting": "yellow",
     "registered": "yellow",
     "ready": "yellow",
-    "done": "blue",
-    "finished": "cyan",
+    "done": "green",
+    "finished": "green",
     "failed": "red",
     "broken": "bold red",
     "aborted": "bold red",
