@@ -5,6 +5,9 @@ import re
 import sys
 import time
 
+from rich import box
+from rich.table import Table
+
 from pandaclient import PsubUtils, localSpecs
 
 from . import Client, PLogger
@@ -449,25 +452,19 @@ class PBookCore:
         if status:
             if data:
                 prefix = "^___[a-z]+___:"
-                msg = "\n"
-                keys = [re.sub(prefix, "", k) for k in data.keys()]
-                big_key = len(max(keys, key=len))
-                template = f"{{:{big_key + 1}s}}: {{}}\n"
-                msg += template.format("Key", "Value")
-                msg += template.format("-" * big_key, "-" * 20)
-                keys.sort()
                 max_len = 50
-                for k in data:
+                t = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold")
+                t.add_column("Key")
+                t.add_column("Value")
+                for k in sorted(data):
                     value = data[k]
-                    # hide prefix
-                    if re.search(prefix, k):
-                        k = re.sub(prefix, "", k)
+                    clean_key = re.sub(prefix, "", k)
                     if not full and len(value) > max_len:
                         value = value[:max_len] + "..."
-                    msg += template.format(k, value)
+                    t.add_row(clean_key, value)
+                localSpecs._console.print(t)
             else:
-                msg = "No secrets"
-            print(msg)
+                localSpecs._console.print("No secrets")
         else:
             tmpLog.error(data)
         # return
