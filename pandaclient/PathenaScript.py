@@ -1249,11 +1249,11 @@ group_containerJob.add_argument(
     "(e.g. #&nvidia:vram>=40960:driver>=575.0:model=.*A100.*); supported keys: vram, cuda, uarch, driver, model. "
     "Use = or == for exact match. "
     "This option also allows to specify a json-serialized dictionary. The gpu_spec supports: "
-    "model (regexp, e.g. {\"model\": \".*A100.*\"} to require an A100, or {\"model\": {\"pattern\": \".*P100.*\", \"excl\": true}} to exclude P100 queues, case-insensitive); "
-    "version (minimum CUDA version, e.g. {\"version\": \">=12.0\"}); "
-    "vram (GPU memory in MB as an operator-prefixed string, e.g. {\"vram\": \">=40960\"} for at least 40 GB or {\"vram\": \"==40960\"} for exactly 40 GB); "
-    "microarchitecture (GPU microarch generation, e.g. {\"microarchitecture\": \"Ampere\"} or {\"microarchitecture\": [\"Ampere\", \"Hopper\"]}); "
-    "driver_version (NVIDIA kernel driver version, e.g. {\"driver_version\": \">=575.0\"} for minimum or {\"driver_version\": \"==575.51.03\"} for exact). "
+    'model (regexp, e.g. {"model": ".*A100.*"} to require an A100, or {"model": {"pattern": ".*P100.*", "excl": true}} to exclude P100 queues, case-insensitive); '
+    'version (minimum CUDA version, e.g. {"version": ">=12.0"}); '
+    'vram (GPU memory in MB as an operator-prefixed string, e.g. {"vram": ">=40960"} for at least 40 GB or {"vram": "==40960"} for exactly 40 GB); '
+    'microarchitecture (GPU microarch generation, e.g. {"microarchitecture": "Ampere"} or {"microarchitecture": ["Ampere", "Hopper"]}); '
+    'driver_version (NVIDIA kernel driver version, e.g. {"driver_version": ">=575.0"} for minimum or {"driver_version": "==575.51.03"} for exact). '
     "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, microarchitecture, version, driver_version) use worker node GPU monitoring data. "
     "See https://panda-wms.readthedocs.io/en/latest/advanced/brokerage.html#checks-for-cpu-and-or-gpu-hardware",
 )
@@ -2070,6 +2070,14 @@ else:
             if tmpOutName not in options.extOutFile:
                 options.extOutFile.append(tmpOutName)
                 oneOut = True
+    # look for --argjson
+    match = re.search(r"--algjson[ =]+([^ ,;]+)", tmpString, re.IGNORECASE)
+    if match is not None:
+        # append json file to extFile
+        arg_json_file = match.group(1)
+        if arg_json_file not in options.extFile:
+            options.extFile.append(arg_json_file)
+        options.useArgJson = True
     # warning if no output
     if not oneOut:
         tmpLog.warning("argument of --trf doesn't contain any %OUT")
