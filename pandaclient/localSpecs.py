@@ -99,8 +99,8 @@ class LocalTaskSpec:
         t.add_column("ReqID", justify="right", no_wrap=True)
         t.add_column("Progress", justify="right", no_wrap=True)
         t.add_column("Files (done|failed|total)", no_wrap=True)
-        t.add_column("TaskName", ratio=2)
-        t.add_column("URL", ratio=1)
+        t.add_column("TaskName")
+        t.add_column("URL")
         return t
 
     def add_row_standard(self, table):
