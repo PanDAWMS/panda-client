@@ -8,6 +8,8 @@ from rich.text import Text
 
 _console = Console()
 
+_URL_MIN_WIDTH = 150
+
 _STATUS_STYLE = {
     "running": "green",
     "submitting": "yellow",
@@ -100,6 +102,8 @@ class LocalTaskSpec:
         t.add_column("Progress", justify="right", no_wrap=True)
         t.add_column("Files (done|failed|total)", no_wrap=True)
         t.add_column("TaskName")
+        if _console.width >= _URL_MIN_WIDTH:
+            t.add_column("URL", no_wrap=True)
         return t
 
     def add_row_standard(self, table):
@@ -114,7 +118,7 @@ class LocalTaskSpec:
 
     def add_row_long(self, table):
         url = str(self._weburl)
-        table.add_row(
+        row = [
             Text(str(self.jeditaskid), style=f"link {url}"),
             self._status_text(self.status),
             str(self.creationdate),
@@ -123,7 +127,10 @@ class LocalTaskSpec:
             str(self.pctfinished),
             f"{self.nfilesfinished}|{self.nfilesfailed}|{self.nfiles}",
             str(self.taskname),
-        )
+        ]
+        if _console.width >= _URL_MIN_WIDTH:
+            row.append(Text(url, style=f"link {url}"))
+        table.add_row(*row)
 
     def print_plain(self):
         t = Table(box=box.SIMPLE, show_header=True, header_style="bold", title=f"Task {self.jeditaskid}")
