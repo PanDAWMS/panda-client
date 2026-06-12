@@ -2071,7 +2071,7 @@ else:
                 options.extOutFile.append(tmpOutName)
                 oneOut = True
     # look for --argjson
-    match = re.search(r"--algjson[ =]+([^ ,;]+)", tmpString, re.IGNORECASE)
+    match = re.search(r"--argjson[ =]+([^ ,;]+)", tmpString, re.IGNORECASE)
     if match is not None:
         # append json file to extFile
         arg_json_file = match.group(1)
