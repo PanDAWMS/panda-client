@@ -133,5 +133,5 @@ class LocalTaskSpec:
         for aname in self.__slots__:
             if aname == "_fulldict":
                 continue
-            t.add_row(aname, str(getattr(self, aname)))
+            t.add_row(aname, str(getattr(self, aname, None)))
         _console.print(t)
