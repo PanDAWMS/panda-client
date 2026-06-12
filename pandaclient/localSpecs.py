@@ -85,7 +85,7 @@ class LocalTaskSpec:
         t.add_column("JediTaskID", justify="right")
         t.add_column("ReqID", justify="right")
         t.add_column("Status", justify="right")
-        t.add_column("Fin%", justify="right")
+        t.add_column("Progress", justify="right")
         t.add_column("TaskName")
         return t
 
@@ -97,7 +97,7 @@ class LocalTaskSpec:
         t.add_column("CreationDate")
         t.add_column("ModificationTime")
         t.add_column("ReqID", justify="right")
-        t.add_column("Fin%", justify="right")
+        t.add_column("Progress", justify="right")
         t.add_column("Files (done|failed|total)")
         t.add_column("TaskName")
         t.add_column("URL")
