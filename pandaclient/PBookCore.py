@@ -377,33 +377,23 @@ class PBookCore:
             since = None
         # query
         data = _query_task_dicts(self, filters=filters, since=since, n_tasks=limit)
-        # print header row
-        _tmpts = localSpecs.LocalTaskSpec
-        if format in ["json", "plain"]:
-            pass
-        elif format == "long":
-            print(_tmpts.head_dict["long"])
-        else:
-            print(_tmpts.head_dict["standard"])
         # print tasks
+        _tmpts = localSpecs.LocalTaskSpec
         if format == "json":
             return data
         elif format == "plain":
             for task in data:
-                taskspec = localSpecs.LocalTaskSpec(task)
-                taskspec.print_plain()
+                localSpecs.LocalTaskSpec(task).print_plain()
         elif format == "long":
-            i_count = 1
+            table = _tmpts.make_table_long()
             for task in data:
-                taskspec = localSpecs.LocalTaskSpec(task)
-                if i_count % 10 == 0:
-                    print(_tmpts.head_dict["long"])
-                taskspec.print_long()
-                i_count += 1
+                localSpecs.LocalTaskSpec(task).add_row_long(table)
+            localSpecs._console.print(table)
         else:
+            table = _tmpts.make_table_standard()
             for task in data:
-                taskspec = localSpecs.LocalTaskSpec(task)
-                taskspec.print_standard()
+                localSpecs.LocalTaskSpec(task).add_row_standard(table)
+            localSpecs._console.print(table)
 
     # execute workflow command
     def execute_workflow_command(self, command_name, request_id):
