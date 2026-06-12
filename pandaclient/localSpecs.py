@@ -92,15 +92,15 @@ class LocalTaskSpec:
     @staticmethod
     def make_table_long():
         t = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold")
-        t.add_column("JediTaskID", justify="right")
-        t.add_column("Status", justify="right")
-        t.add_column("CreationDate")
-        t.add_column("ModificationTime")
-        t.add_column("ReqID", justify="right")
-        t.add_column("Progress", justify="right")
-        t.add_column("Files (done|failed|total)")
-        t.add_column("TaskName")
-        t.add_column("URL")
+        t.add_column("JediTaskID", justify="right", no_wrap=True)
+        t.add_column("Status", justify="right", no_wrap=True)
+        t.add_column("CreationDate", no_wrap=True)
+        t.add_column("ModificationTime", no_wrap=True)
+        t.add_column("ReqID", justify="right", no_wrap=True)
+        t.add_column("Progress", justify="right", no_wrap=True)
+        t.add_column("Files (done|failed|total)", no_wrap=True)
+        t.add_column("TaskName", ratio=2)
+        t.add_column("URL", ratio=1)
         return t
 
     def add_row_standard(self, table):
