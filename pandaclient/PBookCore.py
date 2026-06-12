@@ -433,9 +433,9 @@ class PBookCore:
             return False
         status, msg = output
         if status:
-            tmpLog.info(msg)
+            tmpLog.info(msg or "Secret set successfully")
         else:
-            tmpLog.error(msg)
+            tmpLog.error(msg or "Failed to set secret")
         # return
         return status
 
