@@ -2,7 +2,6 @@ import base64
 import copy
 import json
 import re
-import shutil
 import sys
 import time
 
@@ -386,10 +385,9 @@ class PBookCore:
             for task in data:
                 localSpecs.LocalTaskSpec(task).print_plain()
         elif format == "long":
-            show_url = shutil.get_terminal_size(fallback=(0, 0)).columns >= localSpecs._URL_MIN_WIDTH
-            table = _tmpts.make_table_long(show_url=show_url)
+            table = _tmpts.make_table_long()
             for task in data:
-                localSpecs.LocalTaskSpec(task).add_row_long(table, show_url=show_url)
+                localSpecs.LocalTaskSpec(task).add_row_long(table)
             localSpecs._console.print(table)
         else:
             table = _tmpts.make_table_standard()
