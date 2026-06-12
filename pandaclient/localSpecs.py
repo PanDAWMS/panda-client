@@ -100,12 +100,12 @@ class LocalTaskSpec:
         t.add_column("Progress", justify="right", no_wrap=True)
         t.add_column("Files (done|failed|total)", no_wrap=True)
         t.add_column("TaskName")
-        t.add_column("URL")
         return t
 
     def add_row_standard(self, table):
+        url = str(self._weburl)
         table.add_row(
-            str(self.jeditaskid),
+            Text(str(self.jeditaskid), style=f"link {url}"),
             str(self.reqid),
             self._status_text(self.status),
             str(self.pctfinished),
@@ -115,7 +115,7 @@ class LocalTaskSpec:
     def add_row_long(self, table):
         url = str(self._weburl)
         table.add_row(
-            str(self.jeditaskid),
+            Text(str(self.jeditaskid), style=f"link {url}"),
             self._status_text(self.status),
             str(self.creationdate),
             str(self.modificationtime),
@@ -123,7 +123,6 @@ class LocalTaskSpec:
             str(self.pctfinished),
             f"{self.nfilesfinished}|{self.nfilesfailed}|{self.nfiles}",
             str(self.taskname),
-            Text(url, style=f"link {url}"),
         )
 
     def print_plain(self):
