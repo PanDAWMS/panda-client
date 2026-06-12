@@ -100,6 +100,7 @@ class LocalTaskSpec:
         t.add_column("Progress", justify="right", no_wrap=True)
         t.add_column("Files (done|failed|total)", no_wrap=True)
         t.add_column("TaskName")
+        t.add_column("URL", no_wrap=True, overflow="ellipsis", max_width=40)
         return t
 
     def add_row_standard(self, table):
@@ -123,6 +124,7 @@ class LocalTaskSpec:
             str(self.pctfinished),
             f"{self.nfilesfinished}|{self.nfilesfailed}|{self.nfiles}",
             str(self.taskname),
+            Text(url, style=f"link {url}"),
         )
 
     def print_plain(self):
