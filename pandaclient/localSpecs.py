@@ -9,7 +9,7 @@ from rich.text import Text
 _console = Console()
 
 _STATUS_STYLE = {
-    "running": "blue",
+    "running": "bright_blue",
     "submitting": "yellow",
     "registered": "yellow",
     "ready": "yellow",
