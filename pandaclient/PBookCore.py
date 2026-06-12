@@ -201,34 +201,27 @@ class PBookCore:
 
     # kill and retry
     def killAndRetry(self, taskID, newOpts=None):
-        # get logger
-        tmpLog = PLogger.getPandaLogger()
-        # kill
         retK = self.kill(taskID)
         if not retK:
             return False
-        # sleep
-        tmpLog.info("Going to sleep for 3 sec")
-        time.sleep(3)
         nTry = 6
-        for iTry in range(nTry):
-            # check if task terminated
-            taskspec = _get_one_task(self, taskID, self.verbose)
-            if taskspec is not None:
-                if taskspec.is_terminated():
-                    break
+        with localSpecs._console.status(f"Waiting for task {taskID} to terminate...") as status:
+            time.sleep(3)
+            for iTry in range(nTry):
+                taskspec = _get_one_task(self, taskID, self.verbose)
+                if taskspec is not None:
+                    if taskspec.is_terminated():
+                        break
+                    status.update(f"Sub-jobs still running — attempt {iTry + 1}/{nTry}")
                 else:
-                    tmpLog.info("Some sub-jobs are still running")
-            else:
-                tmpLog.warning("Could not get task status from panda monitor...")
-            if iTry + 1 < nTry:
-                # sleep
-                tmpLog.info("Going to sleep for 30 sec")
-                time.sleep(30)
-            else:
-                tmpLog.info("Max attempts exceeded. Please try later")
-                return False
-        # retry
+                    status.update(f"Could not get task status — attempt {iTry + 1}/{nTry}")
+                if iTry + 1 < nTry:
+                    for remaining in range(30, 0, -1):
+                        status.update(f"Next check in {remaining}s (attempt {iTry + 1}/{nTry})")
+                        time.sleep(1)
+                else:
+                    localSpecs._console.print("Max attempts exceeded. Please try later")
+                    return False
         return self.retry(taskID, newOpts=newOpts)
 
     # retry
