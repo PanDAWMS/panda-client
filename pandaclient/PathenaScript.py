@@ -1247,7 +1247,7 @@ group_containerJob.add_argument(
     "CPU with avx2 support and nvidia GPU. "
     "GPU attributes can also be appended as colon-separated key=value pairs in the shorthand "
     "(e.g. #&nvidia:vram>=40960:driver>=575.0:model=.*A100.*); supported keys: vram, cuda, uarch, driver, model. "
-    "Use = or == for exact match. "
+    "Use = or == for exact match, != for model exclusion (e.g. model!=.*P100.* excludes P100 queues). "
     "This option also allows to specify a json-serialized dictionary. The gpu_spec supports: "
     'model (regexp, e.g. {"model": ".*A100.*"} to require an A100, or {"model": {"pattern": ".*P100.*", "excl": true}} to exclude P100 queues, case-insensitive); '
     'version (minimum CUDA version, e.g. {"version": ">=12.0"}); '
