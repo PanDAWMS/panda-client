@@ -4,7 +4,6 @@ task_final_superstatus_list = ["finished", "failed", "done", "broken", "aborted"
 
 class LocalTaskSpec(object):
     _attributes_hidden = (
-        "_pandaserver",
         "_timestamp",
         "_sourceurl",
         "_weburl",
