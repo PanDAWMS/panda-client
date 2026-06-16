@@ -2057,6 +2057,14 @@ else:
             if tmpOutName not in options.extOutFile:
                 options.extOutFile.append(tmpOutName)
                 oneOut = True
+    # look for --argjson
+    match = re.search(r"--argjson[ =]+([^ ,;]+)", tmpString, re.IGNORECASE)
+    if match is not None:
+        # append json file to extFile
+        arg_json_file = match.group(1)
+        if arg_json_file not in options.extFile:
+            options.extFile.append(arg_json_file)
+        options.useArgJson = True
     # warning if no output
     if not oneOut:
         tmpLog.warning("argument of --trf doesn't contain any %OUT")

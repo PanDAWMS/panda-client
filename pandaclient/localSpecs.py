@@ -26,7 +26,6 @@ _STATUS_STYLE = {
 
 class LocalTaskSpec:
     _attributes_hidden = (
-        "_pandaserver",
         "_timestamp",
         "_sourceurl",
         "_weburl",
