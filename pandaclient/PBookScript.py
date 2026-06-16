@@ -13,11 +13,6 @@ import tempfile
 from pandaclient.MiscUtils import commands_get_output
 
 try:
-    long()
-except Exception:
-    long = int
-
-try:
     from concurrent.futures import ThreadPoolExecutor
 except ImportError:
 
@@ -114,7 +109,7 @@ def intmain(pbookCore, comString, args_list):
                 print(pydoc.plain(pydoc.render_doc(func)))
                 return
             except Exception:
-                print("Unknown command : {0}".format(str(arg[0])))
+                print(f"Unknown command : {str(arg[0])}")
         # print available methods
         tmp_str = """
 The following commands are available:
@@ -194,7 +189,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
             ret = list_parallel_exec(lambda task: pbookCore.kill(task.jeditaskid), task_list)
         elif isinstance(taskIDs, (list, tuple)):
             ret = list_parallel_exec(lambda taskID: pbookCore.kill(taskID), taskIDs)
-        elif isinstance(taskIDs, (int, long)):
+        elif isinstance(taskIDs, int):
             ret = [pbookCore.kill(taskIDs)]
         else:
             print("Error: Invalid argument")
@@ -224,7 +219,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
             )
         elif isinstance(taskIDs, (list, tuple)):
             ret = list_parallel_exec(lambda taskID: pbookCore.finish(taskID, soft=soft), taskIDs)
-        elif isinstance(taskIDs, (int, long)):
+        elif isinstance(taskIDs, int):
             ret = [pbookCore.finish(taskIDs, soft=soft)]
         else:
             print("Error: Invalid argument")
@@ -292,7 +287,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
                     return None
         if isinstance(taskIDs, (list, tuple)):
             ret = list_parallel_exec(lambda taskID: pbookCore.retry(taskID, newOpts=newOpts), taskIDs)
-        elif isinstance(taskIDs, (int, long)):
+        elif isinstance(taskIDs, int):
             ret = [pbookCore.retry(taskIDs, newOpts=newOpts)]
         elif taskIDs == "all":
             dataList = pbookCore.show(status="finished", days=days, limit=limit, format="json")
@@ -338,7 +333,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
             newOpts = {}
         if isinstance(taskIDs, (list, tuple)):
             ret = list_parallel_exec(lambda taskID: pbookCore.killAndRetry(taskID, newOpts=newOpts), taskIDs)
-        elif isinstance(taskIDs, (int, long)):
+        elif isinstance(taskIDs, int):
             ret = [pbookCore.killAndRetry(taskIDs, newOpts=newOpts)]
         else:
             print("Error: Invalid argument")
@@ -497,7 +492,7 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
     if args_list:
         func_name = args_list.pop(0)
         if func_name not in locals():
-            print("ERROR : function {0} is undefined".format(func_name))
+            print(f"ERROR : function {func_name} is undefined")
             sys.exit(1)
 
         # convert arg string
@@ -571,11 +566,11 @@ def main():
     E.g.
 
     $ pbook
-    >>> show(123, format='long', sync=True)
+    >>> show(123, format='long')
     
     is equivalent to    
 
-    $ pbook show 123 format='long' sync=True
+    $ pbook show 123 format='long'
     
     If arg or value is a list in interactive mode, it is represented as a comma-separate list in batch mode. E.g.
     to kill three tasks in interactive mode:

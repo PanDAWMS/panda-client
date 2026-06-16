@@ -2,7 +2,7 @@ task_active_superstatus_list = ["running", "submitting", "registered", "ready"]
 task_final_superstatus_list = ["finished", "failed", "done", "broken", "aborted"]
 
 
-class LocalTaskSpec(object):
+class LocalTaskSpec:
     _attributes_hidden = (
         "_timestamp",
         "_sourceurl",
@@ -66,10 +66,10 @@ class LocalTaskSpec(object):
             setattr(self, aname, value)
         for aname in self._attributes_dsinfo:
             if aname.startswith("pct"):
-                setattr(self, aname, "{0}%".format(self._fulldict.get(aname)))
+                setattr(self, aname, f"{self._fulldict.get(aname)}%")
             else:
-                setattr(self, aname, "{0}".format(self._fulldict.get(aname)))
-        self._weburl = "https://bigpanda.cern.ch/tasknew/{0}/".format(self.jeditaskid)
+                setattr(self, aname, f"{self._fulldict.get(aname)}")
+        self._weburl = f"https://bigpanda.cern.ch/task/{self.jeditaskid}/"
 
     def is_terminated(self):
         if self.superstatus in task_final_superstatus_list:
@@ -98,7 +98,7 @@ class LocalTaskSpec(object):
                 pctf=self.pctfinished,
                 cret=self.creationdate,
                 modt=self.modificationtime,
-                filesprog="{nff:>8}|{nfb:>8}|{nf:>8}".format(nf=self.nfiles, nff=self.nfilesfinished, nfb=self.nfilesfailed),
+                filesprog=f"{self.nfilesfinished:>8}|{self.nfilesfailed:>8}|{self.nfiles:>8}",
             )
         )
 

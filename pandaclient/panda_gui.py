@@ -15,7 +15,7 @@ def show_task(jeditaskid, verbose=False, mode="inline"):
     task = Client.get_tasks_detailed_info_since(filters={"jediTaskID": jeditaskid}, verbose=verbose)[1][0]
     # get tasks of the user
     tasks = Client.get_tasks_detailed_info_since(filters={"userName": task["userName"]}, verbose=verbose)[1]
-    tids = set([x["jediTaskID"] for x in tasks])
+    tids = {x["jediTaskID"] for x in tasks}
     tids.add(jeditaskid)
 
     # Build App

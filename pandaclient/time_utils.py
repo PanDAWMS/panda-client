@@ -1,5 +1,6 @@
 import datetime
 
+
 def aware_utcnow():
     """
     Return the current UTC date and time, with tzinfo timezone.utc
@@ -18,4 +19,3 @@ def naive_utcnow():
         datetime: current UTC date and time, without tzinfo
     """
     return aware_utcnow().replace(tzinfo=None)
-

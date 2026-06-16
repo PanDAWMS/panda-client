@@ -5,11 +5,6 @@ import re
 import sys
 import time
 
-try:
-    long()
-except Exception:
-    long = int
-
 from pandaclient import PsubUtils, localSpecs
 
 from . import Client, PLogger
@@ -101,11 +96,11 @@ def check_task_owner(func):
             else:
                 taskid_list = [taskid]
         except Exception as e:
-            tmpLog.error("got {0}: {1}".format(e.__class__.__name__, e))
+            tmpLog.error(f"got {e.__class__.__name__}: {e}")
         else:
             ret = True
             if not taskid_list:
-                sys.stdout.write("Permission denied: reqID={0} is not owned by {1} \n".format(taskid, self.username))
+                sys.stdout.write(f"Permission denied: reqID={taskid} is not owned by {self.username} \n")
                 ret = False
             else:
                 for taskid in taskid_list:
@@ -120,7 +115,7 @@ def check_task_owner(func):
 
 
 # core class for book keeping
-class PBookCore(object):
+class PBookCore:
     # constructor
     def __init__(self, verbose=False):
         # verbose
@@ -136,7 +131,7 @@ class PBookCore(object):
         username_from_proxy = PsubUtils.extract_voms_proxy_username()
         if username_from_proxy:
             self.username = username_from_proxy
-            sys.stdout.write("PBook user: {0} \n".format(self.username))
+            sys.stdout.write(f"PBook user: {self.username} \n")
         else:
             sys.stderr.write("ERROR : Cannot get user name from proxy or token. " 'Please generate a new one using "generate_credential"\n')
             sys.exit(1)
@@ -297,7 +292,7 @@ class PBookCore(object):
             return False
         with open(output_filename, "w") as f:
             json.dump(metadata, f)
-        tmpLog.info("dumped to {0}".format(output_filename))
+        tmpLog.info(f"dumped to {output_filename}")
         # return
         return True
 
@@ -337,7 +332,7 @@ class PBookCore(object):
                 username = self.username
 
         # shortcut of jeditaskid and reqid
-        if isinstance(some_ids, (int, long)):
+        if isinstance(some_ids, int):
             if is_reqid(some_ids):
                 reqid = str(some_ids)
             else:
@@ -345,7 +340,7 @@ class PBookCore(object):
         elif isinstance(some_ids, (list, tuple)) and some_ids:
             first_id = some_ids[0]
             ids_str = "|".join([str(x) for x in some_ids])
-            if first_id and isinstance(first_id, (int, long)) and is_reqid(first_id):
+            if first_id and isinstance(first_id, int) and is_reqid(first_id):
                 reqid = ids_str
             else:
                 jeditaskid = ids_str
@@ -413,15 +408,15 @@ class PBookCore(object):
     # execute workflow command
     def execute_workflow_command(self, command_name, request_id):
         tmpLog = PLogger.getPandaLogger()
-        tmpLog.info("executing {}".format(command_name))
+        tmpLog.info(f"executing {command_name}")
         status, output = Client.call_idds_user_workflow_command(command_name, {"request_id": request_id}, self.verbose)
         if status != 0:
             tmpLog.error(output)
-            tmpLog.error("Failed to execute {}".format(command_name))
+            tmpLog.error(f"Failed to execute {command_name}")
             return False, None
         if not output[0]:
             tmpLog.error(output[-1])
-            tmpLog.error("Failed to execute {}".format(command_name))
+            tmpLog.error(f"Failed to execute {command_name}")
             return False, None
         return True, output[-1]
 
@@ -436,7 +431,7 @@ class PBookCore(object):
             key = "___file___:" + format(key)
         size_limit = 1000
         if value and len(value) > size_limit * 1024:
-            tmpLog.error("The value length exceeds the limit ({0} kB)".format(size_limit))
+            tmpLog.error(f"The value length exceeds the limit ({size_limit} kB)")
             return False
         status, output = Client.set_user_secret(key, value, verbose=self.verbose)
         if status != 0:
@@ -467,7 +462,7 @@ class PBookCore(object):
                 msg = "\n"
                 keys = [re.sub(prefix, "", k) for k in data.keys()]
                 big_key = len(max(keys, key=len))
-                template = "{{:{}s}}: {{}}\n".format(big_key + 1)
+                template = f"{{:{big_key + 1}s}}: {{}}\n"
                 msg += template.format("Key", "Value")
                 msg += template.format("-" * big_key, "-" * 20)
                 keys.sort()

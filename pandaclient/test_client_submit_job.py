@@ -1,4 +1,5 @@
 import argparse
+
 from pandaclient.Client import getJobStatus, submitJobs
 
 # Parse command-line arguments
@@ -16,4 +17,4 @@ jobs_old = getJobStatus(ids=panda_ids, verbose=True)
 job_specs = jobs_old[1]
 
 submit_old = submitJobs(job_specs)
-print("submitJobs returned {0}".format(submit_old))
+print(f"submitJobs returned {submit_old}")

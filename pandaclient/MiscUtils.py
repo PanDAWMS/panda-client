@@ -7,19 +7,6 @@ import sys
 import traceback
 import uuid
 
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
-try:
-    raw_input
-except NameError:
-    raw_input = input
-try:
-    unicode
-except Exception:
-    unicode = str
-
 # set modules for unpickling in client-light
 try:
     from pandaserver.taskbuffer import JobSpec
@@ -122,14 +109,14 @@ def getDatasetNameAndNumFiles(streamDS, nFilesPerJob, streamName):
         # read from stdin
         print("\nThis job uses %s stream" % streamName)
         while True:
-            streamDS = raw_input("Enter dataset name for {0}: ".format(streamName))
+            streamDS = input(f"Enter dataset name for {streamName}: ")
             streamDS = streamDS.strip()
             if streamDS != "":
                 break
     # number of files per one signal
     if nFilesPerJob < 0:
         while True:
-            tmpStr = raw_input("Enter the number of %s files per job : " % streamName)
+            tmpStr = input("Enter the number of %s files per job : " % streamName)
             try:
                 nFilesPerJob = int(tmpStr)
                 break
@@ -152,7 +139,7 @@ def unicodeConvert(input):
         for tmpItem in input:
             retList.append(unicodeConvert(tmpItem))
         return retList
-    elif isinstance(input, unicode):
+    elif isinstance(input, str):
         return input.encode("ascii", "ignore").decode()
     return input
 
@@ -278,17 +265,6 @@ def commands_get_status_output_with_env(com):
     return commands_get_status_output(com)
 
 
-# unpickle python2 pickle with python3
-def pickle_loads(str_input):
-    try:
-        return pickle.loads(str_input)
-    except Exception:
-        try:
-            return pickle.loads(str_input.encode("utf-8"), encoding="latin1")
-        except Exception:
-            raise Exception("failed to unpickle")
-
-
 # parse secondary dataset option
 def parse_secondary_datasets_opt(secondaryDSs):
     if secondaryDSs != "":
@@ -367,6 +343,7 @@ def load_jobs_json(state):
         jobs.append(job_spec)
     return jobs
 
+
 # load dictionary list into jobs
 def load_jobs(job_dicts):
     jobs = []
@@ -387,7 +364,7 @@ def query_yes_no(question):
     info_str = " (Use -y if you are confident and want to skip this question) "
     while True:
         sys.stdout.write(question + info_str + prompt)
-        choice = raw_input().lower()
+        choice = input().lower()
         if choice in valid:
             return valid[choice]
         else:

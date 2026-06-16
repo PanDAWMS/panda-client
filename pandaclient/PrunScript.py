@@ -1,36 +1,17 @@
 import argparse
 import atexit
+import copy
+import json
 import os
 import re
 import shutil
 import sys
 import time
+from urllib.parse import quote
 
+from pandaclient.CommonArgs import VALID_TRANSFER_TYPES, add_common_arguments, get_invalid_transfer_types
 from pandaclient.Group_argparse import get_parser
-
-try:
-    from urllib import quote
-except ImportError:
-    from urllib.parse import quote
-
-import copy
-import json
-
-from pandaclient.CommonArgs import (
-    VALID_TRANSFER_TYPES,
-    add_common_arguments,
-    get_invalid_transfer_types,
-)
-from pandaclient.MiscUtils import (
-    commands_get_output,
-    commands_get_status_output,
-    parse_secondary_datasets_opt,
-)
-
-try:
-    unicode
-except Exception:
-    unicode = str
+from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, parse_secondary_datasets_opt
 
 
 # main
@@ -260,7 +241,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         action="store",
         dest="goodRunListDS",
         default="",
-        help='A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used',
+        help=r'A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used',
     )
     group_input.shareWithMe(action)
     group_evtFilter.add_argument(
@@ -296,7 +277,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         action="store",
         dest="eventPickDS",
         default="",
-        help='A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*',
+        help=r'A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*',
     )
     group_input.shareWithMe(action)
     group_evtFilter.add_argument(
@@ -304,7 +285,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         action="store",
         dest="eventPickAmiTag",
         default="",
-        help='AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*',
+        help=r'AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*',
     )
     group_evtFilter.add_argument(
         "--eventPickWithGUID",
@@ -679,7 +660,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         action="store",
         dest="excludeFile",
         default="",
-        help='specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C',
+        help=r'specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C',
     )
     group_input.add_argument(
         "--inputFileList",
@@ -1056,11 +1037,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         "(e.g. #&nvidia:vram>=40960:driver>=575.0:model=.*A100.*); supported keys: vram, cuda, uarch, driver, model. "
         "Use = or == for exact match, != for model exclusion (e.g. model!=.*P100.* excludes P100 queues). "
         "This option also allows to specify a json-serialized dictionary. The gpu_spec supports: "
-        "model (regexp, e.g. {\"model\": \".*A100.*\"} to require an A100, or {\"model\": {\"pattern\": \".*P100.*\", \"excl\": true}} to exclude P100 queues, case-insensitive); "
-        "version (minimum CUDA version, e.g. {\"version\": \">=12.0\"}); "
-        "vram (GPU memory in MB as an operator-prefixed string, e.g. {\"vram\": \">=40960\"} for at least 40 GB or {\"vram\": \"==40960\"} for exactly 40 GB); "
-        "microarchitecture (GPU microarch generation, e.g. {\"microarchitecture\": \"Ampere\"} or {\"microarchitecture\": [\"Ampere\", \"Hopper\"]}); "
-        "driver_version (NVIDIA kernel driver version, e.g. {\"driver_version\": \">=575.0\"} for minimum or {\"driver_version\": \"==575.51.03\"} for exact). "
+        'model (regexp, e.g. {"model": ".*A100.*"} to require an A100, or {"model": {"pattern": ".*P100.*", "excl": true}} to exclude P100 queues, case-insensitive); '
+        'version (minimum CUDA version, e.g. {"version": ">=12.0"}); '
+        'vram (GPU memory in MB as an operator-prefixed string, e.g. {"vram": ">=40960"} for at least 40 GB or {"vram": "==40960"} for exactly 40 GB); '
+        'microarchitecture (GPU microarch generation, e.g. {"microarchitecture": "Ampere"} or {"microarchitecture": ["Ampere", "Hopper"]}); '
+        'driver_version (NVIDIA kernel driver version, e.g. {"driver_version": ">=575.0"} for minimum or {"driver_version": "==575.51.03"} for exact). '
         "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, microarchitecture, version, driver_version) use worker node GPU monitoring data. "
         "See https://panda-wms.readthedocs.io/en/latest/advanced/brokerage.html#checks-for-cpu-and-or-gpu-hardware",
     )
@@ -1240,7 +1221,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         loadOpts = MiscUtils.decodeJSON(options.loadJson)
         for k in loadOpts:
             v = loadOpts[k]
-            if isinstance(v, (str, unicode)):
+            if isinstance(v, str):
                 try:
                     v = int(v)
                 except Exception:
@@ -1249,17 +1230,17 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if k == "exec":
                 k = "jobParams"
             if not hasattr(options, k):
-                print("ERROR: unknown parameter {0} in {1}".format(k, options.loadJson))
+                print(f"ERROR: unknown parameter {k} in {options.loadJson}")
                 sys.exit(0)
             else:
                 setattr(options, k, v)
             if v is True:
-                jsonExecStr += " --{0}".format(origK)
+                jsonExecStr += f" --{origK}"
             else:
-                if isinstance(v, (str, unicode)):
-                    jsonExecStr += " --{0}='{1}'".format(origK, v)
+                if isinstance(v, str):
+                    jsonExecStr += f" --{origK}='{v}'"
                 else:
-                    jsonExecStr += " --{0}={1}".format(origK, v)
+                    jsonExecStr += f" --{origK}={v}"
         if options.verbose:
             print("options after loading json")
             print(options)
@@ -1327,7 +1308,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # validate --transferType
     invalid = get_invalid_transfer_types(options.transferType)
     if invalid:
-        optP.error("--transferType: invalid value(s) {0}. Allowed: {1}".format(", ".join(sorted(invalid)), ", ".join(sorted(VALID_TRANSFER_TYPES))))
+        optP.error("--transferType: invalid value(s) {}. Allowed: {}".format(", ".join(sorted(invalid)), ", ".join(sorted(VALID_TRANSFER_TYPES))))
 
     # files to be deleted
     delFilesOnExit = []
@@ -1492,7 +1473,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # persistent file
     if options.persistentFile:
-        options.persistentFile = "{0}:sources.{1}.__ow__".format(options.persistentFile, MiscUtils.wrappedUuidGen())
+        options.persistentFile = f"{options.persistentFile}:sources.{MiscUtils.wrappedUuidGen()}.__ow__"
 
     # warning
     if options.nFilesPerJob is not None and options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
@@ -1552,7 +1533,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     runDir = "."
     if curDir != options.workDir:
         # remove special characters
-        wDirString = re.sub("[\+]", ".", options.workDir)
+        wDirString = re.sub(r"[\+]", ".", options.workDir)
         runDir = re.sub("^" + wDirString + "/", "", curDir)
 
     # check maxCpuCount
@@ -1562,9 +1543,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # create tmp dir
     if options.tmpDir == "":
-        tmpDir = "%s/%s" % (curDir, MiscUtils.wrappedUuidGen())
+        tmpDir = "{}/{}".format(curDir, MiscUtils.wrappedUuidGen())
     else:
-        tmpDir = "%s/%s" % (os.path.abspath(options.tmpDir), MiscUtils.wrappedUuidGen())
+        tmpDir = "{}/{}".format(os.path.abspath(options.tmpDir), MiscUtils.wrappedUuidGen())
     os.makedirs(tmpDir)
 
     # exit action
@@ -1595,7 +1576,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         nightVer = retA["nightVer"]
         cmtConfig = retA["cmtConfig"]
         # override run directory
-        sString = re.sub("[\+]", ".", workArea)
+        sString = re.sub(r"[\+]", ".", workArea)
         runDir = re.sub("^%s" % sString, "", curDir)
         if runDir == curDir:
             errMsg = "You need to run prun in a directory under %s. " % workArea
@@ -1675,14 +1656,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # LFN matching
     if options.match != "":
         # convert . to \.
-        options.match = options.match.replace(".", "\.")
+        options.match = options.match.replace(".", r"\.")
         # convert * to .*
         options.match = options.match.replace("*", ".*")
 
     # LFN anti-matching
     if options.antiMatch != "":
         # convert . to \.
-        options.antiMatch = options.antiMatch.replace(".", "\.")
+        options.antiMatch = options.antiMatch.replace(".", r"\.")
         # convert * to .*
         options.antiMatch = options.antiMatch.replace("*", ".*")
 
@@ -1805,12 +1786,12 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 # add to be deleted on exit
                 delFilesOnExit.append(rootCoreDestWorkDir)
                 if not options.noBuild:
-                    tmpStat = os.system("%s %s" % (rootCoreSubmitSh, rootCoreDestWorkDir))
+                    tmpStat = os.system("{} {}".format(rootCoreSubmitSh, rootCoreDestWorkDir))
                 else:
-                    tmpStat = os.system("%s %s" % (rootCoreSubmitNbSh, rootCoreDestWorkDir))
+                    tmpStat = os.system("{} {}".format(rootCoreSubmitNbSh, rootCoreDestWorkDir))
                 tmpStat %= 255
                 if tmpStat != 0:
-                    tmpErrMsg = "%s failed with %s" % (rootCoreSubmitSh, tmpStat)
+                    tmpErrMsg = "{} failed with {}".format(rootCoreSubmitSh, tmpStat)
                     tmpLog.error(tmpErrMsg)
                     sys.exit(EC_Config)
                 # copy build and run scripts
@@ -1864,7 +1845,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     # go to workArea
                     os.chdir(workArea)
                     # gather files under work dir
-                    tmpLog.info("gathering files under %s/%s" % (workArea, runDir))
+                    tmpLog.info("gathering files under {}/{}".format(workArea, runDir))
                     archStartDir = runDir
                     archStartDir = re.sub("/+$", "", archStartDir)
                 else:
@@ -1892,7 +1873,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                                 if options.verbose:
                                     print("skip Athena archive %s" % tmpFile)
                                 continue
-                        tmpPath = "%s/%s" % (tmpRoot, tmpFile)
+                        tmpPath = "{}/{}".format(tmpRoot, tmpFile)
                         # get size
                         try:
                             size = os.path.getsize(tmpPath)
@@ -1900,7 +1881,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                             # skip dead symlink
                             if options.verbose:
                                 type, value, traceBack = sys.exc_info()
-                                print("  Ignore : %s:%s" % (type, value))
+                                print("  Ignore : {}:{}".format(type, value))
                             continue
                         # check exclude files
                         excludeFileFlag = False
@@ -1918,7 +1899,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                                 break
                         # check root
                         isRoot = False
-                        if re.search("\.root(\.\d+)*$", tmpPath) is not None:
+                        if re.search(r"\.root(\.\d+)*$", tmpPath) is not None:
                             isRoot = True
                         # extra files
                         isExtra = False
@@ -1932,7 +1913,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                             emptyFlag = False
                             # skipped extensions
                             if isSkippedExt:
-                                print("  skip %s %s" % (str(skippedExt), tmpPath))
+                                print("  skip {} {}".format(str(skippedExt), tmpPath))
                                 skippedFlag = True
                                 continue
                             # skip root
@@ -1942,18 +1923,18 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                                 continue
                             # check size
                             if size > options.maxFileSize:
-                                print("  skip large file %s:%sB>%sB" % (tmpPath, size, options.maxFileSize))
+                                print("  skip large file {}:{}B>{}B".format(tmpPath, size, options.maxFileSize))
                                 skippedFlag = True
                                 continue
                         # remove ./
-                        tmpPath = re.sub("^\./", "", tmpPath)
+                        tmpPath = re.sub(r"^\./", "", tmpPath)
                         # append
                         workDirFiles.append(tmpPath)
                         if emptyFlag:
                             emptyFlag = False
                     # add empty directory
                     if emptyFlag and tmpDirs == [] and tmpFiles == []:
-                        tmpPath = re.sub("^\./", "", tmpRoot)
+                        tmpPath = re.sub(r"^\./", "", tmpRoot)
                         # check exclude pattern
                         excludePatFlag = False
                         for tmpPatt in AthenaUtils.excludeFile:
@@ -1978,7 +1959,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     else:
                         # use 'sources' for normal build
                         archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
-                    archiveFullName = "%s/%s" % (tmpDir, archiveName)
+                    archiveFullName = "{}/{}".format(tmpDir, archiveName)
                 # collect files
                 for tmpFile in workDirFiles:
                     # avoid self-archiving
@@ -1987,9 +1968,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                             print("skip self-archiving for %s" % tmpFile)
                         continue
                     if os.path.islink(tmpFile):
-                        status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rh '%s' -f '%s'" % (tmpFile, archiveFullName))
+                        status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rh '{}' -f '{}'".format(tmpFile, archiveFullName))
                     else:
-                        status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rf '%s' '%s'" % (archiveFullName, tmpFile))
+                        status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rf '{}' '{}'".format(archiveFullName, tmpFile))
                     if options.verbose:
                         print(tmpFile)
                     if status != 0 or out != "":
@@ -2008,7 +1989,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 print(out)
 
             # check archive
-            status, out = commands_get_status_output("ls -l {0}".format(archiveName))
+            status, out = commands_get_status_output(f"ls -l {archiveName}")
             if options.verbose:
                 print(out)
             if status != 0:
@@ -2024,7 +2005,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                         break
                     time.sleep(5)
                 if status != 0:
-                    tmpLog.error("Failed to expand sandbox. {0}".format(out))
+                    tmpLog.error(f"Failed to expand sandbox. {out}")
                     sys.exit(EC_Archive)
                 symlinks = []
                 for line in out.split("\n"):
@@ -2049,10 +2030,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             # use a saved copy
             if options.noCompile or not options.noBuild:
                 archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
-                archiveFullName = "%s/%s" % (tmpDir, archiveName)
+                archiveFullName = "{}/{}".format(tmpDir, archiveName)
             else:
                 archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
-                archiveFullName = "%s/%s" % (tmpDir, archiveName)
+                archiveFullName = "{}/{}".format(tmpDir, archiveName)
             # make copy to avoid name duplication
             shutil.copy(options.inTarBall, archiveFullName)
 
@@ -2126,9 +2107,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     else:
         taskParamMap["transHome"] = None
     if options.containerImage != "" and not options.alrb:
-        taskParamMap["processingType"] = "panda-client-{0}-jedi-cont".format(PandaToolsPkgInfo.release_version)
+        taskParamMap["processingType"] = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-cont"
     else:
-        taskParamMap["processingType"] = "panda-client-{0}-jedi-run".format(PandaToolsPkgInfo.release_version)
+        taskParamMap["processingType"] = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-run"
     if options.eventPickEvtList != "":
         taskParamMap["processingType"] += "-evp"
         taskParamMap["waitInput"] = 1
@@ -2269,10 +2250,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             "container": logDatasetName,
             "type": "template",
             "param_type": "log",
-            "value": "{0}.$JEDITASKID.${{SN}}.log.tgz".format(logDatasetName[:-1]),
+            "value": f"{logDatasetName[:-1]}.$JEDITASKID.${{SN}}.log.tgz",
         }
         if options.addNthFieldOfInFileToLFN != "":
-            loglfn = "{0}.{1}".format(*logDatasetName.split(".")[:2])
+            loglfn = "{}.{}".format(*logDatasetName.split(".")[:2])
             loglfn += "${MIDDLENAME}.$JEDITASKID._${SN}.log.tgz"
             taskParamMap["log"]["value"] = loglfn
         if options.spaceToken != "":
@@ -2301,7 +2282,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         },
         {
             "type": "constant",
-            "value": "-r {0}".format(runDir),
+            "value": f"-r {runDir}",
         },
     ]
 
@@ -2313,7 +2294,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # build
     if options.containerImage == "" or options.useSandbox:
         if options.noBuild and not options.noCompile:
-            tmp_str = "-a {0}".format(archiveName)
+            tmp_str = f"-a {archiveName}"
             if options.tarBallViaDDM:
                 tmp_str += " --noTarballDownload"
         else:
@@ -2359,19 +2340,19 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 # check invalid characters
                 checked = PsubUtils.check_invalid_char(tmpNewLFN, is_file=True)
                 if checked is not None:
-                    tmp_err_msg = 'An output file name %s contains an invalid character "%s".' % (tmpNewLFN, checked)
+                    tmp_err_msg = 'An output file name {} contains an invalid character "{}".'.format(tmpNewLFN, checked)
                     tmpLog.error(tmp_err_msg)
                     sys.exit(EC_Config)
                 if len(outDatasetName.split(".")) > 2:
-                    lfn = "{0}.{1}".format(*outDatasetName.split(".")[:2])
+                    lfn = "{}.{}".format(*outDatasetName.split(".")[:2])
                 else:
                     lfn = outDatasetName[:-1]
                 if options.addNthFieldOfInDSToLFN != "" or options.addNthFieldOfInFileToLFN != "":
                     lfn += "${MIDDLENAME}"
-                lfn += ".$JEDITASKID._${{SN/P}}.{0}".format(tmpNewLFN)
+                lfn += f".$JEDITASKID._${{SN/P}}.{tmpNewLFN}"
                 if tmpDsSuffix == "":
                     tmpDsSuffix = tmpNewLFN
-            dataset = "{0}_{1}/".format(outDatasetName[:-1], tmpDsSuffix)
+            dataset = f"{outDatasetName[:-1]}_{tmpDsSuffix}/"
             taskParamMap["jobParameters"] += MiscUtils.makeJediJobParam(
                 lfn,
                 dataset,
@@ -2393,7 +2374,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             taskParamMap["jobParameters"] += [
                 {
                     "type": "constant",
-                    "value": '-o "{0}"'.format(str(outMap)),
+                    "value": f'-o "{str(outMap)}"',
                 },
             ]
     # input
@@ -2403,7 +2384,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             "param_type": "input",
             "value": '-i "${IN/T}"',
             "dataset": options.inDS,
-            "exclude": "\.log\.tgz(\.\d+)*$",
+            "exclude": r"\.log\.tgz(\.\d+)*$",
         }
         if options.useLogAsInput:
             del tmpDict["exclude"]
@@ -2443,7 +2424,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             "value": '-i "${IN/T}"',
             "dataset": "%%INDS%%",
             "expand": True,
-            "exclude": "\.log\.tgz(\.\d+)*$",
+            "exclude": r"\.log\.tgz(\.\d+)*$",
             "files": "%%INLFNLIST%%",
         }
         taskParamMap["jobParameters"].append(tmpDict)
@@ -2494,7 +2475,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         taskParamMap["jobParameters"] += [
             {
                 "type": "constant",
-                "value": '-p "{0}"'.format(options.jobParams),
+                "value": f'-p "{options.jobParams}"',
             },
         ]
 
@@ -2598,15 +2579,15 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         jobParameters += "--execWithRealFileNames "
     # container
     if options.containerImage != "" and not options.alrb:
-        jobParameters += "--containerImage {0} ".format(options.containerImage)
+        jobParameters += f"--containerImage {options.containerImage} "
         if options.ctrCvmfs:
             jobParameters += "--cvmfs "
         if options.ctrNoX509:
             jobParameters += "--noX509 "
         if options.ctrDatadir != "":
-            jobParameters += "--datadir {0} ".format(options.ctrDatadir)
+            jobParameters += f"--datadir {options.ctrDatadir} "
         if options.ctrWorkdir != "":
-            jobParameters += "--workdir {0} ".format(options.ctrWorkdir)
+            jobParameters += f"--workdir {options.ctrWorkdir} "
         if options.ctrDebug:
             jobParameters += "--debug "
         if options.useCentralRegistry:
@@ -2645,10 +2626,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             taskParamMap["tarBallViaDDM"] = options.tarBallViaDDM
     else:
         jobParameters = "-i ${IN} -o ${OUT} --sourceURL ${SURL} "
-        jobParameters += "-r {0} ".format(runDir)
+        jobParameters += f"-r {runDir} "
         # exec
         if options.bexec != "":
-            jobParameters += '--bexec "{0}" '.format(quote(options.bexec))
+            jobParameters += f'--bexec "{quote(options.bexec)}" '
         # use Athena packages
         if options.useAthenaPackages:
             jobParameters += "--useAthenaPackages "
@@ -2672,15 +2653,15 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             jobParameters += "--overwriteQueuedata=%s " % options.queueData
         # container
         if options.containerImage != "" and not options.alrb:
-            jobParameters += "--containerImage {0} ".format(options.containerImage)
+            jobParameters += f"--containerImage {options.containerImage} "
             if options.ctrCvmfs:
                 jobParameters += "--cvmfs "
             if options.ctrNoX509:
                 jobParameters += "--noX509 "
             if options.ctrDatadir != "":
-                jobParameters += "--datadir {0} ".format(options.ctrDatadir)
+                jobParameters += f"--datadir {options.ctrDatadir} "
             if options.ctrWorkdir != "":
-                jobParameters += "--workdir {0} ".format(options.ctrWorkdir)
+                jobParameters += f"--workdir {options.ctrWorkdir} "
             if options.ctrDebug:
                 jobParameters += "--debug "
 
@@ -2700,13 +2681,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # good run list
     if options.goodRunListXML != "":
-        jobParameters = "--goodRunListXML {0} ".format(options.goodRunListXML)
+        jobParameters = f"--goodRunListXML {options.goodRunListXML} "
         if options.goodRunDataType != "":
-            jobParameters += "--goodRunListDataType {0} ".format(options.goodRunDataType)
+            jobParameters += f"--goodRunListDataType {options.goodRunDataType} "
         if options.goodRunProdStep != "":
-            jobParameters += "--goodRunListProdStep {0} ".format(options.goodRunProdStep)
+            jobParameters += f"--goodRunListProdStep {options.goodRunProdStep} "
         if options.goodRunListDS != "":
-            jobParameters += "--goodRunListDS {0} ".format(options.goodRunListDS)
+            jobParameters += f"--goodRunListDS {options.goodRunListDS} "
         jobParameters += "--sourceURL ${SURL} "
         # set task param
         taskParamMap["preproSpec"] = {
@@ -2718,9 +2699,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # merging
     if options.mergeOutput:
-        jobParameters = "-r {0} ".format(runDir)
+        jobParameters = f"-r {runDir} "
         if options.mergeScript != "":
-            jobParameters += '-j "{0}" '.format(options.mergeScript)
+            jobParameters += f'-j "{options.mergeScript}" '
         if options.rootVer != "":
             jobParameters += "--rootVer %s " % options.rootVer
         if options.cmtConfig not in ["", "NULL", None]:
@@ -2732,22 +2713,22 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         if options.useRootCore:
             jobParameters += "--useRootCore "
         if options.containerImage != "" and not options.alrb:
-            jobParameters += "--containerImage {0} ".format(options.containerImage)
+            jobParameters += f"--containerImage {options.containerImage} "
             if options.ctrCvmfs:
                 jobParameters += "--cvmfs "
             if options.ctrNoX509:
                 jobParameters += "--noX509 "
             if options.ctrDatadir != "":
-                jobParameters += "--datadir {0} ".format(options.ctrDatadir)
+                jobParameters += f"--datadir {options.ctrDatadir} "
             if options.ctrWorkdir != "":
-                jobParameters += "--workdir {0} ".format(options.ctrWorkdir)
+                jobParameters += f"--workdir {options.ctrWorkdir} "
             if options.ctrDebug:
                 jobParameters += "--debug "
         else:
             if not (options.noBuild and not options.noCompile):
                 jobParameters += "-l ${LIB} "
             else:
-                jobParameters += "-a {0} ".format(archiveName)
+                jobParameters += f"-a {archiveName} "
                 jobParameters += "--sourceURL ${SURL} "
         jobParameters += "${TRN_OUTPUT:OUTPUT} "
         if options.mergeLog:
@@ -2826,7 +2807,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 tmpKeys = list(newTaskParamMap)
                 tmpKeys.sort()
                 for tmpKey in tmpKeys:
-                    print("%s : %s" % (tmpKey, newTaskParamMap[tmpKey]))
+                    print("{} : {}".format(tmpKey, newTaskParamMap[tmpKey]))
         if options.dumpTaskParams is not None:
             with open(os.path.expanduser(options.dumpTaskParams), "w") as f:
                 json.dump(newTaskParamMap, f)
@@ -2838,7 +2819,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 pass
             return newTaskParamMap
         if not options.noSubmit and exitCode == 0:
-            tmpLog.info("submit {0}".format(options.outDS))
+            tmpLog.info(f"submit {options.outDS}")
             status, tmpOut = Client.insertTaskParams(
                 newTaskParamMap,
                 options.verbose,
@@ -2847,7 +2828,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             )
             # result
             if status != 0:
-                tmpStr = "task submission failed with {0}".format(status)
+                tmpStr = f"task submission failed with {status}"
                 tmpLog.error(tmpStr)
                 exitCode = EC_Submit
             else:
@@ -2855,12 +2836,12 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     tmpStr = tmpOut[1]
                     tmpLog.info(tmpStr)
                     try:
-                        m = re.search("jediTaskID=(\d+)", tmpStr)
+                        m = re.search(r"jediTaskID=(\d+)", tmpStr)
                         taskID = int(m.group(1))
                     except Exception:
                         pass
                 else:
-                    tmpStr = "task submission failed. {0}".format(tmpOut[1])
+                    tmpStr = f"task submission failed. {tmpOut[1]}"
                     tmpLog.error(tmpStr)
                     exitCode = EC_Submit
         dumpItem = copy.deepcopy(vars(options))

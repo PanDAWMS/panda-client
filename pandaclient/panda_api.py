@@ -8,7 +8,7 @@ import tempfile
 from . import Client, PBookCore, PLogger
 
 
-class PandaAPI(object):
+class PandaAPI:
     # constructor
     def __init__(self):
         self.command_body = {}
@@ -180,9 +180,9 @@ class PandaAPI(object):
             if e.code == 0:
                 stat = True
             else:
-                err_str = "failed with code={0}".format(e.code)
+                err_str = f"failed with code={e.code}"
         except Exception as e:
-            err_str = "failed with {0}".format(str(e))
+            err_str = f"failed with {str(e)}"
         finally:
             # enable logging
             if not console_log:

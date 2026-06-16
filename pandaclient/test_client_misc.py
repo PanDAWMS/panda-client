@@ -1,5 +1,6 @@
 import argparse
-from pandaclient.Client import set_user_secret, get_user_secrets, get_events_status
+
+from pandaclient.Client import get_events_status, get_user_secrets, set_user_secret
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Process panda IDs.")
@@ -8,10 +9,10 @@ args = parser.parse_args()
 panda_ids = args.panda_ids
 
 print("=============================================================")
-set_secret_ret_old = set_user_secret('my_key', 'my_value')
+set_secret_ret_old = set_user_secret("my_key", "my_value")
 get_secret_ret_old = get_user_secrets()
 events_status_ret_old = get_events_status([{"task_id": 4004040, "job_id": 4674379348}])
 
-print("set_user_secret returned: {0}".format(set_secret_ret_old))
-print("get_user_secrets returned: {0}".format(get_secret_ret_old))
-print("get_events_status returned: {0}".format(events_status_ret_old))
+print(f"set_user_secret returned: {set_secret_ret_old}")
+print(f"get_user_secrets returned: {get_secret_ret_old}")
+print(f"get_events_status returned: {events_status_ret_old}")
