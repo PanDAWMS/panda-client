@@ -160,7 +160,7 @@ class PBookCore:
             return False
         tmpLog.info(tmpDiag)
         # done
-        tmpLog.info(f"Done, jediTaskID={taskID} will be killed in 30 min")
+        tmpLog.info(f"Done, jediTaskID={taskID} will be killed within the next 30 min")
         return True
 
     # finish
