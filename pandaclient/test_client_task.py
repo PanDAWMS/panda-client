@@ -33,7 +33,7 @@ def main(task_id):
         cwd = os.getcwd()
         os.chdir(tmpdir)
 
-        cmd = """prun --exec "pwd; ls; echo Hello-world > myout.txt" """ """--outDS {outds} --nJobs 3 --output myout.txt""".format(outds=outds)
+        cmd = f'prun --exec "pwd; ls; echo Hello-world > myout.txt" --outDS {outds} --nJobs 3 --output myout.txt'
 
         res = subprocess.run(cmd, shell=True, text=True, capture_output=True)
         out = (res.stdout or "") + "\n" + (res.stderr or "")
