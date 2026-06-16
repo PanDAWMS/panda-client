@@ -6,6 +6,7 @@ import sys
 import time
 
 from rich import box
+from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
 from pandaclient import PsubUtils, localSpecs
@@ -150,16 +151,16 @@ class PBookCore:
         # communication error
         if status != 0:
             tmpLog.error(output)
-            tmpLog.error("Failed to kill jediTaskID=%s" % taskID)
+            tmpLog.error(f"Failed to kill jediTaskID={taskID}")
             return False
         tmpStat, tmpDiag = output
         if not tmpStat:
             tmpLog.error(tmpDiag)
-            tmpLog.error("Failed to kill jediTaskID=%s" % taskID)
+            tmpLog.error(f"Failed to kill jediTaskID={taskID}")
             return False
         tmpLog.info(tmpDiag)
         # done
-        tmpLog.info("Done, jediTaskID=%s will be killed in 30 min" % taskID)
+        tmpLog.info(f"Done, jediTaskID={taskID} will be killed in 30 min")
         return True
 
     # finish
@@ -173,16 +174,16 @@ class PBookCore:
         # communication error
         if status != 0:
             tmpLog.error(output)
-            tmpLog.error("Failed to finish jediTaskID=%s" % taskID)
+            tmpLog.error(f"Failed to finish jediTaskID={taskID}")
             return False
         tmpStat, tmpDiag = output
         if not tmpStat:
             tmpLog.error(tmpDiag)
-            tmpLog.error("Failed to finish jediTaskID=%s" % taskID)
+            tmpLog.error(f"Failed to finish jediTaskID={taskID}")
             return False
         tmpLog.info(tmpDiag)
         # done
-        tmpLog.info("Done, jediTaskID=%s will be finished soon" % taskID)
+        tmpLog.info(f"Done, jediTaskID={taskID} will be finished soon")
         return True
 
     # set debug mode
@@ -193,7 +194,7 @@ class PBookCore:
         status, output = Client.setDebugMode(pandaID, modeOn, self.verbose)
         if status != 0:
             tmpLog.error(output)
-            tmpLog.error("Failed to set debug mode for %s" % pandaID)
+            tmpLog.error(f"Failed to set debug mode for {pandaID}")
             return
         # done
         tmpLog.info(output)
@@ -201,34 +202,44 @@ class PBookCore:
 
     # kill and retry
     def killAndRetry(self, taskID, newOpts=None):
-        # get logger
         tmpLog = PLogger.getPandaLogger()
-        # kill
+
         retK = self.kill(taskID)
         if not retK:
             return False
-        # sleep
-        tmpLog.info("Going to sleep for 3 sec")
-        time.sleep(3)
+
+        def _wait(seconds, message):
+            with Progress(SpinnerColumn(), TextColumn(message), TimeElapsedColumn(), transient=True) as progress:
+                progress.add_task("", total=None)
+                time.sleep(seconds)
+
         nTry = 6
+        wait_initial = 3
+        wait_poll = 30
+
+        tmpLog.info(f"Task {taskID} kill signal sent — waiting {wait_initial}s for the server to process it")
+        _wait(wait_initial, f"Waiting for kill signal to be processed...")
+
         for iTry in range(nTry):
-            # check if task terminated
             taskspec = _get_one_task(self, taskID, self.verbose)
+            attempt_label = f"[{iTry + 1}/{nTry}]"
             if taskspec is not None:
                 if taskspec.is_terminated():
+                    tmpLog.info(f"{attempt_label} Task {taskID} has terminated — proceeding to retry")
                     break
                 else:
-                    tmpLog.info("Some sub-jobs are still running")
+                    status = taskspec.status if hasattr(taskspec, "status") else "unknown"
+                    tmpLog.info(f"{attempt_label} Task {taskID} still active (status={status})")
             else:
-                tmpLog.warning("Could not get task status from panda monitor...")
+                tmpLog.warning(f"{attempt_label} Could not retrieve task {taskID} status from PanDA monitor")
+
             if iTry + 1 < nTry:
-                # sleep
-                tmpLog.info("Going to sleep for 30 sec")
-                time.sleep(30)
+                tmpLog.info(f"Waiting {wait_poll}s before next check...")
+                _wait(wait_poll, f"Waiting for task {taskID} to terminate ({iTry + 2}/{nTry})...")
             else:
-                tmpLog.info("Max attempts exceeded. Please try later")
+                tmpLog.error(f"Task {taskID} did not terminate after {nTry} attempts ({nTry * wait_poll}s). Please try again later.")
                 return False
-        # retry
+
         return self.retry(taskID, newOpts=newOpts)
 
     # retry
@@ -250,12 +261,12 @@ class PBookCore:
         if status != 0:
             tmpLog.error(status)
             tmpLog.error(out)
-            tmpLog.error("Failed to retry TaskID=%s" % taskID)
+            tmpLog.error(f"Failed to retry TaskID={taskID}")
             return False
         tmpStat, tmpDiag = out
         if (tmpStat not in [0, True] and newOpts == {}) or (newOpts != {} and tmpStat != 3):
             tmpLog.error(tmpDiag)
-            tmpLog.error("Failed to retry TaskID=%s" % taskID)
+            tmpLog.error(f"Failed to retry TaskID={taskID}")
             return False
         tmpLog.info(tmpDiag)
         return True
@@ -480,13 +491,13 @@ class PBookCore:
         # communication error
         if status != 0:
             tmpLog.error(output)
-            tmpLog.error("Failed to pause jediTaskID=%s" % task_id)
+            tmpLog.error(f"Failed to pause jediTaskID={task_id}")
             return False
         tmpStat, tmpDiag = output
         if tmpStat != 0:
             print(tmpStat)
             tmpLog.error(tmpDiag)
-            tmpLog.error("Failed to pause jediTaskID=%s" % task_id)
+            tmpLog.error(f"Failed to pause jediTaskID={task_id}")
             return False
         tmpLog.info(tmpDiag)
         # done
@@ -503,12 +514,12 @@ class PBookCore:
         # communication error
         if status != 0:
             tmpLog.error(output)
-            tmpLog.error("Failed to resume jediTaskID=%s" % task_id)
+            tmpLog.error(f"Failed to resume jediTaskID={task_id}")
             return False
         tmpStat, tmpDiag = output
         if tmpStat != 0:
             tmpLog.error(tmpDiag)
-            tmpLog.error("Failed to resume jediTaskID=%s" % task_id)
+            tmpLog.error(f"Failed to resume jediTaskID={task_id}")
             return False
         tmpLog.info(tmpDiag)
         # done
@@ -527,11 +538,11 @@ class PBookCore:
         status, output = Client.reload_input(task_id, self.verbose)
         if status != 0:
             tmp_log.error(output)
-            tmp_log.error("Failed to reload input %s" % task_id)
+            tmp_log.error(f"Failed to reload input {task_id}")
             return False
         elif output[0] != 0:
             tmp_log.error(output[-1])
-            tmp_log.error("Failed to reload input %s" % task_id)
+            tmp_log.error(f"Failed to reload input {task_id}")
             return False
         # done
         tmp_log.info("command is registered. will be executed in a few minutes")
