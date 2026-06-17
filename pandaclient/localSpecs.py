@@ -80,6 +80,8 @@ class LocalTaskSpec:
 
     @staticmethod
     def make_table_standard():
+        # Columns with numeric values (JediTaskID, ReqID, Progress, Status) are right-justified - it's conventional to right-align numbers so their digits line up vertically.
+        # Text columns (CreationDate, ModificationTime, TaskName, etc.) use the default left alignment.
         t = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold")
         t.add_column("JediTaskID", justify="right")
         t.add_column("ReqID", justify="right")
@@ -90,16 +92,18 @@ class LocalTaskSpec:
 
     @staticmethod
     def make_table_long():
+        # Columns with numeric values (JediTaskID, ReqID, Progress, Status) are right-justified - it's conventional to right-align numbers so their digits line up vertically.
+        # Text columns (CreationDate, ModificationTime, TaskName, etc.) use the default left alignment.
         t = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold")
-        t.add_column("JediTaskID", justify="right", no_wrap=True)
-        t.add_column("Status", justify="right", no_wrap=True)
-        t.add_column("CreationDate", no_wrap=True)
-        t.add_column("ModificationTime", no_wrap=True)
-        t.add_column("ReqID", justify="right", no_wrap=True)
-        t.add_column("Progress", justify="right", no_wrap=True)
-        t.add_column("Files (done|failed|total)", no_wrap=True)
+        t.add_column("JediTaskID", justify="right")
+        t.add_column("Status", justify="right")
+        t.add_column("CreationDate")
+        t.add_column("ModificationTime")
+        t.add_column("ReqID", justify="right")
+        t.add_column("Progress", justify="right")
+        t.add_column("Files (done|failed|total)")
         t.add_column("TaskName")
-        t.add_column("URL", no_wrap=True, overflow="ellipsis", max_width=40)
+        t.add_column("URL")
         return t
 
     def add_row_standard(self, table):
