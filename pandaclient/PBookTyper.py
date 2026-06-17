@@ -126,20 +126,20 @@ def _catch_sig(sig, frame):
 # ─── REPL kwarg completer ─────────────────────────────────────────────────────
 
 _FUNC_KWARGS: dict[str, list[str]] = {
-    "show": ["username=", "limit=", "taskname=", "days=", "jeditaskid=", "reqid=", "status=", "superstatus=", "format="],
-    "showl": ["username=", "limit=", "taskname=", "days=", "jeditaskid=", "reqid=", "status=", "superstatus="],
+    "show": ["username", "limit", "taskname", "days", "jeditaskid", "reqid", "status", "superstatus", "format"],
+    "showl": ["username", "limit", "taskname", "days", "jeditaskid", "reqid", "status", "superstatus"],
     "kill": [],
-    "finish": ["soft="],
+    "finish": ["soft"],
     "retry": [
-        "newOpts=", "days=", "limit=", "site=", "excludedSite=", "includedSite=",
-        "nFilesPerJob=", "nMaxFilesPerJob=", "nGBPerJob=", "nFiles=", "nEvents=",
-        "loopingCheck=", "memory=", "avoidVP=", "ignoreMissingInDS=", "forceStaged=", "maxCore=",
+        "newOpts", "days", "limit", "site", "excludedSite", "includedSite",
+        "nFilesPerJob", "nMaxFilesPerJob", "nGBPerJob", "nFiles", "nEvents",
+        "loopingCheck", "memory", "avoidVP", "ignoreMissingInDS", "forceStaged", "maxCore",
     ],
-    "debug": ["modeOn="],
+    "debug": ["modeOn"],
     "get_user_job_metadata": [],
-    "recover_lost_files": ["test_mode="],
-    "set_secret": ["is_file="],
-    "list_secrets": ["full="],
+    "recover_lost_files": ["test_mode"],
+    "set_secret": ["is_file"],
+    "list_secrets": ["full"],
 }
 
 
@@ -165,10 +165,10 @@ class _PBookCompleter:
             hits = [k for k in kwargs if k.startswith(text)]
             if hits:
                 return hits
-        # Fall back to standard name completion
+        # Fall back to standard name completion, stripping the trailing '(' rlcompleter adds to callables
         results, i = [], 0
         while (c := self._base.complete(text, i)) is not None:
-            results.append(c)
+            results.append(c.rstrip("("))
             i += 1
         return results
 
