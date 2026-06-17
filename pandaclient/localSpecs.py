@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-_console = Console()
+_console = Console(soft_wrap=True)
 
 _STATUS_STYLE = {
     "running": "bold cyan",
@@ -87,8 +87,18 @@ class LocalTaskSpec:
         t.add_column("ReqID", justify="right")
         t.add_column("Status", justify="right")
         t.add_column("Progress", justify="right")
-        t.add_column("TaskName", no_wrap=False, overflow="fold")
+        t.add_column("TaskName")
         return t
+
+    def add_row_standard(self, table):
+        url = str(self._weburl)
+        table.add_row(
+            Text(str(self.jeditaskid), style=f"link {url}"),
+            str(self.reqid),
+            self._status_text(self.status),
+            str(self.pctfinished),
+            str(self.taskname),
+        )
 
     @staticmethod
     def make_table_long():
@@ -102,19 +112,9 @@ class LocalTaskSpec:
         t.add_column("ReqID", justify="right")
         t.add_column("Progress", justify="right")
         t.add_column("Files (done|failed|total)")
-        t.add_column("TaskName", no_wrap=False, overflow="fold")
-        t.add_column("URL", no_wrap=False, overflow="fold")
+        t.add_column("TaskName")
+        t.add_column("URL")
         return t
-
-    def add_row_standard(self, table):
-        url = str(self._weburl)
-        table.add_row(
-            Text(str(self.jeditaskid), style=f"link {url}"),
-            str(self.reqid),
-            self._status_text(self.status),
-            str(self.pctfinished),
-            str(self.taskname),
-        )
 
     def add_row_long(self, table):
         url = str(self._weburl)
