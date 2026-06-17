@@ -6,7 +6,6 @@ import sys
 import time
 
 from rich import box
-from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
 from pandaclient import PsubUtils, localSpecs
