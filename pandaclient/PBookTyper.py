@@ -173,6 +173,19 @@ _KWARG_VALUES: dict[str, dict[str, list[str]]] = {
 }
 
 
+class _PBookConsole(code.InteractiveConsole):
+    """InteractiveConsole that keeps our custom completer active even after code.interact() resets it."""
+
+    def __init__(self, local: dict, completer) -> None:
+        super().__init__(local)
+        self._completer = completer
+
+    def raw_input(self, prompt: str = "") -> str:
+        import readline
+        readline.set_completer(self._completer)
+        return super().raw_input(prompt)
+
+
 class _PBookCompleter:
     """Readline completer: kwarg names and values when inside a call, names otherwise."""
 
@@ -425,10 +438,9 @@ def _main(
             exec(command_string, {}, ns)  # noqa: S102
             from pandaclient import PBookCore as _PBC
             raise typer.Exit(0 if _PBC.func_return_value else 1)
-        import readline as _rl
-        _rl.set_completer(_PBookCompleter(ns).complete)
+        completer = _PBookCompleter(ns)
         core.init()
-        code.interact(banner=f"\nStart pBook {PandaToolsPkgInfo.release_version}", local=ns)
+        _PBookConsole(ns, completer.complete).interact(banner=f"\nStart pBook {PandaToolsPkgInfo.release_version}")
     else:
         signal.signal(signal.SIGINT, _catch_sig)
         signal.signal(signal.SIGHUP, _catch_sig)
