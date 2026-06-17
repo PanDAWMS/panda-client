@@ -154,7 +154,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
     ],
-    install_requires=["rich"],
+    install_requires=["rich", "typer"],
     # optional pip dependencies
     extras_require={
         "jupyter": ["pandas", "jupyter-dash"],

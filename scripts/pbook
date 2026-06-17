@@ -2,4 +2,4 @@
 
 source ${PANDA_SYS}/etc/panda/share/functions.sh
 
-exec_p_command "import pandaclient.PBookScript as pbook; pbook.main()" "$@"
+exec_p_command "import pandaclient.PBookTyper as pbook; pbook.main()" "$@"
