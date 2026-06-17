@@ -142,9 +142,39 @@ _FUNC_KWARGS: dict[str, list[str]] = {
     "list_secrets": ["full"],
 }
 
+_KWARG_VALUES: dict[str, dict[str, list[str]]] = {
+    "show": {
+        "format": ["standard", "long", "json", "plain"],
+    },
+    "showl": {
+        "format": ["standard", "long", "json", "plain"],
+    },
+    "finish": {
+        "soft": ["True", "False"],
+    },
+    "debug": {
+        "modeOn": ["True", "False"],
+    },
+    "recover_lost_files": {
+        "test_mode": ["True", "False"],
+    },
+    "list_secrets": {
+        "full": ["True", "False"],
+    },
+    "set_secret": {
+        "is_file": ["True", "False"],
+    },
+    "retry": {
+        "loopingCheck": ["True", "False"],
+        "avoidVP": ["True", "False"],
+        "ignoreMissingInDS": ["True", "False"],
+        "forceStaged": ["True", "False"],
+    },
+}
+
 
 class _PBookCompleter:
-    """Readline completer that adds kwarg hints when cursor is inside a call."""
+    """Readline completer: kwarg names and values when inside a call, names otherwise."""
 
     def __init__(self, ns: dict) -> None:
         import rlcompleter
@@ -159,16 +189,29 @@ class _PBookCompleter:
     def _compute(self, text: str) -> list[str]:
         import readline
         line = readline.get_line_buffer()
-        m = re.search(r"(\w+)\s*\([^)]*$", line)
-        if m:
-            kwargs = _FUNC_KWARGS.get(m.group(1), [])
-            hits = [k for k in kwargs if k.startswith(text)]
+
+        # Value completion: last token is  kwarg=  or  kwarg='partial
+        m_val = re.search(r"\b(\w+)\s*=\s*(['\"]?)(\w*)$", line)
+        m_func = re.match(r"(\w+)\s*\(", line)
+        if m_val and m_func:
+            kwarg, quote, partial = m_val.group(1), m_val.group(2), m_val.group(3)
+            func_name = m_func.group(1)
+            values = _KWARG_VALUES.get(func_name, {}).get(kwarg, [])
+            hits = [f"{v}{quote}" for v in values if v.startswith(partial)]
             if hits:
                 return hits
-        # Fall back to standard name completion, stripping the trailing '(' rlcompleter adds to callables
+
+        # Kwarg name completion: cursor is inside an open call
+        m = re.search(r"(\w+)\s*\([^)]*$", line)
+        if m:
+            hits = [k for k in _FUNC_KWARGS.get(m.group(1), []) if k.startswith(text)]
+            if hits:
+                return hits
+
+        # Fallback: standard name completion, stripping trailing '(' rlcompleter adds to callables
         results, i = [], 0
         while (c := self._base.complete(text, i)) is not None:
-            results.append(c.rstrip("("))
+            results.append(c.rstrip("()").rstrip("("))
             i += 1
         return results
 
