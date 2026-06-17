@@ -650,4 +650,5 @@ def generate_credential() -> None:
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
 def main() -> None:
+    sys.argv[0] = "pbook"
     app()
