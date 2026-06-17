@@ -254,41 +254,79 @@ _RETRY_ALLOWED_OPTS = [
 
 
 def _build_namespace(core) -> dict:
-    import pydoc
+    from inspect import signature
+    from rich.console import Console
+    from rich.table import Table
+    from rich import box
 
-    def help(*arg):
-        """Show the help doc."""
-        if arg:
-            try:
-                func = ns[arg[0]] if isinstance(arg[0], str) else arg[0]
-                print(pydoc.plain(pydoc.render_doc(func)))
+    _console = Console()
+
+    def help(command=None):
+        """Show available commands, or detailed help for a specific command."""
+        if command is not None:
+            name = command if isinstance(command, str) else command.__name__
+            func = ns.get(name, command if callable(command) else None)
+            if func is None:
+                _console.print(f"[red]Unknown command:[/red] {name}")
                 return
-            except Exception:
-                print(f"Unknown command: {arg[0]}")
+            sig = str(signature(func)).replace("(", f"[bold cyan]{name}[/bold cyan](", 1)
+            _console.print(f"\n[bold]{sig}[/bold]")
+            doc = (func.__doc__ or "No description.").strip()
+            _console.print(f"\n{doc}\n")
             return
-        print("""
-Available commands:
-  help  show  showl  kill  finish  retry  debug
-  get_user_job_metadata  recover_lost_files  reload_input
-  show_workflow  kill_workflow  retry_workflow  finish_workflow
-  pause_workflow  resume_workflow
-  set_secret  list_secrets  delete_secret  delete_all_secrets
-  generate_credential
 
-Usage: help(show)  or  pbook show --help
-""")
+        table = Table(box=box.SIMPLE, show_header=True, header_style="bold magenta")
+        table.add_column("Command", style="bold cyan", no_wrap=True)
+        table.add_column("Signature", style="dim", no_wrap=True)
+        table.add_column("Description")
 
-    def show(*args, **kwargs):
-        """Print task records. Args: [taskID|'run'|'fin']. Kwargs: username, limit, taskname, days, jeditaskid, reqid, status, superstatus, format."""
-        return core.show(*args, **kwargs)
+        _GROUPS = [
+            ("Tasks", ["show", "showl", "kill", "finish", "retry", "debug"]),
+            ("Files & input", ["get_user_job_metadata", "recover_lost_files", "reload_input"]),
+            ("Workflows", ["show_workflow", "kill_workflow", "retry_workflow",
+                           "finish_workflow", "pause_workflow", "resume_workflow"]),
+            ("Secrets", ["set_secret", "list_secrets", "delete_secret",
+                         "delete_all_secrets"]),
+            ("Auth", ["generate_credential"]),
+        ]
+        for group, names in _GROUPS:
+            table.add_section()
+            table.add_row(f"[bold white]{group}[/bold white]", "", "")
+            for name in names:
+                func = ns.get(name)
+                if func is None:
+                    continue
+                sig = str(signature(func))
+                doc = (func.__doc__ or "").strip().splitlines()[0]
+                table.add_row(f"  {name}", sig, doc)
 
-    def showl(*args, **kwargs):
+        _console.print(table)
+        _console.print("Usage: [bold]help(show)[/bold]  or  [bold]pbook show --help[/bold]\n")
+
+    def show(taskID=None, *, username=None, limit=1000, taskname=None, days=14,
+             jeditaskid=None, reqid=None, status=None, superstatus=None, format="standard"):
+        """Print task records.
+
+        taskID: jediTaskID / reqID / 'run' (active) / 'fin' (terminated) / omit for all.
+        format: standard | long | json | plain
+        """
+        kwargs = {k: v for k, v in dict(username=username, limit=limit, taskname=taskname,
+                  days=days, jeditaskid=jeditaskid, reqid=reqid, status=status,
+                  superstatus=superstatus, format=format).items() if v is not None}
+        kwargs.setdefault("limit", limit)
+        kwargs.setdefault("days", days)
+        kwargs["format"] = format
+        return core.show(taskID, **kwargs) if taskID is not None else core.show(**kwargs)
+
+    def showl(taskID=None, *, username=None, limit=1000, taskname=None, days=14,
+              jeditaskid=None, reqid=None, status=None, superstatus=None):
         """Print task records in long format (shortcut for show(..., format='long'))."""
-        kwargs["format"] = "long"
-        return core.show(*args, **kwargs)
+        return show(taskID, username=username, limit=limit, taskname=taskname, days=days,
+                    jeditaskid=jeditaskid, reqid=reqid, status=status,
+                    superstatus=superstatus, format="long")
 
     def kill(taskIDs):
-        """Kill tasks. taskIDs: int, [int,...], or 'all'."""
+        """Kill tasks. taskIDs: int, list of ints, or 'all'."""
         if taskIDs == "all":
             return _parallel(lambda t: core.kill(t.jeditaskid), core.get_active_tasks())
         elif isinstance(taskIDs, (list, tuple)):
@@ -311,7 +349,14 @@ Usage: help(show)  or  pbook show --help
         print("Error: Invalid argument")
 
     def retry(taskIDs, newOpts=None, days=14, limit=1000, **kwargs):
-        """Retry failed/cancelled tasks. taskIDs: int, [int,...], or 'all'."""
+        """Retry failed/cancelled tasks.
+
+        taskIDs (required): int, list of ints, or 'all'.
+        Allowed kwargs: site, excludedSite, includedSite, nFilesPerJob, nMaxFilesPerJob,
+          nGBPerJob, nFiles, nEvents, loopingCheck, memory, avoidVP,
+          ignoreMissingInDS, forceStaged, maxCore.
+        Example: retry('all', loopingCheck=True)
+        """
         if newOpts is None:
             newOpts = dict(kwargs)
         for key in list(newOpts):
