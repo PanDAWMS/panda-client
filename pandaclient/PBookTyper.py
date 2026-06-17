@@ -7,6 +7,7 @@ from __future__ import annotations
 import atexit
 import code
 import os
+import re
 import signal
 import sys
 import tempfile
@@ -121,6 +122,56 @@ def _catch_sig(sig, frame):
 
 
 # ─── Interactive REPL namespace ───────────────────────────────────────────────
+
+# ─── REPL kwarg completer ─────────────────────────────────────────────────────
+
+_FUNC_KWARGS: dict[str, list[str]] = {
+    "show": ["username=", "limit=", "taskname=", "days=", "jeditaskid=", "reqid=", "status=", "superstatus=", "format="],
+    "showl": ["username=", "limit=", "taskname=", "days=", "jeditaskid=", "reqid=", "status=", "superstatus="],
+    "kill": [],
+    "finish": ["soft="],
+    "retry": [
+        "newOpts=", "days=", "limit=", "site=", "excludedSite=", "includedSite=",
+        "nFilesPerJob=", "nMaxFilesPerJob=", "nGBPerJob=", "nFiles=", "nEvents=",
+        "loopingCheck=", "memory=", "avoidVP=", "ignoreMissingInDS=", "forceStaged=", "maxCore=",
+    ],
+    "debug": ["modeOn="],
+    "get_user_job_metadata": [],
+    "recover_lost_files": ["test_mode="],
+    "set_secret": ["is_file="],
+    "list_secrets": ["full="],
+}
+
+
+class _PBookCompleter:
+    """Readline completer that adds kwarg hints when cursor is inside a call."""
+
+    def __init__(self, ns: dict) -> None:
+        import rlcompleter
+        self._base = rlcompleter.Completer(ns)
+        self._matches: list[str] = []
+
+    def complete(self, text: str, state: int) -> Optional[str]:
+        if state == 0:
+            self._matches = self._compute(text)
+        return self._matches[state] if state < len(self._matches) else None
+
+    def _compute(self, text: str) -> list[str]:
+        import readline
+        line = readline.get_line_buffer()
+        m = re.search(r"(\w+)\s*\([^)]*$", line)
+        if m:
+            kwargs = _FUNC_KWARGS.get(m.group(1), [])
+            hits = [k for k in kwargs if k.startswith(text)]
+            if hits:
+                return hits
+        # Fall back to standard name completion
+        results, i = [], 0
+        while (c := self._base.complete(text, i)) is not None:
+            results.append(c)
+            i += 1
+        return results
+
 
 _RETRY_ALLOWED_OPTS = [
     "site", "excludedSite", "includedSite", "nFilesPerJob", "nMaxFilesPerJob",
@@ -331,9 +382,8 @@ def _main(
             exec(command_string, {}, ns)  # noqa: S102
             from pandaclient import PBookCore as _PBC
             raise typer.Exit(0 if _PBC.func_return_value else 1)
-        import rlcompleter
         import readline as _rl
-        _rl.set_completer(rlcompleter.Completer(ns).complete)
+        _rl.set_completer(_PBookCompleter(ns).complete)
         core.init()
         code.interact(banner=f"\nStart pBook {PandaToolsPkgInfo.release_version}", local=ns)
     else:
