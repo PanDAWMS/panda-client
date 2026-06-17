@@ -227,7 +227,7 @@ class _PBookCompleter:
             kwarg, quote, partial = m_val.group(1), m_val.group(2), m_val.group(3)
             func_name = m_func.group(1)
             values = _KWARG_VALUES.get(func_name, {}).get(kwarg, [])
-            hits = [f"{v}{quote}" for v in values if v.startswith(partial)]
+            hits = [v for v in values if v.startswith(partial)]
             if hits:
                 return hits
 
