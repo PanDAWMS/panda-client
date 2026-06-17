@@ -6,6 +6,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
+# The purpose of the long width is to soft wrap the lines, instead of e.g. shrinking table columns
 _console = Console(width=10000)
 
 _STATUS_STYLE = {
