@@ -331,6 +331,9 @@ def _main(
             exec(command_string, {}, ns)  # noqa: S102
             from pandaclient import PBookCore as _PBC
             raise typer.Exit(0 if _PBC.func_return_value else 1)
+        import rlcompleter
+        import readline as _rl
+        _rl.set_completer(rlcompleter.Completer(ns).complete)
         core.init()
         code.interact(banner=f"\nStart pBook {PandaToolsPkgInfo.release_version}", local=ns)
     else:
