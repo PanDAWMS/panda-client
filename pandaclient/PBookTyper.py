@@ -173,17 +173,34 @@ _KWARG_VALUES: dict[str, dict[str, list[str]]] = {
 }
 
 
-class _PBookConsole(code.InteractiveConsole):
-    """InteractiveConsole that keeps our custom completer active even after code.interact() resets it."""
 
-    def __init__(self, local: dict, completer) -> None:
-        super().__init__(local)
-        self._completer = completer
+def _run_repl(ns: dict, banner: str) -> None:
+    """Manual REPL using InteractiveConsole.push() so we own readline setup entirely."""
+    import readline
 
-    def raw_input(self, prompt: str = "") -> str:
-        import readline
-        readline.set_completer(self._completer)
-        return super().raw_input(prompt)
+    completer = _PBookCompleter(ns)
+    readline.set_completer(completer.complete)
+    readline.parse_and_bind("tab: complete")
+    readline.parse_and_bind("set show-all-if-ambiguous On")
+
+    console = code.InteractiveConsole(ns)
+    print(banner)
+
+    more = False
+    while True:
+        prompt = "... " if more else ">>> "
+        try:
+            readline.set_completer(completer.complete)
+            line = input(prompt)
+        except EOFError:
+            print()
+            break
+        except KeyboardInterrupt:
+            print("\nKeyboardInterrupt")
+            console.resetbuffer()
+            more = False
+            continue
+        more = console.push(line)
 
 
 class _PBookCompleter:
@@ -438,9 +455,8 @@ def _main(
             exec(command_string, {}, ns)  # noqa: S102
             from pandaclient import PBookCore as _PBC
             raise typer.Exit(0 if _PBC.func_return_value else 1)
-        completer = _PBookCompleter(ns)
         core.init()
-        _PBookConsole(ns, completer.complete).interact(banner=f"\nStart pBook {PandaToolsPkgInfo.release_version}")
+        _run_repl(ns, banner=f"\nStart pBook {PandaToolsPkgInfo.release_version}")
     else:
         signal.signal(signal.SIGINT, _catch_sig)
         signal.signal(signal.SIGHUP, _catch_sig)
