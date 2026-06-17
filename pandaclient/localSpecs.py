@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-_console = Console(soft_wrap=True)
+_console = Console(width=10000)
 
 _STATUS_STYLE = {
     "running": "bold cyan",
