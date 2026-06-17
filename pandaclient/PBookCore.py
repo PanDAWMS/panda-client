@@ -200,48 +200,6 @@ class PBookCore:
         tmpLog.info(output)
         return
 
-    # kill and retry
-    def killAndRetry(self, taskID, newOpts=None):
-        tmpLog = PLogger.getPandaLogger()
-
-        retK = self.kill(taskID)
-        if not retK:
-            return False
-
-        def _wait(seconds, message):
-            with Progress(SpinnerColumn(), TextColumn(message), TimeElapsedColumn(), transient=True) as progress:
-                progress.add_task("", total=None)
-                time.sleep(seconds)
-
-        nTry = 6
-        wait_initial = 3
-        wait_poll = 30
-
-        tmpLog.info(f"Task {taskID} kill signal sent — waiting {wait_initial}s for the server to process it")
-        _wait(wait_initial, f"Waiting for kill signal to be processed...")
-
-        for iTry in range(nTry):
-            taskspec = _get_one_task(self, taskID, self.verbose)
-            attempt_label = f"[{iTry + 1}/{nTry}]"
-            if taskspec is not None:
-                if taskspec.is_terminated():
-                    tmpLog.info(f"{attempt_label} Task {taskID} has terminated — proceeding to retry")
-                    break
-                else:
-                    status = taskspec.status if hasattr(taskspec, "status") else "unknown"
-                    tmpLog.info(f"{attempt_label} Task {taskID} still active (status={status})")
-            else:
-                tmpLog.warning(f"{attempt_label} Could not retrieve task {taskID} status from PanDA monitor")
-
-            if iTry + 1 < nTry:
-                tmpLog.info(f"Waiting {wait_poll}s before next check...")
-                _wait(wait_poll, f"Waiting for task {taskID} to terminate ({iTry + 2}/{nTry})...")
-            else:
-                tmpLog.error(f"Task {taskID} did not terminate after {nTry} attempts ({nTry * wait_poll}s). Please try again later.")
-                return False
-
-        return self.retry(taskID, newOpts=newOpts)
-
     # retry
     @check_task_owner
     def retry(self, taskID, newOpts=None):

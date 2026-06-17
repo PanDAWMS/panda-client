@@ -327,19 +327,6 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
         """
         pbookCore.debug(PandaID, modeOn)
 
-    # kill and retry
-    def killAndRetry(taskIDs, newOpts=None):
-        if newOpts is None:
-            newOpts = {}
-        if isinstance(taskIDs, (list, tuple)):
-            ret = list_parallel_exec(lambda taskID: pbookCore.killAndRetry(taskID, newOpts=newOpts), taskIDs)
-        elif isinstance(taskIDs, int):
-            ret = [pbookCore.killAndRetry(taskIDs, newOpts=newOpts)]
-        else:
-            print("Error: Invalid argument")
-            ret = None
-        return ret
-
     # get user job metadata
     def getUserJobMetadata(taskID, outputFileName):
         pbookCore.getUserJobMetadata(taskID, outputFileName)
