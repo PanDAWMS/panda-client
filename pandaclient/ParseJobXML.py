@@ -279,7 +279,7 @@ class dom_parser:
         """returns a list of all used input datasets"""
         DSs = set()
         for j in s.jobs:
-            for ds in j.infiles.keys():
+            for ds in j.infiles:
                 DSs.add(ds)
         return list(DSs)
 

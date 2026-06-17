@@ -87,7 +87,7 @@ def getAthenaVer(verbose=True):
             return False, {}
     # private work area
     res = re.search(r"\(in ([^\)]+)\)", lines[0])
-    if res == None:
+    if res is None:
         print(lines[0])
         tmpLog.error("no TestArea. could not get path to private work area")
         return False, {}
