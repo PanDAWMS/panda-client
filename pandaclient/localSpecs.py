@@ -11,11 +11,11 @@ _console = Console(width=10000)
 
 _STATUS_STYLE = {
     "running": "bold cyan",
-    "submitting": "dark_orange",
-    "registered": "dark_orange",
-    "ready": "dark_orange",
+    "submitting": "cyan",
+    "registered": "magenta",
+    "ready": "magenta",
     "done": "bold green",
-    "finished": "green",
+    "finished": "yellow",
     "failed": "red",
     "broken": "bold red",
     "aborted": "bold red",
