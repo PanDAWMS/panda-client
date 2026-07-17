@@ -585,7 +585,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         dest="nEvents",
         default=-1,
         type=int,
-        help="The total number of events to be processed. This option is considered only when either --inDS or --pfnList is not used",
+        help="The total number of events to be processed. The nevents metadata of input files must be available in rucio",
     )
     group_job.add_argument(
         "--nEventsPerJob",
@@ -2147,6 +2147,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             taskParamMap["nEventsPerFile"] = options.nEventsPerFile
         if options.nJobs > 0 and options.nEvents < 0:
             taskParamMap["nEvents"] = options.nJobs * options.nEventsPerJob
+    if options.nEvents > 0:
+        taskParamMap["nEvents"] = options.nEvents
     taskParamMap["cliParams"] = fullExecString
     if options.noEmail:
         taskParamMap["noEmail"] = True
@@ -2433,7 +2435,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         # no input
         taskParamMap["noInput"] = True
         if options.nEvents > 0:
-            taskParamMap["nEvents"] = options.nEvents
             if options.nJobs > 0:
                 taskParamMap["nEventsPerJob"] = max(1, options.nEvents // options.nJobs)
             else:
