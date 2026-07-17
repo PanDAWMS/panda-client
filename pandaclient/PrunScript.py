@@ -9,7 +9,13 @@ import sys
 import time
 from urllib.parse import quote
 
-from pandaclient.CommonArgs import VALID_TRANSFER_TYPES, add_common_arguments, get_invalid_transfer_types
+from pandaclient.CommonArgs import (
+    VALID_TRANSFER_TYPES,
+    add_common_arguments,
+    get_invalid_transfer_types,
+    set_events_task_params,
+    set_n_files_from_n_jobs,
+)
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, parse_secondary_datasets_opt
 
@@ -97,7 +103,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     group_evtFilter = optP.add_group("evtFilter", "event filter such as good run and event pick")
     group_expert = optP.add_group("expert", "for experts/developers only")
 
-    add_common_arguments(group_submit, group_input)
+    add_common_arguments(group_submit, group_input, group_job)
 
     usage_containerJob = """Visit the following wiki page for examples:
       https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
@@ -533,14 +539,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         help="list of glue packages which pathena cannot find due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf",
     )
     group_input.add_argument(
-        "--nFiles",
-        action="store",
-        dest="nFiles",
-        default=0,
-        type=int,
-        help="Use a limited number of files in the input dataset",
-    )
-    group_input.add_argument(
         "--nSkipFiles",
         action="store",
         dest="nSkipFiles",
@@ -562,55 +560,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         dest="execWithRealFileNames",
         default=False,
         help="Run the execution string with real output filenames",
-    )
-    group_job.add_argument(
-        "--nFilesPerJob",
-        action="store",
-        dest="nFilesPerJob",
-        default=None,
-        type=int,
-        help="Number of files on which each sub-job runs (default 50). Note that this is the number of files per sub-job in the primary dataset even if --secondaryDSs is used",
-    )
-    group_job.add_argument(
-        "--nJobs",
-        action="store",
-        dest="nJobs",
-        default=-1,
-        type=int,
-        help="Maximum number of sub-jobs. If the number of input files (N_in) is less than nJobs*nFilesPerJob, only N_in/nFilesPerJob sub-jobs will be instantiated",
-    )
-    group_job.add_argument(
-        "--nEvents",
-        action="store",
-        dest="nEvents",
-        default=-1,
-        type=int,
-        help="The total number of events to be processed. The nevents metadata of input files must be available in rucio",
-    )
-    group_job.add_argument(
-        "--nEventsPerJob",
-        action="store",
-        dest="nEventsPerJob",
-        default=-1,
-        type=int,
-        help="Number of events per subjob. This is used mainly for job splitting. If you set nEventsPerFile, the total number of subjobs is nEventsPerFile*nFiles/nEventsPerJob. Otherwise, it gets from rucio the number of events in each input file and subjobs are created accordingly. Note that you need to explicitly specify in --exec some parameters like %%MAXEVENTS, %%SKIPEVENTS and %%FIRSTEVENT and your application needs to process only an event chunk accordingly, to avoid subjobs processing the same events. All parameters descibed in https://twiki.cern.ch/twiki/bin/view/PanDA/PandaAthena#example_8_How_to_run_production are available",
-    )
-    action = group_job.add_argument(
-        "--nEventsPerFile",
-        action="store",
-        dest="nEventsPerFile",
-        default=0,
-        type=int,
-        help="Number of events per file",
-    )
-    group_input.shareWithMe(action)
-    group_job.add_argument(
-        "--nEventsPerChunk",
-        action="store",
-        dest="nEventsPerChunk",
-        default=-1,
-        type=int,
-        help="Set granuarity to split events. The number of events per job is multiples of nEventsPerChunk. This option is considered only when --nEvents is used but --nJobs is not used. If this option is not set, nEvents/20 is used as nEventsPerChunk",
     )
     group_job.add_argument(
         "--nGBPerJob",
@@ -1476,7 +1425,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         options.persistentFile = f"{options.persistentFile}:sources.{MiscUtils.wrappedUuidGen()}.__ow__"
 
     # warning
-    if options.nFilesPerJob is not None and options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
+    if options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
         tmpLog.warning(
             "Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
             "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
@@ -1732,12 +1681,12 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             tmpLog.error("--nGBPerJob must be positive")
             sys.exit(EC_Config)
         # incompatible parameters
-        if options.nFilesPerJob is not None and options.nFilesPerJob > 0:
+        if options.nFilesPerJob > 0:
             tmpLog.error("--nFilesPerJob and --nGBPerJob must be used exclusively")
             sys.exit(EC_Config)
 
     # split options are mutually exclusive
-    if options.nFilesPerJob is not None and options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob != -1:
+    if options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob != -1:
         tmpLog.error("split by files, split by events and split by file size can not be used simultaneously")
         sys.exit(EC_Config)
 
@@ -1745,6 +1694,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     if options.nEventsPerJob > 0 and options.nGBPerJob != -1:
         tmpLog.error("split by events and split by file size can not be used simultaneously")
         sys.exit(EC_Config)
+
+    # translate --nJobs into nFiles / nFilesPerJob
+    set_n_files_from_n_jobs(options)
 
     #####################################################################
     # archive sources and send it to HTTP-reachable location
@@ -2132,23 +2084,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         taskParamMap["includedSite"] = None
     if options.priority is not None:
         taskParamMap["currentPriority"] = options.priority
-    if options.nFiles > 0:
-        taskParamMap["nFiles"] = options.nFiles
-    if options.nFilesPerJob is not None:
-        taskParamMap["nFilesPerJob"] = options.nFilesPerJob
     if not options.nGBPerJob in [-1, "MAX"]:
         # don't set MAX since it is the defalt on the server side
         taskParamMap["nGBPerJob"] = options.nGBPerJob
-    if options.nEventsPerJob > 0:
-        taskParamMap["nEventsPerJob"] = options.nEventsPerJob
-        if options.nEventsPerFile <= 0:
-            taskParamMap["useRealNumEvents"] = True
-        else:
-            taskParamMap["nEventsPerFile"] = options.nEventsPerFile
-        if options.nJobs > 0 and options.nEvents < 0:
-            taskParamMap["nEvents"] = options.nJobs * options.nEventsPerJob
-    if options.nEvents > 0:
-        taskParamMap["nEvents"] = options.nEvents
+    no_input = options.inDS == "" and options.pfnList == "" and options.goodRunListXML == ""
+    set_events_task_params(options, taskParamMap, no_input)
     taskParamMap["cliParams"] = fullExecString
     if options.noEmail:
         taskParamMap["noEmail"] = True
@@ -2434,27 +2374,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     else:
         # no input
         taskParamMap["noInput"] = True
-        if options.nEvents > 0:
-            if options.nJobs > 0:
-                taskParamMap["nEventsPerJob"] = max(1, options.nEvents // options.nJobs)
-            else:
-                # set granularity
-                if options.nEventsPerChunk > 0:
-                    taskParamMap["nEventsPerRange"] = options.nEventsPerChunk
-                else:
-                    # use 1/20 by default
-                    taskParamMap["nEventsPerRange"] = options.nEvents // 20
-                    if taskParamMap["nEventsPerRange"] <= 0:
-                        taskParamMap["nEventsPerRange"] = 1
-        elif options.nEventsPerJob > 0:
-            taskParamMap["nEvents"] = options.nEventsPerJob * max(1, options.nJobs)
-            taskParamMap["nEventsPerJob"] = options.nEventsPerJob
-        else:
-            if options.nJobs > 0:
-                taskParamMap["nEvents"] = options.nJobs
-            else:
-                taskParamMap["nEvents"] = 1
-            taskParamMap["nEventsPerJob"] = 1
 
     # exec string
     if options.loadXML is None:
