@@ -79,15 +79,6 @@ class LocalTaskSpec:
     def _status_text(status):
         return Text(status or "", style=_STATUS_STYLE.get(status or "", ""))
 
-    def _files_text(self):
-        t = Text()
-        t.append(self.nfilesfinished, style="bold green")
-        t.append("|")
-        t.append(self.nfilesfailed, style="red" if self.nfilesfailed != "0" else "")
-        t.append("|")
-        t.append(self.nfiles)
-        return t
-
     @staticmethod
     def make_table_standard():
         # Columns with numeric values (JediTaskID, ReqID, Progress, Status) are right-justified - it's conventional to right-align numbers so their digits line up vertically.
@@ -135,7 +126,7 @@ class LocalTaskSpec:
             str(self.modificationtime),
             str(self.reqid),
             str(self.pctfinished),
-            self._files_text(),
+            f"{self.nfilesfinished}|{self.nfilesfailed}|{self.nfiles}",
             str(self.taskname),
             Text(url, style=f"link {url}"),
         )
