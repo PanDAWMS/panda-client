@@ -6,8 +6,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-# The purpose of the long width is to soft wrap the lines, instead of e.g. shrinking table columns
-_console = Console(width=10000)
+_console = Console()
 
 _STATUS_STYLE = {
     "running": "bold cyan",
@@ -83,12 +82,14 @@ class LocalTaskSpec:
     def make_table_standard():
         # Columns with numeric values (JediTaskID, ReqID, Progress, Status) are right-justified - it's conventional to right-align numbers so their digits line up vertically.
         # Text columns (CreationDate, ModificationTime, TaskName, etc.) use the default left alignment.
+        # TaskName wraps (overflow="fold") within its own cell instead of relying on the terminal to soft-wrap
+        # the whole row, which can drop the JediTaskID hyperlink when the console is narrower than the row.
         t = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold")
-        t.add_column("JediTaskID", justify="right")
-        t.add_column("ReqID", justify="right")
-        t.add_column("Status", justify="right")
-        t.add_column("Progress", justify="right")
-        t.add_column("TaskName")
+        t.add_column("JediTaskID", justify="right", no_wrap=True)
+        t.add_column("ReqID", justify="right", no_wrap=True)
+        t.add_column("Status", justify="right", no_wrap=True)
+        t.add_column("Progress", justify="right", no_wrap=True)
+        t.add_column("TaskName", overflow="fold")
         return t
 
     def add_row_standard(self, table):
@@ -105,16 +106,19 @@ class LocalTaskSpec:
     def make_table_long():
         # Columns with numeric values (JediTaskID, ReqID, Progress, Status) are right-justified - it's conventional to right-align numbers so their digits line up vertically.
         # Text columns (CreationDate, ModificationTime, TaskName, etc.) use the default left alignment.
+        # TaskName/URL wrap (overflow="fold") within their own cell instead of relying on the terminal to
+        # soft-wrap the whole row, which can drop the JediTaskID/URL hyperlinks when the console is narrower
+        # than the row.
         t = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold")
-        t.add_column("JediTaskID", justify="right")
-        t.add_column("Status", justify="right")
-        t.add_column("CreationDate")
-        t.add_column("ModificationTime")
-        t.add_column("ReqID", justify="right")
-        t.add_column("Progress", justify="right")
-        t.add_column("Files (done|failed|total)")
-        t.add_column("TaskName")
-        t.add_column("URL")
+        t.add_column("JediTaskID", justify="right", no_wrap=True)
+        t.add_column("Status", justify="right", no_wrap=True)
+        t.add_column("CreationDate", no_wrap=True)
+        t.add_column("ModificationTime", no_wrap=True)
+        t.add_column("ReqID", justify="right", no_wrap=True)
+        t.add_column("Progress", justify="right", no_wrap=True)
+        t.add_column("Files (done|failed|total)", no_wrap=True)
+        t.add_column("TaskName", overflow="fold")
+        t.add_column("URL", overflow="fold")
         return t
 
     def add_row_long(self, table):
