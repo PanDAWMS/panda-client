@@ -7,11 +7,11 @@ cd panda-client
 ```
 and install it
 ```
-python setup.py install --prefix=/path/to/install/dir
+PANDA_INSTALL_TARGET=/path/to/install/dir pip install .
 ```
 or create the tar ball
 ```
-python setup.py sdist
+python -m build -s
 pip install dist/panda-client-*.tar.gz
 ```
 
@@ -30,7 +30,9 @@ https://github.com/PanDAWMS/panda-client/releases
 Request atlas-adc-tier3sw-install to install the new specific version on CVMFS. They will download the package from the github release page.
 
 # Uploading to pip
+Publishing to PyPI is handled automatically by the `Upload Python Package` GitHub
+Actions workflow when a release is published. To build the distributions locally:
 ```
-python setup.py sdist upload
+python -m build -s
 ```
-Uploading source so that wheel generates setup files locally.
+Uploading source so that the wheel generates setup files locally.

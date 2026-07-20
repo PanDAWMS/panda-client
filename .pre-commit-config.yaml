@@ -5,11 +5,11 @@ repos:
     hooks:
     -   id: black
         types: [python]
-        args: ["--config", "packages/light/pyproject.toml"]
+        args: ["--config", "pyproject.toml"]
 
 -   repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
     -   id: isort
         name: isort (python)
-        args: ["--settings-path", "packages/light/pyproject.toml"]
+        args: ["--settings-path", "pyproject.toml"]
