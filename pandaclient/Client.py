@@ -362,7 +362,7 @@ class _Curl:
 
         # data
         data_string = ""
-        for key in data.keys():
+        for key in data:
             value = data[key]
             if repeating_keys and isinstance(value, list):
                 for element in value:
