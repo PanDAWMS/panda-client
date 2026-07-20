@@ -1,6 +1,0 @@
-include *.txt *.py *.cfg
-recursive-include pandaclient *.py
-recursive-include share *
-recursive-include scripts *
-recursive-include templates *.template
-
