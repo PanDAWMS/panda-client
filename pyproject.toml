@@ -28,6 +28,7 @@ classifiers = [
 dependencies = [
     "rich",
     "certifi",
+    "httpx",
 ]
 
 [project.optional-dependencies]

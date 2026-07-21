@@ -12,19 +12,18 @@ import re
 import socket
 import ssl
 import stat
-import string
 import struct
 import sys
-import tempfile
 import time
 import traceback
 from datetime import datetime
 from io import BytesIO
-from urllib.parse import unquote_plus, urlencode, urlparse
-from urllib.request import Request, urlopen
+from urllib.parse import urlencode, urlparse
+
+import httpx
 
 from . import MiscUtils, PLogger, openidc_utils
-from .MiscUtils import commands_get_output, commands_get_status_output
+from .MiscUtils import commands_get_output
 
 # configuration
 try:
@@ -81,7 +80,7 @@ def decode_special_cases(obj):
     return obj
 
 
-def curl_request_decorator(endpoint, method="post", via_file=False, json_out=False, output_mode="basic"):
+def curl_request_decorator(endpoint, method="post", json_out=False, output_mode="basic"):
     def decorator(func):
         def wrapper(*args, **kwargs):
             # Extract verbose flag from kwargs, args, or function signature
@@ -101,18 +100,18 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
                 verbose = False
             data = func(*args, **kwargs)
 
-            # Instantiate curl
-            curl = _Curl()
-            curl.sslCert = _x509()
-            curl.sslKey = _x509()
-            curl.verbose = verbose
+            # Instantiate the HTTP client
+            client = _HttpClient()
+            client.sslCert = _x509()
+            client.sslKey = _x509()
+            client.verbose = verbose
 
             # Execute request
             url = f"{server_base_path_ssl}/{endpoint}"
             if method == "post":
-                status, output = curl.post(url, data, via_file=via_file, json_out=json_out)
+                status, output = client.post(url, data, json_out=json_out)
             elif method == "get":
-                status, output = curl.get(url, data, via_file=via_file, json_out=json_out, repeating_keys=True)
+                status, output = client.get(url, data, json_out=json_out, repeating_keys=True)
             else:
                 raise ValueError("Unsupported HTTP method")
 
@@ -230,19 +229,15 @@ def get_token_string(tmp_log, verbose):
     return None
 
 
-# curl class
-class _Curl:
+# HTTP client used to talk to the PanDA server, built on httpx
+class _HttpClient:
     # constructor
     def __init__(self):
-        # path to curl
-        self.path = 'curl --user-agent "dqcurl" '
         # verification of the host certificate
         if "PANDA_VERIFY_HOST" in os.environ and os.environ["PANDA_VERIFY_HOST"] == "off":
             self.verifyHost = False
         else:
             self.verifyHost = True
-        # request a compressed response
-        self.compress = True
         # SSL cert/key
         self.sslCert = ""
         self.sslKey = ""
@@ -318,432 +313,141 @@ class _Curl:
         host_names = [socket.getfqdn(vv) for vv in {v[-1][0] for v in socket.getaddrinfo(host, port, socket.AF_INET)}]
         return url.replace(host, random.choice(host_names))
 
-    # GET method
-    def get(self, url, data, rucio_account=False, via_file=False, n_try=1, json_out=False, repeating_keys=False):
-        use_https = is_https(url)
-        # make command
-        com = "%s --silent --get" % self.path
-        if not self.verifyHost or not use_https:
-            com += " --insecure"
-        else:
-            tmp_x509_ca_path = _x509_CApath()
-            if tmp_x509_ca_path != "":
-                com += " --capath %s" % tmp_x509_ca_path
-
-        if self.compress:
-            com += " --compressed"
-
-        if self.authMode == "oidc":
-            self.get_id_token()
-            com += f' -H "Authorization: Bearer {self.idToken}"'
-            com += f' -H "Origin: {self.authVO}"'
-        elif use_https:
+    # build the ssl context used for host verification and client cert authentication
+    def _build_ssl_context(self, use_https):
+        if not use_https:
+            return False
+        if self.authMode != "oidc":
             if not self.sslCert:
                 self.sslCert = _x509()
-            com += " --cert %s" % self.sslCert
-            com += " --cacert %s" % self.sslCert
             if not self.sslKey:
                 self.sslKey = _x509()
-            com += " --key %s" % self.sslKey
-
-        if json_out:
-            com += ' -H "Accept: application/json"'
-
-        # max time of 10 min
-        com += " -m 600"
-
-        # add rucio account info
-        if rucio_account:
-            if "RUCIO_ACCOUNT" in os.environ:
-                data["account"] = os.environ["RUCIO_ACCOUNT"]
-            if "RUCIO_APPID" in os.environ:
-                data["appid"] = os.environ["RUCIO_APPID"]
-            data["client_version"] = "2.4.1"
-
-        # data
-        data_string = ""
-        for key in data:
-            value = data[key]
-            if repeating_keys and isinstance(value, list):
-                for element in value:
-                    data_string += 'data="%s"\n' % urlencode({key: element})
-            else:
-                data_string += 'data="%s"\n' % urlencode({key: value})
-
-        # write data to temporary config file
-        if globalTmpDir != "":
-            tmp_file_descriptor, tmp_name = tempfile.mkstemp(dir=globalTmpDir)
-        else:
-            tmp_file_descriptor, tmp_name = tempfile.mkstemp()
-        os.write(tmp_file_descriptor, data_string.encode())
-        os.close(tmp_file_descriptor)
-        tmp_name_out = f"{tmp_name}.out"
-        com += " --config %s" % tmp_name
-        if via_file:
-            com += f" -o {tmp_name_out}"
-        com += " %s" % self.randomize_ip(url)
-        # execute
-        if self.verbose:
-            print(hide_sensitive_info(com))
-            print(data_string[:-1])
-        for i_try in range(n_try):
-            s, o = commands_get_status_output(com)
-            if s == 0 or i_try + 1 == n_try:
-                break
-            time.sleep(1)
-        if o != "\x00":
-            try:
-                tmp_out = unquote_plus(o)
-                o = eval(tmp_out)
-            except Exception:
-                pass
-
-        if via_file:
-            with open(tmp_name_out, "rb") as f:
-                ret = (s, f.read())
-            os.remove(tmp_name_out)
-        else:
-            ret = (s, o)
-        # remove temporary file
-        os.remove(tmp_name)
-
-        # when specified, convert to json
-        if json_out:
-            try:
-                ret = (ret[0], json.loads(ret[1], object_hook=decode_special_cases))
-            except Exception:
-                ret = (ret[0], ret[1])
-
-        ret = self.convert_return(ret)
-
-        if self.verbose:
-            print(ret)
-        return ret
-
-    # POST method
-    def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1, json_out=False):
-        use_https = is_https(url)
-        # make command
-        com = "%s --silent" % self.path
-        if not self.verifyHost or not use_https:
-            com += " --insecure"
-        else:
-            tmp_x509_ca_path = _x509_CApath()
-            if tmp_x509_ca_path != "":
-                com += " --capath %s" % tmp_x509_ca_path
-        if self.compress:
-            com += " --compressed"
-        if self.authMode == "oidc":
-            self.get_id_token()
-            com += f' -H "Authorization: Bearer {self.idToken}"'
-            com += f' -H "Origin: {self.authVO}"'
-        elif use_https:
-            if not self.sslCert:
-                self.sslCert = _x509()
-            com += " --cert %s" % self.sslCert
-            com += " --cacert %s" % self.sslCert
-            if not self.sslKey:
-                self.sslKey = _x509()
-            com += " --key %s" % self.sslKey
-
-        if compress_body or json_out:
-            com += ' -H "Content-Type: application/json"'
-
-        if is_json or json_out:
-            com += ' -H "Accept: application/json"'
-
-        # max time of 10 min
-        com += " -m 600"
-        # add rucio account info
-        if rucio_account:
-            if "RUCIO_ACCOUNT" in os.environ:
-                data["account"] = os.environ["RUCIO_ACCOUNT"]
-            if "RUCIO_APPID" in os.environ:
-                data["appid"] = os.environ["RUCIO_APPID"]
-            data["client_version"] = "2.4.1"
-        # write data to temporary config file
-        if globalTmpDir != "":
-            tmp_file_descriptor, tmp_name = tempfile.mkstemp(dir=globalTmpDir)
-        else:
-            tmp_file_descriptor, tmp_name = tempfile.mkstemp()
-        # data
-        data_string = ""
-        if not compress_body:
-            if not json_out:
-                for key in data.keys():
-                    data_string += 'data="%s"\n' % urlencode({key: data[key]})
-                os.write(tmp_file_descriptor, data_string.encode("utf-8"))
-            else:
-                # json data
-                data_string = json.dumps(data)
-                os.write(tmp_file_descriptor, data_string.encode("utf-8"))
-        else:
-            f = os.fdopen(tmp_file_descriptor, "wb")
-            with gzip.GzipFile(fileobj=f, mode="wb") as f_gzip:
-                f_gzip.write(json.dumps(data).encode())
-            f.close()
-        try:
-            os.close(tmp_file_descriptor)
-        except Exception:
-            pass
-        tmp_name_out = f"{tmp_name}.out"
-        if not compress_body:
-            if not json_out:
-                com += " --config %s" % tmp_name
-            else:
-                com += f" --data @{tmp_name}"
-        else:
-            com += f" --data-binary @{tmp_name}"
-        if via_file:
-            com += f" -o {tmp_name_out}"
-
-        # The new API requires POST method for json
-        if json_out:
-            com += " -X POST"
-
-        com += " %s" % self.randomize_ip(url)
-        # execute
-        if self.verbose:
-            print(hide_sensitive_info(com))
-            for key in data:
-                print(f"{key}={data[key]}")
-        for i_try in range(n_try):
-            s, o = commands_get_status_output(com)
-            if s == 0 or i_try + 1 == n_try:
-                break
-            time.sleep(1)
-        if o != "\x00":
-            try:
-                if is_json or json_out:
-                    o = json.loads(o, object_hook=decode_special_cases)
-                else:
-                    tmp_out = unquote_plus(o)
-                    o = eval(tmp_out)
-            except Exception:
-                pass
-        if via_file:
-            with open(tmp_name_out, "rb") as f:
-                if not json_out:
-                    ret = (s, f.read())
-                else:
-                    ret = (s, json.loads(f.read(), object_hook=decode_special_cases))
-            os.remove(tmp_name_out)
-        else:
-            ret = (s, o)
-
-        # remove temporary file
-        os.remove(tmp_name)
-        ret = self.convert_return(ret)
-        if self.verbose:
-            print(ret)
-        return ret
-
-    # PUT method
-    def put(self, url, data, n_try=1, json_out=False):
-        use_https = is_https(url)
-        # make command
-        com = "%s --silent" % self.path
-        if not self.verifyHost or not use_https:
-            com += " --insecure"
-        else:
-            tmp_x509_ca_path = _x509_CApath()
-            if tmp_x509_ca_path != "":
-                com += " --capath %s" % tmp_x509_ca_path
-        if self.compress:
-            com += " --compressed"
-        if self.authMode == "oidc":
-            self.get_id_token()
-            com += f' -H "Authorization: Bearer {self.idToken}"'
-            com += f' -H "Origin: {self.authVO}"'
-        elif use_https:
-            if not self.sslCert:
-                self.sslCert = _x509()
-            com += " --cert %s" % self.sslCert
-            com += " --cacert %s" % self.sslCert
-            if not self.sslKey:
-                self.sslKey = _x509()
-            com += " --key %s" % self.sslKey
-
-        if json_out:
-            # we accept json response, but the body is form data
-            com += ' -H "Accept: application/json"'
-
-        # emulate PUT
-        for key in data.keys():
-            com += ' -F "{}=@{}"'.format(key, data[key])
-        com += " %s" % self.randomize_ip(url)
-        if self.verbose:
-            print(hide_sensitive_info(com))
-        # execute
-        for i_try in range(n_try):
-            ret = commands_get_status_output(com)
-            if ret[0] == 0 or i_try + 1 == n_try:
-                break
-            time.sleep(1)
-
-        if json_out:
-            try:
-                ret = (ret[0], json.loads(ret[1], object_hook=decode_special_cases))
-            except Exception:
-                ret = (ret[0], ret[1])
-
-        ret = self.convert_return(ret)
-        if self.verbose:
-            print(ret)
-
-        return ret
-
-    # convert return
-    def convert_return(self, ret):
-        code = ret[0] % 255
-        data = ret[1]
-
-        # add datas to silent errors
-        if code == 35:
-            data = "SSL connect error. The SSL handshaking failed. Check grid certificate/proxy."
-        elif code == 7:
-            data = "Failed to connect to host."
-        elif code == 55:
-            data = "Failed sending network data."
-        elif code == 56:
-            data = "Failure in receiving network data."
-
-        return code, data
-
-
-class _NativeCurl(_Curl):
-    def http_method(
-        self, url, data, header, rdata=None, compress_body=False, is_json=False, json_out=False, repeating_keys=False, method=None, file_upload=False
-    ):
-        try:
-            use_https = is_https(url)
-            url = self.randomize_ip(url)
-            if header is None:
-                header = {}
-            if self.authMode == "oidc":
-                self.get_id_token()
-                header["Authorization"] = f"Bearer {self.idToken}"
-                header["Origin"] = self.authVO
-            if not file_upload and (compress_body or json_out):
-                header["Content-Type"] = "application/json"
-
-            if is_json or json_out:
-                header["Accept"] = "application/json"
-
-            if rdata is None:
-                if not compress_body and not json_out:
-                    rdata = urlencode(data, doseq=repeating_keys).encode()
-                elif compress_body:
-                    rdata_out = BytesIO()
-                    with gzip.GzipFile(fileobj=rdata_out, mode="w") as f_gzip:
-                        f_gzip.write(json.dumps(data).encode())
-                    rdata = rdata_out.getvalue()
-                else:
-                    rdata = json.dumps(data).encode("utf-8")
-
-            req = Request(url, rdata, headers=header, method=method)
+        if not self.verifyHost:
             context = ssl._create_unverified_context()
-            if use_https and self.authMode != "oidc":
-                if not self.sslCert:
-                    self.sslCert = _x509()
-                if not self.sslKey:
-                    self.sslKey = _x509()
-                context.load_cert_chain(certfile=self.sslCert, keyfile=self.sslKey)
-            if self.verbose:
-                print(f"url = {url}")
-                print(f"header = {hide_sensitive_info(header)}")
-                print(f"data = {str(data)}")
-            conn = urlopen(req, context=context)
-            code = conn.getcode()
-            if code == 200:
-                code = 0
-            text = conn.read()
+        else:
+            context = ssl.create_default_context(capath=_x509_CApath() or None)
+            if self.authMode != "oidc":
+                # the grid proxy is typically self-issued, so it is also trusted as a CA
+                context.load_verify_locations(cafile=self.sslCert)
+        if self.authMode != "oidc":
+            context.load_cert_chain(certfile=self.sslCert, keyfile=self.sslKey)
+        return context
 
+    # headers for OIDC bearer-token auth
+    def _auth_headers(self):
+        headers = {}
+        if self.authMode == "oidc":
+            self.get_id_token()
+            headers["Authorization"] = f"Bearer {self.idToken}"
+            headers["Origin"] = self.authVO
+        return headers
+
+    # send a request and normalize the return value to (code, content)
+    def _send(self, method, url, headers=None, content=None, files=None, verify=True):
+        try:
             if self.verbose:
-                print(code, text)
-            return code, text
+                print(f"{method} {url}")
+                print(f"headers = {hide_sensitive_info(headers)}")
+            with httpx.Client(verify=verify, timeout=600) as client:
+                response = client.request(method, url, headers=headers, content=content, files=files)
+            ret = (0 if response.status_code == 200 else response.status_code, response.content)
         except Exception as e:
             if self.verbose:
                 print(traceback.format_exc())
-            error_message = str(e)
-            if hasattr(e, "fp"):
-                error_message += f". {e.fp.read().decode()}"
-            return 1, error_message
+            ret = (1, str(e))
+        if self.verbose:
+            print(ret)
+        return ret
 
     # GET method
-    def get(self, url, data, rucio_account=False, via_file=False, output_name=None, n_try=1, json_out=False, repeating_keys=False):
+    def get(self, url, data, n_try=1, json_out=False, repeating_keys=False, output_name=None):
+        use_https = is_https(url)
+        url = self.randomize_ip(url)
         if data:
             url = f"{url}?{urlencode(data, doseq=repeating_keys)}"
-
-        method = None
+        verify = self._build_ssl_context(use_https)
+        headers = self._auth_headers()
         if json_out:
-            method = "GET"
+            headers["Content-Type"] = "application/json"
+            headers["Accept"] = "application/json"
 
         for i_try in range(n_try):
-            code, text = self.http_method(url, {}, {}, is_json=json_out, json_out=json_out, repeating_keys=False, method=method)
-            if code in [0, 403, 404] or i_try + 1 == n_try:
+            code, content = self._send("GET", url, headers=headers, verify=verify)
+            if code in (0, 403, 404) or i_try + 1 == n_try:
                 break
             time.sleep(1)
 
         if json_out and code == 0:
-            text = json.loads(text, object_hook=decode_special_cases)
+            content = json.loads(content, object_hook=decode_special_cases)
 
         if code == 0 and output_name:
             with open(output_name, "wb") as f:
-                f.write(text)
-            text = True
-        return code, text
+                f.write(content)
+            content = True
+
+        return code, content
 
     # POST method
-    def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1, json_out=False):
-        method = None
-        if json_out:
-            method = "POST"
+    def post(self, url, data, is_json=False, compress_body=False, n_try=1, json_out=False):
+        use_https = is_https(url)
+        url = self.randomize_ip(url)
+        verify = self._build_ssl_context(use_https)
+        headers = self._auth_headers()
+        if compress_body or json_out:
+            headers["Content-Type"] = "application/json"
+        if is_json or json_out:
+            headers["Accept"] = "application/json"
+
+        if compress_body:
+            body_out = BytesIO()
+            with gzip.GzipFile(fileobj=body_out, mode="w") as f_gzip:
+                f_gzip.write(json.dumps(data).encode())
+            body = body_out.getvalue()
+        elif json_out:
+            body = json.dumps(data).encode("utf-8")
+        else:
+            body = urlencode(data).encode()
 
         for i_try in range(n_try):
-            code, text = self.http_method(url, data, {}, compress_body=compress_body, is_json=is_json, json_out=json_out, method=method)
-            if code in [0, 403, 404] or i_try + 1 == n_try:
+            code, content = self._send("POST", url, headers=headers, content=body, verify=verify)
+            if code in (0, 403, 404) or i_try + 1 == n_try:
                 break
             time.sleep(1)
 
         if code == 0 and (is_json or json_out):
-            text = json.loads(text, object_hook=decode_special_cases)
+            content = json.loads(content, object_hook=decode_special_cases)
 
-        return code, text
+        return code, content
 
-    # PUT method
+    # PUT method (multipart file upload; sent as POST to match the server endpoint, as before)
     def put(self, url, data, n_try=1, json_out=False):
-        boundary = "".join(random.choice(string.ascii_letters) for ii in range(30 + 1))
-        body = b""
-        for k in data:
-            lines = [
-                "--" + boundary,
-                'Content-Disposition: form-data; name="{}"; filename="{}"'.format(k, data[k]),
-                "Content-Type: application/octet-stream",
-                "",
-            ]
-            body += "\r\n".join(lines).encode()
-            body += b"\r\n"
-            body += open(data[k], "rb").read()
-            body += b"\r\n"
-        lines = ["--%s--" % boundary, ""]
-        body += "\r\n".join(lines).encode()
-        headers = {"content-type": "multipart/form-data; boundary=" + boundary, "content-length": str(len(body))}
+        use_https = is_https(url)
+        url = self.randomize_ip(url)
+        verify = self._build_ssl_context(use_https)
+        headers = self._auth_headers()
+        if json_out:
+            headers["Accept"] = "application/json"
 
+        code, content = 1, "not attempted"
         for i_try in range(n_try):
-            code, text = self.http_method(url, None, headers, body, json_out=json_out, file_upload=True)
-            if code in [0, 403, 404] or i_try + 1 == n_try:
+            open_files = {k: open(v, "rb") for k, v in data.items()}
+            try:
+                files = {k: (v, open_files[k], "application/octet-stream") for k, v in data.items()}
+                code, content = self._send("POST", url, headers=headers, files=files, verify=verify)
+            finally:
+                for fh in open_files.values():
+                    fh.close()
+            if code in (0, 403, 404) or i_try + 1 == n_try:
                 break
             time.sleep(1)
 
         if code == 0 and json_out:
-            text = json.loads(text, object_hook=decode_special_cases)
+            try:
+                content = json.loads(content, object_hook=decode_special_cases)
+            except Exception:
+                pass
 
-        return code, text
-
-
-if "PANDA_USE_NATIVE_HTTPLIB" in os.environ:
-    _Curl = _NativeCurl
+        return code, content
 
 
 # dump log
@@ -953,11 +657,11 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
         tmp_logger.error(error_message)
         return EC_Failed, "False"
 
-    # Instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # Instantiate the HTTP client
+    client = _HttpClient()
+    client.sslCert = _x509()
+    client.sslKey = _x509()
+    client.verbose = verbose
 
     # check duplication
     if reuseSandbox:
@@ -972,7 +676,7 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
         endpoint = "file_server/validate_cache_file"
         data = {"file_size": file_size, "checksum": checksum}
         url = f"{server_base_path_ssl}/{endpoint}"
-        status, output = curl.post(url, data, via_file=True, json_out=True)
+        status, output = client.post(url, data, json_out=True)
         if status != 0:
             return EC_Failed, "ERROR: Could not check sandbox duplication with %s" % output
 
@@ -994,7 +698,7 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
 
     url = "{}/{}".format(cache_base_path_ssl, "file_server/upload_cache_file")
     data = {"file": file}
-    s, o = curl.put(url, data, n_try=n_try, json_out=True)
+    s, o = client.put(url, data, n_try=n_try, json_out=True)
 
     # Status error
     if s != 0:
@@ -1031,16 +735,16 @@ def getFile(filename, output_path=None, verbose=False, n_try=1):
     """
     if not output_path:
         output_path = filename
-    # instantiate curl
-    curl = _NativeCurl()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.verbose = verbose
     # execute
     netloc = urlparse(baseURLCSRVSSL)
     url = "{}://{}".format(netloc.scheme, netloc.hostname)
     if netloc.port:
         url += ":%s" % netloc.port
     url = url + "/cache/" + filename
-    s, o = curl.get(url, {}, output_name=output_path, n_try=n_try)
+    s, o = client.get(url, {}, output_name=output_path, n_try=n_try)
     return s, o
 
 
@@ -1244,11 +948,11 @@ def requestEventPicking(
     # open run/event number list
     evpFile = open(eventPickEvtList)
 
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.sslCert = _x509()
+    client.sslKey = _x509()
+    client.verbose = verbose
 
     # execute
     url = baseURLSSL + "/putEventPickingRequest"
@@ -1269,7 +973,7 @@ def requestEventPicking(
     if ei_api:
         data["ei_api"] = ei_api
     evpFile.close()
-    status, output = curl.post(url, data)
+    status, output = client.post(url, data)
 
     # failed
     if status != 0 or output is not True:
@@ -1485,15 +1189,15 @@ def hello(verbose=False):
        diagnostic message
     """
     tmp_log = PLogger.getPandaLogger()
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.sslCert = _x509()
+    client.sslKey = _x509()
+    client.verbose = verbose
     # execute
     url = server_base_path_ssl + "/system/is_alive"
     try:
-        status, response = curl.get(url, {}, json_out=True)
+        status, response = client.get(url, {}, json_out=True)
 
         # Communication issue with PanDA server
         if status != 0:
@@ -1560,8 +1264,8 @@ def get_user_name_from_token():
     returns:
        a tuple of username, groups, and preferred username
     """
-    curl = _Curl()
-    token_info = curl.get_token_info()
+    client = _HttpClient()
+    token_info = client.get_token_info()
     try:
         name = " ".join([t[:1].upper() + t[1:].lower() for t in str(token_info["name"]).split()])
         groups = token_info.get("groups", None)
@@ -1582,10 +1286,10 @@ def get_new_token(verbose=False):
       a string of ID token. None if failed
 
     """
-    curl = _Curl()
-    curl.verbose = verbose
-    if curl.get_id_token(force_new=True):
-        return curl.idToken
+    client = _HttpClient()
+    client.verbose = verbose
+    if client.get_id_token(force_new=True):
+        return client.idToken
     return None
 
 
@@ -1613,11 +1317,11 @@ def call_idds_command(
     """
     tmp_log = PLogger.getPandaLogger()
 
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.sslCert = _x509()
+    client.sslKey = _x509()
+    client.verbose = verbose
 
     # execute
     url = baseURLSSL + "/relay_idds_command"
@@ -1638,7 +1342,7 @@ def call_idds_command(
             data["manager"] = True
         if json_outputs:
             data["json_outputs"] = True
-        status, output = curl.post(url, data, compress_body=compress, n_try=n_try)
+        status, output = client.post(url, data, compress_body=compress, n_try=n_try)
         if status != 0:
             return EC_Failed, output
         else:
@@ -1670,11 +1374,11 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
         255: communication failure
        a tuple of (True, response from iDDS), or (False, diagnostic message) if failed
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.sslCert = _x509()
+    client.sslKey = _x509()
+    client.verbose = verbose
 
     # execute
     url = baseURLSSL + "/execute_idds_workflow_command"
@@ -1685,7 +1389,7 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
             data["kwargs"] = json.dumps(kwargs)
         if json_outputs:
             data["json_outputs"] = True
-        status, output = curl.post(url, data, n_try=n_try)
+        status, output = client.post(url, data, n_try=n_try)
         if status != 0:
             return EC_Failed, output
         else:
@@ -1728,11 +1432,11 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
     """
     tmp_log = PLogger.getPandaLogger()
 
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.sslCert = _x509()
+    client.sslKey = _x509()
+    client.verbose = verbose
 
     # execute
     output = None
@@ -1747,7 +1451,7 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
             data["check"] = True
         else:
             data["sync"] = True
-        status, output = curl.post(url, data, compress_body=True, is_json=True)
+        status, output = client.post(url, data, compress_body=True, is_json=True)
         if status != 0:
             tmp_log.error(output)
             return EC_Failed, output
@@ -1776,11 +1480,11 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
        a tuple of (True/False and diagnostic message). True if the request was accepted
     """
     tmp_log = PLogger.getPandaLogger()
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.sslCert = _x509()
+    client.sslKey = _x509()
+    client.verbose = verbose
     # execute
     output = None
     # if relay_host:
@@ -1795,7 +1499,7 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
         #     data["check"] = True
         # else:
         #     data["sync"] = True
-        status, output = curl.post(url, data, compress_body=False, is_json=True)
+        status, output = client.post(url, data, compress_body=False, is_json=True)
         if status != 0:
             tmp_log.error(output)
             return EC_Failed, output
