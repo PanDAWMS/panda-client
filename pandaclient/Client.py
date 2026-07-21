@@ -65,9 +65,9 @@ if "PANDA_BEHIND_REAL_LB" not in os.environ:
     netloc = urlparse(baseURLCSRVSSL)
     tmp_host = socket.getfqdn(random.choice(socket.getaddrinfo(netloc.hostname, netloc.port))[-1][0])
     if netloc.port:
-        baseURLCSRVSSL = "{}://{}:{}{}".format(netloc.scheme, tmp_host, netloc.port, netloc.path)
+        baseURLCSRVSSL = f"{netloc.scheme}://{tmp_host}:{netloc.port}{netloc.path}"
     else:
-        baseURLCSRVSSL = "{}://{}{}".format(netloc.scheme, tmp_host, netloc.path)
+        baseURLCSRVSSL = f"{netloc.scheme}://{tmp_host}{netloc.path}"
 
     parsed = urlparse(baseURLCSRVSSL)
     cache_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
@@ -80,7 +80,7 @@ def decode_special_cases(obj):
     return obj
 
 
-def curl_request_decorator(endpoint, method="post", json_out=False, output_mode="basic"):
+def http_request_decorator(endpoint, method="post", json_out=False, output_mode="basic"):
     def decorator(func):
         def wrapper(*args, **kwargs):
             # Extract verbose flag from kwargs, args, or function signature
@@ -153,7 +153,7 @@ def _x509():
     except Exception:
         pass
     # see the default place
-    x509 = "/tmp/x509up_u%s" % os.getuid()
+    x509 = f"/tmp/x509up_u{os.getuid()}"
     if os.access(x509, os.R_OK):
         return x509
     # no valid proxy certificate
@@ -166,13 +166,18 @@ def _x509():
 
 # look for a CA certificate directory
 def _x509_CApath():
-    if "X509_CERT_DIR" not in os.environ or os.environ["X509_CERT_DIR"] == "":
+    """Get the CA certificate directory, caching the result in $X509_CERT_DIR
+
+    Resolves via the grid environment setup script (see _getGridSrc), falling back
+    to the standard grid-security path if that doesn't yield one.
+
+    returns:
+       path to the CA certificate directory
+    """
+    if not os.environ.get("X509_CERT_DIR"):
         com = f"{_getGridSrc()} echo $X509_CERT_DIR"
-        output = commands_get_output(com)
-        output = output.split("\n")[-1]
-        if output == "":
-            output = "/etc/grid-security/certificates"
-        os.environ["X509_CERT_DIR"] = output
+        output = commands_get_output(com).split("\n")[-1]
+        os.environ["X509_CERT_DIR"] = output or "/etc/grid-security/certificates"
     return os.environ["X509_CERT_DIR"]
 
 
@@ -188,16 +193,6 @@ def use_oidc():
 # use X509 without grid middleware
 def use_x509_no_grid():
     return "PANDA_AUTH" in os.environ and os.environ["PANDA_AUTH"] == "x509_no_grid"
-
-
-# string decode for python 2 and 3
-def str_decode(data):
-    if hasattr(data, "decode"):
-        try:
-            return data.decode()
-        except Exception:
-            return data.decode("utf-8")
-    return data
 
 
 # check if https
@@ -466,7 +461,7 @@ public methods
 """
 
 
-@curl_request_decorator(endpoint="job/submit", method="post", json_out=True)
+@http_request_decorator(endpoint="job/submit", method="post", json_out=True)
 def submitJobs_internal(jobs, verbose=False):
     return {"jobs": jobs}
 
@@ -492,7 +487,7 @@ def submitJobs(jobs, verbose=False):
     return submitJobs_internal(jobs_serialized, verbose)
 
 
-@curl_request_decorator(endpoint="job/get_description", method="post", json_out=True)
+@http_request_decorator(endpoint="job/get_description", method="post", json_out=True)
 def getJobStatus_internal(ids, verbose=False):
     return {"job_ids": ids}
 
@@ -520,7 +515,7 @@ def getJobStatus(ids, verbose=False):
         return EC_Failed, None
 
 
-@curl_request_decorator(endpoint="job/kill", method="post", json_out=True)
+@http_request_decorator(endpoint="job/kill", method="post", json_out=True)
 def killJobs(ids, verbose=False):
     """Kill jobs
 
@@ -536,7 +531,7 @@ def killJobs(ids, verbose=False):
     return {"job_ids": ids}
 
 
-@curl_request_decorator(endpoint="task/kill", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/kill", method="post", json_out=True, output_mode="extended")
 def killTask(jediTaskID, verbose=False):
     """Kill a task
     args:
@@ -558,7 +553,7 @@ def killTask(jediTaskID, verbose=False):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/finish", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/finish", method="post", json_out=True, output_mode="extended")
 def finishTask(jediTaskID, soft=False, verbose=False):
     """finish a task
     args:
@@ -584,7 +579,7 @@ def finishTask(jediTaskID, soft=False, verbose=False):
     return data
 
 
-@curl_request_decorator(endpoint="task/retry", method="post", json_out=True, output_mode="full")
+@http_request_decorator(endpoint="task/retry", method="post", json_out=True, output_mode="full")
 def retryTask_internal(jediTaskID, verbose, properErrorCode, newParams):
     data = {"task_id": jediTaskID}
     if newParams:
@@ -617,7 +612,6 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
     if status != 0:
         return status, output
 
-    success = output["success"]
     message = output["message"]
     data = output["data"]
 
@@ -643,13 +637,18 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
     exceeded_limit = False
     error_message = ""
     if os.path.basename(file).startswith("sources.") and file_size > SOURCES_LIMIT:
-        error_message = "Exceeded size limit for sandbox files ({}B >{}B). ".format(file_size, SOURCES_LIMIT)
-        error_message += "Your working directory contains too large files which cannot be put on cache area. "
+        error_message = (
+            f"Exceeded size limit for sandbox files ({file_size}B >{SOURCES_LIMIT}B). "
+            "Your working directory contains too large files which cannot be put on cache area. "
+        )
         exceeded_limit = True
+
     elif not os.path.basename(file).startswith("sources.") and file_size > NO_BUILD_LIMIT:
-        error_message = "Exceeded size limit ({}B >{}B). ".format(file_size, NO_BUILD_LIMIT)
-        error_message += "Your working directory contains too large files which cannot be put on cache area. "
-        error_message += "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
+        error_message = (
+            f"Exceeded size limit ({file_size}B >{NO_BUILD_LIMIT}B). "
+            "Your working directory contains too large files which cannot be put on cache area. "
+            "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
+        )
         exceeded_limit = True
 
     if exceeded_limit:
@@ -678,7 +677,7 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
         url = f"{server_base_path_ssl}/{endpoint}"
         status, output = client.post(url, data, json_out=True)
         if status != 0:
-            return EC_Failed, "ERROR: Could not check sandbox duplication with %s" % output
+            return EC_Failed, f"ERROR: Could not check sandbox duplication with {output}"
 
         success = output.get("success", False)
         message = output.get("message", "")
@@ -696,13 +695,13 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
         global cache_base_path_ssl
         cache_base_path_ssl = server_base_path_ssl
 
-    url = "{}/{}".format(cache_base_path_ssl, "file_server/upload_cache_file")
+    url = f"{cache_base_path_ssl}/file_server/upload_cache_file"
     data = {"file": file}
     s, o = client.put(url, data, n_try=n_try, json_out=True)
 
     # Status error
     if s != 0:
-        return s, "ERROR: Could not upload file with %s" % str_decode(o)
+        return s, f"ERROR: Could not upload file with {o}"
 
     # Status OK, but somehow not a json response
     if isinstance(o, str):
@@ -740,9 +739,9 @@ def getFile(filename, output_path=None, verbose=False, n_try=1):
     client.verbose = verbose
     # execute
     netloc = urlparse(baseURLCSRVSSL)
-    url = "{}://{}".format(netloc.scheme, netloc.hostname)
+    url = f"{netloc.scheme}://{netloc.hostname}"
     if netloc.port:
-        url += ":%s" % netloc.port
+        url += f":{netloc.port}"
     url = url + "/cache/" + filename
     s, o = client.get(url, {}, output_name=output_path, n_try=n_try)
     return s, o
@@ -754,9 +753,9 @@ def _getGridSrc():
         gridSrc = os.environ["PATHENA_GRID_SETUP_SH"]
     else:
         gridSrc = "/dev/null"
-    gridSrc = "source %s > /dev/null;" % gridSrc
-    # some grid_env.sh doen't correct PATH/LD_LIBRARY_PATH
-    gridSrc = "unset LD_LIBRARY_PATH; unset PYTHONPATH; unset MANPATH; export PATH=/usr/local/bin:/bin:/usr/bin; %s" % gridSrc
+    gridSrc = f"source {gridSrc} > /dev/null;"
+    # some grid_env.sh doesn't correct PATH/LD_LIBRARY_PATH
+    gridSrc = f"unset LD_LIBRARY_PATH; unset PYTHONPATH; unset MANPATH; export PATH=/usr/local/bin:/bin:/usr/bin; {gridSrc}"
     return gridSrc
 
 
@@ -816,20 +815,20 @@ def setCacheServer(host_name):
 
     netloc = urlparse(baseURLCSRVSSL)
     if netloc.port:
-        baseURLCSRVSSL = "{}://{}:{}{}".format(netloc.scheme, host_name, netloc.port, netloc.path)
+        baseURLCSRVSSL = f"{netloc.scheme}://{host_name}:{netloc.port}{netloc.path}"
     else:
-        baseURLCSRVSSL = "{}://{}{}".format(netloc.scheme, host_name, netloc.path)
+        baseURLCSRVSSL = f"{netloc.scheme}://{host_name}{netloc.path}"
 
     parsed = urlparse(baseURLCSRVSSL)
     cache_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
 
 
-@curl_request_decorator(endpoint="task/get_tasks_modified_since", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_tasks_modified_since", method="get", json_out=True)
 def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=False, task_type="user"):
     return {"since": timeRange, "dn": dn, "full": True, "min_task_id": minTaskID, "prod_source_label": task_type}
 
 
-@curl_request_decorator(endpoint="task/get_tasks_detailed_info_since", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_tasks_detailed_info_since", method="get", json_out=True)
 def get_tasks_detailed_info_since(since=None, filters=None, n_tasks=500, verbose=False):
     """Get detailed info of tasks owned by the user from the PanDA server.
 
@@ -858,7 +857,7 @@ def get_tasks_detailed_info_since(since=None, filters=None, n_tasks=500, verbose
     return data
 
 
-@curl_request_decorator(endpoint="task/get_details", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_details", method="get", json_out=True)
 def getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose=False):
     return {"task_id": taskDict["jediTaskID"], "include_parameters": fullFlag, "include_status": withTaskInfo}
 
@@ -872,7 +871,7 @@ def getJediTaskDetails(taskDict, fullFlag, withTaskInfo, verbose=False):
     return status, tmp_dictionary
 
 
-@curl_request_decorator(endpoint="job/get_description_incl_archive", method="post", json_out=True)
+@http_request_decorator(endpoint="job/get_description_incl_archive", method="post", json_out=True)
 def getFullJobStatus_internal(ids, verbose=False):
     return {"job_ids": ids}
 
@@ -900,7 +899,7 @@ def getFullJobStatus(ids, verbose=False):
         return EC_Failed, None
 
 
-@curl_request_decorator(endpoint="job/set_debug_mode", method="post", json_out=True)
+@http_request_decorator(endpoint="job/set_debug_mode", method="post", json_out=True)
 def setDebugMode(pandaID, modeOn, verbose):
     return {"job_id": pandaID, "mode": modeOn}
 
@@ -934,16 +933,17 @@ def requestEventPicking(
     strInput = ""
     for tmpInput in fileList:
         if tmpInput != "":
-            strInput += "%s," % tmpInput
+            strInput += f"{tmpInput},"
     if fileListName != "":
         for tmpLine in open(fileListName):
             tmpInput = re.sub("\n", "", tmpLine)
             if tmpInput != "":
-                strInput += "%s," % tmpInput
+                strInput += f"{tmpInput},"
     strInput = strInput[:-1]
 
     # make dataset name
-    userDatasetName = "%s.%s.%s/" % tuple(outDS.split(".")[:2] + [MiscUtils.wrappedUuidGen()])
+    ds_prefix, ds_suffix = outDS.split(".")[:2]
+    userDatasetName = f"{ds_prefix}.{ds_suffix}.{MiscUtils.wrappedUuidGen()}/"
 
     # open run/event number list
     evpFile = open(eventPickEvtList)
@@ -986,7 +986,7 @@ def requestEventPicking(
     return True, userDatasetName
 
 
-@curl_request_decorator(endpoint="task/submit", method="post", json_out=True, output_mode="full")
+@http_request_decorator(endpoint="task/submit", method="post", json_out=True, output_mode="full")
 def insertTaskParams_internal(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
     return {"task_parameters": taskParams, "parent_tid": parent_tid}
 
@@ -1028,7 +1028,7 @@ def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_ti
         return EC_Failed, f"Impossible to parse server response. Output: {output}"
 
 
-@curl_request_decorator(endpoint="task/get_job_ids", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_job_ids", method="get", json_out=True)
 def getPandaIDsWithTaskID(jediTaskID, verbose=False):
     """Get PanDA IDs with TaskID
 
@@ -1043,7 +1043,7 @@ def getPandaIDsWithTaskID(jediTaskID, verbose=False):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/reactivate", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/reactivate", method="post", json_out=True, output_mode="extended")
 def reactivateTask(jediTaskID, verbose=True):
     """Reactivate task
 
@@ -1062,7 +1062,7 @@ def reactivateTask(jediTaskID, verbose=True):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/resume", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/resume", method="post", json_out=True, output_mode="extended")
 def resumeTask(jediTaskID, verbose=True):
     """Resume task
 
@@ -1086,7 +1086,7 @@ def resumeTask(jediTaskID, verbose=True):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/pause", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/pause", method="post", json_out=True, output_mode="extended")
 def pauseTask(jediTaskID, verbose=True):
     """Pause task
 
@@ -1110,7 +1110,7 @@ def pauseTask(jediTaskID, verbose=True):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/get_status", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_status", method="get", json_out=True)
 def getTaskStatus(jediTaskID, verbose=False):
     """Get task status
 
@@ -1127,7 +1127,7 @@ def getTaskStatus(jediTaskID, verbose=False):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/get_task_parameters", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_task_parameters", method="get", json_out=True)
 def getTaskParamsMap(jediTaskID):
     """Get task parameters
 
@@ -1145,7 +1145,7 @@ def getTaskParamsMap(jediTaskID):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="job/get_metadata_for_analysis_jobs", method="get", json_out=True)
+@http_request_decorator(endpoint="job/get_metadata_for_analysis_jobs", method="get", json_out=True)
 def getUserJobMetadata(task_id, verbose=False):
     """Get metadata of all jobs in a task
     args:
@@ -1160,7 +1160,7 @@ def getUserJobMetadata(task_id, verbose=False):
     return {"task_id": task_id}
 
 
-@curl_request_decorator(endpoint="task/get_job_descriptions", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_job_descriptions", method="get", json_out=True)
 def get_job_descriptions(task_id, unsuccessful_only=False, verbose=False):
     """Get job descriptions for a task.
 
@@ -1201,15 +1201,14 @@ def hello(verbose=False):
 
         # Communication issue with PanDA server
         if status != 0:
-            tmp_message = "Communication issue. " + response
+            tmp_message = f"Communication issue: {response}"
             tmp_log.error(tmp_message)
             return EC_Failed, tmp_message
 
-        response = str_decode(response)
         success = response.get("success", False)
         message = response.get("message", "")
         if not success:
-            tmp_message = "Problem with is_alive. " + message
+            tmp_message = f"Problem with is_alive: {message}"
             tmp_log.error(tmp_message)
             return EC_Failed, tmp_message
 
@@ -1217,12 +1216,12 @@ def hello(verbose=False):
         return 0, message
 
     except Exception as e:
-        tmp_message = f"Exception. {str(e)}"
+        tmp_message = f"Exception. {e}"
         tmp_log.error(tmp_message)
         return EC_Failed, tmp_message
 
 
-@curl_request_decorator(endpoint="system/get_attributes", method="get", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="system/get_attributes", method="get", json_out=True, output_mode="extended")
 def get_cert_attributes_internal(verbose=False):
     return {}
 
@@ -1354,7 +1353,7 @@ def call_idds_command(
             except Exception:
                 return EC_Failed, output
     except Exception as e:
-        msg = f"Failed with {str(e)}"
+        msg = f"Failed with {e}"
         print(traceback.format_exc())
         return EC_Failed, msg
 
@@ -1395,12 +1394,12 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
         else:
             return 0, json.loads(output)
     except Exception as e:
-        msg = f"Failed with {str(e)}"
+        msg = f"Failed with {e}"
         print(traceback.format_exc())
         return EC_Failed, msg
 
 
-@curl_request_decorator(endpoint="file_server/upload_file_recovery_request", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="file_server/upload_file_recovery_request", method="post", json_out=True, output_mode="extended")
 def send_file_recovery_request(task_id, dry_run=False, verbose=False):
     """Send a file recovery request
     args:
@@ -1458,7 +1457,7 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
         else:
             return 0, output
     except Exception as e:
-        msg = f"{str(e)}."
+        msg = f"Failed with {e}."
         if output:
             msg += f' raw output="{str(output)}"'
         tmp_log.error(msg)
@@ -1506,7 +1505,7 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
         else:
             return 0, output
     except Exception as e:
-        msg = f"{str(e)}."
+        msg = f"Failed with {e}."
         if output:
             msg += f' raw output="{str(output)}"'
         tmp_log.error(msg)
@@ -1514,7 +1513,7 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
 
 
 # submit PanDA native workflow
-@curl_request_decorator(endpoint="workflow/submit_workflow_raw_request", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="workflow/submit_workflow_raw_request", method="post", json_out=True, output_mode="extended")
 def submit_workflow(params, **kwargs):
     """Submit a PanDA native workflow
     args:
@@ -1528,7 +1527,7 @@ def submit_workflow(params, **kwargs):
     return {"params": params}
 
 
-@curl_request_decorator(endpoint="creds/set_user_secrets", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="creds/set_user_secrets", method="post", json_out=True, output_mode="extended")
 def set_user_secret(key, value, verbose=False):
     """Set a user secret
     args:
@@ -1544,7 +1543,7 @@ def set_user_secret(key, value, verbose=False):
     return {"key": key, "value": value}
 
 
-@curl_request_decorator(endpoint="creds/get_user_secrets", method="get", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="creds/get_user_secrets", method="get", json_out=True, output_mode="extended")
 def get_user_secrets_internal(verbose=False):
     return {}
 
@@ -1573,7 +1572,7 @@ def get_user_secrets(verbose=False):
     return status, (success, data)
 
 
-@curl_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True, output_mode="extended")
 def increase_attempt_nr(task_id, increase=3, verbose=False):
     """increase attempt numbers to retry failed jobs
     args:
@@ -1595,7 +1594,7 @@ def increase_attempt_nr(task_id, increase=3, verbose=False):
     return {"task_id": task_id, "increase": increase}
 
 
-@curl_request_decorator(endpoint="task/reload_input", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/reload_input", method="post", json_out=True, output_mode="extended")
 def reload_input(task_id, verbose=True):
     """Retry task
     args:
@@ -1616,7 +1615,7 @@ def reload_input(task_id, verbose=True):
     return {"task_id": task_id}
 
 
-@curl_request_decorator(endpoint="task/get_datasets_and_files", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_datasets_and_files", method="get", json_out=True)
 def get_files_in_datasets_internal(task_id, dataset_types, verbose=False):
     return {"task_id": task_id, "dataset_types": dataset_types}
 
@@ -1637,7 +1636,7 @@ def get_files_in_datasets(task_id, dataset_types="input,pseudo_input", verbose=F
     return get_files_in_datasets_internal(task_id, dataset_types_list)
 
 
-@curl_request_decorator(endpoint="event/get_event_range_statuses", method="get", json_out=True)
+@http_request_decorator(endpoint="event/get_event_range_statuses", method="get", json_out=True)
 def get_events_status(ids, verbose=False):
     """Get status of events
     args:
@@ -1652,7 +1651,7 @@ def get_events_status(ids, verbose=False):
     return {"job_task_ids": ids}
 
 
-@curl_request_decorator(endpoint="event/update_event_ranges", method="post", json_out=True)
+@http_request_decorator(endpoint="event/update_event_ranges", method="post", json_out=True)
 def update_events(events, verbose=False):
     """Update events
     args:
@@ -1668,7 +1667,7 @@ def update_events(events, verbose=False):
     return {"event_ranges": events}
 
 
-@curl_request_decorator(endpoint="task/get_detailed_info", method="get", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/get_detailed_info", method="get", json_out=True, output_mode="extended")
 def get_task_details_json(task_id, verbose=False):
     """Get detailed info of a task in JSON format
     args:
@@ -1683,7 +1682,7 @@ def get_task_details_json(task_id, verbose=False):
     return {"task_id": task_id}
 
 
-@curl_request_decorator(endpoint="task/get_parent_detailed_info", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_parent_detailed_info", method="get", json_out=True)
 def get_parent_detailed_info(task_id, verbose=False):
     """Get detailed info of the parent task for a given child task.
 
