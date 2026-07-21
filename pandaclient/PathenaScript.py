@@ -10,7 +10,13 @@ import shutil
 import sys
 import time
 
-from pandaclient.CommonArgs import VALID_TRANSFER_TYPES, add_common_arguments, get_invalid_transfer_types
+from pandaclient.CommonArgs import (
+    VALID_TRANSFER_TYPES,
+    add_common_arguments,
+    get_invalid_transfer_types,
+    set_events_task_params,
+    set_n_files_from_n_jobs,
+)
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import parse_secondary_datasets_opt
 
@@ -125,7 +131,7 @@ group_submit = optP.add_group("submit", "job submission/site/retry")
 group_evtFilter = optP.add_group("evtFilter", "event filter such as good run and event pick")
 group_expert = optP.add_group("expert", "for experts/developers only")
 
-add_common_arguments(group_submit, group_input)
+add_common_arguments(group_submit, group_input, group_job)
 
 usage_containerJob = """Visit the following wiki page for examples:
   https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
@@ -147,42 +153,6 @@ group_pathena.add_argument(
     default=False,
     help="Displays version",
 )
-group_job.add_argument(
-    "--split",
-    "--nJobs",
-    metavar="nJobs",
-    action="store",
-    dest="split",
-    default=-1,
-    type=int,
-    help="Number of sub-jobs to be generated.",
-)
-
-group_job.add_argument(
-    "--nFilesPerJob",
-    action="store",
-    dest="nFilesPerJob",
-    default=-1,
-    type=int,
-    help="Number of files on which each sub-job runs",
-)
-group_job.add_argument(
-    "--nEventsPerJob",
-    action="store",
-    dest="nEventsPerJob",
-    default=-1,
-    type=int,
-    help="Number of events per subjob. This info is used mainly for job splitting. If you run on MC datasets, the total number of subjobs is nEventsPerFile*nFiles/nEventsPerJob. For data, the number of events for each file is retrieved from AMI and subjobs are created accordingly. Note that if you run transformations you need to explicitly specify maxEvents or something in --trf to set the number of events processed in each subjob. If you run normal jobOption files, evtMax and skipEvents in appMgr are automatically set on WN.",
-)
-action = group_job.add_argument(
-    "--nEventsPerFile",
-    action="store",
-    dest="nEventsPerFile",
-    default=0,
-    type=int,
-    help="Number of events per file",
-)
-group_input.shareWithMe(action)
 group_job.add_argument(
     "--nGBPerJob",
     action="store",
@@ -702,15 +672,6 @@ group_output.add_argument(
     default="",
     type=str,
     help="Destination strorage element",
-)
-group_input.add_argument(
-    "--nFiles",
-    "--nfiles",
-    action="store",
-    dest="nfiles",
-    default=0,
-    type=int,
-    help="Use an limited number of files in the input dataset",
 )
 group_print.add_argument(
     "-v",
@@ -1555,7 +1516,7 @@ else:
 if options.outDS == "":
     tmpLog.error("no outDS is given\n pathena [--inDS input] --outDS output myJobO.py")
     sys.exit(EC_Config)
-if options.split < -1:
+if options.nJobs < -1:
     tmpLog.error("Number of jobs should be a positive integer")
     sys.exit(EC_Config)
 if options.pfnList != "":
@@ -1703,25 +1664,10 @@ except Exception:
     pass
 
 # split related
-if options.split > 0:
-    # set nFiles when nEventsPerJob and nEventsPerFile are set
-    if options.nEventsPerJob > 0 and options.nEventsPerFile > 0:
-        options.nfiles = (options.nEventsPerJob * options.split) // options.nEventsPerFile
-        if options.nfiles == 0:
-            options.nfiles = 1
-
-    # set nFiles when nFilesPerJob is set
-    if options.nFilesPerJob > 0 and options.nfiles == 0:
-        options.nfiles = options.nFilesPerJob * options.split
-
-    # set nFiles per job when nFiles is set
-    if options.nFilesPerJob < 0 and options.nfiles > 0:
-        options.nFilesPerJob = options.nfiles // options.split
-        if options.nFilesPerJob == 0:
-            options.nFilesPerJob = 1
+set_n_files_from_n_jobs(options)
 
 # check
-if options.inDS != "" and options.split > 0 and options.nFilesPerJob < 0 and options.nfiles == 0 and options.nEventsPerJob < 0:
+if options.inDS != "" and options.nJobs > 0 and options.nFilesPerJob < 0 and options.nFiles == 0 and options.nEventsPerJob < 0:
     tmpLog.error("--split requires --nFilesPerJob or --nFiles or --nEventsPerJob when --inDS is specified")
     sys.exit(EC_Config)
 
@@ -2447,21 +2393,11 @@ else:
     taskParamMap["includedSite"] = None
 if options.priority is not None:
     taskParamMap["currentPriority"] = options.priority
-if options.nfiles > 0:
-    taskParamMap["nFiles"] = options.nfiles
-if options.nFilesPerJob > 0:
-    taskParamMap["nFilesPerJob"] = options.nFilesPerJob
 if not options.nGBPerJob in [-1, "MAX"]:
     # don't set MAX since it is the defalt on the server side
     taskParamMap["nGBPerJob"] = options.nGBPerJob
-if options.nEventsPerJob > 0:
-    taskParamMap["nEventsPerJob"] = options.nEventsPerJob
-    if options.nEventsPerFile <= 0:
-        taskParamMap["useRealNumEvents"] = True
-if options.nEventsPerFile > 0:
-    taskParamMap["nEventsPerFile"] = options.nEventsPerFile
-if options.split > 0 and options.nEventsPerJob > 0:
-    taskParamMap["nEvents"] = options.split * options.nEventsPerJob
+no_input = options.inDS == "" and options.pfnList == "" and options.goodRunListXML == ""
+set_events_task_params(options, taskParamMap, no_input)
 taskParamMap["cliParams"] = fullExecString
 if options.noEmail:
     taskParamMap["noEmail"] = True
@@ -2705,7 +2641,7 @@ elif options.pfnList != "":
     taskParamMap["pfnList"] = PsubUtils.getListPFN(options.pfnList)
     # use noInput mecahism
     taskParamMap["noInput"] = True
-    if options.nfiles == 0:
+    if options.nFiles == 0:
         taskParamMap["nFiles"] = len(taskParamMap["pfnList"])
     taskParamMap["jobParameters"] += [
         {
@@ -2729,15 +2665,6 @@ elif options.goodRunListXML != "":
 else:
     # no input
     taskParamMap["noInput"] = True
-    if options.nEventsPerJob > 0:
-        taskParamMap["nEventsPerJob"] = options.nEventsPerJob
-    else:
-        taskParamMap["nEventsPerJob"] = 1
-    if options.split > 0:
-        taskParamMap["nEvents"] = options.split
-    else:
-        taskParamMap["nEvents"] = 1
-    taskParamMap["nEvents"] *= taskParamMap["nEventsPerJob"]
     taskParamMap["jobParameters"] += [
         {
             "type": "constant",

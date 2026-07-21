@@ -15,6 +15,21 @@ TOKEN_BASENAME = ".token"
 CACHE_PREFIX = ".page_cache_"
 
 
+# get an SSL context with a usable CA trust store
+def _get_ssl_context():
+    context = ssl.create_default_context()
+    # python.org macOS builds ship an empty default trust store; fall back to
+    # the bundled certifi roots so OIDC works without setting SSL_CERT_FILE.
+    if not context.get_ca_certs():
+        try:
+            import certifi
+
+            context.load_verify_locations(cafile=certifi.where())
+        except Exception:
+            pass
+    return context
+
+
 # decode ID token
 def decode_id_token(enc):
     enc = enc.split(".")[1]
@@ -54,7 +69,7 @@ class OpenIdConnect_Utils:
         req = Request(device_auth_endpoint, rdata)
         req.add_header("content-type", "application/x-www-form-urlencoded")
         try:
-            conn = urlopen(req)
+            conn = urlopen(req, context=_get_ssl_context())
             text = conn.read()
             if self.verbose:
                 self.log_stream.debug(text)
@@ -89,7 +104,7 @@ class OpenIdConnect_Utils:
         req.add_header("content-type", "application/x-www-form-urlencoded")
         while datetime.datetime.utcnow() - startTime < datetime.timedelta(seconds=expires_in):
             try:
-                conn = urlopen(req)
+                conn = urlopen(req, context=_get_ssl_context())
                 text = conn.read().decode()
                 if self.verbose:
                     self.log_stream.debug(text)
@@ -120,7 +135,7 @@ class OpenIdConnect_Utils:
         req = Request(token_endpoint, rdata)
         req.add_header("content-type", "application/x-www-form-urlencoded")
         try:
-            conn = urlopen(req)
+            conn = urlopen(req, context=_get_ssl_context())
             text = conn.read().decode()
             if self.verbose:
                 self.log_stream.debug(text)

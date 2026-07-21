@@ -2,6 +2,7 @@ import distutils
 import glob
 import os
 import re
+import shutil
 import stat
 import sys
 import sysconfig
@@ -11,6 +12,10 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
 class CustomBuildHook(BuildHookInterface):
     def initialize(self, version, build_data):
+        # track build-time artifacts created below so finalize() can remove them
+        self._generated_files = []
+        self._created_symlinks = []
+
         # chmod +x
         for f in glob.glob("./scripts/*"):
             st = os.stat(f)
@@ -66,9 +71,34 @@ class CustomBuildHook(BuildHookInterface):
                 out_f = re.sub(r"\.template$", "", in_f)
                 with open(out_f, "w") as out_fh:
                     out_fh.write(file_data)
+                self._generated_files.append(out_f)
 
         # post install only for client installation
         if not os.path.exists(os.path.join(self.params["install_purelib"], "pandacommon")):
             target = "pandatools"
             if not os.path.exists(os.path.join(self.params["install_purelib"], target)) and not os.path.exists(target):
                 os.symlink("pandaclient", target)
+                self._created_symlinks.append(target)
+
+    def finalize(self, version, build_data, artifact_path):
+        # remove build-time artifacts created by initialize() so in-place builds
+        # (hatch build / pip install .) don't leave files in the working tree.
+        # finalize() runs after the wheel is assembled, so they are already packaged.
+        for f in self._generated_files:
+            try:
+                os.remove(f)
+            except Exception:
+                pass
+        for link in self._created_symlinks:
+            try:
+                os.remove(link)  # unlinks the symlink itself, not its target (POSIX)
+            except Exception:
+                pass
+        # remove the byte-cache hatchling created when it imported THIS hook module.
+        # Safe: the module is already loaded in memory, so deleting its .pyc is fine.
+        # Scoped to this dir only, so an in-place build never touches __pycache__ that a
+        # developer created elsewhere (e.g. pandaclient/__pycache__).
+        try:
+            shutil.rmtree(os.path.join(os.path.dirname(os.path.abspath(__file__)), "__pycache__"))
+        except Exception:
+            pass
