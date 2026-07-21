@@ -102,8 +102,8 @@ def http_request_decorator(endpoint, method="post", json_out=False, output_mode=
 
             # Instantiate the HTTP client
             client = _HttpClient()
-            client.sslCert = _x509()
-            client.sslKey = _x509()
+            client.ssl_certificate = _x509_proxy_path()
+            client.ssl_key = _x509_proxy_path()
             client.verbose = verbose
 
             # Execute request
@@ -146,26 +146,28 @@ def http_request_decorator(endpoint, method="post", json_out=False, output_mode=
 
 
 # look for a grid proxy certificate
-def _x509():
+def _x509_proxy_path():
     # see X509_USER_PROXY
-    try:
-        return os.environ["X509_USER_PROXY"]
-    except Exception:
-        pass
+    x509 = os.environ.get("X509_USER_PROXY")
+    if x509:
+        return x509
+
     # see the default place
     x509 = f"/tmp/x509up_u{os.getuid()}"
     if os.access(x509, os.R_OK):
         return x509
+
     # no valid proxy certificate
-    if "PANDA_AUTH" in os.environ and os.environ["PANDA_AUTH"] == "oidc":
+    if use_oidc():
         pass
     else:
         print("No valid grid proxy certificate found")
+
     return ""
 
 
 # look for a CA certificate directory
-def _x509_CApath():
+def _x509_ca_path():
     """Get the CA certificate directory, caching the result in $X509_CERT_DIR
 
     Resolves via the grid environment setup script (see _getGridSrc), falling back
@@ -206,21 +208,28 @@ def hide_sensitive_info(com):
     return com
 
 
-# get token string
 def get_token_string(tmp_log, verbose):
+    """Get a pre-supplied OIDC ID token, so callers can skip the interactive device-authorization flow
+
+    Checks, in order: a token string in $PANDA_AUTH_ID_TOKEN, a file path in
+    $OIDC_AUTH_TOKEN_FILE, or a token string in $OIDC_AUTH_ID_TOKEN.
+    """
     if "PANDA_AUTH_ID_TOKEN" in os.environ:
         if verbose:
             tmp_log.debug("use $PANDA_AUTH_ID_TOKEN")
         return os.environ["PANDA_AUTH_ID_TOKEN"]
+
     if "OIDC_AUTH_TOKEN_FILE" in os.environ:
         if verbose:
             tmp_log.debug("use $OIDC_AUTH_TOKEN_FILE")
         with open(os.environ["OIDC_AUTH_TOKEN_FILE"]) as f:
             return f.read()
+
     if "OIDC_AUTH_ID_TOKEN" in os.environ:
         if verbose:
             tmp_log.debug("use $OIDC_AUTH_ID_TOKEN")
         return os.environ["OIDC_AUTH_ID_TOKEN"]
+
     return None
 
 
@@ -230,23 +239,26 @@ class _HttpClient:
     def __init__(self):
         # verification of the host certificate
         if "PANDA_VERIFY_HOST" in os.environ and os.environ["PANDA_VERIFY_HOST"] == "off":
-            self.verifyHost = False
+            self.verify_host = False
         else:
-            self.verifyHost = True
+            self.verify_host = True
+
         # SSL cert/key
-        self.sslCert = ""
-        self.sslKey = ""
+        self.ssl_certificate = ""
+        self.ssl_key = ""
+
         # auth mode
-        self.idToken = None
-        self.authVO = None
+        self.id_token = None
+        self.auth_vo = None
         if use_oidc():
-            self.authMode = "oidc"
+            self.auth_mode = "oidc"
             if "PANDA_AUTH_VO" in os.environ:
-                self.authVO = os.environ["PANDA_AUTH_VO"]
+                self.auth_vo = os.environ["PANDA_AUTH_VO"]
             elif "OIDC_AUTH_VO" in os.environ:
-                self.authVO = os.environ["OIDC_AUTH_VO"]
+                self.auth_vo = os.environ["OIDC_AUTH_VO"]
         else:
-            self.authMode = "voms"
+            self.auth_mode = "voms"
+
         # verbose
         self.verbose = False
 
@@ -254,9 +266,9 @@ class _HttpClient:
     def get_oidc(self, tmp_log):
         parsed = urlparse(baseURLSSL)
         if parsed.port:
-            auth_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}/auth/{self.authVO}_auth_config.json"
+            auth_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}/auth/{self.auth_vo}_auth_config.json"
         else:
-            auth_url = f"{parsed.scheme}://{parsed.hostname}/auth/{self.authVO}_auth_config.json"
+            auth_url = f"{parsed.scheme}://{parsed.hostname}/auth/{self.auth_vo}_auth_config.json"
         oidc = openidc_utils.OpenIdConnect_Utils(auth_url, log_stream=tmp_log, verbose=self.verbose)
         return oidc
 
@@ -265,7 +277,7 @@ class _HttpClient:
         tmp_log = PLogger.getPandaLogger()
         token_str = get_token_string(tmp_log, self.verbose)
         if token_str:
-            self.idToken = token_str
+            self.id_token = token_str
             return True
         oidc = self.get_oidc(tmp_log)
         if force_new:
@@ -274,7 +286,7 @@ class _HttpClient:
         if not s:
             tmp_log.error(o)
             sys.exit(EC_Failed)
-        self.idToken = o
+        self.id_token = o
         return True
 
     # get token
@@ -312,29 +324,29 @@ class _HttpClient:
     def _build_ssl_context(self, use_https):
         if not use_https:
             return False
-        if self.authMode != "oidc":
-            if not self.sslCert:
-                self.sslCert = _x509()
-            if not self.sslKey:
-                self.sslKey = _x509()
-        if not self.verifyHost:
+        if self.auth_mode != "oidc":
+            if not self.ssl_certificate:
+                self.ssl_certificate = _x509_proxy_path()
+            if not self.ssl_key:
+                self.ssl_key = _x509_proxy_path()
+        if not self.verify_host:
             context = ssl._create_unverified_context()
         else:
-            context = ssl.create_default_context(capath=_x509_CApath() or None)
-            if self.authMode != "oidc":
+            context = ssl.create_default_context(capath=_x509_ca_path() or None)
+            if self.auth_mode != "oidc":
                 # the grid proxy is typically self-issued, so it is also trusted as a CA
-                context.load_verify_locations(cafile=self.sslCert)
-        if self.authMode != "oidc":
-            context.load_cert_chain(certfile=self.sslCert, keyfile=self.sslKey)
+                context.load_verify_locations(cafile=self.ssl_certificate)
+        if self.auth_mode != "oidc":
+            context.load_cert_chain(certfile=self.ssl_certificate, keyfile=self.ssl_key)
         return context
 
     # headers for OIDC bearer-token auth
     def _auth_headers(self):
         headers = {}
-        if self.authMode == "oidc":
+        if self.auth_mode == "oidc":
             self.get_id_token()
-            headers["Authorization"] = f"Bearer {self.idToken}"
-            headers["Origin"] = self.authVO
+            headers["Authorization"] = f"Bearer {self.id_token}"
+            headers["Origin"] = self.auth_vo
         return headers
 
     # send a request and normalize the return value to (code, content)
@@ -658,8 +670,8 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
 
     # Instantiate the HTTP client
     client = _HttpClient()
-    client.sslCert = _x509()
-    client.sslKey = _x509()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
     client.verbose = verbose
 
     # check duplication
@@ -950,8 +962,8 @@ def requestEventPicking(
 
     # instantiate the HTTP client
     client = _HttpClient()
-    client.sslCert = _x509()
-    client.sslKey = _x509()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
     client.verbose = verbose
 
     # execute
@@ -1191,8 +1203,8 @@ def hello(verbose=False):
     tmp_log = PLogger.getPandaLogger()
     # instantiate the HTTP client
     client = _HttpClient()
-    client.sslCert = _x509()
-    client.sslKey = _x509()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
     client.verbose = verbose
     # execute
     url = server_base_path_ssl + "/system/is_alive"
@@ -1288,7 +1300,7 @@ def get_new_token(verbose=False):
     client = _HttpClient()
     client.verbose = verbose
     if client.get_id_token(force_new=True):
-        return client.idToken
+        return client.id_token
     return None
 
 
@@ -1318,8 +1330,8 @@ def call_idds_command(
 
     # instantiate the HTTP client
     client = _HttpClient()
-    client.sslCert = _x509()
-    client.sslKey = _x509()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
     client.verbose = verbose
 
     # execute
@@ -1375,8 +1387,8 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
     """
     # instantiate the HTTP client
     client = _HttpClient()
-    client.sslCert = _x509()
-    client.sslKey = _x509()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
     client.verbose = verbose
 
     # execute
@@ -1433,8 +1445,8 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
 
     # instantiate the HTTP client
     client = _HttpClient()
-    client.sslCert = _x509()
-    client.sslKey = _x509()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
     client.verbose = verbose
 
     # execute
@@ -1481,8 +1493,8 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
     tmp_log = PLogger.getPandaLogger()
     # instantiate the HTTP client
     client = _HttpClient()
-    client.sslCert = _x509()
-    client.sslKey = _x509()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
     client.verbose = verbose
     # execute
     output = None
