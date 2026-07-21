@@ -27,10 +27,14 @@ jobs:
         python -m pip install hatch twine build
         python -m pip list
 
-    - name: Build a sdist
+    - name: Build panda-client sdist and panda-client-light wheel
       run: |
+        # panda-client sdist from the root pyproject.toml (hatchling)
         python -m build -s
-        cp packages/light/pyproject.toml .
+        # swap the root pyproject.toml for the light config and build the
+        # panda-client-light wheel (overwrites the working-copy pyproject.toml,
+        # which is harmless in CI and restored on the next checkout)
+        cp packages/light/pyproject.toml pyproject.toml
         hatch build -t wheel
 
     - name: Verify the distribution
