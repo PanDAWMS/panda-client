@@ -94,7 +94,6 @@ if "PANDA_BEHIND_REAL_LB" not in os.environ:
     cache_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
 
 
-# Decoder: check marker and convert back
 def decode_special_cases(obj):
     """json.loads object_hook that reconstructs values the server marked as a special case
 
@@ -191,7 +190,6 @@ def http_request_decorator(endpoint, method="post", json_out=False, output_mode=
     return decorator
 
 
-# look for a grid proxy certificate
 def _x509_proxy_path():
     """Get the path to the user's grid proxy certificate
 
@@ -220,7 +218,6 @@ def _x509_proxy_path():
     return ""
 
 
-# look for a CA certificate directory
 def _x509_ca_path():
     """Get the CA certificate directory, caching the result in $X509_CERT_DIR
 
@@ -237,25 +234,21 @@ def _x509_ca_path():
     return os.environ["X509_CERT_DIR"]
 
 
-# use OIDC
 def use_oidc():
     """Whether $PANDA_AUTH selects OIDC bearer-token authentication"""
     return "PANDA_AUTH" in os.environ and os.environ["PANDA_AUTH"] == "oidc"
 
 
-# use X509 without grid middleware
 def use_x509_no_grid():
     """Whether $PANDA_AUTH selects a plain X.509 cert without the grid middleware"""
     return "PANDA_AUTH" in os.environ and os.environ["PANDA_AUTH"] == "x509_no_grid"
 
 
-# check if https
 def is_https(url):
     """Whether url uses the https scheme"""
     return url.startswith("https://")
 
 
-# hide sensitive info
 def hide_sensitive_info(com):
     """Redact a bearer token from a string, e.g. before printing verbose request info"""
     com = re.sub("Bearer [^\"']+", '***"', str(com))
@@ -287,7 +280,6 @@ def get_token_string(tmp_log, verbose):
     return None
 
 
-# HTTP client used to talk to the PanDA server, built on httpx
 class _HttpClient:
     """HTTP client for the PanDA server's REST API, built on httpx
 
@@ -298,7 +290,6 @@ class _HttpClient:
     the various module-level functions that instantiate one directly.
     """
 
-    # constructor
     def __init__(self):
         # verification of the host certificate
         if "PANDA_VERIFY_HOST" in os.environ and os.environ["PANDA_VERIFY_HOST"] == "off":
@@ -325,7 +316,6 @@ class _HttpClient:
         # verbose
         self.verbose = False
 
-    # run auth flow
     def get_oidc(self, tmp_log):
         """Build an OpenIdConnect_Utils helper pointed at this server's auth config for self.auth_vo
 
@@ -342,7 +332,6 @@ class _HttpClient:
         oidc = openidc_utils.OpenIdConnect_Utils(auth_url, log_stream=tmp_log, verbose=self.verbose)
         return oidc
 
-    # get ID token
     def get_id_token(self, force_new=False):
         """Populate self.id_token, from a pre-supplied token or by running the device-authorization flow
 
@@ -366,7 +355,6 @@ class _HttpClient:
         self.id_token = o
         return True
 
-    # get token
     def get_token_info(self):
         """Get the decoded claims of the current OIDC ID token
 
@@ -387,7 +375,6 @@ class _HttpClient:
         s, o, token_info = oidc.check_token()
         return token_info
 
-    # randomize IP
     def randomize_ip(self, url):
         """Replace url's hostname with a randomly-picked FQDN of one of its resolved IPs
 
@@ -414,7 +401,6 @@ class _HttpClient:
         host_names = [socket.getfqdn(vv) for vv in {v[-1][0] for v in socket.getaddrinfo(host, port, socket.AF_INET)}]
         return url.replace(host, random.choice(host_names))
 
-    # build the ssl context used for host verification and client cert authentication
     def _build_ssl_context(self, use_https):
         """Build the SSL context for host verification and (for voms auth) client-cert authentication
 
@@ -442,7 +428,6 @@ class _HttpClient:
             context.load_cert_chain(certfile=self.ssl_certificate, keyfile=self.ssl_key)
         return context
 
-    # headers for OIDC bearer-token auth
     def _auth_headers(self):
         """Build the Authorization/Origin headers for OIDC auth, refreshing self.id_token as needed
 
@@ -456,7 +441,6 @@ class _HttpClient:
             headers["Origin"] = self.auth_vo
         return headers
 
-    # send a request and normalize the return value to (code, content)
     def _send(self, method, url, headers=None, content=None, files=None, verify=True):
         """Issue one HTTP request via httpx and normalize the result to (code, content)
 
@@ -489,7 +473,6 @@ class _HttpClient:
             print(ret)
         return ret
 
-    # GET method
     def get(self, url, data, n_try=1, json_out=False, repeating_keys=False, output_name=None):
         """Issue a GET request, with data sent as query-string parameters
 
@@ -530,7 +513,6 @@ class _HttpClient:
 
         return code, content
 
-    # POST method
     def post(self, url, data, is_json=False, compress_body=False, n_try=1, json_out=False):
         """Issue a POST request, with data sent as the request body
 
@@ -575,7 +557,6 @@ class _HttpClient:
 
         return code, content
 
-    # PUT method (multipart file upload; sent as POST to match the server endpoint, as before)
     def put(self, url, data, n_try=1, json_out=False):
         """Upload one or more files as a multipart/form-data request
 
@@ -620,7 +601,6 @@ class _HttpClient:
         return code, content
 
 
-# dump log
 def dump_log(func_name, exception_obj, output):
     """Log an unparseable/unexpected server response, e.g. when JSON decoding fails
 
@@ -1157,7 +1137,6 @@ def setDebugMode(pandaID, modeOn, verbose):
     return {"job_id": pandaID, "mode": modeOn}
 
 
-# request EventPicking
 def requestEventPicking(
     eventPickEvtList,
     eventPickDataType,
@@ -1446,7 +1425,6 @@ def get_job_descriptions(task_id, unsuccessful_only=False, verbose=False):
     return {"task_id": task_id, "unsuccessful_only": unsuccessful_only}
 
 
-# hello
 def hello(verbose=False):
     """Health check with the PanDA server
     args:
@@ -1544,7 +1522,6 @@ def get_user_name_from_token():
         return None, None, None
 
 
-# get new token
 def get_new_token(verbose=False):
     """Get new ID token
 
@@ -1562,7 +1539,6 @@ def get_new_token(verbose=False):
     return None
 
 
-# call idds command
 def call_idds_command(
     command_name, args=None, kwargs=None, dumper=None, verbose=False, compress=False, manager=False, loader=None, json_outputs=False, n_try=1
 ):
@@ -1628,7 +1604,6 @@ def call_idds_command(
         return EC_Failed, msg
 
 
-# call idds user workflow command
 def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, json_outputs=False, n_try=1):
     """Call an iDDS workflow user command
     args:
@@ -1685,7 +1660,6 @@ def send_file_recovery_request(task_id, dry_run=False, verbose=False):
     return {"task_id": task_id, "dry_run": dry_run}
 
 
-# send workflow request
 def send_workflow_request(params, relay_host=None, check=False, verbose=False):
     """Send a workflow request
     args:
@@ -1734,7 +1708,6 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
         return EC_Failed, msg
 
 
-# temporary method to submit PanDA native workflow
 def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
     """Temporary method to submit a PanDA native workflow
     args:
@@ -1782,7 +1755,6 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
         return EC_Failed, msg
 
 
-# submit PanDA native workflow
 @http_request_decorator(endpoint="workflow/submit_workflow_raw_request", method="post", json_out=True, output_mode="extended")
 def submit_workflow(params, **kwargs):
     """Submit a PanDA native workflow
