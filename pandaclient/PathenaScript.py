@@ -1340,7 +1340,11 @@ group_job.add_argument(
 )
 
 from pandaclient import MiscUtils
-from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, commands_get_status_output_with_env
+from pandaclient.MiscUtils import (
+    commands_get_output,
+    commands_get_status_output,
+    commands_get_status_output_with_env,
+)
 
 # parse options
 # check against the removed options first
@@ -1717,9 +1721,6 @@ if options.tmpDir == "":
 else:
     tmpDir = "{}/{}".format(os.path.abspath(options.tmpDir), MiscUtils.wrappedUuidGen())
 os.makedirs(tmpDir)
-
-# set tmp dir in Client
-Client.setGlobalTmpDir(tmpDir)
 
 
 # exit action

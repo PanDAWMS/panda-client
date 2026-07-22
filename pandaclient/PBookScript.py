@@ -58,9 +58,6 @@ if "CMTSITE" not in os.environ:
 # make tmp dir
 tmpDir = tempfile.mkdtemp()
 
-# set tmp dir in Client
-Client.setGlobalTmpDir(tmpDir)
-
 # fork PID
 fork_child_pid = None
 

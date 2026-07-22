@@ -61,8 +61,8 @@ def get_proxy_info(force, verbose):
             cacheVomsInfo = (status, (nickname,))
         elif not Client.use_oidc():
             # check grid-proxy
-            gridSrc = Client._getGridSrc()
-            com = "%s voms-proxy-info --all --e" % gridSrc
+            grid_setup_command = Client.build_grid_setup_command()
+            com = f"{grid_setup_command} voms-proxy-info --all --e"
             if verbose:
                 tmpLog.debug(com)
             status, out = commands_get_status_output_with_env(com)
@@ -106,15 +106,15 @@ def check_proxy(verbose, voms_role, refresh_info=False, generate_new=True):
     tmpLog = PLogger.getPandaLogger()
     tmpLog.info("Need to generate a grid proxy")
     gridPassPhrase = getpass.getpass("Enter GRID pass phrase for this identity:\n").replace("$", r"\$").replace('"', r"\"")
-    gridSrc = Client._getGridSrc()
-    com = '{} echo "{}" | voms-proxy-init -pwstdin '.format(gridSrc, gridPassPhrase)
-    com_msg = '%s echo "*****" | voms-proxy-init -pwstdin ' % gridSrc
+    grid_setup_command = Client.build_grid_setup_command()
+    com = f'{grid_setup_command} echo "{gridPassPhrase}" | voms-proxy-init -pwstdin '
+    com_msg = f'{grid_setup_command} echo "*****" | voms-proxy-init -pwstdin '
     if voms_role is None:
         com += "-voms atlas"
         com_msg += "-voms atlas"
     else:
-        com += "-voms %s" % voms_role
-        com_msg += "-voms %s" % voms_role
+        com += f"-voms {voms_role}"
+        com_msg += f"-voms {voms_role}"
     if verbose:
         tmpLog.debug(com_msg)
     status, output = commands_get_status_output_with_env(com)
@@ -211,7 +211,7 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
     # check NG chars for SE
     checked = check_invalid_char(outDS)
     if checked is not None:
-        errStr = 'invalid character "%s" is used in --outDS' % checked
+        errStr = f'invalid character "{checked}" is used in --outDS'
         tmpLog.error(errStr)
         return False
     # official dataset
@@ -244,13 +244,13 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
                         prodGroups.append(match.group(1))
         # no production role
         if prodGroups == []:
-            errStr = "The --official option requires %s role. " % role_name
+            errStr = f"The --official option requires {role_name} role. "
             if not Client.use_oidc():
                 errStr += "Please use the --voms option to set production role;\n"
                 errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
                 errStr += "If you don't have production role for the group please request it in ATLAS VO first"
             else:
-                errStr += "Please request to add you in the %s group in IAM" % role_name
+                errStr += f"Please request to add you in the {role_name} group in IAM"
             tmpLog.error(errStr)
             return False
         # loop over all prefixes
@@ -265,8 +265,8 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
         errStr = "You are allowed to produce official datasets with the following prefix\n"
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
-                tmpPattN = "{}.{}".format(tmpPrefix, tmpGroup)
-                errStr += "          %s\n" % tmpPattN
+                tmpPattN = f"{tmpPrefix}.{tmpGroup}"
+                errStr += f"          {tmpPattN}\n"
         if not Client.use_oidc():
             errStr += "If you have production role for another group please use the --voms option to set the role\n"
             errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
@@ -278,9 +278,9 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
         if nickName == "":
             errStr = "Could not get nickname from voms proxy\n"
         else:
-            outDsPrefixN = "user.%s" % nickName
-            errStr = "outDS must be '%s.<user-controlled string...>'\n" % outDsPrefixN
-            errStr += "        e.g., %s.test1234" % outDsPrefixN
+            outDsPrefixN = f"user.{nickName}"
+            errStr = f"outDS must be '{outDsPrefixN}.<user-controlled string...>'\n"
+            errStr += f"        e.g., {outDsPrefixN}.test1234"
         tmpLog.error(errStr)
         return False
     # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
@@ -292,8 +292,8 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
     if outDS.endswith("/"):
         # container
         if len(outDS) > maxLengthCont:
-            tmpErrStr = "The name of the output dataset container is too long (%s). " % len(outDS)
-            tmpErrStr += "The length must be less than %s " % maxLengthCont
+            tmpErrStr = f"The name of the output dataset container is too long ({len(outDS)}). "
+            tmpErrStr += f"The length must be less than {maxLengthCont} "
             if mergeOutput:
                 tmpErrStr += "when --mergeOutput is used. "
             else:
@@ -304,7 +304,7 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
     else:
         # dataset
         if len(outDS) > maxLength:
-            tmpLog.error("output datasetname is too long ({}). The length must be less than {}".format(len(outDS), maxLength))
+            tmpLog.error(f"output datasetname is too long ({len(outDS)}). The length must be less than {maxLength}")
             return False
     return True
 
@@ -323,7 +323,7 @@ def convSysArgv(argv=None):
         match = re.search("(^-[^=]+=)(.+)", item)
         noSpace = False
         if match is not None:
-            paramStr += " %s" % match.group(1)
+            paramStr += f" {match.group(1)}"
             item = match.group(2)
             noSpace = True
         if not noSpace:
@@ -331,10 +331,10 @@ def convSysArgv(argv=None):
         match = re.search(r"(\*| |')", item)
         if match is None:
             # normal parameters
-            paramStr += "%s" % item
+            paramStr += f"{item}"
         else:
             # quote string
-            paramStr += '"%s"' % item
+            paramStr += f'"{item}"'
     # return
     return paramStr
 
@@ -388,7 +388,7 @@ def completePathFunc(text, status):
     if (not text.endswith("/")) and os.path.isdir(text):
         text += "/"
     # list dirs/files
-    lsStat, output = commands_get_status_output("ls -d %s*" % text)
+    lsStat, output = commands_get_status_output(f"ls -d {text}*")
     results = []
     if lsStat == 0:
         for tmpItem in output.split("\n"):
@@ -400,7 +400,7 @@ def completePathFunc(text, status):
                 tmpItem += "/"
             # recover ~
             if useTilde:
-                tmpItem = re.sub("^%s" % os.path.expanduser(origText), origText, tmpItem)
+                tmpItem = re.sub(f"^{os.path.expanduser(origText)}", origText, tmpItem)
             # append
             results.append(tmpItem)
         # sort
@@ -424,7 +424,7 @@ def readDsFromFile(txtName):
             if tmpLine.startswith("#") or tmpLine == "":
                 continue
             # append
-            dsList += "%s," % tmpLine
+            dsList += f"{tmpLine},"
         # close file
         txt.close()
         # remove the last comma
@@ -432,7 +432,7 @@ def readDsFromFile(txtName):
     except Exception:
         errType, errValue = sys.exc_info()[:2]
         tmpLog = PLogger.getPandaLogger()
-        tmpLog.error("cannot read datasets from {} due to {}:{}".format(txtName, errType, errValue))
+        tmpLog.error(f"cannot read datasets from {txtName} due to {errType}:{errValue}")
         sys.exit(EC_Config)
     return dsList
 
@@ -605,10 +605,10 @@ def uploadGzippedFile(origFileName, currentDir, tmpLog, delFilesOnExit, nosubmit
         tmpIn = open(origFileName, "rb")
     else:
         # relative path
-        tmpIn = open("{}/{}".format(currentDir, origFileName), "rb")
+        tmpIn = open(f"{currentDir}/{origFileName}", "rb")
     # use unique name for gzip
-    newFileName = "pre_%s.dat" % MiscUtils.wrappedUuidGen()
-    gzipFullPath = "{}/{}.gz".format(currentDir, newFileName)
+    newFileName = f"pre_{MiscUtils.wrappedUuidGen()}.dat"
+    gzipFullPath = f"{currentDir}/{newFileName}.gz"
     delFilesOnExit.append(gzipFullPath)
     # make gzip
     tmpOut = gzip.open(gzipFullPath, "wb")
@@ -622,7 +622,7 @@ def uploadGzippedFile(origFileName, currentDir, tmpLog, delFilesOnExit, nosubmit
         if status != 0 or out != "True":
             # failed
             print(out)
-            tmpLog.error("Failed with %s" % status)
+            tmpLog.error(f"Failed with {status}")
             sys.exit(EC_Post)
     # delete
     os.remove(gzipFullPath)
@@ -663,8 +663,8 @@ def checkTaskParam(taskParamMap, unlimitNumOutputs):
             tmpErrStr = None
             # check length of dataset name
             if len(tmpDict["dataset"]) > maxLengthCont:
-                tmpErrStr = "The name of an output or log dataset container ({}) is too long ({}). ".format(tmpDict["dataset"], len(tmpDict["dataset"]))
-                tmpErrStr += "The length must be less than %s following DDM definition. " % maxLengthCont
+                tmpErrStr = f"The name of an output or log dataset container ({tmpDict['dataset']}) is too long ({len(tmpDict['dataset'])}). "
+                tmpErrStr += f"The length must be less than {maxLengthCont} following DDM definition. "
                 tmpErrStr += "Please note that one dataset container is creted per output/log type and "
                 tmpErrStr += "each name is <outDS>_<extension made from the output filename>/ or <outDS>.log/. "
             # check non-ascii characters
@@ -672,24 +672,23 @@ def checkTaskParam(taskParamMap, unlimitNumOutputs):
                 try:
                     tmpDict["value"].encode("ascii")
                 except Exception:
-                    tmpErrStr = "Output name {} contains non-ascii charters that are forbidden since they screw up " "the storage".format(tmpDict["value"])
+                    tmpErrStr = f"Output name {tmpDict['value']} contains non-ascii charters that are forbidden since they screw up the storage"
             if not tmpErrStr:
                 try:
                     tmpDict["dataset"].encode("ascii")
                 except Exception:
-                    tmpErrStr = "Dataset name {} contains non-ascii charters that are forbidden since they screw up " "the storage".format(tmpDict["dataset"])
+                    tmpErrStr = f"Dataset name {tmpDict['dataset']} contains non-ascii charters that are forbidden since they screw up the storage"
             if tmpErrStr:
                 tmpLog = PLogger.getPandaLogger()
                 tmpLog.error(tmpErrStr)
                 return (EC_Config, tmpErrStr)
     if not unlimitNumOutputs and nOutputs > maxNumOutputs:
-        errStr = "Too many output files (={}) per job. The default limit is {}. ".format(
-            nOutputs,
-            maxNumOutputs,
+        errStr = (
+            f"Too many output files (={nOutputs}) per job. The default limit is {maxNumOutputs}. "
+            "You can remove the constraint by using the --unlimitNumOutputs option. "
+            "But please note that having too many outputs per job causes a severe load on the system. "
+            "You may be banned if you carelessly use the option"
         )
-        errStr += "You can remove the constraint by using the --unlimitNumOutputs option. "
-        errStr += "But please note that having too many outputs per job causes a severe load on the system. "
-        errStr += "You may be banned if you carelessly use the option"
         tmpLog = PLogger.getPandaLogger()
         tmpLog.error(errStr)
         return (EC_Config, errStr)
@@ -776,9 +775,9 @@ def get_warning_for_pq(site, excluded_site, tmp_log):
 def get_warning_for_memory(memory, is_confirmed, n_core, tmp_log):
     if memory > 4000:
         tmp_str = (
-            "You are requesting {} MB/core which severely restricts the available resources to run on. "
+            f"You are requesting {memory} MB/core which severely restricts the available resources to run on. "
             "Your task will take longer or may not run at all. Check if you really need this. "
-            "Maybe improve the code".format(memory)
+            "Maybe improve the code"
         )
         if n_core <= 1:
             tmp_str += " or if the payload supports MT/MP then use --nCore=8 to reduce the memory per core"

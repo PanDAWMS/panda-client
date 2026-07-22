@@ -1,6 +1,27 @@
 """
 client methods
 
+Low-level client library for the PanDA server's REST API: job submission and
+control, task control, file cache upload/download, and relays to iDDS/workflow
+services. This is the layer pbook/pathena/prun sit on top of.
+
+Most public functions are thin wrappers built with the @http_request_decorator,
+which POSTs/GETs to f"{server_base_path_ssl}/{endpoint}" and unwraps the JSON
+response envelope ({"success": ..., "message": ..., "data": ...}) according to
+output_mode. Functions with unusual request/response shapes (file upload/
+download, event picking, health checks, iDDS relays, ...) call _HttpClient
+directly instead.
+
+_HttpClient (httpx-based) is the shared HTTP layer underneath both paths. It
+supports two auth modes, selected via $PANDA_AUTH:
+  - "voms" (default): client cert/key from a grid proxy (see _x509_proxy_path),
+    verified against the CA directory from _x509_ca_path.
+  - "oidc": bearer token obtained via openidc_utils' device-authorization flow,
+    or supplied directly through $PANDA_AUTH_ID_TOKEN/$OIDC_AUTH_TOKEN_FILE/
+    $OIDC_AUTH_ID_TOKEN (see get_token_string).
+
+Server locations come from $PANDA_URL/$PANDA_URL_SSL/$PANDACACHE_URL, falling
+back to the ATLAS production servers at CERN when unset.
 """
 
 import gzip
@@ -75,12 +96,37 @@ if "PANDA_BEHIND_REAL_LB" not in os.environ:
 
 # Decoder: check marker and convert back
 def decode_special_cases(obj):
+    """json.loads object_hook that reconstructs values the server marked as a special case
+
+    Currently handles datetime values serialized as {"__datetime__": "<isoformat>"}.
+
+    args:
+       obj: a dict decoded from a JSON object
+    returns:
+       obj, or the reconstructed value if obj carries a recognized marker
+    """
     if "__datetime__" in obj:
         return datetime.fromisoformat(obj["__datetime__"])
     return obj
 
 
 def http_request_decorator(endpoint, method="post", json_out=False, output_mode="basic"):
+    """Turn a function that builds a request payload into a call against a PanDA server REST endpoint
+
+    The decorated function should return the request payload dict. This decorator sends it
+    to f"{server_base_path_ssl}/{endpoint}" via _HttpClient, then unwraps the JSON response
+    envelope ({"success": ..., "message": ..., "data": ...}) according to output_mode:
+       "basic": (status, data) if success else (EC_Failed, None)
+       "extended": (status, (success, data)) on success, (status, (False, message)) on failure
+       "full": (status, the raw parsed JSON dict), regardless of success
+
+    args:
+       endpoint: REST API path, appended to server_base_path_ssl
+       method: "post" or "get"
+       json_out: True to request/parse a JSON response body
+       output_mode: "basic", "extended", or "full" (see above)
+    """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             # Extract verbose flag from kwargs, args, or function signature
@@ -147,6 +193,14 @@ def http_request_decorator(endpoint, method="post", json_out=False, output_mode=
 
 # look for a grid proxy certificate
 def _x509_proxy_path():
+    """Get the path to the user's grid proxy certificate
+
+    Prefers $X509_USER_PROXY, falling back to the default proxy location. Prints a
+    warning if neither exists and OIDC auth isn't in use (voms auth needs a proxy).
+
+    returns:
+       path to the proxy certificate, or "" if none was found
+    """
     # see X509_USER_PROXY
     x509 = os.environ.get("X509_USER_PROXY")
     if x509:
@@ -170,40 +224,40 @@ def _x509_proxy_path():
 def _x509_ca_path():
     """Get the CA certificate directory, caching the result in $X509_CERT_DIR
 
-    Resolves via the grid environment setup script (see _getGridSrc), falling back
+    Resolves via the grid environment setup script (see build_grid_setup_command), falling back
     to the standard grid-security path if that doesn't yield one.
 
     returns:
        path to the CA certificate directory
     """
     if not os.environ.get("X509_CERT_DIR"):
-        com = f"{_getGridSrc()} echo $X509_CERT_DIR"
+        com = f"{build_grid_setup_command()} echo $X509_CERT_DIR"
         output = commands_get_output(com).split("\n")[-1]
         os.environ["X509_CERT_DIR"] = output or "/etc/grid-security/certificates"
     return os.environ["X509_CERT_DIR"]
 
 
-# keep list of tmp files for cleanup
-globalTmpDir = ""
-
-
 # use OIDC
 def use_oidc():
+    """Whether $PANDA_AUTH selects OIDC bearer-token authentication"""
     return "PANDA_AUTH" in os.environ and os.environ["PANDA_AUTH"] == "oidc"
 
 
 # use X509 without grid middleware
 def use_x509_no_grid():
+    """Whether $PANDA_AUTH selects a plain X.509 cert without the grid middleware"""
     return "PANDA_AUTH" in os.environ and os.environ["PANDA_AUTH"] == "x509_no_grid"
 
 
 # check if https
 def is_https(url):
+    """Whether url uses the https scheme"""
     return url.startswith("https://")
 
 
 # hide sensitive info
 def hide_sensitive_info(com):
+    """Redact a bearer token from a string, e.g. before printing verbose request info"""
     com = re.sub("Bearer [^\"']+", '***"', str(com))
     return com
 
@@ -235,6 +289,15 @@ def get_token_string(tmp_log, verbose):
 
 # HTTP client used to talk to the PanDA server, built on httpx
 class _HttpClient:
+    """HTTP client for the PanDA server's REST API, built on httpx
+
+    Supports the two auth modes described in the module docstring (voms client-cert
+    or OIDC bearer-token), retries, and a couple of PanDA-specific quirks (DNS-based
+    load spreading via randomize_ip, gzip-compressed JSON bodies). Instances are
+    cheap and stateless enough to create per call; see http_request_decorator and
+    the various module-level functions that instantiate one directly.
+    """
+
     # constructor
     def __init__(self):
         # verification of the host certificate
@@ -264,6 +327,13 @@ class _HttpClient:
 
     # run auth flow
     def get_oidc(self, tmp_log):
+        """Build an OpenIdConnect_Utils helper pointed at this server's auth config for self.auth_vo
+
+        args:
+           tmp_log: logger passed through to OpenIdConnect_Utils
+        returns:
+           an openidc_utils.OpenIdConnect_Utils instance
+        """
         parsed = urlparse(baseURLSSL)
         if parsed.port:
             auth_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}/auth/{self.auth_vo}_auth_config.json"
@@ -274,6 +344,13 @@ class _HttpClient:
 
     # get ID token
     def get_id_token(self, force_new=False):
+        """Populate self.id_token, from a pre-supplied token or by running the device-authorization flow
+
+        args:
+           force_new: True to discard any cached token and force a fresh device-authorization flow
+        returns:
+           True on success; exits the process if the device-authorization flow fails
+        """
         tmp_log = PLogger.getPandaLogger()
         token_str = get_token_string(tmp_log, self.verbose)
         if token_str:
@@ -291,6 +368,13 @@ class _HttpClient:
 
     # get token
     def get_token_info(self):
+        """Get the decoded claims of the current OIDC ID token
+
+        Uses a pre-supplied token if available, otherwise runs the device-authorization flow.
+
+        returns:
+           the decoded token claims dict, or (False, None) if the device-authorization flow fails
+        """
         tmp_log = PLogger.getPandaLogger()
         token_str = get_token_string(tmp_log, self.verbose)
         if token_str:
@@ -305,6 +389,16 @@ class _HttpClient:
 
     # randomize IP
     def randomize_ip(self, url):
+        """Replace url's hostname with a randomly-picked FQDN of one of its resolved IPs
+
+        Used to spread load across backend hosts sharing one DNS name, on deployments
+        without a real load balancer in front of the server (see $PANDA_BEHIND_REAL_LB).
+
+        args:
+           url: the request URL
+        returns:
+           url unchanged if $PANDA_BEHIND_REAL_LB is set, otherwise with the hostname replaced
+        """
         # not to resolve IP when panda server is running behind real load balancer than DNS LB
         if "PANDA_BEHIND_REAL_LB" in os.environ:
             return url
@@ -322,6 +416,14 @@ class _HttpClient:
 
     # build the ssl context used for host verification and client cert authentication
     def _build_ssl_context(self, use_https):
+        """Build the SSL context for host verification and (for voms auth) client-cert authentication
+
+        args:
+           use_https: whether the request URL uses https; non-https requests need no SSL context
+        returns:
+           False for a plain http request, otherwise an ssl.SSLContext configured per self.verify_host
+           and self.auth_mode
+        """
         if not use_https:
             return False
         if self.auth_mode != "oidc":
@@ -342,6 +444,11 @@ class _HttpClient:
 
     # headers for OIDC bearer-token auth
     def _auth_headers(self):
+        """Build the Authorization/Origin headers for OIDC auth, refreshing self.id_token as needed
+
+        returns:
+           a headers dict; empty for voms auth, since that authenticates via client cert instead
+        """
         headers = {}
         if self.auth_mode == "oidc":
             self.get_id_token()
@@ -351,6 +458,22 @@ class _HttpClient:
 
     # send a request and normalize the return value to (code, content)
     def _send(self, method, url, headers=None, content=None, files=None, verify=True):
+        """Issue one HTTP request via httpx and normalize the result to (code, content)
+
+        No exception escapes this method: network/SSL errors are caught and turned into
+        (1, str(error)) so callers can treat every response uniformly.
+
+        args:
+           method: "GET", "POST", ...
+           url: target URL
+           headers: request headers
+           content: raw request body bytes, for POST
+           files: multipart files dict, for the file-upload PUT path
+           verify: SSL verification, as returned by _build_ssl_context
+        returns:
+           (code, content) where code is 0 on HTTP 200, the raw HTTP status code otherwise,
+           or 1 on a network/SSL-level failure (content is the error message string in that case)
+        """
         try:
             if self.verbose:
                 print(f"{method} {url}")
@@ -368,6 +491,19 @@ class _HttpClient:
 
     # GET method
     def get(self, url, data, n_try=1, json_out=False, repeating_keys=False, output_name=None):
+        """Issue a GET request, with data sent as query-string parameters
+
+        args:
+           url: target URL
+           data: dict of query parameters
+           n_try: number of attempts; retries on any code other than 0/403/404
+           json_out: True to request and parse a JSON response body
+           repeating_keys: True to encode list-valued entries in data as repeated keys
+           output_name: if set, write the response body to this file instead of returning it
+        returns:
+           (code, content): content is the parsed JSON body if json_out, True if output_name
+           was used, or the raw response bytes otherwise
+        """
         use_https = is_https(url)
         url = self.randomize_ip(url)
         if data:
@@ -396,6 +532,19 @@ class _HttpClient:
 
     # POST method
     def post(self, url, data, is_json=False, compress_body=False, n_try=1, json_out=False):
+        """Issue a POST request, with data sent as the request body
+
+        args:
+           url: target URL
+           data: dict of form fields, sent url-encoded (or JSON if json_out/compress_body)
+           is_json: True to request a JSON response body (without changing the request body encoding)
+           compress_body: True to gzip-compress the JSON-encoded body
+           n_try: number of attempts; retries on any code other than 0/403/404
+           json_out: True to JSON-encode the request body and request/parse a JSON response
+        returns:
+           (code, content): content is the parsed JSON body if is_json/json_out, otherwise the raw
+           response bytes
+        """
         use_https = is_https(url)
         url = self.randomize_ip(url)
         verify = self._build_ssl_context(use_https)
@@ -428,6 +577,20 @@ class _HttpClient:
 
     # PUT method (multipart file upload; sent as POST to match the server endpoint, as before)
     def put(self, url, data, n_try=1, json_out=False):
+        """Upload one or more files as a multipart/form-data request
+
+        Despite the name, this sends an HTTP POST (matching the server endpoint's
+        expectation), not a PUT.
+
+        args:
+           url: target URL
+           data: dict of {field_name: local_file_path}; each file is read and uploaded
+           n_try: number of attempts; retries on any code other than 0/403/404
+           json_out: True to request and parse a JSON response body
+        returns:
+           (code, content): content is the parsed JSON body if json_out and parsing succeeds,
+           otherwise the raw response bytes
+        """
         use_https = is_https(url)
         url = self.randomize_ip(url)
         verify = self._build_ssl_context(use_https)
@@ -459,6 +622,15 @@ class _HttpClient:
 
 # dump log
 def dump_log(func_name, exception_obj, output):
+    """Log an unparseable/unexpected server response, e.g. when JSON decoding fails
+
+    args:
+       func_name: name of the calling function, for the log message
+       exception_obj: the exception that was raised, if any (may be None)
+       output: the raw response that couldn't be handled
+    returns:
+       the formatted error string that was logged
+    """
     print(traceback.format_exc())
     print(output)
     err_str = f"{func_name} failed : {str(exception_obj)}"
@@ -475,6 +647,7 @@ public methods
 
 @http_request_decorator(endpoint="job/submit", method="post", json_out=True)
 def submitJobs_internal(jobs, verbose=False):
+    """Build the request payload for job/submit; see submitJobs for the public API"""
     return {"jobs": jobs}
 
 
@@ -501,6 +674,7 @@ def submitJobs(jobs, verbose=False):
 
 @http_request_decorator(endpoint="job/get_description", method="post", json_out=True)
 def getJobStatus_internal(ids, verbose=False):
+    """Build the request payload for job/get_description; see getJobStatus for the public API"""
     return {"job_ids": ids}
 
 
@@ -593,6 +767,7 @@ def finishTask(jediTaskID, soft=False, verbose=False):
 
 @http_request_decorator(endpoint="task/retry", method="post", json_out=True, output_mode="full")
 def retryTask_internal(jediTaskID, verbose, properErrorCode, newParams):
+    """Build the request payload for task/retry; see retryTask for the public API"""
     data = {"task_id": jediTaskID}
     if newParams:
         data["new_parameters"] = newParams
@@ -730,7 +905,6 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
     return s, message
 
 
-# get file
 def getFile(filename, output_path=None, verbose=False, n_try=1):
     """Get a file
     args:
@@ -759,45 +933,66 @@ def getFile(filename, output_path=None, verbose=False, n_try=1):
     return s, o
 
 
-# get grid source file
-def _getGridSrc():
+def build_grid_setup_command():
+    """Build a shell prefix that sources the grid environment setup script before a command
+
+    Used to run grid commands (voms-proxy-info, echo $X509_CERT_DIR, ...) with the right
+    environment via commands_get_output/commands_get_status_output_with_env.
+
+    returns:
+       shell command prefix, e.g. "unset ...; export PATH=...; source <script> > /dev/null;"
+    """
     if "PATHENA_GRID_SETUP_SH" in os.environ:
-        gridSrc = os.environ["PATHENA_GRID_SETUP_SH"]
+        grid_setup_command = os.environ["PATHENA_GRID_SETUP_SH"]
     else:
-        gridSrc = "/dev/null"
-    gridSrc = f"source {gridSrc} > /dev/null;"
+        grid_setup_command = "/dev/null"
+    grid_setup_command = f"source {grid_setup_command} > /dev/null;"
     # some grid_env.sh doesn't correct PATH/LD_LIBRARY_PATH
-    gridSrc = f"unset LD_LIBRARY_PATH; unset PYTHONPATH; unset MANPATH; export PATH=/usr/local/bin:/bin:/usr/bin; {gridSrc}"
-    return gridSrc
+    grid_setup_command = f"unset LD_LIBRARY_PATH; unset PYTHONPATH; unset MANPATH; export PATH=/usr/local/bin:/bin:/usr/bin; {grid_setup_command}"
+    return grid_setup_command
 
 
-# get DN
-def getDN(origString):
-    shortName = ""
-    distinguishedName = ""
-    for line in origString.split("/"):
-        if line.startswith("CN="):
-            distinguishedName = re.sub("^CN=", "", line)
-            distinguishedName = re.sub(r"\d+$", "", distinguishedName)
-            distinguishedName = re.sub(r"\.", "", distinguishedName)
-            distinguishedName = distinguishedName.strip()
-            if re.search(" ", distinguishedName) is not None:
+def getDN(dn):
+    """Extract a display name from an X.509 distinguished name string
+
+    Parses the "/CN=..." components of dn, preferring a full name (one
+    containing a space) over a short name, and strips trailing digits/dots that
+    grid DNs commonly append (e.g. numeric suffixes for renewed certs).
+
+    args:
+       dn: an X.509 DN, e.g. "/DC=ch/DC=cern/OU=.../CN=John Doe/CN=proxy"
+    returns:
+       the extracted name, or "" if no CN component was found
+    """
+    short_name = ""
+    name = ""
+    # a DN can carry several CN= components (e.g. ".../CN=John Doe/CN=proxy");
+    # the first one containing a space is taken as the full name and wins
+    # outright, otherwise the first space-less one is kept as a fallback
+    for component in dn.split("/"):
+        if component.startswith("CN="):
+            name = re.sub("^CN=", "", component)
+            name = re.sub(r"\d+$", "", name)
+            name = re.sub(r"\.", "", name)
+            name = name.strip()
+            if re.search(" ", name) is not None:
                 # look for full name
-                distinguishedName = distinguishedName.replace(" ", "")
+                name = name.replace(" ", "")
                 break
-            elif shortName == "":
+            elif short_name == "":
                 # keep short name
-                shortName = distinguishedName
-            distinguishedName = ""
+                short_name = name
+            # reset so a later, non-full CN doesn't override the fallback
+            name = ""
     # use short name
-    if distinguishedName == "":
-        distinguishedName = shortName
+    if name == "":
+        name = short_name
     # return
-    return distinguishedName
+    return name
 
 
-# use dev server
 def useDevServer():
+    """Point baseURL/baseURLSSL/baseURLCSRVSSL at the PanDA development server"""
     global baseURL
     baseURL = "http://aipanda007.cern.ch:25080/server/panda"
     global baseURLSSL
@@ -806,8 +1001,8 @@ def useDevServer():
     baseURLCSRVSSL = "https://aipanda007.cern.ch:25443/server/panda"
 
 
-# use INTR server
 def useIntrServer():
+    """Point baseURL/baseURLSSL/baseURLCSRVSSL/server_base_path[_ssl] at the PanDA INTR server"""
     global baseURL
     baseURL = "http://aipanda123.cern.ch:25080/server/panda"
     global baseURLSSL
@@ -822,21 +1017,40 @@ def useIntrServer():
 
 # set cache server
 def setCacheServer(host_name):
+    """Point baseURLCSRVSSL/cache_base_path_ssl at a specific cache server host
+
+    Used e.g. by putFile when the server reports that a reusable sandbox already
+    exists on a specific cache server.
+
+    args:
+       host_name: hostname of the cache server to use
+    """
     global baseURLCSRVSSL
     global cache_base_path_ssl
 
-    netloc = urlparse(baseURLCSRVSSL)
-    if netloc.port:
-        baseURLCSRVSSL = f"{netloc.scheme}://{host_name}:{netloc.port}{netloc.path}"
-    else:
-        baseURLCSRVSSL = f"{netloc.scheme}://{host_name}{netloc.path}"
+    parsed_url = urlparse(baseURLCSRVSSL)
+    network_location = f"{host_name}:{parsed_url.port}" if parsed_url.port else host_name
 
-    parsed = urlparse(baseURLCSRVSSL)
-    cache_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
+    baseURLCSRVSSL = f"{parsed_url.scheme}://{network_location}{parsed_url.path}"
+    cache_base_path_ssl = f"{parsed_url.scheme}://{network_location}/api/v1"
 
 
 @http_request_decorator(endpoint="task/get_tasks_modified_since", method="get", json_out=True)
 def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=False, task_type="user"):
+    """Get task/job IDs modified since a given time
+
+    args:
+       timeRange: lower bound on modificationTime, in the format '%Y-%m-%d %H:%M:%S'
+       dn: restrict to tasks owned by this DN; None for the caller's own tasks
+       minTaskID: only return tasks with jediTaskID greater than this value
+       verbose: True to see verbose messages
+       task_type: prodSourceLabel to filter on, e.g. "user"
+    returns:
+       status code
+          0: communication succeeded to the panda server
+          255: communication failure
+       a dictionary of {jediTaskID: [PandaID, ...], ...}, or None if failed
+    """
     return {"since": timeRange, "dn": dn, "full": True, "min_task_id": minTaskID, "prod_source_label": task_type}
 
 
@@ -871,10 +1085,24 @@ def get_tasks_detailed_info_since(since=None, filters=None, n_tasks=500, verbose
 
 @http_request_decorator(endpoint="task/get_details", method="get", json_out=True)
 def getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose=False):
+    """Build the request payload for task/get_details; see getJediTaskDetails for the public API"""
     return {"task_id": taskDict["jediTaskID"], "include_parameters": fullFlag, "include_status": withTaskInfo}
 
 
 def getJediTaskDetails(taskDict, fullFlag, withTaskInfo, verbose=False):
+    """Get detailed info of a task, merged into the given task dictionary
+
+    args:
+       taskDict: a dict containing at least "jediTaskID"; updated in place with the task details
+       fullFlag: True to include task parameters
+       withTaskInfo: True to include task status info
+       verbose: True to see verbose messages
+    returns:
+       status code
+          0: communication succeeded to the panda server
+          255: communication failure
+       taskDict, updated with the retrieved details, or the raw error output if failed
+    """
     status, tmp_dictionary = getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose)
     if status == 0:
         taskDict.update(tmp_dictionary)
@@ -885,6 +1113,7 @@ def getJediTaskDetails(taskDict, fullFlag, withTaskInfo, verbose=False):
 
 @http_request_decorator(endpoint="job/get_description_incl_archive", method="post", json_out=True)
 def getFullJobStatus_internal(ids, verbose=False):
+    """Build the request payload for job/get_description_incl_archive; see getFullJobStatus for the public API"""
     return {"job_ids": ids}
 
 
@@ -913,13 +1142,19 @@ def getFullJobStatus(ids, verbose=False):
 
 @http_request_decorator(endpoint="job/set_debug_mode", method="post", json_out=True)
 def setDebugMode(pandaID, modeOn, verbose):
+    """Turn debug mode on/off for a job
+
+    args:
+       pandaID: PanDA ID of the job
+       modeOn: True to turn debug mode on, False to turn it off
+       verbose: True to see verbose messages
+    returns:
+       status code
+          0: communication succeeded to the panda server
+          255: communication failure
+       server diagnostic message, or None if failed
+    """
     return {"job_id": pandaID, "mode": modeOn}
-
-
-# set tmp dir
-def setGlobalTmpDir(tmpDir):
-    global globalTmpDir
-    globalTmpDir = tmpDir
 
 
 # request EventPicking
@@ -939,6 +1174,27 @@ def requestEventPicking(
     ei_api,
     verbose=False,
 ):
+    """Request the server to build a new dataset out of specific events picked from specific files
+
+    args:
+       eventPickEvtList: path to a file listing the run/event numbers to pick
+       eventPickDataType: data type of the events to pick
+       eventPickStreamName: stream name of the events to pick
+       eventPickDS: dataset(s) to pick events from
+       eventPickAmiTag: AMI tag of the input data
+       fileList: list of extra input file names to search, in addition to fileListName
+       fileListName: path to a file with one extra input file name per line; "" to skip
+       outDS: output dataset name; only the first two dot-separated fields are kept, with a
+              generated unique suffix appended
+       lockedBy: identifies the requester/system that locked this request
+       params: extra parameters passed through to the server
+       eventPickNumSites: number of sites to spread the output across, if > 1
+       eventPickWithGUID: True to include file GUIDs in the run/event list sent to the server
+       ei_api: event-index API version/selector
+       verbose: True to see debug messages
+    returns:
+       (True, userDatasetName) on success; exits the process on failure
+    """
     tmpLog = PLogger.getPandaLogger()
 
     # list of input files
@@ -1000,6 +1256,7 @@ def requestEventPicking(
 
 @http_request_decorator(endpoint="task/submit", method="post", json_out=True, output_mode="full")
 def insertTaskParams_internal(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
+    """Build the request payload for task/submit; see insertTaskParams for the public API"""
     return {"task_parameters": taskParams, "parent_tid": parent_tid}
 
 
@@ -1235,6 +1492,7 @@ def hello(verbose=False):
 
 @http_request_decorator(endpoint="system/get_attributes", method="get", json_out=True, output_mode="extended")
 def get_cert_attributes_internal(verbose=False):
+    """Build the (empty) request payload for system/get_attributes; see get_cert_attributes for the public API"""
     return {}
 
 
@@ -1557,6 +1815,7 @@ def set_user_secret(key, value, verbose=False):
 
 @http_request_decorator(endpoint="creds/get_user_secrets", method="get", json_out=True, output_mode="extended")
 def get_user_secrets_internal(verbose=False):
+    """Build the (empty) request payload for creds/get_user_secrets; see get_user_secrets for the public API"""
     return {}
 
 
@@ -1629,6 +1888,7 @@ def reload_input(task_id, verbose=True):
 
 @http_request_decorator(endpoint="task/get_datasets_and_files", method="get", json_out=True)
 def get_files_in_datasets_internal(task_id, dataset_types, verbose=False):
+    """Build the request payload for task/get_datasets_and_files; see get_files_in_datasets for the public API"""
     return {"task_id": task_id, "dataset_types": dataset_types}
 
 
