@@ -665,7 +665,7 @@ def checkTaskParam(taskParamMap, unlimitNumOutputs):
             if len(tmpDict["dataset"]) > maxLengthCont:
                 tmpErrStr = f"The name of an output or log dataset container ({tmpDict['dataset']}) is too long ({len(tmpDict['dataset'])}). "
                 tmpErrStr += f"The length must be less than {maxLengthCont} following DDM definition. "
-                tmpErrStr += "Please note that one dataset container is creted per output/log type and "
+                tmpErrStr += "Please note that one dataset container is created per output/log type and "
                 tmpErrStr += "each name is <outDS>_<extension made from the output filename>/ or <outDS>.log/. "
             # check non-ascii characters
             if not tmpErrStr:
