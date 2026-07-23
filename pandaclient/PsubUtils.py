@@ -672,12 +672,12 @@ def checkTaskParam(taskParamMap, unlimitNumOutputs):
                 try:
                     tmpDict["value"].encode("ascii")
                 except Exception:
-                    tmpErrStr = f"Output name {tmpDict['value']} contains non-ascii charters that are forbidden since they screw up the storage"
+                    tmpErrStr = f"Output name {tmpDict['value']} contains non-ascii characters that are forbidden since they screw up the storage"
             if not tmpErrStr:
                 try:
                     tmpDict["dataset"].encode("ascii")
                 except Exception:
-                    tmpErrStr = f"Dataset name {tmpDict['dataset']} contains non-ascii charters that are forbidden since they screw up the storage"
+                    tmpErrStr = f"Dataset name {tmpDict['dataset']} contains non-ascii characters that are forbidden since they screw up the storage"
             if tmpErrStr:
                 tmpLog = PLogger.getPandaLogger()
                 tmpLog.error(tmpErrStr)
