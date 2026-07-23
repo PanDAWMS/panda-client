@@ -310,6 +310,10 @@ class _HttpClient:
                 self.auth_vo = os.environ["PANDA_AUTH_VO"]
             elif "OIDC_AUTH_VO" in os.environ:
                 self.auth_vo = os.environ["OIDC_AUTH_VO"]
+            else:
+                tmp_log = PLogger.getPandaLogger()
+                tmp_log.error("PANDA_AUTH=oidc requires PANDA_AUTH_VO or OIDC_AUTH_VO to be set")
+                sys.exit(EC_Failed)
         else:
             self.auth_mode = "voms"
 
