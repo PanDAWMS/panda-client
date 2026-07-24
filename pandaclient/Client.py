@@ -1,6 +1,27 @@
 """
 client methods
 
+Low-level client library for the PanDA server's REST API: job submission and
+control, task control, file cache upload/download, and relays to iDDS/workflow
+services. This is the layer pbook/pathena/prun sit on top of.
+
+Most public functions are thin wrappers built with the @http_request_decorator,
+which POSTs/GETs to f"{server_base_path_ssl}/{endpoint}" and unwraps the JSON
+response envelope ({"success": ..., "message": ..., "data": ...}) according to
+output_mode. Functions with unusual request/response shapes (file upload/
+download, event picking, health checks, iDDS relays, ...) call _HttpClient
+directly instead.
+
+_HttpClient (httpx-based) is the shared HTTP layer underneath both paths. It
+supports two auth modes, selected via $PANDA_AUTH:
+  - "voms" (default): client cert/key from a grid proxy (see _x509_proxy_path),
+    verified against the CA directory from _x509_ca_path.
+  - "oidc": bearer token obtained via openidc_utils' device-authorization flow,
+    or supplied directly through $PANDA_AUTH_ID_TOKEN/$OIDC_AUTH_TOKEN_FILE/
+    $OIDC_AUTH_ID_TOKEN (see get_token_string).
+
+Server locations come from $PANDA_URL/$PANDA_URL_SSL/$PANDACACHE_URL, falling
+back to the ATLAS production servers at CERN when unset.
 """
 
 import gzip
@@ -12,19 +33,18 @@ import re
 import socket
 import ssl
 import stat
-import string
 import struct
 import sys
-import tempfile
 import time
 import traceback
 from datetime import datetime
 from io import BytesIO
-from urllib.parse import unquote_plus, urlencode, urlparse
-from urllib.request import Request, urlopen
+from urllib.parse import urlencode, urlparse
+
+import httpx
 
 from . import MiscUtils, PLogger, openidc_utils
-from .MiscUtils import commands_get_output, commands_get_status_output
+from .MiscUtils import commands_get_output
 
 # configuration
 try:
@@ -66,22 +86,46 @@ if "PANDA_BEHIND_REAL_LB" not in os.environ:
     netloc = urlparse(baseURLCSRVSSL)
     tmp_host = socket.getfqdn(random.choice(socket.getaddrinfo(netloc.hostname, netloc.port))[-1][0])
     if netloc.port:
-        baseURLCSRVSSL = "{}://{}:{}{}".format(netloc.scheme, tmp_host, netloc.port, netloc.path)
+        baseURLCSRVSSL = f"{netloc.scheme}://{tmp_host}:{netloc.port}{netloc.path}"
     else:
-        baseURLCSRVSSL = "{}://{}{}".format(netloc.scheme, tmp_host, netloc.path)
+        baseURLCSRVSSL = f"{netloc.scheme}://{tmp_host}{netloc.path}"
 
     parsed = urlparse(baseURLCSRVSSL)
     cache_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
 
 
-# Decoder: check marker and convert back
 def decode_special_cases(obj):
+    """json.loads object_hook that reconstructs values the server marked as a special case
+
+    Currently handles datetime values serialized as {"__datetime__": "<isoformat>"}.
+
+    args:
+       obj: a dict decoded from a JSON object
+    returns:
+       obj, or the reconstructed value if obj carries a recognized marker
+    """
     if "__datetime__" in obj:
         return datetime.fromisoformat(obj["__datetime__"])
     return obj
 
 
-def curl_request_decorator(endpoint, method="post", via_file=False, json_out=False, output_mode="basic"):
+def http_request_decorator(endpoint, method="post", json_out=False, output_mode="basic"):
+    """Turn a function that builds a request payload into a call against a PanDA server REST endpoint
+
+    The decorated function should return the request payload dict. This decorator sends it
+    to f"{server_base_path_ssl}/{endpoint}" via _HttpClient, then unwraps the JSON response
+    envelope ({"success": ..., "message": ..., "data": ...}) according to output_mode:
+       "basic": (status, data) if success else (EC_Failed, None)
+       "extended": (status, (success, data)) on success, (status, (False, message)) on failure
+       "full": (status, the raw parsed JSON dict), regardless of success
+
+    args:
+       endpoint: REST API path, appended to server_base_path_ssl
+       method: "post" or "get"
+       json_out: True to request/parse a JSON response body
+       output_mode: "basic", "extended", or "full" (see above)
+    """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             # Extract verbose flag from kwargs, args, or function signature
@@ -101,18 +145,18 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
                 verbose = False
             data = func(*args, **kwargs)
 
-            # Instantiate curl
-            curl = _Curl()
-            curl.sslCert = _x509()
-            curl.sslKey = _x509()
-            curl.verbose = verbose
+            # Instantiate the HTTP client
+            client = _HttpClient()
+            client.ssl_certificate = _x509_proxy_path()
+            client.ssl_key = _x509_proxy_path()
+            client.verbose = verbose
 
             # Execute request
             url = f"{server_base_path_ssl}/{endpoint}"
             if method == "post":
-                status, output = curl.post(url, data, via_file=via_file, json_out=json_out)
+                status, output = client.post(url, data, json_out=json_out)
             elif method == "get":
-                status, output = curl.get(url, data, via_file=via_file, json_out=json_out, repeating_keys=True)
+                status, output = client.get(url, data, json_out=json_out, repeating_keys=True)
             else:
                 raise ValueError("Unsupported HTTP method")
 
@@ -146,136 +190,164 @@ def curl_request_decorator(endpoint, method="post", via_file=False, json_out=Fal
     return decorator
 
 
-# look for a grid proxy certificate
-def _x509():
+def _x509_proxy_path():
+    """Get the path to the user's grid proxy certificate
+
+    Prefers $X509_USER_PROXY, falling back to the default proxy location. Prints a
+    warning if neither exists and OIDC auth isn't in use (voms auth needs a proxy).
+
+    returns:
+       path to the proxy certificate, or "" if none was found
+    """
     # see X509_USER_PROXY
-    try:
-        return os.environ["X509_USER_PROXY"]
-    except Exception:
-        pass
+    x509 = os.environ.get("X509_USER_PROXY")
+    if x509:
+        return x509
+
     # see the default place
-    x509 = "/tmp/x509up_u%s" % os.getuid()
+    x509 = f"/tmp/x509up_u{os.getuid()}"
     if os.access(x509, os.R_OK):
         return x509
+
     # no valid proxy certificate
-    if "PANDA_AUTH" in os.environ and os.environ["PANDA_AUTH"] == "oidc":
+    if use_oidc():
         pass
     else:
         print("No valid grid proxy certificate found")
+
     return ""
 
 
-# look for a CA certificate directory
-def _x509_CApath():
-    if "X509_CERT_DIR" not in os.environ or os.environ["X509_CERT_DIR"] == "":
-        com = f"{_getGridSrc()} echo $X509_CERT_DIR"
-        output = commands_get_output(com)
-        output = output.split("\n")[-1]
-        if output == "":
-            output = "/etc/grid-security/certificates"
-        os.environ["X509_CERT_DIR"] = output
+def _x509_ca_path():
+    """Get the CA certificate directory, caching the result in $X509_CERT_DIR
+
+    Resolves via the grid environment setup script (see build_grid_setup_command), falling back
+    to the standard grid-security path if that doesn't yield one.
+
+    returns:
+       path to the CA certificate directory
+    """
+    if not os.environ.get("X509_CERT_DIR"):
+        com = f"{build_grid_setup_command()} echo $X509_CERT_DIR"
+        output = commands_get_output(com).split("\n")[-1]
+        os.environ["X509_CERT_DIR"] = output or "/etc/grid-security/certificates"
     return os.environ["X509_CERT_DIR"]
 
 
-# keep list of tmp files for cleanup
-globalTmpDir = ""
-
-
-# use OIDC
 def use_oidc():
+    """Whether $PANDA_AUTH selects OIDC bearer-token authentication"""
     return "PANDA_AUTH" in os.environ and os.environ["PANDA_AUTH"] == "oidc"
 
 
-# use X509 without grid middleware
 def use_x509_no_grid():
+    """Whether $PANDA_AUTH selects a plain X.509 cert without the grid middleware"""
     return "PANDA_AUTH" in os.environ and os.environ["PANDA_AUTH"] == "x509_no_grid"
 
 
-# string decode for python 2 and 3
-def str_decode(data):
-    if hasattr(data, "decode"):
-        try:
-            return data.decode()
-        except Exception:
-            return data.decode("utf-8")
-    return data
-
-
-# check if https
 def is_https(url):
+    """Whether url uses the https scheme"""
     return url.startswith("https://")
 
 
-# hide sensitive info
 def hide_sensitive_info(com):
+    """Redact a bearer token from a string, e.g. before printing verbose request info"""
     com = re.sub("Bearer [^\"']+", '***"', str(com))
     return com
 
 
-# get token string
 def get_token_string(tmp_log, verbose):
+    """Get a pre-supplied OIDC ID token, so callers can skip the interactive device-authorization flow
+
+    Checks, in order: a token string in $PANDA_AUTH_ID_TOKEN, a file path in
+    $OIDC_AUTH_TOKEN_FILE, or a token string in $OIDC_AUTH_ID_TOKEN.
+    """
     if "PANDA_AUTH_ID_TOKEN" in os.environ:
         if verbose:
             tmp_log.debug("use $PANDA_AUTH_ID_TOKEN")
         return os.environ["PANDA_AUTH_ID_TOKEN"]
+
     if "OIDC_AUTH_TOKEN_FILE" in os.environ:
         if verbose:
             tmp_log.debug("use $OIDC_AUTH_TOKEN_FILE")
         with open(os.environ["OIDC_AUTH_TOKEN_FILE"]) as f:
             return f.read()
+
     if "OIDC_AUTH_ID_TOKEN" in os.environ:
         if verbose:
             tmp_log.debug("use $OIDC_AUTH_ID_TOKEN")
         return os.environ["OIDC_AUTH_ID_TOKEN"]
+
     return None
 
 
-# curl class
-class _Curl:
-    # constructor
+class _HttpClient:
+    """HTTP client for the PanDA server's REST API, built on httpx
+
+    Supports the two auth modes described in the module docstring (voms client-cert
+    or OIDC bearer-token), retries, and a couple of PanDA-specific quirks (DNS-based
+    load spreading via randomize_ip, gzip-compressed JSON bodies). Instances are
+    cheap and stateless enough to create per call; see http_request_decorator and
+    the various module-level functions that instantiate one directly.
+    """
+
     def __init__(self):
-        # path to curl
-        self.path = 'curl --user-agent "dqcurl" '
         # verification of the host certificate
         if "PANDA_VERIFY_HOST" in os.environ and os.environ["PANDA_VERIFY_HOST"] == "off":
-            self.verifyHost = False
+            self.verify_host = False
         else:
-            self.verifyHost = True
-        # request a compressed response
-        self.compress = True
+            self.verify_host = True
+
         # SSL cert/key
-        self.sslCert = ""
-        self.sslKey = ""
+        self.ssl_certificate = ""
+        self.ssl_key = ""
+
         # auth mode
-        self.idToken = None
-        self.authVO = None
+        self.id_token = None
+        self.auth_vo = None
         if use_oidc():
-            self.authMode = "oidc"
+            self.auth_mode = "oidc"
             if "PANDA_AUTH_VO" in os.environ:
-                self.authVO = os.environ["PANDA_AUTH_VO"]
+                self.auth_vo = os.environ["PANDA_AUTH_VO"]
             elif "OIDC_AUTH_VO" in os.environ:
-                self.authVO = os.environ["OIDC_AUTH_VO"]
+                self.auth_vo = os.environ["OIDC_AUTH_VO"]
+            else:
+                tmp_log = PLogger.getPandaLogger()
+                tmp_log.error("PANDA_AUTH=oidc requires PANDA_AUTH_VO or OIDC_AUTH_VO to be set")
+                sys.exit(EC_Failed)
         else:
-            self.authMode = "voms"
+            self.auth_mode = "voms"
+
         # verbose
         self.verbose = False
 
-    # run auth flow
     def get_oidc(self, tmp_log):
+        """Build an OpenIdConnect_Utils helper pointed at this server's auth config for self.auth_vo
+
+        args:
+           tmp_log: logger passed through to OpenIdConnect_Utils
+        returns:
+           an openidc_utils.OpenIdConnect_Utils instance
+        """
         parsed = urlparse(baseURLSSL)
         if parsed.port:
-            auth_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}/auth/{self.authVO}_auth_config.json"
+            auth_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}/auth/{self.auth_vo}_auth_config.json"
         else:
-            auth_url = f"{parsed.scheme}://{parsed.hostname}/auth/{self.authVO}_auth_config.json"
+            auth_url = f"{parsed.scheme}://{parsed.hostname}/auth/{self.auth_vo}_auth_config.json"
         oidc = openidc_utils.OpenIdConnect_Utils(auth_url, log_stream=tmp_log, verbose=self.verbose)
         return oidc
 
-    # get ID token
     def get_id_token(self, force_new=False):
+        """Populate self.id_token, from a pre-supplied token or by running the device-authorization flow
+
+        args:
+           force_new: True to discard any cached token and force a fresh device-authorization flow
+        returns:
+           True on success; exits the process if the device-authorization flow fails
+        """
         tmp_log = PLogger.getPandaLogger()
         token_str = get_token_string(tmp_log, self.verbose)
         if token_str:
-            self.idToken = token_str
+            self.id_token = token_str
             return True
         oidc = self.get_oidc(tmp_log)
         if force_new:
@@ -284,11 +356,17 @@ class _Curl:
         if not s:
             tmp_log.error(o)
             sys.exit(EC_Failed)
-        self.idToken = o
+        self.id_token = o
         return True
 
-    # get token
     def get_token_info(self):
+        """Get the decoded claims of the current OIDC ID token
+
+        Uses a pre-supplied token if available, otherwise runs the device-authorization flow.
+
+        returns:
+           the decoded token claims dict, or (False, None) if the device-authorization flow fails
+        """
         tmp_log = PLogger.getPandaLogger()
         token_str = get_token_string(tmp_log, self.verbose)
         if token_str:
@@ -301,8 +379,17 @@ class _Curl:
         s, o, token_info = oidc.check_token()
         return token_info
 
-    # randomize IP
     def randomize_ip(self, url):
+        """Replace url's hostname with a randomly-picked FQDN of one of its resolved IPs
+
+        Used to spread load across backend hosts sharing one DNS name, on deployments
+        without a real load balancer in front of the server (see $PANDA_BEHIND_REAL_LB).
+
+        args:
+           url: the request URL
+        returns:
+           url unchanged if $PANDA_BEHIND_REAL_LB is set, otherwise with the hostname replaced
+        """
         # not to resolve IP when panda server is running behind real load balancer than DNS LB
         if "PANDA_BEHIND_REAL_LB" in os.environ:
             return url
@@ -318,436 +405,216 @@ class _Curl:
         host_names = [socket.getfqdn(vv) for vv in {v[-1][0] for v in socket.getaddrinfo(host, port, socket.AF_INET)}]
         return url.replace(host, random.choice(host_names))
 
-    # GET method
-    def get(self, url, data, rucio_account=False, via_file=False, n_try=1, json_out=False, repeating_keys=False):
-        use_https = is_https(url)
-        # make command
-        com = "%s --silent --get" % self.path
-        if not self.verifyHost or not use_https:
-            com += " --insecure"
-        else:
-            tmp_x509_ca_path = _x509_CApath()
-            if tmp_x509_ca_path != "":
-                com += " --capath %s" % tmp_x509_ca_path
+    def _build_ssl_context(self, use_https):
+        """Build the SSL context for host verification and (for voms auth) client-cert authentication
 
-        if self.compress:
-            com += " --compressed"
-
-        if self.authMode == "oidc":
-            self.get_id_token()
-            com += f' -H "Authorization: Bearer {self.idToken}"'
-            com += f' -H "Origin: {self.authVO}"'
-        elif use_https:
-            if not self.sslCert:
-                self.sslCert = _x509()
-            com += " --cert %s" % self.sslCert
-            com += " --cacert %s" % self.sslCert
-            if not self.sslKey:
-                self.sslKey = _x509()
-            com += " --key %s" % self.sslKey
-
-        if json_out:
-            com += ' -H "Accept: application/json"'
-
-        # max time of 10 min
-        com += " -m 600"
-
-        # add rucio account info
-        if rucio_account:
-            if "RUCIO_ACCOUNT" in os.environ:
-                data["account"] = os.environ["RUCIO_ACCOUNT"]
-            if "RUCIO_APPID" in os.environ:
-                data["appid"] = os.environ["RUCIO_APPID"]
-            data["client_version"] = "2.4.1"
-
-        # data
-        data_string = ""
-        for key in data:
-            value = data[key]
-            if repeating_keys and isinstance(value, list):
-                for element in value:
-                    data_string += 'data="%s"\n' % urlencode({key: element})
-            else:
-                data_string += 'data="%s"\n' % urlencode({key: value})
-
-        # write data to temporary config file
-        if globalTmpDir != "":
-            tmp_file_descriptor, tmp_name = tempfile.mkstemp(dir=globalTmpDir)
-        else:
-            tmp_file_descriptor, tmp_name = tempfile.mkstemp()
-        os.write(tmp_file_descriptor, data_string.encode())
-        os.close(tmp_file_descriptor)
-        tmp_name_out = f"{tmp_name}.out"
-        com += " --config %s" % tmp_name
-        if via_file:
-            com += f" -o {tmp_name_out}"
-        com += " %s" % self.randomize_ip(url)
-        # execute
-        if self.verbose:
-            print(hide_sensitive_info(com))
-            print(data_string[:-1])
-        for i_try in range(n_try):
-            s, o = commands_get_status_output(com)
-            if s == 0 or i_try + 1 == n_try:
-                break
-            time.sleep(1)
-        if o != "\x00":
-            try:
-                tmp_out = unquote_plus(o)
-                o = eval(tmp_out)
-            except Exception:
-                pass
-
-        if via_file:
-            with open(tmp_name_out, "rb") as f:
-                ret = (s, f.read())
-            os.remove(tmp_name_out)
-        else:
-            ret = (s, o)
-        # remove temporary file
-        os.remove(tmp_name)
-
-        # when specified, convert to json
-        if json_out:
-            try:
-                ret = (ret[0], json.loads(ret[1], object_hook=decode_special_cases))
-            except Exception:
-                ret = (ret[0], ret[1])
-
-        ret = self.convert_return(ret)
-
-        if self.verbose:
-            print(ret)
-        return ret
-
-    # POST method
-    def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1, json_out=False):
-        use_https = is_https(url)
-        # make command
-        com = "%s --silent" % self.path
-        if not self.verifyHost or not use_https:
-            com += " --insecure"
-        else:
-            tmp_x509_ca_path = _x509_CApath()
-            if tmp_x509_ca_path != "":
-                com += " --capath %s" % tmp_x509_ca_path
-        if self.compress:
-            com += " --compressed"
-        if self.authMode == "oidc":
-            self.get_id_token()
-            com += f' -H "Authorization: Bearer {self.idToken}"'
-            com += f' -H "Origin: {self.authVO}"'
-        elif use_https:
-            if not self.sslCert:
-                self.sslCert = _x509()
-            com += " --cert %s" % self.sslCert
-            com += " --cacert %s" % self.sslCert
-            if not self.sslKey:
-                self.sslKey = _x509()
-            com += " --key %s" % self.sslKey
-
-        if compress_body or json_out:
-            com += ' -H "Content-Type: application/json"'
-
-        if is_json or json_out:
-            com += ' -H "Accept: application/json"'
-
-        # max time of 10 min
-        com += " -m 600"
-        # add rucio account info
-        if rucio_account:
-            if "RUCIO_ACCOUNT" in os.environ:
-                data["account"] = os.environ["RUCIO_ACCOUNT"]
-            if "RUCIO_APPID" in os.environ:
-                data["appid"] = os.environ["RUCIO_APPID"]
-            data["client_version"] = "2.4.1"
-        # write data to temporary config file
-        if globalTmpDir != "":
-            tmp_file_descriptor, tmp_name = tempfile.mkstemp(dir=globalTmpDir)
-        else:
-            tmp_file_descriptor, tmp_name = tempfile.mkstemp()
-        # data
-        data_string = ""
-        if not compress_body:
-            if not json_out:
-                for key in data.keys():
-                    data_string += 'data="%s"\n' % urlencode({key: data[key]})
-                os.write(tmp_file_descriptor, data_string.encode("utf-8"))
-            else:
-                # json data
-                data_string = json.dumps(data)
-                os.write(tmp_file_descriptor, data_string.encode("utf-8"))
-        else:
-            f = os.fdopen(tmp_file_descriptor, "wb")
-            with gzip.GzipFile(fileobj=f, mode="wb") as f_gzip:
-                f_gzip.write(json.dumps(data).encode())
-            f.close()
-        try:
-            os.close(tmp_file_descriptor)
-        except Exception:
-            pass
-        tmp_name_out = f"{tmp_name}.out"
-        if not compress_body:
-            if not json_out:
-                com += " --config %s" % tmp_name
-            else:
-                com += f" --data @{tmp_name}"
-        else:
-            com += f" --data-binary @{tmp_name}"
-        if via_file:
-            com += f" -o {tmp_name_out}"
-
-        # The new API requires POST method for json
-        if json_out:
-            com += " -X POST"
-
-        com += " %s" % self.randomize_ip(url)
-        # execute
-        if self.verbose:
-            print(hide_sensitive_info(com))
-            for key in data:
-                print(f"{key}={data[key]}")
-        for i_try in range(n_try):
-            s, o = commands_get_status_output(com)
-            if s == 0 or i_try + 1 == n_try:
-                break
-            time.sleep(1)
-        if o != "\x00":
-            try:
-                if is_json or json_out:
-                    o = json.loads(o, object_hook=decode_special_cases)
-                else:
-                    tmp_out = unquote_plus(o)
-                    o = eval(tmp_out)
-            except Exception:
-                pass
-        if via_file:
-            with open(tmp_name_out, "rb") as f:
-                if not json_out:
-                    ret = (s, f.read())
-                else:
-                    ret = (s, json.loads(f.read(), object_hook=decode_special_cases))
-            os.remove(tmp_name_out)
-        else:
-            ret = (s, o)
-
-        # remove temporary file
-        os.remove(tmp_name)
-        ret = self.convert_return(ret)
-        if self.verbose:
-            print(ret)
-        return ret
-
-    # PUT method
-    def put(self, url, data, n_try=1, json_out=False):
-        use_https = is_https(url)
-        # make command
-        com = "%s --silent" % self.path
-        if not self.verifyHost or not use_https:
-            com += " --insecure"
-        else:
-            tmp_x509_ca_path = _x509_CApath()
-            if tmp_x509_ca_path != "":
-                com += " --capath %s" % tmp_x509_ca_path
-        if self.compress:
-            com += " --compressed"
-        if self.authMode == "oidc":
-            self.get_id_token()
-            com += f' -H "Authorization: Bearer {self.idToken}"'
-            com += f' -H "Origin: {self.authVO}"'
-        elif use_https:
-            if not self.sslCert:
-                self.sslCert = _x509()
-            com += " --cert %s" % self.sslCert
-            com += " --cacert %s" % self.sslCert
-            if not self.sslKey:
-                self.sslKey = _x509()
-            com += " --key %s" % self.sslKey
-
-        if json_out:
-            # we accept json response, but the body is form data
-            com += ' -H "Accept: application/json"'
-
-        # emulate PUT
-        for key in data.keys():
-            com += ' -F "{}=@{}"'.format(key, data[key])
-        com += " %s" % self.randomize_ip(url)
-        if self.verbose:
-            print(hide_sensitive_info(com))
-        # execute
-        for i_try in range(n_try):
-            ret = commands_get_status_output(com)
-            if ret[0] == 0 or i_try + 1 == n_try:
-                break
-            time.sleep(1)
-
-        if json_out:
-            try:
-                ret = (ret[0], json.loads(ret[1], object_hook=decode_special_cases))
-            except Exception:
-                ret = (ret[0], ret[1])
-
-        ret = self.convert_return(ret)
-        if self.verbose:
-            print(ret)
-
-        return ret
-
-    # convert return
-    def convert_return(self, ret):
-        code = ret[0] % 255
-        data = ret[1]
-
-        # add datas to silent errors
-        if code == 35:
-            data = "SSL connect error. The SSL handshaking failed. Check grid certificate/proxy."
-        elif code == 7:
-            data = "Failed to connect to host."
-        elif code == 55:
-            data = "Failed sending network data."
-        elif code == 56:
-            data = "Failure in receiving network data."
-
-        return code, data
-
-
-class _NativeCurl(_Curl):
-    def http_method(
-        self, url, data, header, rdata=None, compress_body=False, is_json=False, json_out=False, repeating_keys=False, method=None, file_upload=False
-    ):
-        try:
-            use_https = is_https(url)
-            url = self.randomize_ip(url)
-            if header is None:
-                header = {}
-            if self.authMode == "oidc":
-                self.get_id_token()
-                header["Authorization"] = f"Bearer {self.idToken}"
-                header["Origin"] = self.authVO
-            if not file_upload and (compress_body or json_out):
-                header["Content-Type"] = "application/json"
-
-            if is_json or json_out:
-                header["Accept"] = "application/json"
-
-            if rdata is None:
-                if not compress_body and not json_out:
-                    rdata = urlencode(data, doseq=repeating_keys).encode()
-                elif compress_body:
-                    rdata_out = BytesIO()
-                    with gzip.GzipFile(fileobj=rdata_out, mode="w") as f_gzip:
-                        f_gzip.write(json.dumps(data).encode())
-                    rdata = rdata_out.getvalue()
-                else:
-                    rdata = json.dumps(data).encode("utf-8")
-
-            req = Request(url, rdata, headers=header, method=method)
+        args:
+           use_https: whether the request URL uses https; non-https requests need no SSL context
+        returns:
+           False for a plain http request, otherwise an ssl.SSLContext configured per self.verify_host
+           and self.auth_mode
+        """
+        if not use_https:
+            return False
+        if self.auth_mode != "oidc":
+            if not self.ssl_certificate:
+                self.ssl_certificate = _x509_proxy_path()
+            if not self.ssl_key:
+                self.ssl_key = _x509_proxy_path()
+        if not self.verify_host:
             context = ssl._create_unverified_context()
-            if use_https and self.authMode != "oidc":
-                if not self.sslCert:
-                    self.sslCert = _x509()
-                if not self.sslKey:
-                    self.sslKey = _x509()
-                context.load_cert_chain(certfile=self.sslCert, keyfile=self.sslKey)
-            if self.verbose:
-                print(f"url = {url}")
-                print(f"header = {hide_sensitive_info(header)}")
-                print(f"data = {str(data)}")
-            conn = urlopen(req, context=context)
-            code = conn.getcode()
-            if code == 200:
-                code = 0
-            text = conn.read()
+        else:
+            context = ssl.create_default_context(capath=_x509_ca_path() or None)
+            if self.auth_mode != "oidc":
+                # the grid proxy is typically self-issued, so it is also trusted as a CA
+                context.load_verify_locations(cafile=self.ssl_certificate)
+        if self.auth_mode != "oidc":
+            context.load_cert_chain(certfile=self.ssl_certificate, keyfile=self.ssl_key)
+        return context
 
+    def _auth_headers(self):
+        """Build the Authorization/Origin headers for OIDC auth, refreshing self.id_token as needed
+
+        returns:
+           a headers dict; empty for voms auth, since that authenticates via client cert instead
+        """
+        headers = {}
+        if self.auth_mode == "oidc":
+            self.get_id_token()
+            headers["Authorization"] = f"Bearer {self.id_token}"
+            headers["Origin"] = self.auth_vo
+        return headers
+
+    def _send(self, method, url, headers=None, content=None, files=None, verify=True):
+        """Issue one HTTP request via httpx and normalize the result to (code, content)
+
+        No exception escapes this method: network/SSL errors are caught and turned into
+        (1, str(error)) so callers can treat every response uniformly.
+
+        args:
+           method: "GET", "POST", ...
+           url: target URL
+           headers: request headers
+           content: raw request body bytes, for POST
+           files: multipart files dict, for the file-upload PUT path
+           verify: SSL verification, as returned by _build_ssl_context
+        returns:
+           (code, content) where code is 0 on HTTP 200, the raw HTTP status code otherwise,
+           or 1 on a network/SSL-level failure (content is the error message string in that case)
+        """
+        try:
             if self.verbose:
-                print(code, text)
-            return code, text
+                print(f"{method} {url}")
+                print(f"headers = {hide_sensitive_info(headers)}")
+            with httpx.Client(verify=verify, timeout=600) as client:
+                response = client.request(method, url, headers=headers, content=content, files=files)
+            ret = (0 if response.status_code == 200 else response.status_code, response.content)
         except Exception as e:
             if self.verbose:
                 print(traceback.format_exc())
-            error_message = str(e)
-            if hasattr(e, "fp"):
-                error_message += f". {e.fp.read().decode()}"
-            return 1, error_message
+            ret = (1, str(e))
+        if self.verbose:
+            print(ret)
+        return ret
 
-    # GET method
-    def get(self, url, data, rucio_account=False, via_file=False, output_name=None, n_try=1, json_out=False, repeating_keys=False):
+    def get(self, url, data, n_try=1, json_out=False, repeating_keys=False, output_name=None):
+        """Issue a GET request, with data sent as query-string parameters
+
+        args:
+           url: target URL
+           data: dict of query parameters
+           n_try: number of attempts; retries on any code other than 0/403/404
+           json_out: True to request and parse a JSON response body
+           repeating_keys: True to encode list-valued entries in data as repeated keys
+           output_name: if set, write the response body to this file instead of returning it
+        returns:
+           (code, content): content is the parsed JSON body if json_out, True if output_name
+           was used, or the raw response bytes otherwise
+        """
+        use_https = is_https(url)
+        url = self.randomize_ip(url)
         if data:
             url = f"{url}?{urlencode(data, doseq=repeating_keys)}"
-
-        method = None
+        verify = self._build_ssl_context(use_https)
+        headers = self._auth_headers()
         if json_out:
-            method = "GET"
+            headers["Content-Type"] = "application/json"
+            headers["Accept"] = "application/json"
 
         for i_try in range(n_try):
-            code, text = self.http_method(url, {}, {}, is_json=json_out, json_out=json_out, repeating_keys=False, method=method)
-            if code in [0, 403, 404] or i_try + 1 == n_try:
+            code, content = self._send("GET", url, headers=headers, verify=verify)
+            if code in (0, 403, 404) or i_try + 1 == n_try:
                 break
             time.sleep(1)
 
         if json_out and code == 0:
-            text = json.loads(text, object_hook=decode_special_cases)
+            content = json.loads(content, object_hook=decode_special_cases)
 
         if code == 0 and output_name:
             with open(output_name, "wb") as f:
-                f.write(text)
-            text = True
-        return code, text
+                f.write(content)
+            content = True
 
-    # POST method
-    def post(self, url, data, rucio_account=False, is_json=False, via_file=False, compress_body=False, n_try=1, json_out=False):
-        method = None
-        if json_out:
-            method = "POST"
+        return code, content
+
+    def post(self, url, data, is_json=False, compress_body=False, n_try=1, json_out=False):
+        """Issue a POST request, with data sent as the request body
+
+        args:
+           url: target URL
+           data: dict of form fields, sent url-encoded (or JSON if json_out/compress_body)
+           is_json: True to request a JSON response body (without changing the request body encoding)
+           compress_body: True to gzip-compress the JSON-encoded body
+           n_try: number of attempts; retries on any code other than 0/403/404
+           json_out: True to JSON-encode the request body and request/parse a JSON response
+        returns:
+           (code, content): content is the parsed JSON body if is_json/json_out, otherwise the raw
+           response bytes
+        """
+        use_https = is_https(url)
+        url = self.randomize_ip(url)
+        verify = self._build_ssl_context(use_https)
+        headers = self._auth_headers()
+        if compress_body or json_out:
+            headers["Content-Type"] = "application/json"
+        if is_json or json_out:
+            headers["Accept"] = "application/json"
+
+        if compress_body:
+            body_out = BytesIO()
+            with gzip.GzipFile(fileobj=body_out, mode="w") as f_gzip:
+                f_gzip.write(json.dumps(data).encode())
+            body = body_out.getvalue()
+        elif json_out:
+            body = json.dumps(data).encode("utf-8")
+        else:
+            body = urlencode(data).encode()
 
         for i_try in range(n_try):
-            code, text = self.http_method(url, data, {}, compress_body=compress_body, is_json=is_json, json_out=json_out, method=method)
-            if code in [0, 403, 404] or i_try + 1 == n_try:
+            code, content = self._send("POST", url, headers=headers, content=body, verify=verify)
+            if code in (0, 403, 404) or i_try + 1 == n_try:
                 break
             time.sleep(1)
 
         if code == 0 and (is_json or json_out):
-            text = json.loads(text, object_hook=decode_special_cases)
+            content = json.loads(content, object_hook=decode_special_cases)
 
-        return code, text
+        return code, content
 
-    # PUT method
     def put(self, url, data, n_try=1, json_out=False):
-        boundary = "".join(random.choice(string.ascii_letters) for ii in range(30 + 1))
-        body = b""
-        for k in data:
-            lines = [
-                "--" + boundary,
-                'Content-Disposition: form-data; name="{}"; filename="{}"'.format(k, data[k]),
-                "Content-Type: application/octet-stream",
-                "",
-            ]
-            body += "\r\n".join(lines).encode()
-            body += b"\r\n"
-            body += open(data[k], "rb").read()
-            body += b"\r\n"
-        lines = ["--%s--" % boundary, ""]
-        body += "\r\n".join(lines).encode()
-        headers = {"content-type": "multipart/form-data; boundary=" + boundary, "content-length": str(len(body))}
+        """Upload one or more files as a multipart/form-data request
 
+        Despite the name, this sends an HTTP POST (matching the server endpoint's
+        expectation), not a PUT.
+
+        args:
+           url: target URL
+           data: dict of {field_name: local_file_path}; each file is read and uploaded
+           n_try: number of attempts; retries on any code other than 0/403/404
+           json_out: True to request and parse a JSON response body
+        returns:
+           (code, content): content is the parsed JSON body if json_out and parsing succeeds,
+           otherwise the raw response bytes
+        """
+        use_https = is_https(url)
+        url = self.randomize_ip(url)
+        verify = self._build_ssl_context(use_https)
+        headers = self._auth_headers()
+        if json_out:
+            headers["Accept"] = "application/json"
+
+        code, content = 1, "not attempted"
         for i_try in range(n_try):
-            code, text = self.http_method(url, None, headers, body, json_out=json_out, file_upload=True)
-            if code in [0, 403, 404] or i_try + 1 == n_try:
+            open_files = {k: open(v, "rb") for k, v in data.items()}
+            try:
+                files = {k: (v, open_files[k], "application/octet-stream") for k, v in data.items()}
+                code, content = self._send("POST", url, headers=headers, files=files, verify=verify)
+            finally:
+                for fh in open_files.values():
+                    fh.close()
+            if code in (0, 403, 404) or i_try + 1 == n_try:
                 break
             time.sleep(1)
 
         if code == 0 and json_out:
-            text = json.loads(text, object_hook=decode_special_cases)
+            try:
+                content = json.loads(content, object_hook=decode_special_cases)
+            except Exception:
+                pass
 
-        return code, text
+        return code, content
 
 
-if "PANDA_USE_NATIVE_HTTPLIB" in os.environ:
-    _Curl = _NativeCurl
-
-
-# dump log
 def dump_log(func_name, exception_obj, output):
+    """Log an unparseable/unexpected server response, e.g. when JSON decoding fails
+
+    args:
+       func_name: name of the calling function, for the log message
+       exception_obj: the exception that was raised, if any (may be None)
+       output: the raw response that couldn't be handled
+    returns:
+       the formatted error string that was logged
+    """
     print(traceback.format_exc())
     print(output)
     err_str = f"{func_name} failed : {str(exception_obj)}"
@@ -762,8 +629,9 @@ public methods
 """
 
 
-@curl_request_decorator(endpoint="job/submit", method="post", json_out=True)
+@http_request_decorator(endpoint="job/submit", method="post", json_out=True)
 def submitJobs_internal(jobs, verbose=False):
+    """Build the request payload for job/submit; see submitJobs for the public API"""
     return {"jobs": jobs}
 
 
@@ -788,8 +656,9 @@ def submitJobs(jobs, verbose=False):
     return submitJobs_internal(jobs_serialized, verbose)
 
 
-@curl_request_decorator(endpoint="job/get_description", method="post", json_out=True)
+@http_request_decorator(endpoint="job/get_description", method="post", json_out=True)
 def getJobStatus_internal(ids, verbose=False):
+    """Build the request payload for job/get_description; see getJobStatus for the public API"""
     return {"job_ids": ids}
 
 
@@ -816,7 +685,7 @@ def getJobStatus(ids, verbose=False):
         return EC_Failed, None
 
 
-@curl_request_decorator(endpoint="job/kill", method="post", json_out=True)
+@http_request_decorator(endpoint="job/kill", method="post", json_out=True)
 def killJobs(ids, verbose=False):
     """Kill jobs
 
@@ -832,7 +701,7 @@ def killJobs(ids, verbose=False):
     return {"job_ids": ids}
 
 
-@curl_request_decorator(endpoint="task/kill", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/kill", method="post", json_out=True, output_mode="extended")
 def killTask(jediTaskID, verbose=False):
     """Kill a task
     args:
@@ -854,7 +723,7 @@ def killTask(jediTaskID, verbose=False):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/finish", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/finish", method="post", json_out=True, output_mode="extended")
 def finishTask(jediTaskID, soft=False, verbose=False):
     """finish a task
     args:
@@ -880,8 +749,9 @@ def finishTask(jediTaskID, soft=False, verbose=False):
     return data
 
 
-@curl_request_decorator(endpoint="task/retry", method="post", json_out=True, output_mode="full")
+@http_request_decorator(endpoint="task/retry", method="post", json_out=True, output_mode="full")
 def retryTask_internal(jediTaskID, verbose, properErrorCode, newParams):
+    """Build the request payload for task/retry; see retryTask for the public API"""
     data = {"task_id": jediTaskID}
     if newParams:
         data["new_parameters"] = newParams
@@ -913,7 +783,6 @@ def retryTask(jediTaskID, verbose=False, properErrorCode=False, newParams=None):
     if status != 0:
         return status, output
 
-    success = output["success"]
     message = output["message"]
     data = output["data"]
 
@@ -939,13 +808,18 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
     exceeded_limit = False
     error_message = ""
     if os.path.basename(file).startswith("sources.") and file_size > SOURCES_LIMIT:
-        error_message = "Exceeded size limit for sandbox files ({}B >{}B). ".format(file_size, SOURCES_LIMIT)
-        error_message += "Your working directory contains too large files which cannot be put on cache area. "
+        error_message = (
+            f"Exceeded size limit for sandbox files ({file_size}B >{SOURCES_LIMIT}B). "
+            "Your working directory contains too large files which cannot be put on cache area. "
+        )
         exceeded_limit = True
+
     elif not os.path.basename(file).startswith("sources.") and file_size > NO_BUILD_LIMIT:
-        error_message = "Exceeded size limit ({}B >{}B). ".format(file_size, NO_BUILD_LIMIT)
-        error_message += "Your working directory contains too large files which cannot be put on cache area. "
-        error_message += "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
+        error_message = (
+            f"Exceeded size limit ({file_size}B >{NO_BUILD_LIMIT}B). "
+            "Your working directory contains too large files which cannot be put on cache area. "
+            "Please submit job without --noBuild/--libDS so that your files will be uploaded to SE"
+        )
         exceeded_limit = True
 
     if exceeded_limit:
@@ -953,11 +827,11 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
         tmp_logger.error(error_message)
         return EC_Failed, "False"
 
-    # Instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # Instantiate the HTTP client
+    client = _HttpClient()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
+    client.verbose = verbose
 
     # check duplication
     if reuseSandbox:
@@ -972,9 +846,9 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
         endpoint = "file_server/validate_cache_file"
         data = {"file_size": file_size, "checksum": checksum}
         url = f"{server_base_path_ssl}/{endpoint}"
-        status, output = curl.post(url, data, via_file=True, json_out=True)
+        status, output = client.post(url, data, json_out=True)
         if status != 0:
-            return EC_Failed, "ERROR: Could not check sandbox duplication with %s" % output
+            return EC_Failed, f"ERROR: Could not check sandbox duplication with {output}"
 
         success = output.get("success", False)
         message = output.get("message", "")
@@ -992,13 +866,13 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
         global cache_base_path_ssl
         cache_base_path_ssl = server_base_path_ssl
 
-    url = "{}/{}".format(cache_base_path_ssl, "file_server/upload_cache_file")
+    url = f"{cache_base_path_ssl}/file_server/upload_cache_file"
     data = {"file": file}
-    s, o = curl.put(url, data, n_try=n_try, json_out=True)
+    s, o = client.put(url, data, n_try=n_try, json_out=True)
 
     # Status error
     if s != 0:
-        return s, "ERROR: Could not upload file with %s" % str_decode(o)
+        return s, f"ERROR: Could not upload file with {o}"
 
     # Status OK, but somehow not a json response
     if isinstance(o, str):
@@ -1015,7 +889,6 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
     return s, message
 
 
-# get file
 def getFile(filename, output_path=None, verbose=False, n_try=1):
     """Get a file
     args:
@@ -1031,58 +904,79 @@ def getFile(filename, output_path=None, verbose=False, n_try=1):
     """
     if not output_path:
         output_path = filename
-    # instantiate curl
-    curl = _NativeCurl()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.verbose = verbose
     # execute
     netloc = urlparse(baseURLCSRVSSL)
-    url = "{}://{}".format(netloc.scheme, netloc.hostname)
+    url = f"{netloc.scheme}://{netloc.hostname}"
     if netloc.port:
-        url += ":%s" % netloc.port
+        url += f":{netloc.port}"
     url = url + "/cache/" + filename
-    s, o = curl.get(url, {}, output_name=output_path, n_try=n_try)
+    s, o = client.get(url, {}, output_name=output_path, n_try=n_try)
     return s, o
 
 
-# get grid source file
-def _getGridSrc():
+def build_grid_setup_command():
+    """Build a shell prefix that sources the grid environment setup script before a command
+
+    Used to run grid commands (voms-proxy-info, echo $X509_CERT_DIR, ...) with the right
+    environment via commands_get_output/commands_get_status_output_with_env.
+
+    returns:
+       shell command prefix, e.g. "unset ...; export PATH=...; source <script> > /dev/null;"
+    """
     if "PATHENA_GRID_SETUP_SH" in os.environ:
-        gridSrc = os.environ["PATHENA_GRID_SETUP_SH"]
+        grid_setup_command = os.environ["PATHENA_GRID_SETUP_SH"]
     else:
-        gridSrc = "/dev/null"
-    gridSrc = "source %s > /dev/null;" % gridSrc
-    # some grid_env.sh doen't correct PATH/LD_LIBRARY_PATH
-    gridSrc = "unset LD_LIBRARY_PATH; unset PYTHONPATH; unset MANPATH; export PATH=/usr/local/bin:/bin:/usr/bin; %s" % gridSrc
-    return gridSrc
+        grid_setup_command = "/dev/null"
+    grid_setup_command = f"source {grid_setup_command} > /dev/null;"
+    # some grid_env.sh doesn't correct PATH/LD_LIBRARY_PATH
+    grid_setup_command = f"unset LD_LIBRARY_PATH; unset PYTHONPATH; unset MANPATH; export PATH=/usr/local/bin:/bin:/usr/bin; {grid_setup_command}"
+    return grid_setup_command
 
 
-# get DN
-def getDN(origString):
-    shortName = ""
-    distinguishedName = ""
-    for line in origString.split("/"):
-        if line.startswith("CN="):
-            distinguishedName = re.sub("^CN=", "", line)
-            distinguishedName = re.sub(r"\d+$", "", distinguishedName)
-            distinguishedName = re.sub(r"\.", "", distinguishedName)
-            distinguishedName = distinguishedName.strip()
-            if re.search(" ", distinguishedName) is not None:
+def getDN(dn):
+    """Extract a display name from an X.509 distinguished name string
+
+    Parses the "/CN=..." components of dn, preferring a full name (one
+    containing a space) over a short name, and strips trailing digits/dots that
+    grid DNs commonly append (e.g. numeric suffixes for renewed certs).
+
+    args:
+       dn: an X.509 DN, e.g. "/DC=ch/DC=cern/OU=.../CN=John Doe/CN=proxy"
+    returns:
+       the extracted name, or "" if no CN component was found
+    """
+    short_name = ""
+    name = ""
+    # a DN can carry several CN= components (e.g. ".../CN=John Doe/CN=proxy");
+    # the first one containing a space is taken as the full name and wins
+    # outright, otherwise the first space-less one is kept as a fallback
+    for component in dn.split("/"):
+        if component.startswith("CN="):
+            name = re.sub("^CN=", "", component)
+            name = re.sub(r"\d+$", "", name)
+            name = re.sub(r"\.", "", name)
+            name = name.strip()
+            if re.search(" ", name) is not None:
                 # look for full name
-                distinguishedName = distinguishedName.replace(" ", "")
+                name = name.replace(" ", "")
                 break
-            elif shortName == "":
+            elif short_name == "":
                 # keep short name
-                shortName = distinguishedName
-            distinguishedName = ""
+                short_name = name
+            # reset so a later, non-full CN doesn't override the fallback
+            name = ""
     # use short name
-    if distinguishedName == "":
-        distinguishedName = shortName
+    if name == "":
+        name = short_name
     # return
-    return distinguishedName
+    return name
 
 
-# use dev server
 def useDevServer():
+    """Point baseURL/baseURLSSL/baseURLCSRVSSL at the PanDA development server"""
     global baseURL
     baseURL = "http://aipanda007.cern.ch:25080/server/panda"
     global baseURLSSL
@@ -1091,8 +985,8 @@ def useDevServer():
     baseURLCSRVSSL = "https://aipanda007.cern.ch:25443/server/panda"
 
 
-# use INTR server
 def useIntrServer():
+    """Point baseURL/baseURLSSL/baseURLCSRVSSL/server_base_path[_ssl] at the PanDA INTR server"""
     global baseURL
     baseURL = "http://aipanda123.cern.ch:25080/server/panda"
     global baseURLSSL
@@ -1107,25 +1001,44 @@ def useIntrServer():
 
 # set cache server
 def setCacheServer(host_name):
+    """Point baseURLCSRVSSL/cache_base_path_ssl at a specific cache server host
+
+    Used e.g. by putFile when the server reports that a reusable sandbox already
+    exists on a specific cache server.
+
+    args:
+       host_name: hostname of the cache server to use
+    """
     global baseURLCSRVSSL
     global cache_base_path_ssl
 
-    netloc = urlparse(baseURLCSRVSSL)
-    if netloc.port:
-        baseURLCSRVSSL = "{}://{}:{}{}".format(netloc.scheme, host_name, netloc.port, netloc.path)
-    else:
-        baseURLCSRVSSL = "{}://{}{}".format(netloc.scheme, host_name, netloc.path)
+    parsed_url = urlparse(baseURLCSRVSSL)
+    network_location = f"{host_name}:{parsed_url.port}" if parsed_url.port else host_name
 
-    parsed = urlparse(baseURLCSRVSSL)
-    cache_base_path_ssl = f"{parsed.scheme}://{parsed.netloc}/api/v1"
+    baseURLCSRVSSL = f"{parsed_url.scheme}://{network_location}{parsed_url.path}"
+    cache_base_path_ssl = f"{parsed_url.scheme}://{network_location}/api/v1"
 
 
-@curl_request_decorator(endpoint="task/get_tasks_modified_since", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_tasks_modified_since", method="get", json_out=True)
 def getJobIDsJediTasksInTimeRange(timeRange, dn=None, minTaskID=None, verbose=False, task_type="user"):
+    """Get task/job IDs modified since a given time
+
+    args:
+       timeRange: lower bound on modificationTime, in the format '%Y-%m-%d %H:%M:%S'
+       dn: restrict to tasks owned by this DN; None for the caller's own tasks
+       minTaskID: only return tasks with jediTaskID greater than this value
+       verbose: True to see verbose messages
+       task_type: prodSourceLabel to filter on, e.g. "user"
+    returns:
+       status code
+          0: communication succeeded to the panda server
+          255: communication failure
+       a dictionary of {jediTaskID: [PandaID, ...], ...}, or None if failed
+    """
     return {"since": timeRange, "dn": dn, "full": True, "min_task_id": minTaskID, "prod_source_label": task_type}
 
 
-@curl_request_decorator(endpoint="task/get_tasks_detailed_info_since", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_tasks_detailed_info_since", method="get", json_out=True)
 def get_tasks_detailed_info_since(since=None, filters=None, n_tasks=500, verbose=False):
     """Get detailed info of tasks owned by the user from the PanDA server.
 
@@ -1154,12 +1067,26 @@ def get_tasks_detailed_info_since(since=None, filters=None, n_tasks=500, verbose
     return data
 
 
-@curl_request_decorator(endpoint="task/get_details", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_details", method="get", json_out=True)
 def getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose=False):
+    """Build the request payload for task/get_details; see getJediTaskDetails for the public API"""
     return {"task_id": taskDict["jediTaskID"], "include_parameters": fullFlag, "include_status": withTaskInfo}
 
 
 def getJediTaskDetails(taskDict, fullFlag, withTaskInfo, verbose=False):
+    """Get detailed info of a task, merged into the given task dictionary
+
+    args:
+       taskDict: a dict containing at least "jediTaskID"; updated in place with the task details
+       fullFlag: True to include task parameters
+       withTaskInfo: True to include task status info
+       verbose: True to see verbose messages
+    returns:
+       status code
+          0: communication succeeded to the panda server
+          255: communication failure
+       taskDict, updated with the retrieved details, or the raw error output if failed
+    """
     status, tmp_dictionary = getJediTaskDetails_internal(taskDict, fullFlag, withTaskInfo, verbose)
     if status == 0:
         taskDict.update(tmp_dictionary)
@@ -1168,8 +1095,9 @@ def getJediTaskDetails(taskDict, fullFlag, withTaskInfo, verbose=False):
     return status, tmp_dictionary
 
 
-@curl_request_decorator(endpoint="job/get_description_incl_archive", method="post", json_out=True)
+@http_request_decorator(endpoint="job/get_description_incl_archive", method="post", json_out=True)
 def getFullJobStatus_internal(ids, verbose=False):
+    """Build the request payload for job/get_description_incl_archive; see getFullJobStatus for the public API"""
     return {"job_ids": ids}
 
 
@@ -1196,18 +1124,23 @@ def getFullJobStatus(ids, verbose=False):
         return EC_Failed, None
 
 
-@curl_request_decorator(endpoint="job/set_debug_mode", method="post", json_out=True)
+@http_request_decorator(endpoint="job/set_debug_mode", method="post", json_out=True)
 def setDebugMode(pandaID, modeOn, verbose):
+    """Turn debug mode on/off for a job
+
+    args:
+       pandaID: PanDA ID of the job
+       modeOn: True to turn debug mode on, False to turn it off
+       verbose: True to see verbose messages
+    returns:
+       status code
+          0: communication succeeded to the panda server
+          255: communication failure
+       server diagnostic message, or None if failed
+    """
     return {"job_id": pandaID, "mode": modeOn}
 
 
-# set tmp dir
-def setGlobalTmpDir(tmpDir):
-    global globalTmpDir
-    globalTmpDir = tmpDir
-
-
-# request EventPicking
 def requestEventPicking(
     eventPickEvtList,
     eventPickDataType,
@@ -1224,31 +1157,53 @@ def requestEventPicking(
     ei_api,
     verbose=False,
 ):
+    """Request the server to build a new dataset out of specific events picked from specific files
+
+    args:
+       eventPickEvtList: path to a file listing the run/event numbers to pick
+       eventPickDataType: data type of the events to pick
+       eventPickStreamName: stream name of the events to pick
+       eventPickDS: dataset(s) to pick events from
+       eventPickAmiTag: AMI tag of the input data
+       fileList: list of extra input file names to search, in addition to fileListName
+       fileListName: path to a file with one extra input file name per line; "" to skip
+       outDS: output dataset name; only the first two dot-separated fields are kept, with a
+              generated unique suffix appended
+       lockedBy: identifies the requester/system that locked this request
+       params: extra parameters passed through to the server
+       eventPickNumSites: number of sites to spread the output across, if > 1
+       eventPickWithGUID: True to include file GUIDs in the run/event list sent to the server
+       ei_api: event-index API version/selector
+       verbose: True to see debug messages
+    returns:
+       (True, userDatasetName) on success; exits the process on failure
+    """
     tmpLog = PLogger.getPandaLogger()
 
     # list of input files
     strInput = ""
     for tmpInput in fileList:
         if tmpInput != "":
-            strInput += "%s," % tmpInput
+            strInput += f"{tmpInput},"
     if fileListName != "":
         for tmpLine in open(fileListName):
             tmpInput = re.sub("\n", "", tmpLine)
             if tmpInput != "":
-                strInput += "%s," % tmpInput
+                strInput += f"{tmpInput},"
     strInput = strInput[:-1]
 
     # make dataset name
-    userDatasetName = "%s.%s.%s/" % tuple(outDS.split(".")[:2] + [MiscUtils.wrappedUuidGen()])
+    ds_prefix, ds_suffix = outDS.split(".")[:2]
+    userDatasetName = f"{ds_prefix}.{ds_suffix}.{MiscUtils.wrappedUuidGen()}/"
 
     # open run/event number list
     evpFile = open(eventPickEvtList)
 
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
+    client.verbose = verbose
 
     # execute
     url = baseURLSSL + "/putEventPickingRequest"
@@ -1269,7 +1224,7 @@ def requestEventPicking(
     if ei_api:
         data["ei_api"] = ei_api
     evpFile.close()
-    status, output = curl.post(url, data)
+    status, output = client.post(url, data)
 
     # failed
     if status != 0 or output is not True:
@@ -1282,8 +1237,9 @@ def requestEventPicking(
     return True, userDatasetName
 
 
-@curl_request_decorator(endpoint="task/submit", method="post", json_out=True, output_mode="full")
+@http_request_decorator(endpoint="task/submit", method="post", json_out=True, output_mode="full")
 def insertTaskParams_internal(taskParams, verbose=False, properErrorCode=False, parent_tid=None):
+    """Build the request payload for task/submit; see insertTaskParams for the public API"""
     return {"task_parameters": taskParams, "parent_tid": parent_tid}
 
 
@@ -1324,7 +1280,7 @@ def insertTaskParams(taskParams, verbose=False, properErrorCode=False, parent_ti
         return EC_Failed, f"Impossible to parse server response. Output: {output}"
 
 
-@curl_request_decorator(endpoint="task/get_job_ids", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_job_ids", method="get", json_out=True)
 def getPandaIDsWithTaskID(jediTaskID, verbose=False):
     """Get PanDA IDs with TaskID
 
@@ -1339,7 +1295,7 @@ def getPandaIDsWithTaskID(jediTaskID, verbose=False):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/reactivate", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/reactivate", method="post", json_out=True, output_mode="extended")
 def reactivateTask(jediTaskID, verbose=True):
     """Reactivate task
 
@@ -1358,7 +1314,7 @@ def reactivateTask(jediTaskID, verbose=True):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/resume", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/resume", method="post", json_out=True, output_mode="extended")
 def resumeTask(jediTaskID, verbose=True):
     """Resume task
 
@@ -1382,7 +1338,7 @@ def resumeTask(jediTaskID, verbose=True):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/pause", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/pause", method="post", json_out=True, output_mode="extended")
 def pauseTask(jediTaskID, verbose=True):
     """Pause task
 
@@ -1406,7 +1362,7 @@ def pauseTask(jediTaskID, verbose=True):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/get_status", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_status", method="get", json_out=True)
 def getTaskStatus(jediTaskID, verbose=False):
     """Get task status
 
@@ -1423,7 +1379,7 @@ def getTaskStatus(jediTaskID, verbose=False):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="task/get_task_parameters", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_task_parameters", method="get", json_out=True)
 def getTaskParamsMap(jediTaskID):
     """Get task parameters
 
@@ -1441,7 +1397,7 @@ def getTaskParamsMap(jediTaskID):
     return {"task_id": jediTaskID}
 
 
-@curl_request_decorator(endpoint="job/get_metadata_for_analysis_jobs", method="get", json_out=True)
+@http_request_decorator(endpoint="job/get_metadata_for_analysis_jobs", method="get", json_out=True)
 def getUserJobMetadata(task_id, verbose=False):
     """Get metadata of all jobs in a task
     args:
@@ -1456,7 +1412,7 @@ def getUserJobMetadata(task_id, verbose=False):
     return {"task_id": task_id}
 
 
-@curl_request_decorator(endpoint="task/get_job_descriptions", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_job_descriptions", method="get", json_out=True)
 def get_job_descriptions(task_id, unsuccessful_only=False, verbose=False):
     """Get job descriptions for a task.
 
@@ -1473,7 +1429,6 @@ def get_job_descriptions(task_id, unsuccessful_only=False, verbose=False):
     return {"task_id": task_id, "unsuccessful_only": unsuccessful_only}
 
 
-# hello
 def hello(verbose=False):
     """Health check with the PanDA server
     args:
@@ -1485,27 +1440,26 @@ def hello(verbose=False):
        diagnostic message
     """
     tmp_log = PLogger.getPandaLogger()
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
+    client.verbose = verbose
     # execute
     url = server_base_path_ssl + "/system/is_alive"
     try:
-        status, response = curl.get(url, {}, json_out=True)
+        status, response = client.get(url, {}, json_out=True)
 
         # Communication issue with PanDA server
         if status != 0:
-            tmp_message = "Communication issue. " + response
+            tmp_message = f"Communication issue: {response}"
             tmp_log.error(tmp_message)
             return EC_Failed, tmp_message
 
-        response = str_decode(response)
         success = response.get("success", False)
         message = response.get("message", "")
         if not success:
-            tmp_message = "Problem with is_alive. " + message
+            tmp_message = f"Problem with is_alive: {message}"
             tmp_log.error(tmp_message)
             return EC_Failed, tmp_message
 
@@ -1513,13 +1467,14 @@ def hello(verbose=False):
         return 0, message
 
     except Exception as e:
-        tmp_message = f"Exception. {str(e)}"
+        tmp_message = f"Exception. {e}"
         tmp_log.error(tmp_message)
         return EC_Failed, tmp_message
 
 
-@curl_request_decorator(endpoint="system/get_attributes", method="get", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="system/get_attributes", method="get", json_out=True, output_mode="extended")
 def get_cert_attributes_internal(verbose=False):
+    """Build the (empty) request payload for system/get_attributes; see get_cert_attributes for the public API"""
     return {}
 
 
@@ -1560,8 +1515,8 @@ def get_user_name_from_token():
     returns:
        a tuple of username, groups, and preferred username
     """
-    curl = _Curl()
-    token_info = curl.get_token_info()
+    client = _HttpClient()
+    token_info = client.get_token_info()
     try:
         name = " ".join([t[:1].upper() + t[1:].lower() for t in str(token_info["name"]).split()])
         groups = token_info.get("groups", None)
@@ -1571,7 +1526,6 @@ def get_user_name_from_token():
         return None, None, None
 
 
-# get new token
 def get_new_token(verbose=False):
     """Get new ID token
 
@@ -1582,14 +1536,13 @@ def get_new_token(verbose=False):
       a string of ID token. None if failed
 
     """
-    curl = _Curl()
-    curl.verbose = verbose
-    if curl.get_id_token(force_new=True):
-        return curl.idToken
+    client = _HttpClient()
+    client.verbose = verbose
+    if client.get_id_token(force_new=True):
+        return client.id_token
     return None
 
 
-# call idds command
 def call_idds_command(
     command_name, args=None, kwargs=None, dumper=None, verbose=False, compress=False, manager=False, loader=None, json_outputs=False, n_try=1
 ):
@@ -1613,11 +1566,11 @@ def call_idds_command(
     """
     tmp_log = PLogger.getPandaLogger()
 
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
+    client.verbose = verbose
 
     # execute
     url = baseURLSSL + "/relay_idds_command"
@@ -1638,7 +1591,7 @@ def call_idds_command(
             data["manager"] = True
         if json_outputs:
             data["json_outputs"] = True
-        status, output = curl.post(url, data, compress_body=compress, n_try=n_try)
+        status, output = client.post(url, data, compress_body=compress, n_try=n_try)
         if status != 0:
             return EC_Failed, output
         else:
@@ -1650,12 +1603,11 @@ def call_idds_command(
             except Exception:
                 return EC_Failed, output
     except Exception as e:
-        msg = f"Failed with {str(e)}"
+        msg = f"Failed with {e}"
         print(traceback.format_exc())
         return EC_Failed, msg
 
 
-# call idds user workflow command
 def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, json_outputs=False, n_try=1):
     """Call an iDDS workflow user command
     args:
@@ -1670,11 +1622,11 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
         255: communication failure
        a tuple of (True, response from iDDS), or (False, diagnostic message) if failed
     """
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
+    client.verbose = verbose
 
     # execute
     url = baseURLSSL + "/execute_idds_workflow_command"
@@ -1685,18 +1637,18 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
             data["kwargs"] = json.dumps(kwargs)
         if json_outputs:
             data["json_outputs"] = True
-        status, output = curl.post(url, data, n_try=n_try)
+        status, output = client.post(url, data, n_try=n_try)
         if status != 0:
             return EC_Failed, output
         else:
             return 0, json.loads(output)
     except Exception as e:
-        msg = f"Failed with {str(e)}"
+        msg = f"Failed with {e}"
         print(traceback.format_exc())
         return EC_Failed, msg
 
 
-@curl_request_decorator(endpoint="file_server/upload_file_recovery_request", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="file_server/upload_file_recovery_request", method="post", json_out=True, output_mode="extended")
 def send_file_recovery_request(task_id, dry_run=False, verbose=False):
     """Send a file recovery request
     args:
@@ -1712,7 +1664,6 @@ def send_file_recovery_request(task_id, dry_run=False, verbose=False):
     return {"task_id": task_id, "dry_run": dry_run}
 
 
-# send workflow request
 def send_workflow_request(params, relay_host=None, check=False, verbose=False):
     """Send a workflow request
     args:
@@ -1728,11 +1679,11 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
     """
     tmp_log = PLogger.getPandaLogger()
 
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
+    client.verbose = verbose
 
     # execute
     output = None
@@ -1747,21 +1698,20 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
             data["check"] = True
         else:
             data["sync"] = True
-        status, output = curl.post(url, data, compress_body=True, is_json=True)
+        status, output = client.post(url, data, compress_body=True, is_json=True)
         if status != 0:
             tmp_log.error(output)
             return EC_Failed, output
         else:
             return 0, output
     except Exception as e:
-        msg = f"{str(e)}."
+        msg = f"Failed with {e}."
         if output:
             msg += f' raw output="{str(output)}"'
         tmp_log.error(msg)
         return EC_Failed, msg
 
 
-# temporary method to submit PanDA native workflow
 def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
     """Temporary method to submit a PanDA native workflow
     args:
@@ -1776,11 +1726,11 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
        a tuple of (True/False and diagnostic message). True if the request was accepted
     """
     tmp_log = PLogger.getPandaLogger()
-    # instantiate curl
-    curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey = _x509()
-    curl.verbose = verbose
+    # instantiate the HTTP client
+    client = _HttpClient()
+    client.ssl_certificate = _x509_proxy_path()
+    client.ssl_key = _x509_proxy_path()
+    client.verbose = verbose
     # execute
     output = None
     # if relay_host:
@@ -1795,22 +1745,21 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
         #     data["check"] = True
         # else:
         #     data["sync"] = True
-        status, output = curl.post(url, data, compress_body=False, is_json=True)
+        status, output = client.post(url, data, compress_body=False, is_json=True)
         if status != 0:
             tmp_log.error(output)
             return EC_Failed, output
         else:
             return 0, output
     except Exception as e:
-        msg = f"{str(e)}."
+        msg = f"Failed with {e}."
         if output:
             msg += f' raw output="{str(output)}"'
         tmp_log.error(msg)
         return EC_Failed, msg
 
 
-# submit PanDA native workflow
-@curl_request_decorator(endpoint="workflow/submit_workflow_raw_request", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="workflow/submit_workflow_raw_request", method="post", json_out=True, output_mode="extended")
 def submit_workflow(params, **kwargs):
     """Submit a PanDA native workflow
     args:
@@ -1824,7 +1773,7 @@ def submit_workflow(params, **kwargs):
     return {"params": params}
 
 
-@curl_request_decorator(endpoint="creds/set_user_secrets", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="creds/set_user_secrets", method="post", json_out=True, output_mode="extended")
 def set_user_secret(key, value, verbose=False):
     """Set a user secret
     args:
@@ -1840,8 +1789,9 @@ def set_user_secret(key, value, verbose=False):
     return {"key": key, "value": value}
 
 
-@curl_request_decorator(endpoint="creds/get_user_secrets", method="get", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="creds/get_user_secrets", method="get", json_out=True, output_mode="extended")
 def get_user_secrets_internal(verbose=False):
+    """Build the (empty) request payload for creds/get_user_secrets; see get_user_secrets for the public API"""
     return {}
 
 
@@ -1869,7 +1819,7 @@ def get_user_secrets(verbose=False):
     return status, (success, data)
 
 
-@curl_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/increase_attempts", method="post", json_out=True, output_mode="extended")
 def increase_attempt_nr(task_id, increase=3, verbose=False):
     """increase attempt numbers to retry failed jobs
     args:
@@ -1891,7 +1841,7 @@ def increase_attempt_nr(task_id, increase=3, verbose=False):
     return {"task_id": task_id, "increase": increase}
 
 
-@curl_request_decorator(endpoint="task/reload_input", method="post", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/reload_input", method="post", json_out=True, output_mode="extended")
 def reload_input(task_id, verbose=True):
     """Retry task
     args:
@@ -1912,8 +1862,9 @@ def reload_input(task_id, verbose=True):
     return {"task_id": task_id}
 
 
-@curl_request_decorator(endpoint="task/get_datasets_and_files", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_datasets_and_files", method="get", json_out=True)
 def get_files_in_datasets_internal(task_id, dataset_types, verbose=False):
+    """Build the request payload for task/get_datasets_and_files; see get_files_in_datasets for the public API"""
     return {"task_id": task_id, "dataset_types": dataset_types}
 
 
@@ -1933,7 +1884,7 @@ def get_files_in_datasets(task_id, dataset_types="input,pseudo_input", verbose=F
     return get_files_in_datasets_internal(task_id, dataset_types_list)
 
 
-@curl_request_decorator(endpoint="event/get_event_range_statuses", method="get", json_out=True)
+@http_request_decorator(endpoint="event/get_event_range_statuses", method="get", json_out=True)
 def get_events_status(ids, verbose=False):
     """Get status of events
     args:
@@ -1948,7 +1899,7 @@ def get_events_status(ids, verbose=False):
     return {"job_task_ids": ids}
 
 
-@curl_request_decorator(endpoint="event/update_event_ranges", method="post", json_out=True)
+@http_request_decorator(endpoint="event/update_event_ranges", method="post", json_out=True)
 def update_events(events, verbose=False):
     """Update events
     args:
@@ -1964,7 +1915,7 @@ def update_events(events, verbose=False):
     return {"event_ranges": events}
 
 
-@curl_request_decorator(endpoint="task/get_detailed_info", method="get", json_out=True, output_mode="extended")
+@http_request_decorator(endpoint="task/get_detailed_info", method="get", json_out=True, output_mode="extended")
 def get_task_details_json(task_id, verbose=False):
     """Get detailed info of a task in JSON format
     args:
@@ -1979,7 +1930,7 @@ def get_task_details_json(task_id, verbose=False):
     return {"task_id": task_id}
 
 
-@curl_request_decorator(endpoint="task/get_parent_detailed_info", method="get", json_out=True)
+@http_request_decorator(endpoint="task/get_parent_detailed_info", method="get", json_out=True)
 def get_parent_detailed_info(task_id, verbose=False):
     """Get detailed info of the parent task for a given child task.
 
