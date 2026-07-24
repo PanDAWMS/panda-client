@@ -1351,7 +1351,7 @@ from pandaclient.MiscUtils import (
 for arg in sys.argv[1:]:
     optName = arg.split("=", 1)[0]
     if optName in removedOpts:
-        print("!!Warning!! option %s has been deprecated, pls dont use anymore\n" % optName)
+        print(f"!!Warning!! option {optName} has been deprecated, pls dont use anymore\n")
         sys.argv.remove(arg)
 
 # using parse_known_args for passing arguments with -
@@ -1398,7 +1398,7 @@ if options.loadJson is not None:
 from pandaclient import PandaToolsPkgInfo
 
 if options.version:
-    print("Version: %s" % PandaToolsPkgInfo.release_version)
+    print(f"Version: {PandaToolsPkgInfo.release_version}")
     sys.exit(0)
 
 from pandaclient import AthenaUtils, Client, PLogger, PsubUtils
@@ -1449,7 +1449,7 @@ if options.containerImage != "":
 # validate --transferType
 invalid = get_invalid_transfer_types(options.transferType)
 if invalid:
-    tmpLog.error("--transferType: invalid value(s) {}. Allowed: {}".format(", ".join(sorted(invalid)), ", ".join(sorted(VALID_TRANSFER_TYPES))))
+    tmpLog.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
     sys.exit(EC_Config)
 
 # files to be deleted
@@ -1712,22 +1712,22 @@ if options.outRunConfig != "":
 
 # check maxCpuCount
 if options.maxCpuCount > Client.maxCpuCountLimit:
-    tmpLog.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
+    tmpLog.error(f"too large maxCpuCount. Must be less than {Client.maxCpuCountLimit}")
     sys.exit(EC_Config)
 
 # create tmp dir
 if options.tmpDir == "":
-    tmpDir = "{}/{}".format(currentDir, MiscUtils.wrappedUuidGen())
+    tmpDir = f"{currentDir}/{MiscUtils.wrappedUuidGen()}"
 else:
-    tmpDir = "{}/{}".format(os.path.abspath(options.tmpDir), MiscUtils.wrappedUuidGen())
+    tmpDir = f"{os.path.abspath(options.tmpDir)}/{MiscUtils.wrappedUuidGen()}"
 os.makedirs(tmpDir)
 
 
 # exit action
 def _onExit(dir, files, del_command):
     for tmpFile in files:
-        del_command("rm -rf %s" % tmpFile)
-    del_command("rm -rf %s" % dir)
+        del_command(f"rm -rf {tmpFile}")
+    del_command(f"rm -rf {dir}")
 
 
 atexit.register(_onExit, tmpDir, delFilesOnExit, commands_get_output)
@@ -1755,7 +1755,7 @@ if not stA:
 
 workArea = retA["workArea"]
 if retA["athenaVer"]:
-    athenaVer = "Atlas-%s" % retA["athenaVer"]
+    athenaVer = f"Atlas-{retA['athenaVer']}"
 else:
     athenaVer = ""
 groupArea = retA["groupArea"]
@@ -1773,15 +1773,15 @@ options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer, cacheVer, nightVer, opti
 if not AthenaUtils.checkCmtConfig(retA["cmtConfig"], options.cmtConfig, options.noBuild):
     sys.exit(EC_CMT)
 
-tmpLog.info("using CMTCONFIG=%s" % options.cmtConfig)
+tmpLog.info(f"using CMTCONFIG={options.cmtConfig}")
 
 # get run directory
 # remove special characters
 sString = re.sub(r"[\+]", ".", workArea)
-runDir = re.sub("^%s" % sString, "", currentDir)
+runDir = re.sub(f"^{sString}", "", currentDir)
 if runDir == currentDir and not AthenaUtils.useCMake() and options.containerImage == "":
-    errMsg = "You need to run pathena in a directory under %s. " % workArea
-    errMsg += "If '%s' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup." % workArea
+    errMsg = f"You need to run pathena in a directory under {workArea}. "
+    errMsg += f"If '{workArea}' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup."
     tmpLog.error(errMsg)
     sys.exit(EC_Config)
 elif runDir == "":
@@ -1814,9 +1814,9 @@ if options.eventPickEvtList != "":
         options.inDS = epOutput
     else:
         options.inDS = "dummy"
-    tmpLog.info("requested Event Picking service to stage input as %s" % options.inDS)
+    tmpLog.info(f"requested Event Picking service to stage input as {options.inDS}")
     # make run/event list file for event picking
-    eventPickRunEvtDat = "{}/ep_{}.dat".format(currentDir, MiscUtils.wrappedUuidGen())
+    eventPickRunEvtDat = f"{currentDir}/ep_{MiscUtils.wrappedUuidGen()}.dat"
     evI = open(options.eventPickEvtList)
     evO = open(eventPickRunEvtDat, "w")
     evO.write(evI.read())
@@ -1837,11 +1837,11 @@ if options.trf:
 else:
     # get jobOs from command-line
     if options.preConfig != "":
-        jobO += "-p %s " % options.preConfig
+        jobO += f"-p {options.preConfig} "
     if options.singleLine != "":
         options.singleLine = options.singleLine.replace('"', "'")
     for arg in args:
-        jobO += " %s" % arg
+        jobO += f" {arg}"
 if jobO == "":
     tmpLog.error("no jobOptions is given\n   pathena [--inDS input] --outDS output myJobO.py")
     sys.exit(EC_Config)
@@ -1884,10 +1884,10 @@ if not options.trf:
             if runConfig.other.inColl:
                 match = re.search(r"\.root(\.\d+)*$", fileName)
                 if match is None:
-                    fileName = "%s.root" % fileName
+                    fileName = f"{fileName}.root"
             # check ship files in the current dir
             if not os.path.exists(fileName):
-                tmpLog.error("%s needs exist in the current directory when --shipInput is used" % fileName)
+                tmpLog.error(f"{fileName} needs exist in the current directory when --shipInput is used")
                 sys.exit(EC_Extractor)
             # append to extFile
             options.extFile.append(fileName)
@@ -1907,20 +1907,20 @@ if not options.trf:
             if options.addPoolFC == "":
                 options.addPoolFC = fileName
             else:
-                options.addPoolFC += ",%s" % fileName
+                options.addPoolFC += f",{fileName}"
     # set default ref name
     if not runConfig.input.collRefName:
         runConfig.input.collRefName = "Token"
-    # check dupication in extOutFile
+    # check duplication in extOutFile
     if runConfig.output.alloutputs != False:
         if options.verbose:
-            tmpLog.debug("output files : %s" % str(runConfig.output.alloutputs))
+            tmpLog.debug(f"output files : {runConfig.output.alloutputs!s}")
         for tmpExtOutFile in tuple(options.extOutFile):
             if tmpExtOutFile in runConfig.output.alloutputs:
                 options.extOutFile.remove(tmpExtOutFile)
     # add -c
     if options.singleLine:
-        jobO = '-c "%s" ' % options.singleLine + jobO
+        jobO = f'-c "{options.singleLine}" ' + jobO
 else:
     # parse parameters for trf
     # AMI tag
@@ -2035,9 +2035,9 @@ else:
         if "--multiprocess" not in jobO and "--multithreaded" not in jobO:
             tmp_msg = "Neither --multiprocess or --multithreaded is set in --trf despite "
             if options.nCore > 1:
-                tmp_msg += "--nCore=%s " % options.nCore
+                tmp_msg += f"--nCore={options.nCore} "
             else:
-                tmp_msg += "--nThreads=%s " % options.nThreads
+                tmp_msg += f"--nThreads={options.nThreads} "
             tmp_msg += "which may cause inefficient CPU usage on MCORE resources"
             tmpLog.warning(tmp_msg)
 
@@ -2070,7 +2070,7 @@ if not runConfig.input.shipFiles:
     runConfig.input.shipFiles = []
 for file in runConfig.input.shipFiles:
     if not os.path.exists(file):
-        tmpLog.error("%s needs exist in the current directory when using --shipInput" % file)
+        tmpLog.error(f"{file} needs exist in the current directory when using --shipInput")
         sys.exit(EC_Extractor)
 
 # get random number
@@ -2088,7 +2088,7 @@ if len(runConfig.other.rndmStream) != 0:
         if options.norandom:
             # enter manually
             while True:
-                randStr = input("%s : " % stream)
+                randStr = input(f"{stream} : ")
                 num = randStr.split()
                 if len(num) == 2:
                     break
@@ -2200,7 +2200,7 @@ if True:
             if re.search(r"^/.*\.py$", tmpItem) is not None:
                 # set random name to avoid overwriting
                 tmpName = tmpItem.split("/")[-1]
-                tmpName = "{}_{}".format(MiscUtils.wrappedUuidGen(), tmpName)
+                tmpName = f"{MiscUtils.wrappedUuidGen()}_{tmpName}"
                 # set
                 AthenaUtils.fullPathJobOs[tmpItem] = tmpName
 
@@ -2256,12 +2256,12 @@ if True:
         if not os.path.exists(archiveName):
             commands_get_status_output(f"tar -cf {archiveName} -T /dev/null")
         # compress
-        status, out = commands_get_status_output("gzip -f %s" % archiveName)
+        status, out = commands_get_status_output(f"gzip -f {archiveName}")
         if status != 0 or options.verbose:
             print(out)
         archiveName += ".gz"
         # check archive
-        status, out = commands_get_status_output("ls -l %s" % archiveName)
+        status, out = commands_get_status_output(f"ls -l {archiveName}")
         if status != 0:
             print(out)
             tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'")
@@ -2270,7 +2270,7 @@ if True:
         # check symlinks
         tmpLog.info("checking sandbox")
         for _ in range(5):
-            status, out = commands_get_status_output("tar tvfz %s" % archiveName)
+            status, out = commands_get_status_output(f"tar tvfz {archiveName}")
             if status == 0:
                 break
             time.sleep(5)
@@ -2288,7 +2288,7 @@ if True:
             tmpStr += "   Please ignore if you believe they are harmless"
             tmpLog.warning(tmpStr)
             for symlink in symlinks:
-                print("  %s" % symlink)
+                print(f"  {symlink}")
     elif options.tarBallViaDDM:
         # go to tmp dir
         os.chdir(tmpDir)
@@ -2299,11 +2299,11 @@ if True:
         os.chdir(tmpDir)
         # use a saved copy
         if not (options.noBuild and not options.noCompile):
-            archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
-            archiveFullName = "{}/{}".format(tmpDir, archiveName)
+            archiveName = f"sources.{MiscUtils.wrappedUuidGen()}.tar"
+            archiveFullName = f"{tmpDir}/{archiveName}"
         else:
-            archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
-            archiveFullName = "{}/{}".format(tmpDir, archiveName)
+            archiveName = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
+            archiveFullName = f"{tmpDir}/{archiveName}"
         # make copy to avoid name duplication
         shutil.copy(options.inTarBall, archiveFullName)
 
@@ -2321,7 +2321,7 @@ if True:
         elif out != "True":
             # failed
             print(out)
-            tmpLog.error("Failed with %s" % status)
+            tmpLog.error(f"Failed with {status}")
             sys.exit(EC_Post)
         # good run list
         if options.goodRunListXML != "":
@@ -2517,7 +2517,7 @@ if runConfig.other.rndmStream != []:
     pStr1 = "AtRndmGenSvc=Service('AtRndmGenSvc');AtRndmGenSvc.Seeds=["
     for stream in runConfig.other.rndmStream:
         num = runConfig.other.rndmNumbers[runConfig.other.rndmStream.index(stream)]
-        pStr1 += "'{} ${{RNDMSEED}} {}',".format(stream, num[1])
+        pStr1 += f"'{stream} ${{RNDMSEED}} {num[1]}',"
     pStr1 += "]"
     dictItem = {
         "type": "template",
@@ -2538,13 +2538,13 @@ if options.nEventsPerJob > 0 and (not options.trf):
     else:
         param2 = "EventSelector.SkipEvents=${SKIPEVENTS}"
         # @ Form a string to add to job parameters
-        pStr2 = "{};{}".format(param1, param2)
+        pStr2 = f"{param1};{param2}"
 # set pre execution parameter
 if pStr1 != "" or pStr2 != "":
     if pStr1 == "" or pStr2 == "":
         preStr = pStr1 + pStr2
     else:
-        preStr = "{};{}".format(pStr1, pStr2)
+        preStr = f"{pStr1};{pStr2}"
     taskParamMap["jobParameters"] += [
         {
             "type": "constant",
@@ -2565,7 +2565,7 @@ param = "--sourceURL ${SURL} "
 param += f"-r {runDir} "
 # addPoolFC
 if options.addPoolFC != "":
-    param += "--addPoolFC %s " % options.addPoolFC
+    param += f"--addPoolFC {options.addPoolFC} "
 # disable to skip missing files
 if options.notSkipMissing:
     param += "--notSkipMissing "
@@ -2595,7 +2595,7 @@ if options.codeTrace:
     param += "--codeTrace "
 # debug parameters
 if options.queueData != "":
-    param += "--overwriteQueuedata=%s " % options.queueData
+    param += f"--overwriteQueuedata={options.queueData} "
 # read BS
 if runConfig.input.inBS:
     param += "-b "
@@ -2607,7 +2607,7 @@ if options.shipinput:
     param += "--shipInput "
 # event picking
 if options.eventPickEvtList != "":
-    param += "--eventPickTxt=%s " % eventPickRunEvtDat.split("/")[-1]
+    param += f"--eventPickTxt={eventPickRunEvtDat.split('/')[-1]} "
 # assign
 if param != "":
     taskParamMap["jobParameters"] += [
@@ -2951,7 +2951,7 @@ if options.secondaryDSs:
         inputMap[streamName] = tmpDsName
     dictItem = {
         "type": "constant",
-        "value": '-m "${{{0}/T}}"'.format(",".join([tmpMap["streamName"] for tmpMap in options.secondaryDSs.values()])),
+        "value": f"-m \"${{{','.join([tmpMap['streamName'] for tmpMap in options.secondaryDSs.values()])}/T}}\"",
     }
     taskParamMap["jobParameters"] += [dictItem]
     taskParamMap["reuseSecOnDemand"] = True
@@ -2974,7 +2974,7 @@ outMap, tmpParamList = AthenaUtils.convertConfToOutput(
     extOutStreams=options.outputStreamNames,
 )
 taskParamMap["jobParameters"] += [
-    {"type": "constant", "value": '-o "%s" ' % outMap},
+    {"type": "constant", "value": f'-o "{outMap}" '},
 ]
 taskParamMap["jobParameters"] += tmpParamList
 
@@ -2990,7 +2990,7 @@ if not options.trf:
     if runConfig.other.G4RandomSeeds > 0:
         if options.singleLine != "":
             tmpJobO = re.sub(
-                '-c "%s" ' % options.singleLine,
+                f'-c "{options.singleLine}" ',
                 '-c "%s;from G4AtlasApps.SimFlags import SimFlags;SimFlags.SeedsG4=${RNDMSEED}" ' % options.singleLine,
                 tmpJobO,
             )
@@ -3074,7 +3074,7 @@ else:
         jobParameters += "--useCMake "
     # debug parameters
     if options.queueData != "":
-        jobParameters += "--overwriteQueuedata=%s " % options.queueData
+        jobParameters += f"--overwriteQueuedata={options.queueData} "
     # set task param
     taskParamMap["buildSpec"] = {
         "prodSourceLabel": "panda",
@@ -3153,17 +3153,17 @@ dumpList = []
 for iSubmission, ioItem in enumerate(ioList):
     if options.verbose:
         print("== parameters ==")
-        print("Site       : %s" % options.site)
-        print("Athena     : %s" % athenaVer)
+        print(f"Site       : {options.site}")
+        print(f"Athena     : {athenaVer}")
         if groupArea != "":
-            print("Group Area : %s" % groupArea)
+            print(f"Group Area : {groupArea}")
         if cacheVer != "":
-            print("ProdCache  : %s" % cacheVer[1:])
+            print(f"ProdCache  : {cacheVer[1:]}")
         if nightVer != "":
-            print("Nightly    : %s" % nightVer[1:])
-        print("cmtConfig  : %s" % AthenaUtils.getCmtConfigImg(athenaVer, cacheVer, nightVer, options.cmtConfig))
-        print("RunDir     : %s" % runDir)
-        print("jobO       : %s" % jobO.lstrip())
+            print(f"Nightly    : {nightVer[1:]}")
+        print(f"cmtConfig  : {AthenaUtils.getCmtConfigImg(athenaVer, cacheVer, nightVer, options.cmtConfig)}")
+        print(f"RunDir     : {runDir}")
+        print(f"jobO       : {jobO.lstrip()}")
 
     if len(ioList) == 1:
         newTaskParamMap = taskParamMap
@@ -3175,7 +3175,7 @@ for iSubmission, ioItem in enumerate(ioList):
     taskID = None
     # check outDS format
     if not PsubUtils.checkOutDsName(options.outDS, options.official, nickName, options.mergeOutput, options.verbose):
-        tmpLog.error("invalid output datasetname:%s" % options.outDS)
+        tmpLog.error(f"invalid output datasetname:{options.outDS}")
         sys.exit(EC_Config)
     # check task parameters
     exitCode, tmpStr = PsubUtils.checkTaskParam(newTaskParamMap, options.unlimitNumOutputs)
@@ -3187,7 +3187,7 @@ for iSubmission, ioItem in enumerate(ioList):
             tmpKeys = list(newTaskParamMap)
             tmpKeys.sort()
             for tmpKey in tmpKeys:
-                print("{} : {}".format(tmpKey, newTaskParamMap[tmpKey]))
+                print(f"{tmpKey} : {newTaskParamMap[tmpKey]}")
     if not options.noSubmit and exitCode == 0:
         tmpLog.info(f"submit {options.outDS}")
         status, tmpOut = Client.insertTaskParams(
