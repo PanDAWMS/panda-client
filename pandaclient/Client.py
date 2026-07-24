@@ -204,7 +204,7 @@ def _x509_proxy_path():
     if x509:
         return x509
 
-    # see the default place
+    # verify the default location
     x509 = f"/tmp/x509up_u{os.getuid()}"
     if os.access(x509, os.R_OK):
         return x509
