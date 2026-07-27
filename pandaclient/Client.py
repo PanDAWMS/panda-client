@@ -495,7 +495,11 @@ class _HttpClient:
         url = self.randomize_ip(url)
         if data:
             url = f"{url}?{urlencode(data, doseq=repeating_keys)}"
-        verify = self._build_ssl_context(use_https)
+        try:
+            verify = self._build_ssl_context(use_https)
+        except Exception as e:
+            return 1, str(f"Exception setting up the SSL environment with credentials: {e}")
+
         headers = self._auth_headers()
         if json_out:
             headers["Content-Type"] = "application/json"
