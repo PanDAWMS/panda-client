@@ -300,6 +300,42 @@ def get_token_string(tmp_log, verbose):
     return None
 
 
+class _UploadProgressFile:
+    """File-like wrapper that reports read progress as an upload streams off disk
+
+    Delegates reads to the wrapped file object while tracking cumulative bytes read;
+    invokes callback(percent) once for each newly crossed 10% milestone.
+    """
+
+    def __init__(self, fileobj, total_size, callback, step=10):
+        self.fileobj = fileobj
+        self.total_size = total_size
+        self.callback = callback
+        self.step = step
+        self.bytes_read = 0
+        self.last_reported = 0
+
+    def read(self, size=-1):
+        chunk = self.fileobj.read(size)
+        if chunk and self.total_size > 0:
+            self.bytes_read += len(chunk)
+            milestone = min(100, int(self.bytes_read * 100 / self.total_size))
+            milestone -= milestone % self.step
+            if milestone > self.last_reported:
+                self.last_reported = milestone
+                self.callback(milestone)
+        return chunk
+
+    def seek(self, *args, **kwargs):
+        return self.fileobj.seek(*args, **kwargs)
+
+    def tell(self):
+        return self.fileobj.tell()
+
+    def close(self):
+        return self.fileobj.close()
+
+
 class _HttpClient:
     """HTTP client for the PanDA server's REST API, built on httpx
 
@@ -591,7 +627,7 @@ class _HttpClient:
 
         return code, content
 
-    def put(self, url, data, n_try=1, json_out=False):
+    def put(self, url, data, n_try=1, json_out=False, progress_callback=None):
         """Upload one or more files as a multipart/form-data request
 
         Despite the name, this sends an HTTP POST (matching the server endpoint's
@@ -602,6 +638,8 @@ class _HttpClient:
            data: dict of {field_name: local_file_path}; each file is read and uploaded
            n_try: number of attempts; retries on any code other than 0/403/404
            json_out: True to request and parse a JSON response body
+           progress_callback: if set, called with an int percentage (0-100) as each file
+              is read off disk during the upload
         returns:
            (code, content): content is the parsed JSON body if json_out and parsing succeeds,
            otherwise the raw response bytes
@@ -622,7 +660,13 @@ class _HttpClient:
         for i_try in range(n_try):
             open_files = {k: open(v, "rb") for k, v in data.items()}
             try:
-                files = {k: (v, open_files[k], "application/octet-stream") for k, v in data.items()}
+                if progress_callback:
+                    files = {
+                        k: (v, _UploadProgressFile(open_files[k], os.stat(v)[stat.ST_SIZE], progress_callback), "application/octet-stream")
+                        for k, v in data.items()
+                    }
+                else:
+                    files = {k: (v, open_files[k], "application/octet-stream") for k, v in data.items()}
                 code, content = self._send("POST", url, headers=headers, files=files, verify=verify)
             finally:
                 for fh in open_files.values():
@@ -903,7 +947,13 @@ def putFile(file, verbose=False, useCacheSrv=False, reuseSandbox=False, n_try=1)
 
     url = f"{cache_base_path_ssl}/file_server/upload_cache_file"
     data = {"file": file}
-    s, o = client.put(url, data, n_try=n_try, json_out=True)
+
+    tmp_logger = PLogger.getPandaLogger()
+
+    def _log_upload_progress(percent):
+        tmp_logger.info(f"uploading {os.path.basename(file)}: {percent}%")
+
+    s, o = client.put(url, data, n_try=n_try, json_out=True, progress_callback=_log_upload_progress)
 
     # Status error
     if s != 0:
