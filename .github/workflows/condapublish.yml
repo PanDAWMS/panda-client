@@ -25,12 +25,12 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Check-out src repository
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           path: src
           
       # Check-out feedstock
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
         with:
           token: ${{ secrets.PAT_GITHUB }}
           repository: ${{ github.repository_owner }}/${{ github.event.repository.name }}-feedstock
