@@ -244,6 +244,26 @@ def use_x509_no_grid():
     return "PANDA_AUTH" in os.environ and os.environ["PANDA_AUTH"] == "x509_no_grid"
 
 
+def bytes_decode(data):
+    """Decode bytes for user-friendly printing
+
+    Non-decoded prints as:
+    b'<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">\n<html><head>\n<title>404 Not Found</title>\n</head><body>\n<h1>Not Found</h1>\n<p>The requested URL was not found on this server.</p>\n</body></html>\n'
+
+    Decoded prints as:
+    <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+    <html><head>
+    <title>404 Not Found</title>
+    </head><body>
+    <h1>Not Found</h1>
+    <p>The requested URL was not found on this server.</p>
+    </body></html>
+    """
+    if isinstance(data, bytes):
+        return data.decode("utf-8")
+    return data
+
+
 def is_https(url):
     """Whether url uses the https scheme"""
     return url.startswith("https://")
@@ -468,7 +488,7 @@ class _HttpClient:
                 print(f"headers = {hide_sensitive_info(headers)}")
             with httpx.Client(verify=verify, timeout=600) as client:
                 response = client.request(method, url, headers=headers, content=content, files=files)
-            ret = (0 if response.status_code == 200 else response.status_code, response.content)
+            ret = (0 if response.status_code == 200 else response.status_code, bytes_decode(response.content))
         except Exception as e:
             if self.verbose:
                 print(traceback.format_exc())
@@ -499,7 +519,7 @@ class _HttpClient:
         try:
             verify = self._build_ssl_context(use_https)
         except Exception as e:
-            return 1, str(f"Exception setting up the SSL environment with credentials: {e}")
+            return 1, str(f"Could not set up credentials for SSL environment: {e}")
 
         headers = self._auth_headers()
         if json_out:
@@ -542,7 +562,7 @@ class _HttpClient:
         try:
             verify = self._build_ssl_context(use_https)
         except Exception as e:
-            return 1, str(f"Exception setting up the SSL environment with credentials: {e}")
+            return 1, str(f"Could not set up credentials for SSL environment: {e}")
 
         headers = self._auth_headers()
         if compress_body or json_out:
@@ -592,7 +612,7 @@ class _HttpClient:
         try:
             verify = self._build_ssl_context(use_https)
         except Exception as e:
-            return 1, str(f"Exception setting up the SSL environment with credentials: {e}")
+            return 1, str(f"Could not set up credentials for SSL environment: {e}")
 
         headers = self._auth_headers()
         if json_out:
