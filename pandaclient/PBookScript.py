@@ -12,6 +12,7 @@ import readline
 import signal
 import sys
 import tempfile
+import textwrap
 from concurrent.futures import ThreadPoolExecutor
 
 from pandaclient import Client, PandaToolsPkgInfo
@@ -287,8 +288,6 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
             print("Error: Invalid argument")
             ret = None
         return ret
-
-    import textwrap
 
     _opts_list = ", ".join(_retry_allowed_opts)
     # 8-space docstring indent
