@@ -188,7 +188,7 @@ class OpenIdConnect_Utils:
                     exp_time = datetime.datetime.utcfromtimestamp(dec["exp"])
                     delta = exp_time - datetime.datetime.utcnow()
                     if self.verbose:
-                        self.log_stream.debug("token expiration time : {} UTC".format(exp_time.strftime("%Y-%m-%d %H:%M:%S")))
+                        self.log_stream.debug(f"token expiration time : {exp_time.strftime('%Y-%m-%d %H:%M:%S')} UTC")
                     # check expiration time
                     if delta < datetime.timedelta(minutes=5):
                         # return refresh token
@@ -218,12 +218,12 @@ class OpenIdConnect_Utils:
         # get auth config
         s, o = self.fetch_page(self.auth_config_url)
         if not s:
-            return False, "Failed to get Auth configuration: " + o
+            return False, f"Failed to get Auth configuration: {o}"
         auth_config = o
         # get endpoint config
         s, o = self.fetch_page(auth_config["oidc_config_url"])
         if not s:
-            return False, "Failed to get endpoint configuration: " + o
+            return False, f"Failed to get endpoint configuration: {o}"
         endpoint_config = o
         # refresh token
         if refresh_token_string is not None:
@@ -238,9 +238,9 @@ class OpenIdConnect_Utils:
         jwt_profile = auth_config.get("jwt_profile")
         s, o = self.get_device_code(endpoint_config["device_authorization_endpoint"], auth_config["client_id"], auth_config["audience"], jwt_profile)
         if not s:
-            return False, "Failed to get device code: " + o
+            return False, f"Failed to get device code: {o}"
         # get ID token
-        self.log_stream.info(("Please go to {} and sign in. " "Waiting until authentication is completed").format(o["verification_uri_complete"]))
+        self.log_stream.info(f"Please go to {o['verification_uri_complete']} and sign in. Waiting until authentication is completed")
         if "interval" in o:
             interval = o["interval"]
         else:
@@ -249,7 +249,7 @@ class OpenIdConnect_Utils:
             endpoint_config["token_endpoint"], auth_config["client_id"], auth_config["client_secret"], o["device_code"], interval, o["expires_in"]
         )
         if not s:
-            return False, "Failed to get ID token: " + o
+            return False, f"Failed to get ID token: {o}"
         self.log_stream.info("All set")
         return True, o
 

@@ -348,11 +348,11 @@ class _HttpClient:
         returns:
            an openidc_utils.OpenIdConnect_Utils instance
         """
-        parsed = urlparse(baseURLSSL)
-        if parsed.port:
-            auth_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}/auth/{self.auth_vo}_auth_config.json"
+        parsed_url = urlparse(baseURLSSL)
+        if parsed_url.port:
+            auth_url = f"{parsed_url.scheme}://{parsed_url.hostname}:{parsed_url.port}/auth/{self.auth_vo}_auth_config.json"
         else:
-            auth_url = f"{parsed.scheme}://{parsed.hostname}/auth/{self.auth_vo}_auth_config.json"
+            auth_url = f"{parsed_url.scheme}://{parsed_url.hostname}/auth/{self.auth_vo}_auth_config.json"
         oidc = openidc_utils.OpenIdConnect_Utils(auth_url, log_stream=tmp_log, verbose=self.verbose)
         return oidc
 
@@ -413,12 +413,12 @@ class _HttpClient:
         # not to resolve IP when panda server is running behind real load balancer than DNS LB
         if "PANDA_BEHIND_REAL_LB" in os.environ:
             return url
-        # parse URL
-        parsed = urlparse(url)
-        host = parsed.hostname
-        port = parsed.port
+
+        parsed_url = urlparse(url)
+        host = parsed_url.hostname
+        port = parsed_url.port
         if port is None:
-            if parsed.scheme == "http":
+            if parsed_url.scheme == "http":
                 port = 80
             else:
                 port = 443
@@ -436,11 +436,13 @@ class _HttpClient:
         """
         if not use_https:
             return False
+
         if self.auth_mode != "oidc":
             if not self.ssl_certificate:
                 self.ssl_certificate = _x509_proxy_path()
             if not self.ssl_key:
                 self.ssl_key = _x509_proxy_path()
+
         if not self.verify_host:
             context = ssl._create_unverified_context()
         else:
@@ -448,8 +450,10 @@ class _HttpClient:
             if self.auth_mode != "oidc":
                 # the grid proxy is typically self-issued, so it is also trusted as a CA
                 context.load_verify_locations(cafile=self.ssl_certificate)
+
         if self.auth_mode != "oidc":
             context.load_cert_chain(certfile=self.ssl_certificate, keyfile=self.ssl_key)
+
         return context
 
     def _auth_headers(self):

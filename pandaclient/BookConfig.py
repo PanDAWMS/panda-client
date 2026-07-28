@@ -3,7 +3,7 @@ import os
 import re
 
 sectionName = "book"
-confFile = os.path.expanduser("%s/panda.cfg" % os.environ["PANDA_CONFIG_ROOT"])
+confFile = os.path.expanduser(f"{os.environ['PANDA_CONFIG_ROOT']}/panda.cfg")
 
 
 # create config or add section when missing
@@ -30,7 +30,7 @@ if newFlag:
     parser.set(sectionName, "last_synctime", "")
     # keep old config just in case
     try:
-        os.rename(confFile, "%s.back" % confFile)
+        os.rename(confFile, f"{confFile}.back")
     except Exception:
         pass
     # write
@@ -78,9 +78,9 @@ def updateConfig(bookConf):
                 parser.set(sectionName, attr, val)
     # keep old config
     try:
-        os.rename(confFile, "%s.back" % confFile)
+        os.rename(confFile, f"{confFile}.back")
     except Exception as e:
-        print("WARNING : cannot make backup for {} with {}".format(confFile, str(e)))
+        print(f"WARNING : cannot make backup for {confFile} with {e!s}")
         return
     # update conf
     conFH = open(confFile, "w")
