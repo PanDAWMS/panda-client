@@ -3,35 +3,26 @@ Do NOT import this module in your code.
 Import PBookCore instead.
 """
 
+import argparse
 import atexit
 import code
 import os
+import pydoc
+import readline
 import signal
 import sys
 import tempfile
-
-from pandaclient.MiscUtils import commands_get_output
-
-try:
-    from concurrent.futures import ThreadPoolExecutor
-except ImportError:
-
-    def list_parallel_exec(func, array):
-        return [func(x) for x in array]
-
-else:
-
-    def list_parallel_exec(func, array):
-        with ThreadPoolExecutor(8) as thread_pool:
-            dataIterator = thread_pool.map(func, array)
-        return list(dataIterator)
-
-
-import argparse
-import pydoc
-import readline
+from concurrent.futures import ThreadPoolExecutor
 
 from pandaclient import Client, PandaToolsPkgInfo
+from pandaclient.MiscUtils import commands_get_output
+
+
+def list_parallel_exec(func, array):
+    with ThreadPoolExecutor(8) as thread_pool:
+        dataIterator = thread_pool.map(func, array)
+    return list(dataIterator)
+
 
 # readline support
 readline.parse_and_bind("tab: complete")
