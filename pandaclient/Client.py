@@ -436,11 +436,13 @@ class _HttpClient:
         """
         if not use_https:
             return False
+
         if self.auth_mode != "oidc":
             if not self.ssl_certificate:
                 self.ssl_certificate = _x509_proxy_path()
             if not self.ssl_key:
                 self.ssl_key = _x509_proxy_path()
+
         if not self.verify_host:
             context = ssl._create_unverified_context()
         else:
@@ -448,8 +450,10 @@ class _HttpClient:
             if self.auth_mode != "oidc":
                 # the grid proxy is typically self-issued, so it is also trusted as a CA
                 context.load_verify_locations(cafile=self.ssl_certificate)
+
         if self.auth_mode != "oidc":
             context.load_cert_chain(certfile=self.ssl_certificate, keyfile=self.ssl_key)
+
         return context
 
     def _auth_headers(self):
