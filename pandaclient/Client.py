@@ -348,11 +348,11 @@ class _HttpClient:
         returns:
            an openidc_utils.OpenIdConnect_Utils instance
         """
-        parsed = urlparse(baseURLSSL)
-        if parsed.port:
-            auth_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}/auth/{self.auth_vo}_auth_config.json"
+        parsed_url = urlparse(baseURLSSL)
+        if parsed_url.port:
+            auth_url = f"{parsed_url.scheme}://{parsed_url.hostname}:{parsed_url.port}/auth/{self.auth_vo}_auth_config.json"
         else:
-            auth_url = f"{parsed.scheme}://{parsed.hostname}/auth/{self.auth_vo}_auth_config.json"
+            auth_url = f"{parsed_url.scheme}://{parsed_url.hostname}/auth/{self.auth_vo}_auth_config.json"
         oidc = openidc_utils.OpenIdConnect_Utils(auth_url, log_stream=tmp_log, verbose=self.verbose)
         return oidc
 
