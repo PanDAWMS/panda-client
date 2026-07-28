@@ -413,12 +413,12 @@ class _HttpClient:
         # not to resolve IP when panda server is running behind real load balancer than DNS LB
         if "PANDA_BEHIND_REAL_LB" in os.environ:
             return url
-        # parse URL
-        parsed = urlparse(url)
-        host = parsed.hostname
-        port = parsed.port
+
+        parsed_url = urlparse(url)
+        host = parsed_url.hostname
+        port = parsed_url.port
         if port is None:
-            if parsed.scheme == "http":
+            if parsed_url.scheme == "http":
                 port = 80
             else:
                 port = 443
