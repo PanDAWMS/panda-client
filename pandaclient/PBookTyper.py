@@ -35,6 +35,7 @@ app = typer.Typer(
 
 # ─── Utilities ────────────────────────────────────────────────────────────────
 
+
 def _parallel(func, items):
     with ThreadPoolExecutor(8) as pool:
         return list(pool.map(func, items))
@@ -60,6 +61,7 @@ def _setup() -> None:
     _setup_done = True
 
     import readline
+
     readline.parse_and_bind("tab: complete")
     readline.parse_and_bind("set show-all-if-ambiguous On")
 
@@ -78,7 +80,6 @@ def _setup() -> None:
     readline.set_history_length(1024)
 
     _tmp_dir = tempfile.mkdtemp()
-    Client.setGlobalTmpDir(_tmp_dir)
 
     for path in sys.path:
         real = path or "."
@@ -101,6 +102,7 @@ def _setup() -> None:
 def _cleanup() -> None:
     if _fork_child_pid == 0 and _history_file:
         import readline
+
         readline.write_history_file(_history_file)
     if _tmp_dir:
         commands_get_output(f"rm -rf {_tmp_dir}")
@@ -108,6 +110,7 @@ def _cleanup() -> None:
 
 def _make_core(verbose: bool = False):
     from pandaclient import PBookCore
+
     return PBookCore.PBookCore(verbose=verbose)
 
 
@@ -131,9 +134,23 @@ _FUNC_KWARGS: dict[str, list[str]] = {
     "kill": [],
     "finish": ["soft"],
     "retry": [
-        "newOpts", "days", "limit", "site", "excludedSite", "includedSite",
-        "nFilesPerJob", "nMaxFilesPerJob", "nGBPerJob", "nFiles", "nEvents",
-        "loopingCheck", "memory", "avoidVP", "ignoreMissingInDS", "forceStaged", "maxCore",
+        "newOpts",
+        "days",
+        "limit",
+        "site",
+        "excludedSite",
+        "includedSite",
+        "nFilesPerJob",
+        "nMaxFilesPerJob",
+        "nGBPerJob",
+        "nFiles",
+        "nEvents",
+        "loopingCheck",
+        "memory",
+        "avoidVP",
+        "ignoreMissingInDS",
+        "forceStaged",
+        "maxCore",
     ],
     "debug": ["modeOn"],
     "get_user_job_metadata": [],
@@ -173,7 +190,6 @@ _KWARG_VALUES: dict[str, dict[str, list[str]]] = {
 }
 
 
-
 def _run_repl(ns: dict, banner: str) -> None:
     """Manual REPL using InteractiveConsole.push() so we own readline setup entirely."""
     import readline
@@ -208,6 +224,7 @@ class _PBookCompleter:
 
     def __init__(self, ns: dict) -> None:
         import rlcompleter
+
         self._base = rlcompleter.Completer(ns)
         self._matches: list[str] = []
 
@@ -218,6 +235,7 @@ class _PBookCompleter:
 
     def _compute(self, text: str) -> list[str]:
         import readline
+
         line = readline.get_line_buffer()
 
         # Value completion: last token is  kwarg=  or  kwarg='partial
@@ -247,17 +265,31 @@ class _PBookCompleter:
 
 
 _RETRY_ALLOWED_OPTS = [
-    "site", "excludedSite", "includedSite", "nFilesPerJob", "nMaxFilesPerJob",
-    "nGBPerJob", "nFiles", "nEvents", "loopingCheck", "maxNFilesPerJob",
-    "memory", "ramCount", "avoidVP", "ignoreMissingInDS", "forceStaged", "maxCore",
+    "site",
+    "excludedSite",
+    "includedSite",
+    "nFilesPerJob",
+    "nMaxFilesPerJob",
+    "nGBPerJob",
+    "nFiles",
+    "nEvents",
+    "loopingCheck",
+    "maxNFilesPerJob",
+    "memory",
+    "ramCount",
+    "avoidVP",
+    "ignoreMissingInDS",
+    "forceStaged",
+    "maxCore",
 ]
 
 
 def _build_namespace(core) -> dict:
     from inspect import signature
+
+    from rich import box
     from rich.console import Console
     from rich.table import Table
-    from rich import box
 
     _console = Console()
 
@@ -283,10 +315,8 @@ def _build_namespace(core) -> dict:
         _GROUPS = [
             ("Tasks", ["show", "showl", "kill", "finish", "retry", "debug"]),
             ("Files & input", ["get_user_job_metadata", "recover_lost_files", "reload_input"]),
-            ("Workflows", ["show_workflow", "kill_workflow", "retry_workflow",
-                           "finish_workflow", "pause_workflow", "resume_workflow"]),
-            ("Secrets", ["set_secret", "list_secrets", "delete_secret",
-                         "delete_all_secrets"]),
+            ("Workflows", ["show_workflow", "kill_workflow", "retry_workflow", "finish_workflow", "pause_workflow", "resume_workflow"]),
+            ("Secrets", ["set_secret", "list_secrets", "delete_secret", "delete_all_secrets"]),
             ("Auth", ["generate_credential"]),
         ]
         for group, names in _GROUPS:
@@ -303,27 +333,46 @@ def _build_namespace(core) -> dict:
         _console.print(table)
         _console.print("Usage: [bold]help(show)[/bold]  or  [bold]pbook show --help[/bold]\n")
 
-    def show(taskID=None, *, username=None, limit=1000, taskname=None, days=14,
-             jeditaskid=None, reqid=None, status=None, superstatus=None, format="standard"):
+    def show(taskID=None, *, username=None, limit=1000, taskname=None, days=14, jeditaskid=None, reqid=None, status=None, superstatus=None, format="standard"):
         """Print task records.
 
         taskID: jediTaskID / reqID / 'run' (active) / 'fin' (terminated) / omit for all.
         format: standard | long | json | plain
         """
-        kwargs = {k: v for k, v in dict(username=username, limit=limit, taskname=taskname,
-                  days=days, jeditaskid=jeditaskid, reqid=reqid, status=status,
-                  superstatus=superstatus, format=format).items() if v is not None}
+        kwargs = {
+            k: v
+            for k, v in dict(
+                username=username,
+                limit=limit,
+                taskname=taskname,
+                days=days,
+                jeditaskid=jeditaskid,
+                reqid=reqid,
+                status=status,
+                superstatus=superstatus,
+                format=format,
+            ).items()
+            if v is not None
+        }
         kwargs.setdefault("limit", limit)
         kwargs.setdefault("days", days)
         kwargs["format"] = format
         return core.show(taskID, **kwargs) if taskID is not None else core.show(**kwargs)
 
-    def showl(taskID=None, *, username=None, limit=1000, taskname=None, days=14,
-              jeditaskid=None, reqid=None, status=None, superstatus=None):
+    def showl(taskID=None, *, username=None, limit=1000, taskname=None, days=14, jeditaskid=None, reqid=None, status=None, superstatus=None):
         """Print task records in long format (shortcut for show(..., format='long'))."""
-        return show(taskID, username=username, limit=limit, taskname=taskname, days=days,
-                    jeditaskid=jeditaskid, reqid=reqid, status=status,
-                    superstatus=superstatus, format="long")
+        return show(
+            taskID,
+            username=username,
+            limit=limit,
+            taskname=taskname,
+            days=days,
+            jeditaskid=jeditaskid,
+            reqid=reqid,
+            status=status,
+            superstatus=superstatus,
+            format="long",
+        )
 
     def kill(taskIDs):
         """Kill tasks. taskIDs: int, list of ints, or 'all'."""
@@ -455,6 +504,7 @@ def _build_namespace(core) -> dict:
 
 # ─── Top-level callback ───────────────────────────────────────────────────────
 
+
 @app.callback(invoke_without_command=True)
 def _main(
     ctx: typer.Context,
@@ -499,6 +549,7 @@ def _main(
             core.init()
             exec(command_string, {}, ns)  # noqa: S102
             from pandaclient import PBookCore as _PBC
+
             raise typer.Exit(0 if _PBC.func_return_value else 1)
         core.init()
         _run_repl(ns, banner=f"\nStart pBook {PandaToolsPkgInfo.release_version}")
@@ -515,6 +566,7 @@ def _main(
 
 
 # ─── Subcommands ──────────────────────────────────────────────────────────────
+
 
 @app.command()
 def show(
@@ -533,8 +585,14 @@ def show(
     core = _get_core()
     core.init(sanity_check=False)
     kwargs: dict = {"limit": limit, "days": days, "format": output_format}
-    for k, v in [("username", username), ("taskname", taskname), ("jeditaskid", jeditaskid),
-                  ("reqid", reqid), ("status", status), ("superstatus", superstatus)]:
+    for k, v in [
+        ("username", username),
+        ("taskname", taskname),
+        ("jeditaskid", jeditaskid),
+        ("reqid", reqid),
+        ("status", status),
+        ("superstatus", superstatus),
+    ]:
         if v is not None:
             kwargs[k] = v
     if task_id is not None:
@@ -563,8 +621,14 @@ def showl(
     core = _get_core()
     core.init(sanity_check=False)
     kwargs: dict = {"limit": limit, "days": days, "format": "long"}
-    for k, v in [("username", username), ("taskname", taskname), ("jeditaskid", jeditaskid),
-                  ("reqid", reqid), ("status", status), ("superstatus", superstatus)]:
+    for k, v in [
+        ("username", username),
+        ("taskname", taskname),
+        ("jeditaskid", jeditaskid),
+        ("reqid", reqid),
+        ("status", status),
+        ("superstatus", superstatus),
+    ]:
         if v is not None:
             kwargs[k] = v
     if task_id is not None:
@@ -634,14 +698,24 @@ def retry(
     core = _get_core()
     core.init(sanity_check=False)
     new_opts = {
-        k: v for k, v in {
-            "site": site, "excludedSite": excluded_site, "includedSite": included_site,
-            "nFilesPerJob": n_files_per_job, "nMaxFilesPerJob": n_max_files_per_job,
-            "nGBPerJob": n_gb_per_job, "nFiles": n_files, "nEvents": n_events,
-            "loopingCheck": looping_check, "ramCount": memory, "avoidVP": avoid_vp,
-            "ignoreMissingInDS": ignore_missing_in_ds, "forceStaged": force_staged,
+        k: v
+        for k, v in {
+            "site": site,
+            "excludedSite": excluded_site,
+            "includedSite": included_site,
+            "nFilesPerJob": n_files_per_job,
+            "nMaxFilesPerJob": n_max_files_per_job,
+            "nGBPerJob": n_gb_per_job,
+            "nFiles": n_files,
+            "nEvents": n_events,
+            "loopingCheck": looping_check,
+            "ramCount": memory,
+            "avoidVP": avoid_vp,
+            "ignoreMissingInDS": ignore_missing_in_ds,
+            "forceStaged": force_staged,
             "maxCoreCount": max_core,
-        }.items() if v is not None
+        }.items()
+        if v is not None
     }
     opts = new_opts or None
     ids = _parse_ids(task_ids)
@@ -817,6 +891,7 @@ def generate_credential() -> None:
 
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     sys.argv[0] = "pbook"
