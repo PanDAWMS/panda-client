@@ -37,7 +37,7 @@ def disable_logging():
     if not rootLog:
         rootLog = logging.getLogger("")
     rootLog.disabled = True
-    # keep orignal stdout mainly for jupyter
+    # keep original stdout mainly for jupyter
     sys.__stdout__ = sys.stdout
     sys.stdout = open(os.devnull, "w")
 
