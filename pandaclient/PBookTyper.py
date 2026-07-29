@@ -257,6 +257,11 @@ class _PBookCompleter:
                 return hits
 
         # Fallback: standard name completion, stripping trailing '(' rlcompleter adds to callables
+        if not text:
+            # rlcompleter.complete() special-cases blank text by calling readline.insert_text()
+            # itself, which re-enters readline from inside this callback and confuses the active
+            # Tab press; list the namespace directly instead of delegating to it here
+            return sorted(k for k in self._base.namespace if not k.startswith("_"))
         results, i = [], 0
         while (c := self._base.complete(text, i)) is not None:
             results.append(c.rstrip("()").rstrip("("))
