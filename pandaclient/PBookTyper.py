@@ -503,7 +503,7 @@ def _build_namespace(core) -> dict:
         """Generate a new proxy or token."""
         core.generate_credential()
 
-    ns = {k: v for k, v in locals().items() if callable(v)}
+    ns = {k: v for k, v in locals().items() if callable(v) and getattr(v, "__module__", None) == __name__}
     return ns
 
 
