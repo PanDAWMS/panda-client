@@ -51,9 +51,53 @@ _ctx_state: dict = {}
 _core = None
 _core_inited: bool = False
 
+help_text = """
+$ pbook [options] # interactive mode
+$ pbook [options] command [args] [kwargs] # batch mode
+
+The same command can be executed in interactive mode:
+
+$ pbook
+>>> command(*args, **kwargs)
+
+or in batch mode:
+
+$ pbook command arg1 arg2 ... argN kwarg1=value1 kwarg2=value2 ... kwargN=valueN
+
+E.g.
+
+$ pbook
+>>> show(123, format='long')
+
+is equivalent to
+
+$ pbook show 123 format='long'
+
+If arg or value is a list in interactive mode, it is represented as a comma-separate list in batch mode. E.g.
+to kill three tasks in interactive mode:
+
+$ pbook
+>>> kill([123, 456, 789])
+
+or in batch mode:
+
+$ pbook kill 123,456,789
+
+To see the list of commands and help of each command,
+
+$ pbook
+>>> help()
+>>> help(command_name)
+
+or
+
+$ pbook help
+$ pbook help command_name
+"""
+
 app = typer.Typer(
     name="pbook",
-    help="PanDA task bookkeeper. Run without arguments for interactive mode.",
+    help=help_text,
     invoke_without_command=True,
     no_args_is_help=False,
 )
