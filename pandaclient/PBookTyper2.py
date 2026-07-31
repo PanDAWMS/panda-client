@@ -52,6 +52,8 @@ _core = None
 _core_inited: bool = False
 
 help_text = """
+PanDA task bookkeeper. Run without arguments for interactive mode.
+
 $ pbook [options] # interactive mode
 $ pbook [options] command [args] [kwargs] # batch mode
 
@@ -100,6 +102,7 @@ app = typer.Typer(
     help=help_text,
     invoke_without_command=True,
     no_args_is_help=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 # ─── Utilities ────────────────────────────────────────────────────────────────
