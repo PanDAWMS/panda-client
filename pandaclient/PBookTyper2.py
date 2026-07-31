@@ -94,7 +94,7 @@ $ pbook
 or
 
 $ pbook help
-$ pbook help command_name
+$ pbook command_name --help
 """
 
 app = typer.Typer(
