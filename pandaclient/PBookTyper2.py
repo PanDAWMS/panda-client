@@ -417,7 +417,7 @@ def help(
 
     table = Table(box=box.SIMPLE, show_header=True, header_style="bold magenta")
     table.add_column("Command", style="bold cyan", no_wrap=True)
-    table.add_column("Signature", style="dim")
+    table.add_column("Signature")
     table.add_column("Description")
 
     for group, names in _HELP_GROUPS:
