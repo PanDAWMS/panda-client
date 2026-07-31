@@ -417,8 +417,8 @@ def help(
 
     table = Table(box=box.SIMPLE, show_header=True, header_style="bold magenta")
     table.add_column("Command", style="bold cyan", no_wrap=True)
-    table.add_column("Signature")
     table.add_column("Description")
+    table.add_column("Signature")
 
     for group, names in _HELP_GROUPS:
         table.add_section()
@@ -427,8 +427,8 @@ def help(
             func = ns.get(name)
             if func is None:
                 continue
-            sig = console.highlighter(_format_signature(func))
             doc = (func.__doc__ or "").strip().splitlines()[0] if func.__doc__ else ""
+            sig = console.highlighter(_format_signature(func))
             table.add_row(f"  {name}", sig, _esc(doc))
 
     console.print(table)
