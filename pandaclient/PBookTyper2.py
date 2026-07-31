@@ -936,7 +936,65 @@ def generate_credential() -> None:
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
+# Global options that consume the following argv token as their own value, so the
+# subcommand-token scan below can skip over both.
+_GLOBAL_VALUE_OPTS = {"-c"}
+
+
+def _rewrite_legacy_kwargs(argv: list) -> list:
+    """Rewrite legacy bare `key=value` batch args into `--key=value`.
+
+    The pre-Typer pbook batch mode accepted `pbook show format=long`; Click only
+    recognizes `--format=long`. Find the subcommand, look up its real option names via
+    introspection (never a separately maintained list), and rewrite any later bare
+    `key=value` token whose key matches one of them. Anything else - already-dashed
+    flags, positional args that happen to contain "=" - passes through untouched.
+    """
+    i = 0
+    while i < len(argv):
+        tok = argv[i]
+        if tok in _GLOBAL_VALUE_OPTS:
+            i += 2
+            continue
+        if tok.startswith("-"):
+            i += 1
+            continue
+        break
+    if i >= len(argv):
+        return argv
+
+    sub_cmd = typer.main.get_command(app).commands.get(argv[i])
+    if sub_cmd is None:
+        return argv
+
+    option_flags = {}
+    flag_only = set()
+    for param in sub_cmd.params:
+        flags = [o for o in getattr(param, "opts", []) if o.startswith("--")]
+        if flags:
+            option_flags[param.name] = flags[0]
+            if getattr(param, "is_flag", False):
+                flag_only.add(param.name)
+
+    rewritten = argv[: i + 1]
+    for tok in argv[i + 1 :]:
+        key, sep, value = tok.partition("=")
+        if sep and not tok.startswith("-") and key in option_flags:
+            flag = option_flags[key]
+            if key in flag_only:
+                # Click flag-style options (e.g. --soft) take no value at all; the legacy
+                # syntax passed an explicit True/False, so translate that into presence
+                # (truthy) or absence (falsy - same as the option's own default) instead.
+                if value.strip().lower() in ("true", "1", "yes"):
+                    rewritten.append(flag)
+                continue
+            rewritten.append(f"{flag}={value}")
+        else:
+            rewritten.append(tok)
+    return rewritten
+
 
 def main() -> None:
     sys.argv[0] = "pbook"
+    sys.argv[1:] = _rewrite_legacy_kwargs(sys.argv[1:])
     app()
