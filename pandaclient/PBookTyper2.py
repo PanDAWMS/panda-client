@@ -450,7 +450,21 @@ def show(
 ) -> None:
     """Print task records.
 
-    taskID: jediTaskID / reqID / 'run' (active) / 'fin' (terminated) / omit for all.
+    The first argument (task_id) can be a jediTaskID or reqID, or 'run' (show active tasks
+    only), or 'fin' (show terminated tasks only), or can be omitted. Records are fetched
+    directly from the PanDA server, so they are always up to date. Note that days is capped
+    at 90 days unless a jediTaskID or reqID is specified, in which case tasks of any age are
+    returned. The default filter conditions are: username=(name from user voms proxy),
+    limit=1000, days=14, format='standard'.
+
+    example:
+      >>> show()
+      >>> show(123)
+      >>> show(12345678, format='long')
+      >>> show(taskname='my_task_name')
+      >>> show('run')
+      >>> show('fin', days=7, limit=100)
+      >>> show(format='json')
     """
     core = _ensure_init()
     kwargs = {
@@ -489,7 +503,16 @@ def showl(
     status: Annotated[Optional[str], typer.Option(help="Filter by task status")] = None,
     superstatus: Annotated[Optional[str], typer.Option(help="Filter by super-status")] = None,
 ) -> None:
-    """Print task records in long format (shortcut for show --format long)."""
+    """Print task records in long format (shortcut for show --format long).
+
+    See help(show) for the available filter keywords.
+
+    example:
+      >>> showl()
+      >>> showl(123)
+      >>> showl(12345678)
+      >>> showl(taskname='my_task_name')
+    """
     return show(
         task_id,
         username=username,
@@ -508,7 +531,16 @@ def showl(
 def kill(
     task_ids: Annotated[str, typer.Argument(help="Task ID, comma-separated IDs, or 'all'")],
 ) -> None:
-    """Kill tasks."""
+    """Kill tasks.
+
+    Kill all subJobs in task_ids (ID or a list of IDs, can be either jediTaskID or reqID).
+    If 'all', kill all active tasks of the user.
+
+    example:
+      >>> kill(123)
+      >>> kill([123, 345, 567])
+      >>> kill('all')
+    """
     core = _ensure_init()
     ids = _parse_ids(task_ids)
     if ids == "all":
@@ -523,7 +555,19 @@ def finish(
     task_ids: Annotated[str, typer.Argument(help="Task ID, comma-separated IDs, or 'all'")],
     soft: Annotated[bool, typer.Option("--soft", help="Wait for running jobs to finish instead of killing them")] = False,
 ) -> None:
-    """Finish tasks."""
+    """Finish tasks.
+
+    Finish all subJobs in task_ids (ID or a list of IDs, can be either jediTaskID or reqID).
+    If task_ids is 'all', finish all active tasks of the user. If soft is False (default),
+    all running jobs are killed and the task finishes immediately. If soft is True, new jobs
+    are not generated and the task finishes once all running jobs finish.
+
+    example:
+      >>> finish(123)
+      >>> finish(234, soft=True)
+      >>> finish([123, 345, 567])
+      >>> finish('all')
+    """
     core = _ensure_init()
     ids = _parse_ids(task_ids)
     if ids == "all":
@@ -555,9 +599,16 @@ def retry(
 ) -> None:
     """Retry failed/cancelled tasks.
 
-    Allowed options: site, excludedSite, includedSite, nFilesPerJob, nMaxFilesPerJob,
-    nGBPerJob, nFiles, nEvents, loopingCheck, memory, avoidVP, ignoreMissingInDS,
-    forceStaged, maxCore.
+    Retry failed/cancelled subJobs in task_ids (ID or a list of IDs, can be either jediTaskID
+    or reqID). Allowed options to overwrite task parameters for new attempts: site,
+    excludedSite, includedSite, nFilesPerJob, nMaxFilesPerJob, nGBPerJob, nFiles, nEvents,
+    loopingCheck, memory, avoidVP, ignoreMissingInDS, forceStaged, maxCore. If input files
+    were used or are being used by other jobs for the same output dataset container, those
+    files are skipped to avoid job duplication when retrying failed subjobs.
+
+    If task_ids is 'all', it retries 1000 tasks at most that have finished for the last 14
+    days. It is possible to retry more tasks by setting the days and limit options. If
+    named arguments are specified, they are applied to all retried tasks.
 
     example:
       >>> retry(123)
@@ -602,7 +653,15 @@ def debug(
     panda_id: Annotated[int, typer.Argument(help="PanDA subjob ID")],
     mode_on: Annotated[bool, typer.Argument(help="True to enable, False to disable")],
 ) -> None:
-    """Toggle debug mode for a subjob."""
+    """Toggle debug mode for a subjob.
+
+    mode_on is True/False to enable/disable the debug mode. Note that the maximum number of
+    debug subjobs is limited. If you already hit the limit you need to disable the debug mode
+    for a subjob before debugging another subjob.
+
+    example:
+      >>> debug(1234, True)
+    """
     core = _ensure_init()
     core.debug(panda_id, mode_on)
 
@@ -612,7 +671,13 @@ def get_user_job_metadata(
     task_id: Annotated[int, typer.Argument(help="Task ID")],
     output_file: Annotated[str, typer.Argument(help="Output JSON file path")],
 ) -> None:
-    """Write user metadata of successful jobs to a JSON file."""
+    """Write user metadata of successful jobs to a JSON file.
+
+    Get user metadata of successful jobs in a task and write them in a json file.
+
+    example:
+      >>> get_user_job_metadata(123, 'output.json')
+    """
     core = _ensure_init()
     core.getUserJobMetadata(task_id, output_file)
 
@@ -621,7 +686,13 @@ def get_user_job_metadata(
 def reload_input(
     task_id: Annotated[int, typer.Argument(help="Task ID")],
 ) -> None:
-    """Reload input dataset and retry the task with new contents."""
+    """Reload input dataset and retry the task with new contents.
+
+    This is useful when input dataset contents are changed after the task is submitted.
+
+    example:
+      >>> reload_input(123)
+    """
     core = _ensure_init()
     core.reload_input(task_id)
 
@@ -631,7 +702,14 @@ def recover_lost_files(
     task_id: Annotated[int, typer.Argument(help="Task ID")],
     test_mode: Annotated[bool, typer.Option("--test-mode", help="Dry-run mode")] = False,
 ) -> None:
-    """Request recovery of lost files from a task."""
+    """Request recovery of lost files from a task.
+
+    Send a request to recover lost files produced by a task. Set test_mode=True for testing.
+
+    example:
+      >>> recover_lost_files(123)
+      >>> recover_lost_files(123, test_mode=True)
+    """
     core = _ensure_init()
     core.recover_lost_files(task_id, test_mode)
 
@@ -640,7 +718,13 @@ def recover_lost_files(
 def show_workflow(
     request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
 ) -> None:
-    """Show workflow status."""
+    """Show workflow status.
+
+    Send a request to show the status of a workflow.
+
+    example:
+      >>> show_workflow(456)
+    """
     core = _ensure_init()
     _, output = core.execute_workflow_command("get_status", request_id)
     if output:
@@ -651,7 +735,13 @@ def show_workflow(
 def kill_workflow(
     request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
 ) -> None:
-    """Kill a workflow."""
+    """Kill a workflow.
+
+    Send a request to kill a workflow.
+
+    example:
+      >>> kill_workflow(456)
+    """
     core = _ensure_init()
     _, output = core.execute_workflow_command("abort", request_id)
     if output:
@@ -662,7 +752,13 @@ def kill_workflow(
 def retry_workflow(
     request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
 ) -> None:
-    """Retry a workflow."""
+    """Retry a workflow.
+
+    Send a request to retry a workflow.
+
+    example:
+      >>> retry_workflow(456)
+    """
     core = _ensure_init()
     _, output = core.execute_workflow_command("retry", request_id)
     if output:
@@ -673,7 +769,13 @@ def retry_workflow(
 def finish_workflow(
     request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
 ) -> None:
-    """Finish a workflow."""
+    """Finish a workflow.
+
+    Send a request to finish a workflow.
+
+    example:
+      >>> finish_workflow(456)
+    """
     core = _ensure_init()
     _, output = core.execute_workflow_command("finish", request_id)
     if output:
@@ -684,7 +786,13 @@ def finish_workflow(
 def pause_workflow(
     request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
 ) -> None:
-    """Pause a workflow."""
+    """Pause a workflow.
+
+    Send a request to pause a workflow.
+
+    example:
+      >>> pause_workflow(456)
+    """
     core = _ensure_init()
     _, output = core.execute_workflow_command("suspend", request_id)
     if output:
@@ -695,7 +803,13 @@ def pause_workflow(
 def resume_workflow(
     request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
 ) -> None:
-    """Resume a workflow."""
+    """Resume a workflow.
+
+    Send a request to resume a workflow.
+
+    example:
+      >>> resume_workflow(456)
+    """
     core = _ensure_init()
     _, output = core.execute_workflow_command("resume", request_id)
     if output:
@@ -708,7 +822,15 @@ def set_secret(
     value: Annotated[str, typer.Argument(help="Secret value or file path")],
     is_file: Annotated[bool, typer.Option("--is-file", help="Treat value as a file path to upload")] = False,
 ) -> None:
-    """Set a secret key-value pair."""
+    """Set a secret key-value pair.
+
+    Define a pair of secret key-value strings. The value can be a file path to upload a
+    secret file when is_file=True.
+
+    example:
+      >>> set_secret('mykey', 'myvalue')
+      >>> set_secret('mykey', '/path/to/file', is_file=True)
+    """
     core = _ensure_init()
     core.set_secret(key, value, is_file)
 
@@ -717,7 +839,11 @@ def set_secret(
 def delete_secret(
     key: Annotated[str, typer.Argument(help="Secret key to delete")],
 ) -> None:
-    """Delete a secret."""
+    """Delete a secret.
+
+    example:
+      >>> delete_secret('mykey')
+    """
     core = _ensure_init()
     core.set_secret(key, None)
 
@@ -733,7 +859,14 @@ def delete_all_secrets() -> None:
 def list_secrets(
     full: Annotated[bool, typer.Option("--full", help="Show full secret values")] = False,
 ) -> None:
-    """List secrets."""
+    """List secrets.
+
+    Value strings are truncated by default. full=True to see entire strings.
+
+    example:
+      >>> list_secrets()
+      >>> list_secrets(full=True)
+    """
     core = _ensure_init()
     core.list_secrets(full)
 
