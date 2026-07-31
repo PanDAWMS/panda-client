@@ -8,13 +8,19 @@ import atexit
 import code
 import os
 import re
+import readline
+import rlcompleter
 import signal
 import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
+from inspect import signature
 from typing import Optional
 
 import typer
+from rich import box
+from rich.console import Console
+from rich.table import Table
 
 from pandaclient import Client, PandaToolsPkgInfo
 from pandaclient.MiscUtils import commands_get_output
@@ -37,6 +43,7 @@ app = typer.Typer(
 
 
 def _parallel(func, items):
+    # Parallel execution in a thread pool of 8 threads, for example when the user wants to act on a list of task IDs
     with ThreadPoolExecutor(8) as pool:
         return list(pool.map(func, items))
 
@@ -59,8 +66,6 @@ def _setup() -> None:
     if _setup_done:
         return
     _setup_done = True
-
-    import readline
 
     readline.parse_and_bind("tab: complete")
     readline.parse_and_bind("set show-all-if-ambiguous On")
@@ -101,9 +106,8 @@ def _setup() -> None:
 
 def _cleanup() -> None:
     if _fork_child_pid == 0 and _history_file:
-        import readline
-
         readline.write_history_file(_history_file)
+
     if _tmp_dir:
         commands_get_output(f"rm -rf {_tmp_dir}")
 
@@ -121,6 +125,7 @@ def _get_core():
 
 def _catch_sig(sig, frame):
     _cleanup()
+    # Hard kill all processes in the group
     commands_get_output(f"kill -9 -- -{os.getpgrp()}")
 
 
@@ -163,9 +168,6 @@ _KWARG_VALUES: dict[str, dict[str, list[str]]] = {
     "show": {
         "format": ["standard", "long", "json", "plain"],
     },
-    "showl": {
-        "format": ["standard", "long", "json", "plain"],
-    },
     "finish": {
         "soft": ["True", "False"],
     },
@@ -192,8 +194,6 @@ _KWARG_VALUES: dict[str, dict[str, list[str]]] = {
 
 def _run_repl(ns: dict, banner: str) -> None:
     """Manual REPL using InteractiveConsole.push() so we own readline setup entirely."""
-    import readline
-
     completer = _PBookCompleter(ns)
     readline.set_completer(completer.complete)
     readline.parse_and_bind("tab: complete")
@@ -223,8 +223,6 @@ class _PBookCompleter:
     """Readline completer: kwarg names and values when inside a call, names otherwise."""
 
     def __init__(self, ns: dict) -> None:
-        import rlcompleter
-
         self._base = rlcompleter.Completer(ns)
         self._matches: list[str] = []
 
@@ -234,11 +232,13 @@ class _PBookCompleter:
         return self._matches[state] if state < len(self._matches) else None
 
     def _compute(self, text: str) -> list[str]:
-        import readline
-
         line = readline.get_line_buffer()
 
-        # Value completion: last token is  kwarg=  or  kwarg='partial
+        # Kwarg value completion(tier 1, highest priority): last token is  kwarg=  or  kwarg='partial
+        # >>> show(format='j│
+        # Now the line matches both m_func (show() and m_val (line 234's regex: kwarg="format", quote="'", partial="j").
+        # It looks up _KWARG_VALUES["show"]["format"] (line 165) = ["standard", "long", "json", "plain"], filters to those starting with j → json.
+        # This branch is checked before tier 2, so once you're past the =, you get value suggestions instead of more kwarg names.
         m_val = re.search(r"\b(\w+)\s*=\s*(['\"]?)(\w*)$", line)
         m_func = re.match(r"(\w+)\s*\(", line)
         if m_val and m_func:
@@ -250,13 +250,25 @@ class _PBookCompleter:
                 return hits
 
         # Kwarg name completion: cursor is inside an open call
+        # >>> show(│
+        # readline.get_line_buffer() returns "show(". The regex on line 245, (\w+)\s*\([^)]*$, matches with func_name = "show" and nothing after the (.
+        # So it looks up _FUNC_KWARGS["show"] (line 133) and lists username, limit, taskname, days, jeditaskid, reqid, status, superstatus, format —
+        # rlcompleter is never consulted here.
+
+        # >>> show(form│
+        # Same regex still matches (func_name = "show", and [^)]* swallows form), but we filter _FUNC_KWARGS["show"] down to names starting with
+        # form → just format.
         m = re.search(r"(\w+)\s*\([^)]*$", line)
         if m:
             hits = [k for k in _FUNC_KWARGS.get(m.group(1), []) if k.startswith(text)]
             if hits:
                 return hits
 
-        # Fallback: standard name completion, stripping trailing '(' rlcompleter adds to callables
+        #  Plain name completion (tier 3, the rlcompleter fallback): standard name completion, stripping trailing '(' rlcompleter adds to callables
+        # >>> sho│
+        # Not inside any (...), so tiers 1 and 2 don't match. Falls through to rlcompleter (line 257-260), which scans ns for names starting with
+        # sho → matches show, showl. Since these are callables, rlcompleter.complete() would normally return "show("/"showl("; the .rstrip("()").rstrip("(")
+        # on line 259 strips that back to plain show, showl.
         if not text:
             # rlcompleter.complete() special-cases blank text by calling readline.insert_text()
             # itself, which re-enters readline from inside this callback and confuses the active
@@ -290,12 +302,6 @@ _RETRY_ALLOWED_OPTS = [
 
 
 def _build_namespace(core) -> dict:
-    from inspect import signature
-
-    from rich import box
-    from rich.console import Console
-    from rich.table import Table
-
     _console = Console()
 
     def help(command=None):
@@ -312,6 +318,7 @@ def _build_namespace(core) -> dict:
             _console.print(f"\n{doc}\n")
             return
 
+        # No argument - summary table
         table = Table(box=box.SIMPLE, show_header=True, header_style="bold magenta")
         table.add_column("Command", style="bold cyan", no_wrap=True)
         table.add_column("Signature", style="dim", no_wrap=True)
@@ -380,17 +387,19 @@ def _build_namespace(core) -> dict:
         )
 
     def kill(taskIDs):
-        """Kill tasks. taskIDs: int, list of ints, or 'all'."""
+        """Kill tasks. taskIDs: int, list of ints, or 'all' for all active tasks."""
         if taskIDs == "all":
             return _parallel(lambda t: core.kill(t.jeditaskid), core.get_active_tasks())
         elif isinstance(taskIDs, (list, tuple)):
             return _parallel(core.kill, taskIDs)
         elif isinstance(taskIDs, int):
             return [core.kill(taskIDs)]
+
         print("Error: Invalid argument")
+        return None
 
     def finish(taskIDs, soft=False):
-        """Finish tasks. taskIDs: int, [int,...], or 'all'. soft=True waits for running jobs."""
+        """Finish tasks. taskIDs: int, [int,...], or 'all' for all active tasks. soft=True waits for running jobs."""
         if taskIDs == "all":
             return _parallel(
                 lambda t: core.finish.original_func(core, t.jeditaskid, soft=soft),
@@ -400,7 +409,9 @@ def _build_namespace(core) -> dict:
             return _parallel(lambda tid: core.finish(tid, soft=soft), taskIDs)
         elif isinstance(taskIDs, int):
             return [core.finish(taskIDs, soft=soft)]
+
         print("Error: Invalid argument")
+        return None
 
     def retry(taskIDs, newOpts=None, days=14, limit=1000, **kwargs):
         """Retry failed/cancelled tasks.
@@ -429,7 +440,9 @@ def _build_namespace(core) -> dict:
         elif taskIDs == "all":
             data = core.show(status="finished", days=days, limit=limit, format="json")
             return _parallel(lambda d: core.retry.original_func(core, d["jediTaskID"], newOpts=opts), data)
+
         print("Error: Invalid argument")
+        return None
 
     def debug(PandaID, modeOn):
         """Toggle debug mode for a subjob. modeOn: True/False."""
@@ -503,6 +516,7 @@ def _build_namespace(core) -> dict:
         """Generate a new proxy or token."""
         core.generate_credential()
 
+    # Generate the namespace with the local functions and exclude any imported functions or variables
     ns = {k: v for k, v in locals().items() if callable(v) and getattr(v, "__module__", None) == __name__}
     return ns
 
@@ -525,6 +539,7 @@ def _main(
         typer.echo(f"Version: {PandaToolsPkgInfo.release_version}")
         raise typer.Exit()
 
+    # Set up the development or integration server
     if dev_srv:
         Client.useDevServer()
     if intr_srv:
@@ -539,10 +554,13 @@ def _main(
     _setup()
     global _fork_child_pid
     _fork_child_pid = os.fork()
+
+    # Fork failed
     if _fork_child_pid == -1:
         typer.echo("ERROR: Failed to fork", err=True)
         raise typer.Exit(1)
 
+    # Child process
     if _fork_child_pid == 0:
         if verbose:
             typer.echo(str(ctx.params))
@@ -550,6 +568,8 @@ def _main(
             sys.ps1 = ">>> \n"
         core = _make_core(verbose)
         ns = _build_namespace(core)
+
+        # The user wants to execute a Python code snippet instead of entering the REPL
         if command_string:
             core.init()
             exec(command_string, {}, ns)  # noqa: S102
@@ -558,6 +578,8 @@ def _main(
             raise typer.Exit(0 if _PBC.func_return_value else 1)
         core.init()
         _run_repl(ns, banner=f"\nStart pBook {PandaToolsPkgInfo.release_version}")
+
+    # Parent process
     else:
         signal.signal(signal.SIGINT, _catch_sig)
         signal.signal(signal.SIGHUP, _catch_sig)
