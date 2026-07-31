@@ -339,6 +339,7 @@ def _main(
     dev_srv: bool = typer.Option(False, "--devSrv", hidden=True),
     intr_srv: bool = typer.Option(False, "--intrSrv", hidden=True),
     prompt_with_newline: bool = typer.Option(False, "--prompt_with_newline", hidden=True),
+    python3: bool = typer.Option(False, "-3", hidden=True),
 ) -> None:
     """PanDA task bookkeeper. Run without arguments for interactive mode."""
     if version:
