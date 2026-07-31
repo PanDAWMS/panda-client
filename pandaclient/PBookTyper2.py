@@ -429,7 +429,7 @@ def help(
                 continue
             doc = (func.__doc__ or "").strip().splitlines()[0] if func.__doc__ else ""
             sig = console.highlighter(_format_signature(func))
-            table.add_row(f"  {name}", sig, _esc(doc))
+            table.add_row(f"  {name}", _esc(doc), sig)
 
     console.print(table)
     console.print("Usage: [bold]help(show)[/bold]  or  [bold]pbook show --help[/bold]\n")
