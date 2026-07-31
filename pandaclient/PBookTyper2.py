@@ -427,9 +427,9 @@ def help(
             func = ns.get(name)
             if func is None:
                 continue
-            sig = _format_signature(func)
+            sig = console.highlighter(_format_signature(func))
             doc = (func.__doc__ or "").strip().splitlines()[0] if func.__doc__ else ""
-            table.add_row(f"  {name}", _esc(sig), _esc(doc))
+            table.add_row(f"  {name}", sig, _esc(doc))
 
     console.print(table)
     console.print("Usage: [bold]help(show)[/bold]  or  [bold]pbook show --help[/bold]\n")
