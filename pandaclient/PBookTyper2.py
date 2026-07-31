@@ -280,9 +280,11 @@ class _PBookCompleter:
             kwarg, partial = m_val.group(1), m_val.group(3)
             func = self._ns.get(m_func.group(1))
             if func is not None:
-                hits = [v for v in _kwarg_choices(func, kwarg) if v.startswith(partial)]
-                if hits:
-                    return hits
+                # We're unambiguously past a `kwarg=` - this is a value position, not a
+                # name position, even if this particular kwarg has no enumerable choices
+                # (e.g. limit: int). Return here regardless, so an empty result doesn't
+                # fall through to tier 2's kwarg-name completion.
+                return [v for v in _kwarg_choices(func, kwarg) if v.startswith(partial)]
 
         # Kwarg name completion (tier 2): cursor is inside an open call
         m = re.search(r"(\w+)\s*\([^)]*$", line)
