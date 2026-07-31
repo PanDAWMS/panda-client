@@ -229,15 +229,20 @@ def _kwarg_names(func) -> list:
     return list(signature(func).parameters)
 
 
-def _kwarg_choices(func, name: str) -> list:
-    """Value choices for a parameter, derived from its type hint: Literal[...] members or True/False for bool."""
+def _kwarg_choices(func, name: str) -> tuple:
+    """Value choices for a parameter, derived from its type hint.
+
+    Returns (values, is_str): values are Literal[...] members (as str) or True/False for
+    bool; is_str tells the completer whether these need to be quoted as Python string
+    literals (True/False must stay bare, unquoted keywords).
+    """
     try:
         hints = get_type_hints(func, include_extras=True)
     except Exception:
-        return []
+        return [], False
     ann = hints.get(name)
     if ann is None:
-        return []
+        return [], False
     while hasattr(ann, "__metadata__"):
         ann = ann.__origin__
     if get_origin(ann) is Union:
@@ -245,10 +250,11 @@ def _kwarg_choices(func, name: str) -> list:
         if len(non_none) == 1:
             ann = non_none[0]
     if get_origin(ann) is Literal:
-        return [str(v) for v in get_args(ann)]
+        args = get_args(ann)
+        return [str(v) for v in args], all(isinstance(v, str) for v in args)
     if ann is bool:
-        return ["True", "False"]
-    return []
+        return ["True", "False"], False
+    return [], False
 
 
 class _PBookCompleter:
@@ -268,15 +274,23 @@ class _PBookCompleter:
         line = readline.get_line_buffer()
 
         # Kwarg value completion (tier 1): last token is  kwarg=  or  kwarg='partial
+        # readline's default delimiters include =, ', " - so the "word" it will replace
+        # already excludes any quote the user typed; we just need to add whichever quote(s)
+        # are still missing so the result reads as a valid quoted string either way.
         m_val = re.search(r"\b(\w+)\s*=\s*(['\"]?)(\w*)$", line)
         m_func = re.match(r"(\w+)\s*\(", line)
         if m_val and m_func:
-            kwarg, partial = m_val.group(1), m_val.group(3)
+            kwarg, quote, partial = m_val.group(1), m_val.group(2), m_val.group(3)
             func = self._ns.get(m_func.group(1))
             if func is not None:
-                hits = [v for v in _kwarg_choices(func, kwarg) if v.startswith(partial)]
-                if hits:
-                    return hits
+                values, is_str = _kwarg_choices(func, kwarg)
+                matches = [v for v in values if v.startswith(partial)]
+                if matches:
+                    if not is_str:
+                        return matches
+                    if quote:
+                        return [f"{v}{quote}" for v in matches]
+                    return [f"'{v}'" for v in matches]
 
         # Kwarg name completion (tier 2): cursor is inside an open call
         m = re.search(r"(\w+)\s*\([^)]*$", line)
