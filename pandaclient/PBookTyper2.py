@@ -277,7 +277,11 @@ class _PBookCompleter:
         # readline's default delimiters include =, ', " - so the "word" it will replace
         # already excludes any quote the user typed; we just need to add whichever quote(s)
         # are still missing so the result reads as a valid quoted string either way.
-        m_val = re.search(r"\b(\w+)\s*=\s*(['\"]?)(\w*)$", line)
+        # The quote group is '*' (not '?') because readline's own ambiguous-completion
+        # common-prefix insertion can leave a stray quote in the buffer before the user
+        # types their own - tolerate any number of leading quote characters rather than
+        # silently failing to match and falling through to the wrong tier.
+        m_val = re.search(r"\b(\w+)\s*=\s*(['\"]*)(\w*)$", line)
         m_func = re.match(r"(\w+)\s*\(", line)
         if m_val and m_func:
             kwarg, quote, partial = m_val.group(1), m_val.group(2), m_val.group(3)
@@ -289,7 +293,7 @@ class _PBookCompleter:
                     if not is_str:
                         return matches
                     if quote:
-                        return [f"{v}{quote}" for v in matches]
+                        return [f"{v}{quote[-1]}" for v in matches]
                     return [f"'{v}'" for v in matches]
 
         # Kwarg name completion (tier 2): cursor is inside an open call
