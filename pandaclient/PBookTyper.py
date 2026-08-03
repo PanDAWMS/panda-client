@@ -497,7 +497,7 @@ def help(
 @app.command()
 def show(
     task_id: Annotated[Optional[str], typer.Argument(help="jediTaskID, reqID, 'run' (active only), or 'fin' (terminated only)")] = None,
-    username: Annotated[Optional[str], typer.Option(help="Filter by username")] = None,
+    username: Annotated[Optional[str], typer.Option(help="Filter by username. By default, the name from the voms/token is used.")] = None,
     limit: Annotated[int, typer.Option(help="Maximum number of records")] = 1000,
     taskname: Annotated[Optional[str], typer.Option(help="Filter by task name")] = None,
     days: Annotated[int, typer.Option(help="Look back N days (capped at 90 without a task ID)")] = 14,
@@ -509,12 +509,11 @@ def show(
 ) -> None:
     """Print task records.
 
-    The first argument (task_id) can be a jediTaskID or reqID, or 'run' (show active tasks
+    The first non-keyword argument (task_id) can be a jediTaskID or reqID, or 'run' (show active tasks
     only), or 'fin' (show terminated tasks only), or can be omitted. Records are fetched
     directly from the PanDA server, so they are always up to date. Note that days is capped
     at 90 days unless a jediTaskID or reqID is specified, in which case tasks of any age are
-    returned. The default filter conditions are: username=(name from user voms proxy),
-    limit=1000, days=14, format='standard'.
+    returned. See the default filter conditions in the annotations.
 
     example:
       >>> show()
@@ -562,9 +561,7 @@ def showl(
     status: Annotated[Optional[str], typer.Option(help="Filter by task status")] = None,
     superstatus: Annotated[Optional[str], typer.Option(help="Filter by super-status")] = None,
 ) -> None:
-    """Print task records in long format (shortcut for show --format long).
-
-    See help(show) for the available filter keywords.
+    """Print task records in long format (shortcut for show --format='long').
 
     example:
       >>> showl()
@@ -599,6 +596,8 @@ def kill(
       >>> kill(123)
       >>> kill([123, 345, 567])
       >>> kill('all')
+
+      $ pbook kill 123,345,567
     """
     core = _ensure_init()
     ids = _parse_ids(task_ids)
@@ -626,6 +625,8 @@ def finish(
       >>> finish(234, soft=True)
       >>> finish([123, 345, 567])
       >>> finish('all')
+
+      $ pbook finish 123,345,567 --soft
     """
     core = _ensure_init()
     ids = _parse_ids(task_ids)
@@ -988,8 +989,15 @@ def _rewrite_legacy_kwargs(argv: list) -> list:
                 # Click flag-style options (e.g. --soft) take no value at all; the legacy
                 # syntax passed an explicit True/False, so translate that into presence
                 # (truthy) or absence (falsy - same as the option's own default) instead.
-                if value.strip().lower() in ("true", "1", "yes"):
+                normalized = value.strip().lower()
+                if normalized in ("true", "1", "yes"):
                     rewritten.append(flag)
+                elif normalized not in ("false", "0", "no"):
+                    typer.echo(
+                        f"Error: '{key}' is a flag and expects true/false (got '{value}' in '{tok}')",
+                        err=True,
+                    )
+                    raise typer.Exit(1)
                 continue
             rewritten.append(f"{flag}={value}")
         else:
