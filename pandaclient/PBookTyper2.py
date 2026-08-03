@@ -64,7 +64,9 @@ $ pbook
 
 or in batch mode:
 
+$ pbook command arg1 arg2 ... argN --kwarg1=value1 --kwarg2=value2 ... --kwargN=valueN
 $ pbook command arg1 arg2 ... argN kwarg1=value1 kwarg2=value2 ... kwargN=valueN
+Please note that the latter option is kept for backward compatibility, but we plan to drop it in the future. 
 
 E.g.
 
@@ -73,6 +75,7 @@ $ pbook
 
 is equivalent to
 
+$ pbook show 123 --format='long'
 $ pbook show 123 format='long'
 
 If arg or value is a list in interactive mode, it is represented as a comma-separate list in batch mode. E.g.
