@@ -994,7 +994,7 @@ def _rewrite_legacy_kwargs(argv: list) -> list:
                     rewritten.append(flag)
                 elif normalized not in ("false", "0", "no"):
                     typer.echo(
-                        f"Error: '{key}' is a flag and expects true/false (got '{value}' in '{tok}')",
+                        f"Error: '{key}' is a flag and expects True/False (got '{value}' in '{tok}')",
                         err=True,
                     )
                     raise typer.Exit(1)
