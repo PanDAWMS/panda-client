@@ -131,18 +131,23 @@ def _parse_ids(raw):
         raise typer.Exit(1)
 
 
+_INVALID = object()
+
+
 def _require_bool(name: str, value):
-    """Reject non-bool values for a bool parameter.
+    """Report non-bool values for a bool parameter, without raising.
 
     Click enforces this on the CLI path (a flag is present or absent, never a stray
     string) - unreachable from real CLI dispatch. Commands are also called directly
     from the REPL though, where a plain Python call - e.g. finish(123, soft='gfd') -
     bypasses that check entirely and would otherwise silently treat any truthy string
-    as on. A plain ValueError is the right signal there: the REPL's console reports it
-    with one clear line, same as any other misused Python call.
+    as on. Raising here would just dump a traceback into the interactive session, so
+    report the problem and let the caller return early instead: `if soft is _INVALID:
+    return`.
     """
     if not isinstance(value, bool):
-        raise ValueError(f"'{name}' must be True or False, got {value!r}")
+        typer.echo(f"Error: '{name}' must be True or False, got {value!r}", err=True)
+        return _INVALID
     return value
 
 
@@ -644,6 +649,8 @@ def finish(
       $ pbook finish 123,345,567 --soft
     """
     soft = _require_bool("soft", soft)
+    if soft is _INVALID:
+        return
     core = _ensure_init()
     ids = _parse_ids(task_ids)
     if ids == "all":
@@ -739,6 +746,8 @@ def debug(
       >>> debug(1234, True)
     """
     mode_on = _require_bool("mode_on", mode_on)
+    if mode_on is _INVALID:
+        return
     core = _ensure_init()
     core.debug(panda_id, mode_on)
 
@@ -788,6 +797,8 @@ def recover_lost_files(
       >>> recover_lost_files(123, test_mode=True)
     """
     test_mode = _require_bool("test_mode", test_mode)
+    if test_mode is _INVALID:
+        return
     core = _ensure_init()
     core.recover_lost_files(task_id, test_mode)
 
@@ -910,6 +921,8 @@ def set_secret(
       >>> set_secret('mykey', '/path/to/file', is_file=True)
     """
     is_file = _require_bool("is_file", is_file)
+    if is_file is _INVALID:
+        return
     core = _ensure_init()
     core.set_secret(key, value, is_file)
 
@@ -947,6 +960,8 @@ def list_secrets(
       >>> list_secrets(full=True)
     """
     full = _require_bool("full", full)
+    if full is _INVALID:
+        return
     core = _ensure_init()
     core.list_secrets(full)
 
