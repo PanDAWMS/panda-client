@@ -135,13 +135,14 @@ def _require_bool(name: str, value):
     """Reject non-bool values for a bool parameter.
 
     Click enforces this on the CLI path (a flag is present or absent, never a stray
-    string), but commands are also called directly from the REPL, where a plain Python
-    call - e.g. finish(123, soft='gfd') - bypasses that check entirely and would
-    otherwise silently treat any truthy string as on.
+    string) - unreachable from real CLI dispatch. Commands are also called directly
+    from the REPL though, where a plain Python call - e.g. finish(123, soft='gfd') -
+    bypasses that check entirely and would otherwise silently treat any truthy string
+    as on. A plain ValueError is the right signal there: the REPL's console reports it
+    with one clear line, same as any other misused Python call.
     """
     if not isinstance(value, bool):
-        typer.echo(f"Error: '{name}' must be True or False, got {value!r}", err=True)
-        raise typer.Exit(1)
+        raise ValueError(f"'{name}' must be True or False, got {value!r}")
     return value
 
 
