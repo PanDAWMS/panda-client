@@ -997,7 +997,7 @@ def _rewrite_legacy_kwargs(argv: list) -> list:
                         f"Error: '{key}' is a flag and expects True/False (got '{value}' in '{tok}')",
                         err=True,
                     )
-                    raise typer.Exit(1)
+                    sys.exit(1)
                 continue
             rewritten.append(f"{flag}={value}")
         else:
