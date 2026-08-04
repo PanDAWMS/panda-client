@@ -669,16 +669,17 @@ def retry(
     excludedSite: Annotated[Optional[str], typer.Option("--excludedSite")] = None,
     includedSite: Annotated[Optional[str], typer.Option("--includedSite")] = None,
     nFilesPerJob: Annotated[Optional[int], typer.Option("--nFilesPerJob")] = None,
-    nMaxFilesPerJob: Annotated[Optional[int], typer.Option("--nMaxFilesPerJob")] = None,
+    nMaxFilesPerJob: Annotated[Optional[int], typer.Option("--nMaxFilesPerJob", "--maxNFilesPerJob")] = None,
     nGBPerJob: Annotated[Optional[float], typer.Option("--nGBPerJob")] = None,
     nFiles: Annotated[Optional[int], typer.Option("--nFiles")] = None,
     nEvents: Annotated[Optional[int], typer.Option("--nEvents")] = None,
     loopingCheck: Annotated[Optional[bool], typer.Option("--loopingCheck")] = None,
-    memory: Annotated[Optional[int], typer.Option("--memory")] = None,
+    memory: Annotated[Optional[int], typer.Option("--memory", "--ramCount")] = None,
     avoidVP: Annotated[Optional[bool], typer.Option("--avoidVP")] = None,
     ignoreMissingInDS: Annotated[Optional[bool], typer.Option("--ignoreMissingInDS")] = None,
     forceStaged: Annotated[Optional[bool], typer.Option("--forceStaged")] = None,
     maxCore: Annotated[Optional[int], typer.Option("--maxCore")] = None,
+    newOpts: Annotated[Optional[str], typer.Option("--new-opts", hidden=True)] = None,
 ) -> None:
     """Retry failed/cancelled tasks.
 
@@ -693,35 +694,44 @@ def retry(
     days. It is possible to retry more tasks by setting the days and limit options. If
     named arguments are specified, they are applied to all retried tasks.
 
+    newOpts, a raw dict of task-retry options, overrides all of the individual options
+    above - kept for backward compatibility with pre-Typer pbook scripts/REPL usage. It is
+    a REPL-only convenience; there is no supported way to pass it from the shell CLI.
+
     example:
       >>> retry(123)
       >>> retry([123, 345, 567])
+      >>> retry(789, newOpts={'excludedSite': 'siteA,siteB'})
       >>> retry(789, excludedSite='siteA,siteB')
       >>> retry('all')
       >>> retry('all', days=30, limit=2000)
+      >>> retry('all', newOpts={'excludedSite': 'siteA,siteB'})
     """
     core = _ensure_init()
-    new_opts = {
-        k: v
-        for k, v in {
-            "site": site,
-            "excludedSite": excludedSite,
-            "includedSite": includedSite,
-            "nFilesPerJob": nFilesPerJob,
-            "nMaxFilesPerJob": nMaxFilesPerJob,
-            "nGBPerJob": nGBPerJob,
-            "nFiles": nFiles,
-            "nEvents": nEvents,
-            "loopingCheck": loopingCheck,
-            "ramCount": memory,
-            "avoidVP": avoidVP,
-            "ignoreMissingInDS": ignoreMissingInDS,
-            "forceStaged": forceStaged,
-            "maxCoreCount": maxCore,
-        }.items()
-        if v is not None
-    }
-    opts = new_opts or None
+    if newOpts is not None:
+        opts = newOpts
+    else:
+        new_opts = {
+            k: v
+            for k, v in {
+                "site": site,
+                "excludedSite": excludedSite,
+                "includedSite": includedSite,
+                "nFilesPerJob": nFilesPerJob,
+                "nMaxFilesPerJob": nMaxFilesPerJob,
+                "nGBPerJob": nGBPerJob,
+                "nFiles": nFiles,
+                "nEvents": nEvents,
+                "loopingCheck": loopingCheck,
+                "ramCount": memory,
+                "avoidVP": avoidVP,
+                "ignoreMissingInDS": ignoreMissingInDS,
+                "forceStaged": forceStaged,
+                "maxCoreCount": maxCore,
+            }.items()
+            if v is not None
+        }
+        opts = new_opts or None
     ids = _parse_ids(task_ids)
     if isinstance(ids, list):
         return _parallel(lambda tid: core.retry(tid, newOpts=opts), ids)
@@ -1011,7 +1021,11 @@ def _rewrite_legacy_kwargs(argv: list) -> list:
     for param in sub_cmd.params:
         flags = [o for o in getattr(param, "opts", []) if o.startswith("--")]
         if flags:
-            option_flags[param.name] = flags[0]
+            primary = flags[0]
+            # Register every alias (e.g. --ramCount for --memory), not just the primary
+            # name, so the legacy bare `key=value` syntax recognizes them too.
+            for flag in flags:
+                option_flags[flag.lstrip("-")] = primary
             if getattr(param, "is_flag", False):
                 flag_only.add(param.name)
 
