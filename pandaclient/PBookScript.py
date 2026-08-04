@@ -254,11 +254,11 @@ For more info of each command, e.g. do "help(show)" in interactive mode or "help
          example:
            >>> retry(123)
            >>> retry([123, 345, 567])
-           >>> retry(789, newOpts={{'excludedSite':'siteA,siteB'}})
+           >>> retry(789, newOpts={'excludedSite':'siteA,siteB'})
            >>> retry(789, excludedSite='siteA,siteB')
            >>> retry('all')
            >>> retry('all', days=30, limit=2000)
-           >>> retry('all', newOpts={{'excludedSite':'siteA,siteB'}})
+           >>> retry('all', newOpts={'excludedSite':'siteA,siteB'})
         """
         if newOpts is None:
             newOpts = kwargs
