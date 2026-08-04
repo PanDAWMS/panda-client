@@ -666,8 +666,8 @@ def retry(
     days: Annotated[int, typer.Option("--days", help="Look-back window when task_ids='all'")] = 14,
     limit: Annotated[int, typer.Option("--limit", help="Max tasks to retry when task_ids='all'")] = 1000,
     site: Annotated[Optional[str], typer.Option("--site")] = None,
-    excludedSite: Annotated[Optional[str], typer.Option("--excludedSite")] = None,
-    includedSite: Annotated[Optional[str], typer.Option("--includedSite")] = None,
+    excludedSite: Annotated[Optional[str], typer.Option("--excludedSite", help="Comma separated list of sites to exclude, e.g. 'siteA,siteB'")] = None,
+    includedSite: Annotated[Optional[str], typer.Option("--includedSite", help="Comma separated list of sites to include, e.g. 'siteA,siteB'")] = None,
     nFilesPerJob: Annotated[Optional[int], typer.Option("--nFilesPerJob")] = None,
     nMaxFilesPerJob: Annotated[Optional[int], typer.Option("--nMaxFilesPerJob", "--maxNFilesPerJob")] = None,
     nGBPerJob: Annotated[Optional[float], typer.Option("--nGBPerJob")] = None,
@@ -681,9 +681,9 @@ def retry(
     maxCore: Annotated[Optional[int], typer.Option("--maxCore")] = None,
     newOpts: Annotated[Optional[str], typer.Option("--new-opts", hidden=True)] = None,
 ) -> None:
-    """Retry failed/cancelled tasks.
+    """Retry failed/canceled tasks.
 
-    Retry failed/cancelled subJobs in task_ids (ID or a list of IDs, can be either jediTaskID
+    Retry failed/canceled subJobs in task_ids (ID or a list of IDs, can be either jediTaskID
     or reqID). Allowed options to overwrite task parameters for new attempts: site,
     excludedSite, includedSite, nFilesPerJob, nMaxFilesPerJob, nGBPerJob, nFiles, nEvents,
     loopingCheck, memory, avoidVP, ignoreMissingInDS, forceStaged, maxCore. If input files
