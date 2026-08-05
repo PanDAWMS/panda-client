@@ -469,7 +469,7 @@ class _HttpClient:
             headers["Origin"] = self.auth_vo
         return headers
 
-    def _send(self, method, url, headers=None, content=None, files=None, verify=True):
+    def _send(self, method, url, headers=None, content=None, files=None, verify=True, download_name=None):
         """Issue one HTTP request via httpx and normalize the result to (code, content)
 
         No exception escapes this method: network/SSL errors are caught and turned into
@@ -482,6 +482,8 @@ class _HttpClient:
            content: raw request body bytes, for POST
            files: multipart files dict, for the file-upload PUT path
            verify: SSL verification, as returned by _build_ssl_context
+           download_name: if set, this call is downloading a file to this path; the verbose
+              print shows the filename instead of dumping the file content
         returns:
            (code, content) where code is 0 on HTTP 200, the raw HTTP status code otherwise,
            or 1 on a network/SSL-level failure (content is the error message string in that case)
@@ -503,7 +505,11 @@ class _HttpClient:
                 print(traceback.format_exc())
             ret = (1, str(e))
         if self.verbose:
-            print(ret)
+            code, body = ret
+            if download_name:
+                print((code, body if code != 0 else f"<downloaded {len(body)} bytes to {download_name}>"))
+            else:
+                print(ret)
         return ret
 
     def get(self, url, data, n_try=1, json_out=False, repeating_keys=False, output_name=None):
@@ -536,7 +542,7 @@ class _HttpClient:
             headers["Accept"] = "application/json"
 
         for i_try in range(n_try):
-            code, content = self._send("GET", url, headers=headers, verify=verify)
+            code, content = self._send("GET", url, headers=headers, verify=verify, download_name=output_name)
             if code in (0, 403, 404) or i_try + 1 == n_try:
                 break
             time.sleep(1)
