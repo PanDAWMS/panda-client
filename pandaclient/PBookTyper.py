@@ -769,7 +769,7 @@ def get_user_job_metadata(
 ) -> None:
     """Write user metadata of successful jobs to a JSON file.
 
-    Get user metadata of successful jobs in a task and write them in a json file.
+    Get user metadata of successful jobs in a task and write them locally to a JSON file.
 
     example:
       >>> get_user_job_metadata(123, 'output.json')
