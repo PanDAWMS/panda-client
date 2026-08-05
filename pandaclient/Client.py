@@ -492,7 +492,12 @@ class _HttpClient:
                 print(f"headers = {hide_sensitive_info(headers)}")
             with httpx.Client(verify=verify, timeout=600) as client:
                 response = client.request(method, url, headers=headers, content=content, files=files)
-            ret = (0 if response.status_code == 200 else response.status_code, bytes_decode(response.content))
+            if response.status_code == 200:
+                # keep the body raw here - it may be a binary file download (e.g. getFile),
+                # not just text; bytes_decode() is only for making error pages readable
+                ret = (0, response.content)
+            else:
+                ret = (response.status_code, bytes_decode(response.content))
         except Exception as e:
             if self.verbose:
                 print(traceback.format_exc())
