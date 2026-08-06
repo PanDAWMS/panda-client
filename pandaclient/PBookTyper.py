@@ -816,11 +816,13 @@ def recover_lost_files(
 ) -> None:
     """Request recovery of lost files from a task.
 
-    Send a request to recover lost files produced by a task. Set test_mode=True for testing.
+    Send a request to recover lost files produced by a task. Use test_mode for testing.
 
     example:
       >>> recover_lost_files(123)
       >>> recover_lost_files(123, test_mode=True)
+
+      $ pbook recover_lost_files 123 --test_mode
     """
     test_mode = _require_bool("test_mode", test_mode)
     if test_mode is _INVALID:
@@ -935,7 +937,7 @@ def resume_workflow(
 def set_secret(
     key: Annotated[str, typer.Argument(help="Secret key")],
     value: Annotated[str, typer.Argument(help="Secret value or file path")],
-    is_file: Annotated[bool, typer.Option("--is-file", help="Treat value as a file path to upload")] = False,
+    is_file: Annotated[bool, typer.Option("--is_file", help="Treat value as a file path to upload")] = False,
 ) -> None:
     """Set a secret key-value pair.
 
@@ -945,6 +947,9 @@ def set_secret(
     example:
       >>> set_secret('mykey', 'myvalue')
       >>> set_secret('mykey', '/path/to/file', is_file=True)
+
+      $ pbook set_secret mykey myvalue
+      $ pbook set_secret mykey /path/to/file --is_file
     """
     is_file = _require_bool("is_file", is_file)
     if is_file is _INVALID:
@@ -961,6 +966,8 @@ def delete_secret(
 
     example:
       >>> delete_secret('mykey')
+
+      $ pbook delete_secret mykey
     """
     core = _ensure_init()
     core.set_secret(key, None)
@@ -968,7 +975,13 @@ def delete_secret(
 
 @app.command(name="delete_all_secrets")
 def delete_all_secrets() -> None:
-    """Delete all secrets."""
+    """Delete all secrets.
+
+    example:
+      >>> delete_all_secrets
+
+      $ pbook delete_all_secrets
+    """
     core = _ensure_init()
     core.set_secret(None, None)
 
@@ -984,6 +997,9 @@ def list_secrets(
     example:
       >>> list_secrets()
       >>> list_secrets(full=True)
+
+      $ pbook list_secrets
+      $ pbook list_secrets --full
     """
     full = _require_bool("full", full)
     if full is _INVALID:
