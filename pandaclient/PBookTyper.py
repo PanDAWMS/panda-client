@@ -535,7 +535,7 @@ def show(
     at 90 days unless a jediTaskID or reqID is specified, in which case tasks of any age are
     returned. See the default filter conditions in the annotations.
 
-    example:
+    examples:
       >>> show()
       >>> show(123)
       >>> show(12345678, format='long')
@@ -543,6 +543,8 @@ def show(
       >>> show('run')
       >>> show('fin', days=7, limit=100)
       >>> show(format='json')
+
+      $ pbook show --format=long --status=done --limit=100
     """
     core = _ensure_init()
     kwargs = {
@@ -583,11 +585,13 @@ def showl(
 ) -> None:
     """Print task records in long format (shortcut for show --format='long').
 
-    example:
+    examples:
       >>> showl()
       >>> showl(123)
       >>> showl(12345678)
       >>> showl(taskname='my_task_name')
+
+      $ pbook showl --status=done --limit=100
     """
     return show(
         task_id,
@@ -617,7 +621,9 @@ def kill(
       >>> kill([123, 345, 567])
       >>> kill('all')
 
+      $ pbook kill 123
       $ pbook kill 123,345,567
+      $ pbook kill all
     """
     core = _ensure_init()
     ids = _parse_ids(task_ids)
@@ -706,6 +712,10 @@ def retry(
       >>> retry('all')
       >>> retry('all', days=30, limit=2000)
       >>> retry('all', newOpts={'excludedSite': 'siteA,siteB'})
+
+      $ pbook retry 123
+      $ pbook retry 123 --excludedSite=siteA,siteB
+
     """
     core = _ensure_init()
     if newOpts is not None:
@@ -754,6 +764,8 @@ def debug(
 
     example:
       >>> debug(1234, True)
+
+      $ pbook debug 1234 True
     """
     mode_on = _require_bool("mode_on", mode_on)
     if mode_on is _INVALID:
@@ -762,7 +774,7 @@ def debug(
     core.debug(panda_id, mode_on)
 
 
-@app.command(name="get-user-job-metadata")
+@app.command(name="get_user_job_metadata")
 def get_user_job_metadata(
     task_id: Annotated[int, typer.Argument(help="Task ID")],
     output_file: Annotated[str, typer.Argument(help="Output JSON file path")],
@@ -773,12 +785,14 @@ def get_user_job_metadata(
 
     example:
       >>> get_user_job_metadata(123, 'output.json')
+
+      $ pbook get_user_job_metadata 123 output.json
     """
     core = _ensure_init()
     core.getUserJobMetadata(task_id, output_file)
 
 
-@app.command(name="reload-input")
+@app.command(name="reload_input")
 def reload_input(
     task_id: Annotated[int, typer.Argument(help="Task ID")],
 ) -> None:
@@ -793,7 +807,7 @@ def reload_input(
     core.reload_input(task_id)
 
 
-@app.command(name="recover-lost-files")
+@app.command(name="recover_lost_files")
 def recover_lost_files(
     task_id: Annotated[int, typer.Argument(help="Task ID")],
     test_mode: Annotated[bool, typer.Option("--test-mode", help="Dry-run mode")] = False,
@@ -813,7 +827,7 @@ def recover_lost_files(
     core.recover_lost_files(task_id, test_mode)
 
 
-@app.command(name="show-workflow")
+@app.command(name="show_workflow")
 def show_workflow(
     request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
 ) -> None:
@@ -830,7 +844,7 @@ def show_workflow(
         print(output)
 
 
-@app.command(name="kill-workflow")
+@app.command(name="kill_workflow")
 def kill_workflow(
     request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
 ) -> None:
@@ -847,7 +861,7 @@ def kill_workflow(
         print(output[0][-1])
 
 
-@app.command(name="retry-workflow")
+@app.command(name="retry_workflow")
 def retry_workflow(
     request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
 ) -> None:
@@ -864,7 +878,7 @@ def retry_workflow(
         print(output[0][-1])
 
 
-@app.command(name="finish-workflow")
+@app.command(name="finish_workflow")
 def finish_workflow(
     request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
 ) -> None:
@@ -881,7 +895,7 @@ def finish_workflow(
         print(output[0][-1])
 
 
-@app.command(name="pause-workflow")
+@app.command(name="pause_workflow")
 def pause_workflow(
     request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
 ) -> None:
@@ -898,7 +912,7 @@ def pause_workflow(
         print(output[0][-1])
 
 
-@app.command(name="resume-workflow")
+@app.command(name="resume_workflow")
 def resume_workflow(
     request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
 ) -> None:
@@ -915,7 +929,7 @@ def resume_workflow(
         print(output[0][-1])
 
 
-@app.command(name="set-secret")
+@app.command(name="set_secret")
 def set_secret(
     key: Annotated[str, typer.Argument(help="Secret key")],
     value: Annotated[str, typer.Argument(help="Secret value or file path")],
@@ -937,7 +951,7 @@ def set_secret(
     core.set_secret(key, value, is_file)
 
 
-@app.command(name="delete-secret")
+@app.command(name="delete_secret")
 def delete_secret(
     key: Annotated[str, typer.Argument(help="Secret key to delete")],
 ) -> None:
@@ -950,14 +964,14 @@ def delete_secret(
     core.set_secret(key, None)
 
 
-@app.command(name="delete-all-secrets")
+@app.command(name="delete_all_secrets")
 def delete_all_secrets() -> None:
     """Delete all secrets."""
     core = _ensure_init()
     core.set_secret(None, None)
 
 
-@app.command(name="list-secrets")
+@app.command(name="list_secrets")
 def list_secrets(
     full: Annotated[bool, typer.Option("--full", help="Show full secret values")] = False,
 ) -> None:
@@ -976,7 +990,7 @@ def list_secrets(
     core.list_secrets(full)
 
 
-@app.command(name="generate-credential")
+@app.command(name="generate_credential")
 def generate_credential() -> None:
     """Generate a new proxy or token."""
     core = _get_core()
