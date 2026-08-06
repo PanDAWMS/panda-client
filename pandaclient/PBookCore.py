@@ -497,7 +497,7 @@ class PBookCore:
             tmp_log.error(output)
             tmp_log.error(f"Failed to reload input {task_id}")
             return False
-        elif output[0] is False:
+        elif not output[0]:
             tmp_log.error(output[-1])
             tmp_log.error(f"Failed to reload input {task_id}")
             return False
