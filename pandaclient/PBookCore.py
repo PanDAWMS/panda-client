@@ -497,10 +497,10 @@ class PBookCore:
             tmp_log.error(output)
             tmp_log.error(f"Failed to reload input {task_id}")
             return False
-        elif output[0] != 0:
+        elif output[0] is False:
             tmp_log.error(output[-1])
             tmp_log.error(f"Failed to reload input {task_id}")
             return False
         # done
-        tmp_log.info("command is registered. will be executed in a few minutes")
+        tmp_log.info(f"command is registered for task {task_id} and will be executed in a few minutes")
         return True

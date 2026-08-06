@@ -802,6 +802,8 @@ def reload_input(
 
     example:
       >>> reload_input(123)
+
+      $ pbook reload_input 123
     """
     core = _ensure_init()
     core.reload_input(task_id)
