@@ -812,7 +812,7 @@ def reload_input(
 @app.command(name="recover_lost_files")
 def recover_lost_files(
     task_id: Annotated[int, typer.Argument(help="Task ID")],
-    test_mode: Annotated[bool, typer.Option("--test-mode", help="Dry-run mode")] = False,
+    test_mode: Annotated[bool, typer.Option("--test_mode", help="Dry-run mode")] = False,
 ) -> None:
     """Request recovery of lost files from a task.
 
