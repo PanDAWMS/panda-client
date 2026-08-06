@@ -822,6 +822,7 @@ def recover_lost_files(
       >>> recover_lost_files(123)
       >>> recover_lost_files(123, test_mode=True)
 
+      $ pbook recover_lost_files 123
       $ pbook recover_lost_files 123 --test_mode
     """
     test_mode = _require_bool("test_mode", test_mode)
@@ -841,6 +842,8 @@ def show_workflow(
 
     example:
       >>> show_workflow(456)
+
+      $ pbook show_workflow 456
     """
     core = _ensure_init()
     _, output = core.execute_workflow_command("get_status", request_id)
@@ -858,6 +861,8 @@ def kill_workflow(
 
     example:
       >>> kill_workflow(456)
+
+      $ pbook kill_workflow 456
     """
     core = _ensure_init()
     _, output = core.execute_workflow_command("abort", request_id)
@@ -875,6 +880,8 @@ def retry_workflow(
 
     example:
       >>> retry_workflow(456)
+
+      $ pbook retry_workflow 456
     """
     core = _ensure_init()
     _, output = core.execute_workflow_command("retry", request_id)
@@ -892,6 +899,8 @@ def finish_workflow(
 
     example:
       >>> finish_workflow(456)
+
+      $ pbook finish_workflow 456
     """
     core = _ensure_init()
     _, output = core.execute_workflow_command("finish", request_id)
@@ -909,6 +918,8 @@ def pause_workflow(
 
     example:
       >>> pause_workflow(456)
+
+      $ pbook pause_workflow 456
     """
     core = _ensure_init()
     _, output = core.execute_workflow_command("suspend", request_id)
@@ -926,6 +937,8 @@ def resume_workflow(
 
     example:
       >>> resume_workflow(456)
+
+      $ pbook resume_workflow 456
     """
     core = _ensure_init()
     _, output = core.execute_workflow_command("resume", request_id)
