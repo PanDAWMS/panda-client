@@ -114,6 +114,9 @@ app = typer.Typer(
 
 
 def _parallel(func, items):
+    """
+    Parallel execution of func with items in a pool of 8 threads.
+    """
     with ThreadPoolExecutor(8) as pool:
         return list(pool.map(func, items))
 
@@ -1022,7 +1025,7 @@ def delete_all_secrets() -> None:
 
 @app.command(name="list_secrets")
 def list_secrets(
-    full: Annotated[bool, typer.Option("--full", help="Show full secret values")] = False,
+    full: Annotated[bool, typer.Option("--full", help="Show complete secret values instead of truncating them")] = False,
 ) -> None:
     """List secrets.
 
