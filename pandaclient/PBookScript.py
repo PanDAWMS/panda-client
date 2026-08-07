@@ -80,7 +80,7 @@ is equivalent to
 $ pbook show 123 --format='long'
 $ pbook show 123 format='long'
 
-If arg or value is a list in interactive mode, it is represented as a comma-separate list in batch mode. E.g.
+If arg or value is a list in interactive mode, it is represented as a comma-separated list in batch mode. E.g.
 to kill three tasks in interactive mode:
 
 $ pbook
