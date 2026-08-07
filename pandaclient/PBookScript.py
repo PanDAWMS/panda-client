@@ -697,20 +697,30 @@ def retry(
         Optional[int],
         typer.Option("--nEvents", help="Total number of events to be processed by the task."),
     ] = None,
+    memory: Annotated[Optional[int], typer.Option("--memory", "--ramCount", help="Required memory size in MB per core")] = None,
+    maxCore: Annotated[Optional[int], typer.Option("--maxCore", help="Maximum number of CPU cores that a single job is allowed to utilize")] = None,
     loopingCheck: Annotated[
         Optional[bool],
-        typer.Option("--loopingCheck", help="Enable (True) or disable (False) the automatic check that kills jobs suspected of being stuck in a loop"),
+        typer.Option(
+            "--loopingCheck/--no-loopingCheck",
+            help="Enable/disable the automatic check that kills jobs suspected of being stuck in a loop",
+        ),
     ] = None,
-    memory: Annotated[Optional[int], typer.Option("--memory", "--ramCount", help="Required memory size in MB per core")] = None,
-    avoidVP: Annotated[Optional[bool], typer.Option("--avoidVP", help="Avoid PanDA queues which use Virtual Placement")] = None,
+    avoidVP: Annotated[Optional[bool], typer.Option("--avoidVP/--no-avoidVP", help="Avoid PanDA queues which use Virtual Placement")] = None,
     ignoreMissingInDS: Annotated[
-        Optional[bool], typer.Option("--ignoreMissingInDS", help="Ignore missing input datasets which were deleted after the task is submitted.")
+        Optional[bool],
+        typer.Option(
+            "--ignoreMissingInDS/--no-ignoreMissingInDS",
+            help="Ignore missing input datasets which were deleted after the task is submitted.",
+        ),
     ] = None,
     forceStaged: Annotated[
         Optional[bool],
-        typer.Option("--forceStaged", help="Force files from the primary dataset to be staged to local disk instead of using direct access"),
+        typer.Option(
+            "--forceStaged/--no-forceStaged",
+            help="Force files from the primary dataset to be staged to local disk instead of using direct access",
+        ),
     ] = None,
-    maxCore: Annotated[Optional[int], typer.Option("--maxCore", help="Maximum number of CPU cores that a single job is allowed to utilize")] = None,
     newOpts: Annotated[Optional[str], typer.Option("--new-opts", hidden=True)] = None,
 ) -> None:
     """Retry failed/canceled tasks.
