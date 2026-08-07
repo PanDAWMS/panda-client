@@ -98,7 +98,7 @@ $ pbook
 
 or
 
-$ pbook help
+$ pbook --help
 $ pbook command_name --help
 """
 
