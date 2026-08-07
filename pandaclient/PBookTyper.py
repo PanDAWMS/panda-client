@@ -673,38 +673,56 @@ def retry(
     task_ids: Annotated[str, typer.Argument(help="Task ID, comma-separated IDs, or 'all'")],
     days: Annotated[int, typer.Option("--days", help="Look-back window when task_ids='all'")] = 14,
     limit: Annotated[int, typer.Option("--limit", help="Max tasks to retry when task_ids='all'")] = 1000,
-    site: Annotated[Optional[str], typer.Option("--site")] = None,
-    excludedSite: Annotated[Optional[str], typer.Option("--excludedSite", help="Comma separated list of sites to exclude, e.g. 'siteA,siteB'")] = None,
-    includedSite: Annotated[Optional[str], typer.Option("--includedSite", help="Comma separated list of sites to include, e.g. 'siteA,siteB'")] = None,
-    nFilesPerJob: Annotated[Optional[int], typer.Option("--nFilesPerJob")] = None,
-    nMaxFilesPerJob: Annotated[Optional[int], typer.Option("--nMaxFilesPerJob", "--maxNFilesPerJob")] = None,
-    nGBPerJob: Annotated[Optional[float], typer.Option("--nGBPerJob")] = None,
-    nFiles: Annotated[Optional[int], typer.Option("--nFiles")] = None,
-    nEvents: Annotated[Optional[int], typer.Option("--nEvents")] = None,
-    loopingCheck: Annotated[Optional[bool], typer.Option("--loopingCheck")] = None,
-    memory: Annotated[Optional[int], typer.Option("--memory", "--ramCount")] = None,
-    avoidVP: Annotated[Optional[bool], typer.Option("--avoidVP")] = None,
-    ignoreMissingInDS: Annotated[Optional[bool], typer.Option("--ignoreMissingInDS")] = None,
-    forceStaged: Annotated[Optional[bool], typer.Option("--forceStaged")] = None,
-    maxCore: Annotated[Optional[int], typer.Option("--maxCore")] = None,
+    site: Annotated[Optional[str], typer.Option("--site", help="Run the task on a particular PanDA queue")] = None,
+    excludedSite: Annotated[Optional[str], typer.Option("--excludedSite", help="Comma separated list of PanDA queues to exclude, e.g. 'siteA,siteB'")] = None,
+    includedSite: Annotated[Optional[str], typer.Option("--includedSite", help="Comma separated list of PanDA queues to include, e.g. 'siteA,siteB'")] = None,
+    nFilesPerJob: Annotated[Optional[int], typer.Option("--nFilesPerJob", help="Number of files on which each sub-job runs (default 50)")] = None,
+    nMaxFilesPerJob: Annotated[
+        Optional[int],
+        typer.Option(
+            "--nMaxFilesPerJob",
+            "--maxNFilesPerJob",
+            help="Maximum number of input files to be processed by a single job in the task.",
+        ),
+    ] = None,
+    nGBPerJob: Annotated[
+        Optional[float],
+        typer.Option("--nGBPerJob", help="Maximum input size in GB to be processed by a single job in the task.."),
+    ] = None,
+    nFiles: Annotated[Optional[int], typer.Option("--nFiles", help="Total number of input files to be processed by the task.")] = None,
+    nEvents: Annotated[
+        Optional[int],
+        typer.Option("--nEvents", help="Total number of events to be processed by the task."),
+    ] = None,
+    loopingCheck: Annotated[
+        Optional[bool],
+        typer.Option("--loopingCheck", help="Enable (True) or disable (False) the automatic check that kills jobs suspected of being stuck in a loop"),
+    ] = None,
+    memory: Annotated[Optional[int], typer.Option("--memory", "--ramCount", help="Required memory size in MB per core")] = None,
+    avoidVP: Annotated[Optional[bool], typer.Option("--avoidVP", help="Avoid PanDA queues which use Virtual Placement")] = None,
+    ignoreMissingInDS: Annotated[
+        Optional[bool], typer.Option("--ignoreMissingInDS", help="Ignore missing input datasets which were deleted after the task is submitted.")
+    ] = None,
+    forceStaged: Annotated[
+        Optional[bool],
+        typer.Option("--forceStaged", help="Force files from the primary dataset to be staged to local disk instead of using direct access"),
+    ] = None,
+    maxCore: Annotated[Optional[int], typer.Option("--maxCore", help="Maximum number of CPU cores that a single job is allowed to utilize")] = None,
     newOpts: Annotated[Optional[str], typer.Option("--new-opts", hidden=True)] = None,
 ) -> None:
     """Retry failed/canceled tasks.
 
     Retry failed/canceled subJobs in task_ids (ID or a list of IDs, can be either jediTaskID
-    or reqID). Allowed options to overwrite task parameters for new attempts: site,
-    excludedSite, includedSite, nFilesPerJob, nMaxFilesPerJob, nGBPerJob, nFiles, nEvents,
-    loopingCheck, memory, avoidVP, ignoreMissingInDS, forceStaged, maxCore. If input files
-    were used or are being used by other jobs for the same output dataset container, those
+    or reqID). You can specify options (site, excludedSite,...) to overwrite task parameters for new attempts.
+    If input files were used or are being used by other jobs for the same output dataset container, those
     files are skipped to avoid job duplication when retrying failed subjobs.
 
     If task_ids is 'all', it retries 1000 tasks at most that have finished for the last 14
     days. It is possible to retry more tasks by setting the days and limit options. If
     named arguments are specified, they are applied to all retried tasks.
 
-    newOpts, a raw dict of task-retry options, overrides all of the individual options
-    above - kept for backward compatibility with pre-Typer pbook scripts/REPL usage. It is
-    a REPL-only convenience; there is no supported way to pass it from the shell CLI.
+    In interactive mode, newOpts can be passed with a raw dict of task-retry options and it overrides
+    all of the individual options above. newOpts is not supported from the shell CLI.
 
     example:
       >>> retry(123)
@@ -716,7 +734,8 @@ def retry(
       >>> retry('all', newOpts={'excludedSite': 'siteA,siteB'})
 
       $ pbook retry 123
-      $ pbook retry 123 --excludedSite=siteA,siteB
+      $ pbook retry 123,345,567 --excludedSite=siteA,siteB
+      $ pbook retry all --days=30 --limit=2000
 
     """
     core = _ensure_init()
