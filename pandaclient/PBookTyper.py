@@ -1,4 +1,7 @@
 """
+Do NOT import this module in your code.
+Import PBookCore instead.
+
 pbook CLI — PanDA task bookkeeper.
 
 Each command below is defined exactly once, as a Typer command using the
@@ -6,8 +9,7 @@ Annotated[...] parameter style. Because the Typer/Click metadata lives in the
 annotation rather than in the default value, these functions remain ordinary
 callables with ordinary defaults - the same function is used to build the
 `pbook <command> --flag ...` CLI (with real shell completion) *and* is placed
-directly into the interactive REPL namespace (`>>> command(...)`), with no
-separate REPL-only copy of the command's logic, docstring, or option list.
+directly into the interactive REPL namespace (`>>> command(...)`).
 """
 
 from __future__ import annotations
