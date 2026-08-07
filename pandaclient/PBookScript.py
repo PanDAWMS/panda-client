@@ -1025,7 +1025,7 @@ def delete_all_secrets() -> None:
     """Delete all secrets.
 
     example:
-      >>> delete_all_secrets
+      >>> delete_all_secrets()
 
       $ pbook delete_all_secrets
     """
