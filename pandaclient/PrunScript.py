@@ -53,15 +53,17 @@ def _gather_sandbox_files(options, tmp_log, athena_utils, work_area, run_directo
         skipped_extensions = []
     else:
         skipped_extensions = [".o", ".a", ".so"]
+
     skipped_flag = False
     skipped_count = 0
     file_count = 0
     total_size = 0
-    work_dir_files = []
+    work_directory_files = []
     if options.followLinks:
         os_walk_list = os.walk(archive_start_directory, followlinks=True)
     else:
         os_walk_list = os.walk(archive_start_directory)
+
     for tmp_root, tmp_dirs, tmp_files in os_walk_list:
         empty_flag = True
         for tmp_file in tmp_files:
@@ -129,11 +131,12 @@ def _gather_sandbox_files(options, tmp_log, athena_utils, work_area, run_directo
             # remove ./
             tmp_path = re.sub(r"^\./", "", tmp_path)
             # append
-            work_dir_files.append(tmp_path)
+            work_directory_files.append(tmp_path)
             file_count += 1
             total_size += size
             if empty_flag:
                 empty_flag = False
+
         # add empty directory
         if empty_flag and tmp_dirs == [] and tmp_files == []:
             tmp_path = re.sub(r"^\./", "", tmp_root)
@@ -149,7 +152,8 @@ def _gather_sandbox_files(options, tmp_log, athena_utils, work_area, run_directo
             if tmp_path.split("/")[-1] == tmp_directory.split("/")[-1]:
                 continue
             # append
-            work_dir_files.append(tmp_path)
+            work_directory_files.append(tmp_path)
+
     # let the user know what went into the sandbox without having to scroll through the file list
     summary = f"gathered {file_count} file(s), {_format_size(total_size)}, for the sandbox"
     if skipped_count:
@@ -157,7 +161,7 @@ def _gather_sandbox_files(options, tmp_log, athena_utils, work_area, run_directo
     tmp_log.info(summary)
     if skipped_flag:
         tmp_log.info("please use --extFile if you need to send the skipped files to WNs")
-    return work_dir_files
+    return work_directory_files
 
 
 # main
