@@ -1931,8 +1931,8 @@ else:
             # use original command
             newJobO += tmpString + ";"
         else:
-            tmpLog.info("getting configration from AMI")
-            # get configration using GetCommand.py
+            tmpLog.info("getting configuration from AMI")
+            # get configuration using GetCommand.py
             com = "GetCommand.py " + re.sub("^[^ ]+ ", "", tmpString.strip())
             if options.verbose:
                 tmpLog.debug(com)
@@ -1950,7 +1950,7 @@ else:
             for amiStr in amiOut.split("\n"):
                 if amiStr != "" and not amiStr.startswith("#") and not amiStr.startswith("*"):
                     fullCommand = amiStr
-            # failed to extract configration
+            # failed to extract configuration
             if fullCommand == "":
                 tmpLog.error(amiOut)
                 errSt = "Failed to extract configuration from AMI's output"
