@@ -24,6 +24,133 @@ from pandaclient.MiscUtils import (
 )
 
 
+def _gather_sandbox_files(options, tmp_log, athena_utils, work_area, run_directory, tmp_directory, archive_full_name):
+    # go to the directory files are gathered from
+    if options.useAthenaPackages:
+        # go to work_area
+        os.chdir(work_area)
+        # gather files under work dir
+        tmp_log.info(f"gathering files under {work_area}/{run_directory}")
+        archive_start_directory = run_directory
+        archive_start_directory = re.sub("/+$", "", archive_start_directory)
+    else:
+        # go to work dir
+        os.chdir(options.workDir)
+        # gather files under work dir
+        tmp_log.info(f"gathering files under {options.workDir}")
+        archive_start_directory = "."
+    # get files in the working dir
+    if options.noCompile:
+        skipped_extensions = []
+    else:
+        skipped_extensions = [".o", ".a", ".so"]
+    skipped_flag = False
+    skipped_count = 0
+    file_count = 0
+    total_size = 0
+    work_dir_files = []
+    if options.followLinks:
+        os_walk_list = os.walk(archive_start_directory, followlinks=True)
+    else:
+        os_walk_list = os.walk(archive_start_directory)
+    for tmp_root, tmp_dirs, tmp_files in os_walk_list:
+        empty_flag = True
+        for tmp_file in tmp_files:
+            if options.useAthenaPackages:
+                if os.path.basename(tmp_file) == os.path.basename(archive_full_name):
+                    if options.verbose:
+                        print(f"skip Athena archive {tmp_file}")
+                    continue
+            tmp_path = f"{tmp_root}/{tmp_file}"
+            # get size
+            try:
+                size = os.path.getsize(tmp_path)
+            except Exception:
+                # skip dead symlink
+                if options.verbose:
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    print(f"  Ignore : {exc_type}:{exc_value}")
+                continue
+            # check exclude files
+            exclude_file_flag = False
+            for tmp_patt in athena_utils.excludeFile:
+                if re.search(tmp_patt, tmp_path) is not None:
+                    exclude_file_flag = True
+                    break
+            if exclude_file_flag:
+                continue
+            # skipped extension
+            is_skipped_extensions = False
+            for tmp_ext in skipped_extensions:
+                if tmp_path.endswith(tmp_ext):
+                    is_skipped_extensions = True
+                    break
+            # check root
+            is_root = False
+            if re.search(r"\.root(\.\d+)*$", tmp_path) is not None:
+                is_root = True
+            # extra files
+            is_extra = False
+            for tmp_ext in options.extFile:
+                if re.search(tmp_ext + "$", tmp_path) is not None:
+                    is_extra = True
+                    break
+            # regular files
+            if not is_extra:
+                # unset empty_flag even if all files are skipped
+                empty_flag = False
+                # skipped extensions
+                if is_skipped_extensions:
+                    print(f"  skip {skipped_extensions!s} {tmp_path}")
+                    skipped_flag = True
+                    skipped_count += 1
+                    continue
+                # skip root
+                if is_root:
+                    print(f"  skip root file {tmp_path}")
+                    skipped_flag = True
+                    skipped_count += 1
+                    continue
+                # check size
+                if size > options.maxFileSize:
+                    print(f"  skip large file {tmp_path}:{size}B>{options.maxFileSize}B")
+                    skipped_flag = True
+                    skipped_count += 1
+                    continue
+            # remove ./
+            tmp_path = re.sub(r"^\./", "", tmp_path)
+            # append
+            work_dir_files.append(tmp_path)
+            file_count += 1
+            total_size += size
+            if empty_flag:
+                empty_flag = False
+        # add empty directory
+        if empty_flag and tmp_dirs == [] and tmp_files == []:
+            tmp_path = re.sub(r"^\./", "", tmp_root)
+            # check exclude pattern
+            exclude_pat_flag = False
+            for tmp_patt in athena_utils.excludeFile:
+                if re.search(tmp_patt, tmp_path) is not None:
+                    exclude_pat_flag = True
+                    break
+            if exclude_pat_flag:
+                continue
+            # skip tmp_directory
+            if tmp_path.split("/")[-1] == tmp_directory.split("/")[-1]:
+                continue
+            # append
+            work_dir_files.append(tmp_path)
+    # let the user know what went into the sandbox without having to scroll through the file list
+    summary = f"gathered {file_count} file(s), {total_size / (1024 * 1024):.1f} MB, for the sandbox"
+    if skipped_count:
+        summary += f" ({skipped_count} file(s) skipped)"
+    tmp_log.info(summary)
+    if skipped_flag:
+        tmp_log.info("please use --extFile if you need to send the skipped files to WNs")
+    return work_dir_files
+
+
 # main
 def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False):
     """
@@ -1159,7 +1286,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     for arg in sys.argv[1:]:
         optName = arg.split("=", 1)[0]
         if optName in removedOpts:
-            print("!!Warning!! option %s has been deprecated, pls dont use anymore\n" % optName)
+            print(f"!!Warning!! option {optName} has been deprecated, pls dont use anymore\n")
             sys.argv.remove(arg)
 
     # options, args = optP.parse_known_args()
@@ -1207,7 +1334,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     from pandaclient import PandaToolsPkgInfo
 
     if options.version:
-        print("Version: %s" % PandaToolsPkgInfo.release_version)
+        print(f"Version: {PandaToolsPkgInfo.release_version}")
         sys.exit(0)
 
     from pandaclient import AthenaUtils, Client, PLogger, PsubUtils
@@ -1261,7 +1388,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # validate --transferType
     invalid = get_invalid_transfer_types(options.transferType)
     if invalid:
-        optP.error("--transferType: invalid value(s) {}. Allowed: {}".format(", ".join(sorted(invalid)), ", ".join(sorted(VALID_TRANSFER_TYPES))))
+        optP.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
 
     # files to be deleted
     delFilesOnExit = []
@@ -1406,7 +1533,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         for tmpItem in options.writeInputToTxt.split(","):
             tmpItems = tmpItem.split(":")
             if len(tmpItems) != 2:
-                tmpLog.error("invalid StreamName:FileName in --writeInputToTxt : %s" % tmpItem)
+                tmpLog.error(f"invalid StreamName:FileName in --writeInputToTxt : {tmpItem}")
                 sys.exit(EC_Config)
 
     # read list of files to be used
@@ -1459,7 +1586,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # check working dir
     options.workDir = os.path.realpath(options.workDir)
     if options.workDir != curDir and (not curDir.startswith(options.workDir + "/")):
-        tmpLog.error("you need to run prun in a directory under %s" % options.workDir)
+        tmpLog.error(f"you need to run prun in a directory under {options.workDir}")
         sys.exit(EC_Config)
 
     # avoid gathering the home dir
@@ -1470,9 +1597,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         and os.path.realpath(os.path.expanduser(os.environ["HOME"])) == options.workDir
         and not dry_mode
     ):
-        tmpStr = "prun is executed just under the HOME directoy "
-        tmpStr += "and is going to send all files under the dir including ~/Mail/* and ~/private/*. "
-        tmpStr += "Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)"
+        tmpStr = (
+            "prun is executed just under the HOME directoy "
+            "and is going to send all files under the dir including ~/Mail/* and ~/private/*. "
+            "Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)"
+        )
         tmpLog.warning(tmpStr)
         while True:
             tmpAnswer = input("y/N: ")
@@ -1491,21 +1620,21 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # check maxCpuCount
     if options.maxCpuCount > Client.maxCpuCountLimit:
-        tmpLog.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
+        tmpLog.error(f"too large maxCpuCount. Must be less than {Client.maxCpuCountLimit}")
         sys.exit(EC_Config)
 
     # create tmp dir
     if options.tmpDir == "":
-        tmpDir = "{}/{}".format(curDir, MiscUtils.wrappedUuidGen())
+        tmpDir = f"{curDir}/{MiscUtils.wrappedUuidGen()}"
     else:
-        tmpDir = "{}/{}".format(os.path.abspath(options.tmpDir), MiscUtils.wrappedUuidGen())
+        tmpDir = f"{os.path.abspath(options.tmpDir)}/{MiscUtils.wrappedUuidGen()}"
     os.makedirs(tmpDir)
 
     # exit action
     def _onExit(dir, files, del_command):
         for tmpFile in files:
-            del_command("rm -rf %s" % tmpFile)
-        del_command("rm -rf %s" % dir)
+            del_command(f"rm -rf {tmpFile}")
+        del_command(f"rm -rf {dir}")
 
     atexit.register(_onExit, tmpDir, delFilesOnExit, commands_get_output)
 
@@ -1515,6 +1644,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     nightVer = ""
     groupArea = ""
     cmtConfig = ""
+    workArea = None
     if options.useAthenaPackages:
         # get Athena versions
         stA, retA = AthenaUtils.getAthenaVer()
@@ -1523,17 +1653,17 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             tmpLog.error("You need to setup Athena runtime to use --useAthenaPackages")
             sys.exit(EC_Config)
         workArea = retA["workArea"]
-        athenaVer = "Atlas-%s" % retA["athenaVer"]
+        athenaVer = f"Atlas-{retA['athenaVer']}"
         groupArea = retA["groupArea"]
         cacheVer = retA["cacheVer"]
         nightVer = retA["nightVer"]
         cmtConfig = retA["cmtConfig"]
         # override run directory
         sString = re.sub(r"[\+]", ".", workArea)
-        runDir = re.sub("^%s" % sString, "", curDir)
+        runDir = re.sub(f"^{sString}", "", curDir)
         if runDir == curDir:
-            errMsg = "You need to run prun in a directory under %s. " % workArea
-            errMsg += "If '%s' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup." % workArea
+            errMsg = f"You need to run prun in a directory under {workArea}. "
+            errMsg += f"If '{workArea}' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup."
             tmpLog.error(errMsg)
             sys.exit(EC_Config)
         elif runDir == "":
@@ -1576,7 +1706,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             options.inDS = epOutput
         else:
             options.inDS = "dummy"
-        tmpLog.info("requested Event Picking service to stage input as %s" % options.inDS)
+        tmpLog.info(f"requested Event Picking service to stage input as {options.inDS}")
 
     # additional files
     if options.extFile == "":
@@ -1707,6 +1837,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # create archive
     archiveName = None
+    archiveFullName = None
     if (options.containerImage == "" or options.useSandbox) and not dry_mode:
         if options.inTarBall == "" and options.tarBallViaDDM == "":
             # copy RootCore packages
@@ -1730,7 +1861,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                         rootCoreShList.append(rootCoreCompileNbSh)
                 for tmpShFile in rootCoreShList:
                     if not os.path.exists(tmpShFile):
-                        tmpErrMsg = "%s doesn't exist. Please use a newer version of RootCore" % tmpShFile
+                        tmpErrMsg = f"{tmpShFile} doesn't exist. Please use a newer version of RootCore"
                         tmpLog.error(tmpErrMsg)
                         sys.exit(EC_Config)
                 tmpLog.info("copy RootCore packages to current dir")
@@ -1742,12 +1873,12 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 # add to be deleted on exit
                 delFilesOnExit.append(rootCoreDestWorkDir)
                 if not options.noBuild:
-                    tmpStat = os.system("{} {}".format(rootCoreSubmitSh, rootCoreDestWorkDir))
+                    tmpStat = os.system(f"{rootCoreSubmitSh} {rootCoreDestWorkDir}")
                 else:
-                    tmpStat = os.system("{} {}".format(rootCoreSubmitNbSh, rootCoreDestWorkDir))
+                    tmpStat = os.system(f"{rootCoreSubmitNbSh} {rootCoreDestWorkDir}")
                 tmpStat %= 255
                 if tmpStat != 0:
-                    tmpErrMsg = "{} failed with {}".format(rootCoreSubmitSh, tmpStat)
+                    tmpErrMsg = f"{rootCoreSubmitSh} failed with {tmpStat}"
                     tmpLog.error(tmpErrMsg)
                     sys.exit(EC_Config)
                 # copy build and run scripts
@@ -1797,136 +1928,28 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 )
 
             # gather normal files
-            if options.useAthenaPackages:
-                # go to workArea
-                os.chdir(workArea)
-                # gather files under work dir
-                tmpLog.info("gathering files under {}/{}".format(workArea, runDir))
-                archStartDir = runDir
-                archStartDir = re.sub("/+$", "", archStartDir)
-            else:
-                # go to work dir
-                os.chdir(options.workDir)
-                # gather files under work dir
-                tmpLog.info("gathering files under %s" % options.workDir)
-                archStartDir = "."
-            # get files in the working dir
-            if options.noCompile:
-                skippedExt = []
-            else:
-                skippedExt = [".o", ".a", ".so"]
-            skippedFlag = False
-            workDirFiles = []
-            if options.followLinks:
-                osWalkList = os.walk(archStartDir, followlinks=True)
-            else:
-                osWalkList = os.walk(archStartDir)
-            for tmpRoot, tmpDirs, tmpFiles in osWalkList:
-                emptyFlag = True
-                for tmpFile in tmpFiles:
-                    if options.useAthenaPackages:
-                        if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
-                            if options.verbose:
-                                print("skip Athena archive %s" % tmpFile)
-                            continue
-                    tmpPath = "{}/{}".format(tmpRoot, tmpFile)
-                    # get size
-                    try:
-                        size = os.path.getsize(tmpPath)
-                    except Exception:
-                        # skip dead symlink
-                        if options.verbose:
-                            type, value, traceBack = sys.exc_info()
-                            print("  Ignore : {}:{}".format(type, value))
-                        continue
-                    # check exclude files
-                    excludeFileFlag = False
-                    for tmpPatt in AthenaUtils.excludeFile:
-                        if re.search(tmpPatt, tmpPath) is not None:
-                            excludeFileFlag = True
-                            break
-                    if excludeFileFlag:
-                        continue
-                    # skipped extension
-                    isSkippedExt = False
-                    for tmpExt in skippedExt:
-                        if tmpPath.endswith(tmpExt):
-                            isSkippedExt = True
-                            break
-                    # check root
-                    isRoot = False
-                    if re.search(r"\.root(\.\d+)*$", tmpPath) is not None:
-                        isRoot = True
-                    # extra files
-                    isExtra = False
-                    for tmpExt in options.extFile:
-                        if re.search(tmpExt + "$", tmpPath) is not None:
-                            isExtra = True
-                            break
-                    # regular files
-                    if not isExtra:
-                        # unset emptyFlag even if all files are skipped
-                        emptyFlag = False
-                        # skipped extensions
-                        if isSkippedExt:
-                            print("  skip {} {}".format(str(skippedExt), tmpPath))
-                            skippedFlag = True
-                            continue
-                        # skip root
-                        if isRoot:
-                            print("  skip root file %s" % tmpPath)
-                            skippedFlag = True
-                            continue
-                        # check size
-                        if size > options.maxFileSize:
-                            print("  skip large file {}:{}B>{}B".format(tmpPath, size, options.maxFileSize))
-                            skippedFlag = True
-                            continue
-                    # remove ./
-                    tmpPath = re.sub(r"^\./", "", tmpPath)
-                    # append
-                    workDirFiles.append(tmpPath)
-                    if emptyFlag:
-                        emptyFlag = False
-                # add empty directory
-                if emptyFlag and tmpDirs == [] and tmpFiles == []:
-                    tmpPath = re.sub(r"^\./", "", tmpRoot)
-                    # check exclude pattern
-                    excludePatFlag = False
-                    for tmpPatt in AthenaUtils.excludeFile:
-                        if re.search(tmpPatt, tmpPath) is not None:
-                            excludePatFlag = True
-                            break
-                    if excludePatFlag:
-                        continue
-                    # skip tmpDir
-                    if tmpPath.split("/")[-1] == tmpDir.split("/")[-1]:
-                        continue
-                    # append
-                    workDirFiles.append(tmpPath)
-            if skippedFlag:
-                tmpLog.info("please use --extFile if you need to send the skipped files to WNs")
+            workDirFiles = _gather_sandbox_files(options, tmpLog, AthenaUtils, workArea, runDir, tmpDir, archiveFullName)
             # set archive name
             if not options.useAthenaPackages:
                 # create archive
                 if options.noBuild and not options.noCompile:
                     # use 'jobO' for noBuild
-                    archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
+                    archiveName = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
                 else:
                     # use 'sources' for normal build
-                    archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
-                archiveFullName = "{}/{}".format(tmpDir, archiveName)
+                    archiveName = f"sources.{MiscUtils.wrappedUuidGen()}.tar"
+                archiveFullName = f"{tmpDir}/{archiveName}"
             # collect files
             for tmpFile in workDirFiles:
                 # avoid self-archiving
                 if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
                     if options.verbose:
-                        print("skip self-archiving for %s" % tmpFile)
+                        print(f"skip self-archiving for {tmpFile}")
                     continue
                 if os.path.islink(tmpFile):
-                    status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rh '{}' -f '{}'".format(tmpFile, archiveFullName))
+                    status, out = commands_get_status_output(f"tar --exclude '.[a-zA-Z]*' -rh '{tmpFile}' -f '{archiveFullName}'")
                 else:
-                    status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rf '{}' '{}'".format(archiveFullName, tmpFile))
+                    status, out = commands_get_status_output(f"tar --exclude '.[a-zA-Z]*' -rf '{archiveFullName}' '{tmpFile}'")
                 if options.verbose:
                     print(tmpFile)
                 if status != 0 or out != "":
@@ -1937,10 +1960,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
             # make empty if archive doesn't exist
             if not os.path.exists(archiveFullName):
-                commands_get_status_output("tar cvf %s --files-from /dev/null " % archiveName)
+                commands_get_status_output(f"tar cvf {archiveName} --files-from /dev/null ")
 
             # compress
-            status, out = commands_get_status_output("gzip %s" % archiveName)
+            status, out = commands_get_status_output(f"gzip {archiveName}")
             archiveName += ".gz"
             if status != 0 or options.verbose:
                 print(out)
@@ -1957,7 +1980,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if options.useAthenaPackages:
                 tmpLog.info("checking sandbox")
                 for _ in range(5):
-                    status, out = commands_get_status_output("tar tvfz %s" % archiveName)
+                    status, out = commands_get_status_output(f"tar tvfz {archiveName}")
                     if status == 0:
                         break
                     time.sleep(5)
@@ -1975,7 +1998,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     tmpStr += "   Please ignore if you believe they are harmless"
                     tmpLog.warning(tmpStr)
                     for symlink in symlinks:
-                        print("  %s" % symlink)
+                        print(f"  {symlink}")
         elif options.tarBallViaDDM:
             # go to tmp dir
             os.chdir(tmpDir)
@@ -1986,11 +2009,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             os.chdir(tmpDir)
             # use a saved copy
             if options.noCompile or not options.noBuild:
-                archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
-                archiveFullName = "{}/{}".format(tmpDir, archiveName)
+                archiveName = f"sources.{MiscUtils.wrappedUuidGen()}.tar"
+                archiveFullName = f"{tmpDir}/{archiveName}"
             else:
-                archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
-                archiveFullName = "{}/{}".format(tmpDir, archiveName)
+                archiveName = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
+                archiveFullName = f"{tmpDir}/{archiveName}"
             # make copy to avoid name duplication
             shutil.copy(options.inTarBall, archiveFullName)
 
@@ -2017,7 +2040,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 archiveName = out.split(":")[-1]
             elif out != "True":
                 print(out)
-                tmpLog.error("failed to upload sandbox with %s" % status)
+                tmpLog.error(f"failed to upload sandbox with {status}")
                 sys.exit(EC_Post)
             # good run list
             if options.goodRunListXML != "":
@@ -2262,7 +2285,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if ":" in tmpLFN:
                 tmpDsSuffix, tmpLFN = tmpLFN.split(":")
                 if tmpDsSuffix in dsSuffix:
-                    tmpErrMsg = "dataset name suffix '%s' is used for multiple files in --outputs. " % tmpDsSuffix
+                    tmpErrMsg = f"dataset name suffix '{tmpDsSuffix}' is used for multiple files in --outputs. "
                     tmpErrMsg += "each output must have a unique suffix."
                     tmpLog.error(tmpErrMsg)
                     sys.exit(EC_Config)
@@ -2281,13 +2304,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     tmpNewLFN += ".tgz"
                 # disallowed character
                 if "/" in tmpNewLFN:
-                    tmp_err_msg = "An output file name %s contains '/'." % tmpNewLFN
+                    tmp_err_msg = f"An output file name {tmpNewLFN} contains '/'."
                     tmpLog.error(tmp_err_msg)
                     sys.exit(EC_Config)
                 # check invalid characters
                 checked = PsubUtils.check_invalid_char(tmpNewLFN, is_file=True)
                 if checked is not None:
-                    tmp_err_msg = 'An output file name {} contains an invalid character "{}".'.format(tmpNewLFN, checked)
+                    tmp_err_msg = f'An output file name {tmpNewLFN} contains an invalid character "{checked}".'
                     tmpLog.error(tmp_err_msg)
                     sys.exit(EC_Config)
                 if len(outDatasetName.split(".")) > 2:
@@ -2468,7 +2491,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             strInMap = strInMap.replace("'tmp_" + streamName + "'", "${" + streamName + "/T}")
         dictItem = {
             "type": "constant",
-            "value": '--inMap "%s"' % strInMap,
+            "value": f'--inMap "{strInMap}"',
         }
         taskParamMap["jobParameters"] += [dictItem]
         taskParamMap["reuseSecOnDemand"] = True
@@ -2489,16 +2512,16 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         jobParameters += "--useRootCore "
     # root
     if options.rootVer != "":
-        jobParameters += "--rootVer %s " % options.rootVer
+        jobParameters += f"--rootVer {options.rootVer} "
     # cmt config
     if options.cmtConfig not in ["", "NULL", None]:
-        jobParameters += "--cmtConfig %s " % options.cmtConfig
+        jobParameters += f"--cmtConfig {options.cmtConfig} "
     # write input to txt
     if options.writeInputToTxt != "":
-        jobParameters += "--writeInputToTxt %s " % options.writeInputToTxt
+        jobParameters += f"--writeInputToTxt {options.writeInputToTxt} "
     # debug parameters
     if options.queueData != "":
-        jobParameters += "--overwriteQueuedata=%s " % options.queueData
+        jobParameters += f"--overwriteQueuedata={options.queueData} "
     # exec string with real output filenames
     if options.execWithRealFileNames:
         jobParameters += "--execWithRealFileNames "
@@ -2569,13 +2592,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             jobParameters += "--useCMake "
         # root
         if options.rootVer != "":
-            jobParameters += "--rootVer %s " % options.rootVer
+            jobParameters += f"--rootVer {options.rootVer} "
         # cmt config
         if not options.cmtConfig in ["", "NULL", None]:
-            jobParameters += "--cmtConfig %s " % options.cmtConfig
+            jobParameters += f"--cmtConfig {options.cmtConfig} "
         # debug parameters
         if options.queueData != "":
-            jobParameters += "--overwriteQueuedata=%s " % options.queueData
+            jobParameters += f"--overwriteQueuedata={options.queueData} "
         # container
         if options.containerImage != "" and not options.alrb:
             jobParameters += f"--containerImage {options.containerImage} "
@@ -2628,9 +2651,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         if options.mergeScript != "":
             jobParameters += f'-j "{options.mergeScript}" '
         if options.rootVer != "":
-            jobParameters += "--rootVer %s " % options.rootVer
+            jobParameters += f"--rootVer {options.rootVer} "
         if options.cmtConfig not in ["", "NULL", None]:
-            jobParameters += "--cmtConfig %s " % options.cmtConfig
+            jobParameters += f"--cmtConfig {options.cmtConfig} "
         if options.useAthenaPackages:
             jobParameters += "--useAthenaPackages "
         if AthenaUtils.useCMake():
@@ -2689,16 +2712,16 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     for iSubmission, ioItem in enumerate(ioList):
         if options.verbose:
             print("== parameters ==")
-            print("Site       : %s" % options.site)
-            print("Athena     : %s" % athenaVer)
+            print(f"Site       : {options.site}")
+            print(f"Athena     : {athenaVer}")
             if groupArea != "":
-                print("Group Area : %s" % groupArea)
+                print(f"Group Area : {groupArea}")
             if cacheVer != "":
-                print("Cache      : %s" % cacheVer[1:])
+                print(f"Cache      : {cacheVer[1:]}")
             if nightVer != "":
-                print("Nightly    : %s" % nightVer[1:])
-            print("RunDir     : %s" % runDir)
-            print("exec       : %s" % options.jobParams)
+                print(f"Nightly    : {nightVer[1:]}")
+            print(f"RunDir     : {runDir}")
+            print(f"exec       : {options.jobParams}")
 
         if len(ioList) == 1:
             newTaskParamMap = taskParamMap
@@ -2718,7 +2741,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             options.mergeOutput,
             options.verbose,
         ):
-            tmpStr = "invalid output datasetname:%s" % options.outDS
+            tmpStr = f"invalid output datasetname:{options.outDS}"
             tmpLog.error(tmpStr)
             exitCode = EC_Config
         # check task parameters
@@ -2732,7 +2755,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 tmpKeys = list(newTaskParamMap)
                 tmpKeys.sort()
                 for tmpKey in tmpKeys:
-                    print("{} : {}".format(tmpKey, newTaskParamMap[tmpKey]))
+                    print(f"{tmpKey} : {newTaskParamMap[tmpKey]}")
         if options.dumpTaskParams is not None:
             with open(os.path.expanduser(options.dumpTaskParams), "w") as f:
                 json.dump(newTaskParamMap, f)
