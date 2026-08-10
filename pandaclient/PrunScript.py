@@ -23,169 +23,52 @@ from pandaclient.MiscUtils import (
     parse_secondary_datasets_opt,
 )
 
-
-def _format_size(num_bytes):
-    size = float(num_bytes)
-    for unit in ("B", "KB", "MB"):
-        if size < 1024:
-            return f"{size:.1f} {unit}"
-        size /= 1024
-    return f"{size:.1f} GB"
+# error codes
+EC_Config = 10
+EC_Post = 50
+EC_Archive = 60
+EC_Submit = 90
 
 
-def _gather_sandbox_files(options, tmp_log, athena_utils, work_area, run_directory, tmp_directory, archive_full_name):
-    # go to the directory files are gathered from
-    if options.useAthenaPackages:
-        # go to work_area
-        os.chdir(work_area)
-        # gather files under work dir
-        tmp_log.info(f"gathering files under {work_area}/{run_directory}")
-        archive_start_directory = run_directory
-        archive_start_directory = re.sub("/+$", "", archive_start_directory)
-    else:
-        # go to work dir
-        os.chdir(options.workDir)
-        # gather files under work dir
-        tmp_log.info(f"gathering files under {options.workDir}")
-        archive_start_directory = "."
-    # get files in the working dir
-    if options.noCompile:
-        skipped_extensions = []
-    else:
-        skipped_extensions = [".o", ".a", ".so"]
-
-    skipped_flag = False
-    skipped_count = 0
-    file_count = 0
-    total_size = 0
-    work_directory_files = []
-    if options.followLinks:
-        os_walk_list = os.walk(archive_start_directory, followlinks=True)
-    else:
-        os_walk_list = os.walk(archive_start_directory)
-
-    for tmp_root, tmp_dirs, tmp_files in os_walk_list:
-        empty_flag = True
-        for tmp_file in tmp_files:
-            if options.useAthenaPackages:
-                if os.path.basename(tmp_file) == os.path.basename(archive_full_name):
-                    if options.verbose:
-                        print(f"skip Athena archive {tmp_file}")
-                    continue
-            tmp_path = f"{tmp_root}/{tmp_file}"
-            # get size
-            try:
-                size = os.path.getsize(tmp_path)
-            except Exception:
-                # skip dead symlink
-                if options.verbose:
-                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                    print(f"  Ignore : {exc_type}:{exc_value}")
-                continue
-            # check exclude files
-            exclude_file_flag = False
-            for tmp_patt in athena_utils.excludeFile:
-                if re.search(tmp_patt, tmp_path) is not None:
-                    exclude_file_flag = True
-                    break
-            if exclude_file_flag:
-                continue
-            # skipped extension
-            is_skipped_extensions = False
-            for tmp_ext in skipped_extensions:
-                if tmp_path.endswith(tmp_ext):
-                    is_skipped_extensions = True
-                    break
-            # check root
-            is_root = False
-            if re.search(r"\.root(\.\d+)*$", tmp_path) is not None:
-                is_root = True
-            # extra files
-            is_extra = False
-            for tmp_ext in options.extFile:
-                if re.search(tmp_ext + "$", tmp_path) is not None:
-                    is_extra = True
-                    break
-            # regular files
-            if not is_extra:
-                # unset empty_flag even if all files are skipped
-                empty_flag = False
-                # skipped extensions
-                if is_skipped_extensions:
-                    print(f"  skip {skipped_extensions!s} {tmp_path}")
-                    skipped_flag = True
-                    skipped_count += 1
-                    continue
-                # skip root
-                if is_root:
-                    print(f"  skip root file {tmp_path}")
-                    skipped_flag = True
-                    skipped_count += 1
-                    continue
-                # check size
-                if size > options.maxFileSize:
-                    print(f"  skip large file {tmp_path}:{size}B>{options.maxFileSize}B")
-                    skipped_flag = True
-                    skipped_count += 1
-                    continue
-            # remove ./
-            tmp_path = re.sub(r"^\./", "", tmp_path)
-            # append
-            work_directory_files.append(tmp_path)
-            file_count += 1
-            total_size += size
-            if empty_flag:
-                empty_flag = False
-
-        # add empty directory
-        if empty_flag and tmp_dirs == [] and tmp_files == []:
-            tmp_path = re.sub(r"^\./", "", tmp_root)
-            # check exclude pattern
-            exclude_pat_flag = False
-            for tmp_patt in athena_utils.excludeFile:
-                if re.search(tmp_patt, tmp_path) is not None:
-                    exclude_pat_flag = True
-                    break
-            if exclude_pat_flag:
-                continue
-            # skip tmp_directory
-            if tmp_path.split("/")[-1] == tmp_directory.split("/")[-1]:
-                continue
-            # append
-            work_directory_files.append(tmp_path)
-
-    # let the user know what went into the sandbox without having to scroll through the file list
-    summary = f"gathered {file_count} file(s), {_format_size(total_size)}, for the sandbox"
-    if skipped_count:
-        summary += f" ({skipped_count} file(s) skipped)"
-    tmp_log.info(summary)
-    if skipped_flag:
-        tmp_log.info("please use --extFile if you need to send the skipped files to WNs")
-    return work_directory_files
+DEPRECATED_OPTIONS = [  # list of deprecated options w.r.t version 0.6.25
+    "--buildInLastChunk",
+    "--cloud",
+    "--configJEM",
+    "--crossSite",
+    "--dbRunNumber",
+    "--disableRebrokerage",
+    "--enableJEM",
+    "--eventPickNumSites",
+    "--eventPickSkipDaTRI",
+    "--eventPickStagedDS",
+    "--forceStagedSecondary",
+    "--individualOutDS",
+    "--libDS",
+    "--long",
+    "--manaVer",
+    "--myproxy",
+    "--outputPath",
+    "--provenanceID",
+    "--removedDS",
+    "--requireLFC",
+    "--safetySize",
+    "--seriesLabel",
+    "--skipScan",
+    "--transferredDS",
+    "--useChirpServer",
+    "--useContElementBoundary",
+    "--useGOForOutput",
+    "--useMana",
+    "--useOldStyleOutput",
+    "--useRucio",
+    "--useShortLivedReplicas",
+    "--useSiteGroup",
+]
 
 
-# main
-def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False):
-    """
-    Execute prun command
-    :param get_taskparams: get task parameters and return them if True
-    :param ext_args: external arguments to be passed to prun
-    :param dry_mode: execute prun in dry mode
-    :param get_options: get options and return them if True
-    :return: task parameters or options if get_taskparams or get_options is True
-    """
+def _build_arg_parser():
     # default cloud/site
     defaultSite = "AUTO"
-
-    # error code
-    EC_Config = 10
-    EC_Post = 50
-    EC_Archive = 60
-    EC_Submit = 90
-
-    # tweak sys.argv
-    sys.argv.pop(0)
-    sys.argv.insert(0, "prun")
 
     usage = """prun [options]
 
@@ -196,41 +79,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
       prun --exec "cpptest %IN" --bexec "make" --athenaTag=22.0.0 --inDS ...
       prun --loadJson prunConfig.json   # read all prun options from one json file
     """
-
-    removedOpts = [  # list of deprecated options w.r.t version 0.6.25
-        "--buildInLastChunk",
-        "--cloud",
-        "--configJEM",
-        "--crossSite",
-        "--dbRunNumber",
-        "--disableRebrokerage",
-        "--enableJEM",
-        "--eventPickNumSites",
-        "--eventPickSkipDaTRI",
-        "--eventPickStagedDS",
-        "--forceStagedSecondary",
-        "--individualOutDS",
-        "--libDS",
-        "--long",
-        "--manaVer",
-        "--myproxy",
-        "--outputPath",
-        "--provenanceID",
-        "--removedDS",
-        "--requireLFC",
-        "--safetySize",
-        "--seriesLabel",
-        "--skipScan",
-        "--transferredDS",
-        "--useChirpServer",
-        "--useContElementBoundary",
-        "--useGOForOutput",
-        "--useMana",
-        "--useOldStyleOutput",
-        "--useRucio",
-        "--useShortLivedReplicas",
-        "--useSiteGroup",
-    ]
 
     optP = get_parser(usage=usage, conflict_handler="resolve")
     optP.set_examples(examples)
@@ -1292,562 +1140,152 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     )
     group_build.add_argument("-3", action="store_true", dest="python3", default=False, help="Use python3")
 
-    from pandaclient import MiscUtils
+    return optP
 
-    # parse options
-    # check against the removed options first
-    for arg in sys.argv[1:]:
-        optName = arg.split("=", 1)[0]
-        if optName in removedOpts:
-            print(f"!!Warning!! option {optName} has been deprecated, pls dont use anymore\n")
-            sys.argv.remove(arg)
 
-    # options, args = optP.parse_known_args()
-    options = optP.parse_args(ext_args)
+def _format_size(num_bytes):
+    size = float(num_bytes)
+    for unit in ("B", "KB", "MB"):
+        if size < 1024:
+            return f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} GB"
 
-    if options.verbose:
-        print(options)
-        print("")
-    # load json
-    jsonExecStr = ""
-    if options.loadJson is not None:
-        loadOpts = MiscUtils.decodeJSON(options.loadJson)
-        for k in loadOpts:
-            v = loadOpts[k]
-            if isinstance(v, str):
-                try:
-                    v = int(v)
-                except Exception:
-                    pass
-            origK = k
-            if k == "exec":
-                k = "jobParams"
-            if not hasattr(options, k):
-                print(f"ERROR: unknown parameter {k} in {options.loadJson}")
-                sys.exit(0)
-            else:
-                setattr(options, k, v)
-            if v is True:
-                jsonExecStr += f" --{origK}"
-            else:
-                if isinstance(v, str):
-                    jsonExecStr += f" --{origK}='{v}'"
-                else:
-                    jsonExecStr += f" --{origK}={v}"
-        if options.verbose:
-            print("options after loading json")
-            print(options)
-            print("")
 
-    # return options
-    if get_options:
-        return vars(options)
-
-    # display version
-    from pandaclient import PandaToolsPkgInfo
-
-    if options.version:
-        print(f"Version: {PandaToolsPkgInfo.release_version}")
-        sys.exit(0)
-
-    from pandaclient import AthenaUtils, Client, PLogger, PsubUtils
-
-    # full execution string
-    fullExecString = PsubUtils.convSysArgv()
-    fullExecString += jsonExecStr
-
-    # set dummy CMTSITE
-    if "CMTSITE" not in os.environ:
-        os.environ["CMTSITE"] = ""
-
-    # get logger
-    tmpLog = PLogger.getPandaLogger()
-
-    # use dev server
-    if options.devSrv:
-        Client.useDevServer()
-
-    # use INTR server
-    if options.intrSrv:
-        Client.useIntrServer()
-
-    # noCompile uses noBuild stuff
-    if options.noCompile:
-        options.noBuild = True
-
-    # not skip log files in inDS
-    if options.notSkipLog:
-        options.useLogAsInput = True
-
-    # old container execution mode
-    if options.oldContMode:
-        options.alrb = False
-
-    # use runGen
-    if options.useAthenaPackages and options.alrb:
-        options.directExecInContainer = False
-
-    # container stuff
-    if options.containerImage != "":
-        options.noBuild = True
-        if options.alrb:
-            options.useSandbox = True
-        if not options.useSandbox:
-            tmpLog.warning(
-                "Files in the run directory are not sent out by default when --containerImage is used. "
-                "Please use --useSandbox if you need those files on the grid."
-            )
-
-    # validate --transferType
-    invalid = get_invalid_transfer_types(options.transferType)
-    if invalid:
-        optP.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
-
-    # files to be deleted
-    delFilesOnExit = []
-
-    # load submission configuration from xml file (if provided)
-    if options.loadXML is not None:
-        from pandaclient import ParseJobXML
-
-        xconfig = ParseJobXML.dom_parser(options.loadXML)
-        tmpLog.info("dump XML config")
-        xconfig.dump(options.verbose)
-        if options.outDS == "":
-            options.outDS = xconfig.outDS()
-        options.outputs = "all"
-        options.jobParams = "${XML_EXESTR}"
-        options.inDS = xconfig.inDS()
-        # check XML
-        try:
-            xconfig.files_in_DS(options.inDS)
-        except Exception:
-            errtype, errvalue = sys.exc_info()[:2]
-            print(errvalue)
-            tmpLog.error("verification of XML failed")
-            sys.exit(EC_Config)
-        # inDS match and secondaryDS filter will be determined later from xconfig
-        options.match = ""
-        options.secondaryDSs = xconfig.secondaryDSs_config(filter=False)
-        # read XML
-        xmlFH = open(options.loadXML)
-        options.loadXML = xmlFH.read()
-        xmlFH.close()
-
-    # save current dir
-    curDir = os.path.realpath(os.getcwd())
-
-    # remove whitespaces
-    if options.outputs != "":
-        options.outputs = re.sub(" ", "", options.outputs)
-
-    # warning for PQ
-    PsubUtils.get_warning_for_pq(options.site, options.excludedSite, tmpLog)
-
-    # warning for memory
-    is_confirmed = PsubUtils.get_warning_for_memory(options.memory, options.is_confirmed, options.nCore, tmpLog)
-    if not is_confirmed:
-        sys.exit(0)
-
-    # exclude sites
-    if options.excludedSite != []:
-        options.excludedSite = PsubUtils.splitCommaConcatenatedItems(options.excludedSite)
-
-    # use certain sites
-    includedSite = None
-    if re.search(",", options.site) is not None:
-        includedSite = PsubUtils.splitCommaConcatenatedItems([options.site])
-        options.site = "AUTO"
-
-    # set maxNFilesPerJob
-    PsubUtils.limit_maxNumInputs = options.maxNFilesPerJob
-
-    # list of output files which can be skipped
-    options.allowNoOutput = options.allowNoOutput.split(",")
-
-    # read datasets from file
-    if options.inDsTxt != "":
-        options.inDS = PsubUtils.readDsFromFile(options.inDsTxt)
-
-    # not expand inDS when setting parent
-    if options.parentTaskID:
-        options.notExpandInDS = True
-
-    # bulk submission
-    if options.inOutDsJson != "":
-        options.bulkSubmission = True
-    if options.bulkSubmission:
-        if options.inOutDsJson == "":
-            tmpLog.error("--inOutDsJson is missing")
-            sys.exit(EC_Config)
-        if options.eventPickEvtList != "":
-            tmpLog.error("cannnot use --eventPickEvtList and --inOutDsJson at the same time")
-            sys.exit(EC_Config)
-        ioList = MiscUtils.decodeJSON(options.inOutDsJson)
-        for ioItem in ioList:
-            if not ioItem["outDS"].endswith("/"):
-                ioItem["outDS"] += "/"
-        options.inDS = ioList[0]["inDS"]
-        options.outDS = ioList[0]["outDS"]
-    else:
-        ioList = [{"inDS": options.inDS, "outDS": options.outDS}]
-
-    # enforce to use output dataset container
-    if not options.outDS.endswith("/"):
-        options.outDS = options.outDS + "/"
-
-    # absolute path for PFN list
-    if options.pfnList != "":
-        options.pfnList = os.path.realpath(options.pfnList)
-
-    # extract DBR from exec
-    tmpMatch = re.search("%DB:([^ '\";]+)", options.jobParams)
-    if tmpMatch is not None:
-        options.dbRelease = tmpMatch.group(1)
-        options.notExpandDBR = True
-
-    # check DBRelease
-    if options.dbRelease != "" and (options.dbRelease.find(":") == -1 and options.dbRelease != "LATEST"):
-        tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")
-        sys.exit(EC_Config)
-
-    # Good Run List
-    if options.goodRunListXML != "" and options.inDS != "":
-        tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")
-        sys.exit(EC_Config)
-
-    # event picking
-    if options.eventPickEvtList != "" and options.inDS != "":
-        tmpLog.error("cannnot use --eventPickEvtList and --inDS at the same time")
-        sys.exit(EC_Config)
-
-    # param check for event picking
-    if options.eventPickEvtList != "":
-        if options.eventPickDataType == "":
-            tmpLog.error("--eventPickDataType must be specified")
-            sys.exit(EC_Config)
-
-    # check rootVer
-    if options.rootVer != "":
-        if options.useAthenaPackages or options.athenaTag:
-            tmpLog.warning(
-                "--rootVer is ignored when --athenaTag or --useAthenaPackages is used, " "not to break the runtime environment by superseding the root version"
-            )
-            options.rootVer = ""
-        else:
-            # change / to .
-            options.rootVer = re.sub("/", ".", options.rootVer)
-
-    # check writeInputToTxt
-    if options.writeInputToTxt != "":
-        # remove %
-        options.writeInputToTxt = options.writeInputToTxt.replace("%", "")
-        # loop over all StreamName:FileName
-        for tmpItem in options.writeInputToTxt.split(","):
-            tmpItems = tmpItem.split(":")
-            if len(tmpItems) != 2:
-                tmpLog.error(f"invalid StreamName:FileName in --writeInputToTxt : {tmpItem}")
-                sys.exit(EC_Config)
-
-    # read list of files to be used
-    filesToBeUsed = []
-    if options.inputFileListName != "":
-        rFile = open(options.inputFileListName)
-        for line in rFile:
-            line = re.sub("\n", "", line)
-            line = line.strip()
-            if line != "":
-                filesToBeUsed.append(line)
-        rFile.close()
-
-    # remove whitespaces
-    if options.inDS != "":
-        options.inDS = options.inDS.replace(" ", "")
-
-    # persistent file
-    if options.persistentFile:
-        options.persistentFile = f"{options.persistentFile}:sources.{MiscUtils.wrappedUuidGen()}.__ow__"
-
-    # warning
-    if options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
-        tmpLog.warning(
-            "Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
-            "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
-        )
-
-    if options.maxNFilesPerJob < 5:
-        tmpLog.warning(
-            "Very small --maxNFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
-            "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
-        )
-
-    # warning for nFilesPerJob
-    if options.nFilesPerJob and options.nFilesPerJob > options.maxNFilesPerJob:
-        tmpLog.warning("--nFilesPerJob cannot be larger than --maxNFilesPerJob. It is set to the value of --maxNFilesPerJob")
-        options.nFilesPerJob = options.maxNFilesPerJob
-
-    # check grid-proxy
-    if not dry_mode:
-        PsubUtils.check_proxy(options.verbose, options.vomsRoles)
-
-    # convert in/outTarBall to full path
-    if options.inTarBall != "":
-        options.inTarBall = os.path.abspath(os.path.expanduser(options.inTarBall))
-    if options.outTarBall != "":
-        options.outTarBall = os.path.abspath(os.path.expanduser(options.outTarBall))
-
-    # check working dir
-    options.workDir = os.path.realpath(options.workDir)
-    if options.workDir != curDir and (not curDir.startswith(options.workDir + "/")):
-        tmpLog.error(f"you need to run prun in a directory under {options.workDir}")
-        sys.exit(EC_Config)
-
-    # avoid gathering the home dir
-    if (
-        "HOME" in os.environ
-        and not options.useHomeDir
-        and not options.useAthenaPackages
-        and os.path.realpath(os.path.expanduser(os.environ["HOME"])) == options.workDir
-        and not dry_mode
-    ):
-        tmpStr = (
-            "prun is executed just under the HOME directoy "
-            "and is going to send all files under the dir including ~/Mail/* and ~/private/*. "
-            "Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)"
-        )
-        tmpLog.warning(tmpStr)
-        while True:
-            tmpAnswer = input("y/N: ")
-            tmpAnswer = tmpAnswer.strip()
-            if tmpAnswer in ["y", "N"]:
-                break
-        if tmpAnswer == "N":
-            sys.exit(EC_Config)
-
-    # run dir
-    runDir = "."
-    if curDir != options.workDir:
-        # remove special characters
-        wDirString = re.sub(r"[\+]", ".", options.workDir)
-        runDir = re.sub("^" + wDirString + "/", "", curDir)
-
-    # check maxCpuCount
-    if options.maxCpuCount > Client.maxCpuCountLimit:
-        tmpLog.error(f"too large maxCpuCount. Must be less than {Client.maxCpuCountLimit}")
-        sys.exit(EC_Config)
-
-    # create tmp dir
-    if options.tmpDir == "":
-        tmpDir = f"{curDir}/{MiscUtils.wrappedUuidGen()}"
-    else:
-        tmpDir = f"{os.path.abspath(options.tmpDir)}/{MiscUtils.wrappedUuidGen()}"
-    os.makedirs(tmpDir)
-
-    # exit action
-    def _onExit(dir, files, del_command):
-        for tmpFile in files:
-            del_command(f"rm -rf {tmpFile}")
-        del_command(f"rm -rf {dir}")
-
-    atexit.register(_onExit, tmpDir, delFilesOnExit, commands_get_output)
-
-    # parse tag
-    athenaVer = ""
-    cacheVer = ""
-    nightVer = ""
-    groupArea = ""
-    cmtConfig = ""
-    workArea = None
+def _gather_sandbox_files(options, tmp_log, athena_utils, work_area, run_directory, tmp_directory, archive_full_name):
+    # go to the directory files are gathered from
     if options.useAthenaPackages:
-        # get Athena versions
-        stA, retA = AthenaUtils.getAthenaVer()
-        # failed
-        if not stA:
-            tmpLog.error("You need to setup Athena runtime to use --useAthenaPackages")
-            sys.exit(EC_Config)
-        workArea = retA["workArea"]
-        athenaVer = f"Atlas-{retA['athenaVer']}"
-        groupArea = retA["groupArea"]
-        cacheVer = retA["cacheVer"]
-        nightVer = retA["nightVer"]
-        cmtConfig = retA["cmtConfig"]
-        # override run directory
-        sString = re.sub(r"[\+]", ".", workArea)
-        runDir = re.sub(f"^{sString}", "", curDir)
-        if runDir == curDir:
-            errMsg = f"You need to run prun in a directory under {workArea}. "
-            errMsg += f"If '{workArea}' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup."
-            tmpLog.error(errMsg)
-            sys.exit(EC_Config)
-        elif runDir == "":
-            runDir = "."
-        elif runDir.startswith("/"):
-            runDir = runDir[1:]
-        runDir = runDir + "/"
-    elif options.athenaTag != "":
-        athenaVer, cacheVer, nightVer = AthenaUtils.parse_athena_tag(options.athenaTag, options.verbose, tmpLog)
-
-    # set CMTCONFIG
-    options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer, cacheVer, nightVer, options.cmtConfig, options.verbose)
-
-    # check CMTCONFIG
-    if not AthenaUtils.checkCmtConfig(cmtConfig, options.cmtConfig, options.noBuild):
-        sys.exit(EC_Config)
-
-    # event picking
-    if options.eventPickEvtList != "":
-        epLockedBy = "prun"
-        if not options.noSubmit:
-            # request event picking
-            epStat, epOutput = Client.requestEventPicking(
-                options.eventPickEvtList,
-                options.eventPickDataType,
-                options.eventPickStreamName,
-                options.eventPickDS,
-                options.eventPickAmiTag,
-                [],
-                options.inputFileListName,
-                options.outDS,
-                epLockedBy,
-                fullExecString,
-                1,
-                options.eventPickWithGUID,
-                options.ei_api,
-                options.verbose,
-            )
-            # set input dataset
-            options.inDS = epOutput
-        else:
-            options.inDS = "dummy"
-        tmpLog.info(f"requested Event Picking service to stage input as {options.inDS}")
-
-    # additional files
-    if options.extFile == "":
-        options.extFile = []
+        # go to work_area
+        os.chdir(work_area)
+        # gather files under work dir
+        tmp_log.info(f"gathering files under {work_area}/{run_directory}")
+        archive_start_directory = run_directory
+        archive_start_directory = re.sub("/+$", "", archive_start_directory)
     else:
-        tmpItems = options.extFile.split(",")
-        options.extFile = []
-        # convert * to .*
-        for tmpItem in tmpItems:
-            options.extFile.append(tmpItem.replace("*", ".*"))
-
-    # user-specified merging script
-    if options.mergeScript != "":
-        # enable merging
-        options.mergeOutput = True
-        # add it to extFile
-        if not options.mergeScript in options.extFile:
-            options.extFile.append(options.mergeScript)
-
-    # glue packages
-    options.gluePackages = options.gluePackages.split(",")
-    try:
-        options.gluePackages.remove("")
-    except Exception:
-        pass
-
-    # set excludeFile
-    AthenaUtils.setExcludeFile(options.excludeFile)
-
-    # LFN matching
-    if options.match != "":
-        # convert . to \.
-        options.match = options.match.replace(".", r"\.")
-        # convert * to .*
-        options.match = options.match.replace("*", ".*")
-
-    # LFN anti-matching
-    if options.antiMatch != "":
-        # convert . to \.
-        options.antiMatch = options.antiMatch.replace(".", r"\.")
-        # convert * to .*
-        options.antiMatch = options.antiMatch.replace("*", ".*")
-
-    # get job script
-    if options.jobParams == "":
-        tmpLog.error("you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
-        sys.exit(EC_Config)
-
-    # replace : to = for backward compatibility
-    for optArg in ["RNDM"]:
-        options.jobParams = re.sub("%" + optArg + ":", "%" + optArg + "=", options.jobParams)
-
-    # check output dataset
-    if options.outDS == "":
-        tmpLog.error("no outDS is given\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
-        sys.exit(EC_Config)
-
-    # avoid inDS+pfnList
-    if options.pfnList != "":
-        # don't use inDS
-        if options.inDS != "":
-            tmpLog.error("--pfnList and --inDS cannot be used at the same time")
-            sys.exit(EC_Config)
-        # use site
-        if options.site == "AUTO":
-            tmpLog.error("--site must be specified when --pfnList is used")
-            sys.exit(EC_Config)
-
-    # secondary datasets
-    tmpStat, tmpOut = parse_secondary_datasets_opt(options.secondaryDSs)
-    if not tmpStat:
-        tmpLog.error(tmpOut)
-        sys.exit(EC_Config)
+        # go to work dir
+        os.chdir(options.workDir)
+        # gather files under work dir
+        tmp_log.info(f"gathering files under {options.workDir}")
+        archive_start_directory = "."
+    # get files in the working dir
+    if options.noCompile:
+        skipped_extensions = []
     else:
-        options.secondaryDSs = tmpOut
+        skipped_extensions = [".o", ".a", ".so"]
 
-    # reusable secondary streams
-    if options.reusableSecondary == "":
-        options.reusableSecondary = []
+    skipped_flag = False
+    skipped_count = 0
+    file_count = 0
+    total_size = 0
+    work_directory_files = []
+    if options.followLinks:
+        os_walk_list = os.walk(archive_start_directory, followlinks=True)
     else:
-        options.reusableSecondary = options.reusableSecondary.split(",")
+        os_walk_list = os.walk(archive_start_directory)
 
-    # get nickname
-    if not dry_mode:
-        nickName = PsubUtils.getNickname()
-    else:
-        nickName = "dummy"
+    for tmp_root, tmp_dirs, tmp_files in os_walk_list:
+        empty_flag = True
+        for tmp_file in tmp_files:
+            if options.useAthenaPackages:
+                if os.path.basename(tmp_file) == os.path.basename(archive_full_name):
+                    if options.verbose:
+                        print(f"skip Athena archive {tmp_file}")
+                    continue
+            tmp_path = f"{tmp_root}/{tmp_file}"
+            # get size
+            try:
+                size = os.path.getsize(tmp_path)
+            except Exception:
+                # skip dead symlink
+                if options.verbose:
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    print(f"  Ignore : {exc_type}:{exc_value}")
+                continue
+            # check exclude files
+            exclude_file_flag = False
+            for tmp_patt in athena_utils.excludeFile:
+                if re.search(tmp_patt, tmp_path) is not None:
+                    exclude_file_flag = True
+                    break
+            if exclude_file_flag:
+                continue
+            # skipped extension
+            is_skipped_extensions = False
+            for tmp_ext in skipped_extensions:
+                if tmp_path.endswith(tmp_ext):
+                    is_skipped_extensions = True
+                    break
+            # check root
+            is_root = False
+            if re.search(r"\.root(\.\d+)*$", tmp_path) is not None:
+                is_root = True
+            # extra files
+            is_extra = False
+            for tmp_ext in options.extFile:
+                if re.search(tmp_ext + "$", tmp_path) is not None:
+                    is_extra = True
+                    break
+            # regular files
+            if not is_extra:
+                # unset empty_flag even if all files are skipped
+                empty_flag = False
+                # skipped extensions
+                if is_skipped_extensions:
+                    print(f"  skip {skipped_extensions!s} {tmp_path}")
+                    skipped_flag = True
+                    skipped_count += 1
+                    continue
+                # skip root
+                if is_root:
+                    print(f"  skip root file {tmp_path}")
+                    skipped_flag = True
+                    skipped_count += 1
+                    continue
+                # check size
+                if size > options.maxFileSize:
+                    print(f"  skip large file {tmp_path}:{size}B>{options.maxFileSize}B")
+                    skipped_flag = True
+                    skipped_count += 1
+                    continue
+            # remove ./
+            tmp_path = re.sub(r"^\./", "", tmp_path)
+            # append
+            work_directory_files.append(tmp_path)
+            file_count += 1
+            total_size += size
+            if empty_flag:
+                empty_flag = False
 
-    if nickName == "":
-        sys.exit(EC_Config)
+        # add empty directory
+        if empty_flag and tmp_dirs == [] and tmp_files == []:
+            tmp_path = re.sub(r"^\./", "", tmp_root)
+            # check exclude pattern
+            exclude_pat_flag = False
+            for tmp_patt in athena_utils.excludeFile:
+                if re.search(tmp_patt, tmp_path) is not None:
+                    exclude_pat_flag = True
+                    break
+            if exclude_pat_flag:
+                continue
+            # skip tmp_directory
+            if tmp_path.split("/")[-1] == tmp_directory.split("/")[-1]:
+                continue
+            # append
+            work_directory_files.append(tmp_path)
 
-    # set Rucio accounting
-    PsubUtils.setRucioAccount(nickName, "prun", True)
+    # let the user know what went into the sandbox without having to scroll through the file list
+    summary = f"gathered {file_count} file(s), {_format_size(total_size)}, for the sandbox"
+    if skipped_count:
+        summary += f" ({skipped_count} file(s) skipped)"
+    tmp_log.info(summary)
+    if skipped_flag:
+        tmp_log.info("please use --extFile if you need to send the skipped files to WNs")
+    return work_directory_files
 
-    # check nGBPerJob
-    if not options.nGBPerJob in [-1, "MAX"]:
-        # convert to int
-        try:
-            if options.nGBPerJob != "MAX":
-                options.nGBPerJob = int(options.nGBPerJob)
-        except Exception:
-            tmpLog.error("--nGBPerJob must be an integer or MAX")
-            sys.exit(EC_Config)
-        # check negative
-        if options.nGBPerJob <= 0:
-            tmpLog.error("--nGBPerJob must be positive")
-            sys.exit(EC_Config)
-        # incompatible parameters
-        if options.nFilesPerJob > 0:
-            tmpLog.error("--nFilesPerJob and --nGBPerJob must be used exclusively")
-            sys.exit(EC_Config)
 
-    # split options are mutually exclusive
-    if options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob != -1:
-        tmpLog.error("split by files, split by events and split by file size can not be used simultaneously")
-        sys.exit(EC_Config)
-
-    # split options are mutually exclusive
-    if options.nEventsPerJob > 0 and options.nGBPerJob != -1:
-        tmpLog.error("split by events and split by file size can not be used simultaneously")
-        sys.exit(EC_Config)
-
-    # translate --nJobs into nFiles / nFilesPerJob
-    set_n_files_from_n_jobs(options)
-
-    #####################################################################
-    # archive sources and send it to HTTP-reachable location
-
+def _build_and_upload_sandbox(
+    options, dry_mode, tmp_dir, tmp_log, cur_dir, files_to_delete_on_exit, work_area, run_dir, group_area, athena_utils, misc_utils, client, psub_utils
+):
     # create archive
     archiveName = None
     archiveFullName = None
@@ -1859,7 +1297,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 if "ROOTCOREDIR" not in os.environ:
                     tmpErrMsg = "$ROOTCOREDIR is not defined in your environment. "
                     tmpErrMsg += "Please setup RootCore runtime beforehand"
-                    tmpLog.error(tmpErrMsg)
+                    tmp_log.error(tmpErrMsg)
                     sys.exit(EC_Config)
                 # check grid_submit.sh
                 rootCoreSubmitSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_submit.sh"
@@ -1875,16 +1313,16 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 for tmpShFile in rootCoreShList:
                     if not os.path.exists(tmpShFile):
                         tmpErrMsg = f"{tmpShFile} doesn't exist. Please use a newer version of RootCore"
-                        tmpLog.error(tmpErrMsg)
+                        tmp_log.error(tmpErrMsg)
                         sys.exit(EC_Config)
-                tmpLog.info("copy RootCore packages to current dir")
+                tmp_log.info("copy RootCore packages to current dir")
                 # destination
                 pandaRootCoreWorkDirName = "__panda_rootCoreWorkDir"
-                rootCoreDestWorkDir = curDir + "/" + pandaRootCoreWorkDirName
+                rootCoreDestWorkDir = cur_dir + "/" + pandaRootCoreWorkDirName
                 # add all files to extFile
                 options.extFile.append(pandaRootCoreWorkDirName + "/.*")
                 # add to be deleted on exit
-                delFilesOnExit.append(rootCoreDestWorkDir)
+                files_to_delete_on_exit.append(rootCoreDestWorkDir)
                 if not options.noBuild:
                     tmpStat = os.system(f"{rootCoreSubmitSh} {rootCoreDestWorkDir}")
                 else:
@@ -1892,7 +1330,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 tmpStat %= 255
                 if tmpStat != 0:
                     tmpErrMsg = f"{rootCoreSubmitSh} failed with {tmpStat}"
-                    tmpLog.error(tmpErrMsg)
+                    tmp_log.error(tmpErrMsg)
                     sys.exit(EC_Config)
                 # copy build and run scripts
                 shutil.copy(rootCoreRunSh, rootCoreDestWorkDir)
@@ -1902,18 +1340,18 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             # gather Athena packages
             archiveName = ""
             if options.useAthenaPackages:
-                if AthenaUtils.useCMake():
+                if athena_utils.useCMake():
                     # archive with cpack
-                    archiveName, archiveFullName = AthenaUtils.archiveWithCpack(True, tmpDir, options.verbose)
+                    archiveName, archiveFullName = athena_utils.archiveWithCpack(True, tmp_dir, options.verbose)
                 # set extFile
-                AthenaUtils.setExtFile(options.extFile)
+                athena_utils.setExtFile(options.extFile)
                 if not options.noBuild:
                     # archive sources
-                    archiveName, archiveFullName = AthenaUtils.archiveSourceFiles(
-                        workArea,
-                        runDir,
-                        curDir,
-                        tmpDir,
+                    archiveName, archiveFullName = athena_utils.archiveSourceFiles(
+                        work_area,
+                        run_dir,
+                        cur_dir,
+                        tmp_dir,
                         options.verbose,
                         options.gluePackages,
                         dereferenceSymLinks=options.followLinks,
@@ -1921,37 +1359,37 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     )
                 else:
                     # archive jobO
-                    archiveName, archiveFullName = AthenaUtils.archiveJobOFiles(
-                        workArea,
-                        runDir,
-                        curDir,
-                        tmpDir,
+                    archiveName, archiveFullName = athena_utils.archiveJobOFiles(
+                        work_area,
+                        run_dir,
+                        cur_dir,
+                        tmp_dir,
                         options.verbose,
                         archiveName=archiveName,
                     )
                 # archive InstallArea
-                AthenaUtils.archiveInstallArea(
-                    workArea,
-                    groupArea,
+                athena_utils.archiveInstallArea(
+                    work_area,
+                    group_area,
                     archiveName,
                     archiveFullName,
-                    tmpDir,
+                    tmp_dir,
                     options.noBuild,
                     options.verbose,
                 )
 
             # gather normal files
-            workDirFiles = _gather_sandbox_files(options, tmpLog, AthenaUtils, workArea, runDir, tmpDir, archiveFullName)
+            workDirFiles = _gather_sandbox_files(options, tmp_log, athena_utils, work_area, run_dir, tmp_dir, archiveFullName)
             # set archive name
             if not options.useAthenaPackages:
                 # create archive
                 if options.noBuild and not options.noCompile:
                     # use 'jobO' for noBuild
-                    archiveName = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
+                    archiveName = f"jobO.{misc_utils.wrappedUuidGen()}.tar"
                 else:
                     # use 'sources' for normal build
-                    archiveName = f"sources.{MiscUtils.wrappedUuidGen()}.tar"
-                archiveFullName = f"{tmpDir}/{archiveName}"
+                    archiveName = f"sources.{misc_utils.wrappedUuidGen()}.tar"
+                archiveFullName = f"{tmp_dir}/{archiveName}"
             # collect files
             for tmpFile in workDirFiles:
                 # avoid self-archiving
@@ -1969,7 +1407,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     print(out)
 
             # go to tmpdir
-            os.chdir(tmpDir)
+            os.chdir(tmp_dir)
 
             # make empty if archive doesn't exist
             if not os.path.exists(archiveFullName):
@@ -1986,19 +1424,19 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if options.verbose:
                 print(out)
             if status != 0:
-                tmpLog.error("Failed to archive working area.\nIf you see 'Disk quota exceeded', try '--tmpDir /tmp'")
+                tmp_log.error("Failed to archive working area.\nIf you see 'Disk quota exceeded', try '--tmpDir /tmp'")
                 sys.exit(EC_Archive)
 
             # check symlinks
             if options.useAthenaPackages:
-                tmpLog.info("checking sandbox")
+                tmp_log.info("checking sandbox")
                 for _ in range(5):
                     status, out = commands_get_status_output(f"tar tvfz {archiveName}")
                     if status == 0:
                         break
                     time.sleep(5)
                 if status != 0:
-                    tmpLog.error(f"Failed to expand sandbox. {out}")
+                    tmp_log.error(f"Failed to expand sandbox. {out}")
                     sys.exit(EC_Archive)
                 symlinks = []
                 for line in out.split("\n"):
@@ -2009,24 +1447,24 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     tmpStr = "Found some unresolved symlinks which may cause a problem\n"
                     tmpStr += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
                     tmpStr += "   Please ignore if you believe they are harmless"
-                    tmpLog.warning(tmpStr)
+                    tmp_log.warning(tmpStr)
                     for symlink in symlinks:
                         print(f"  {symlink}")
         elif options.tarBallViaDDM:
             # go to tmp dir
-            os.chdir(tmpDir)
+            os.chdir(tmp_dir)
             # use sandbox pre-uploaded to DDM
             archiveName = options.tarBallViaDDM.split(":")[-1]
         else:
             # go to tmp dir
-            os.chdir(tmpDir)
+            os.chdir(tmp_dir)
             # use a saved copy
             if options.noCompile or not options.noBuild:
-                archiveName = f"sources.{MiscUtils.wrappedUuidGen()}.tar"
-                archiveFullName = f"{tmpDir}/{archiveName}"
+                archiveName = f"sources.{misc_utils.wrappedUuidGen()}.tar"
+                archiveFullName = f"{tmp_dir}/{archiveName}"
             else:
-                archiveName = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
-                archiveFullName = f"{tmpDir}/{archiveName}"
+                archiveName = f"jobO.{misc_utils.wrappedUuidGen()}.tar"
+                archiveFullName = f"{tmp_dir}/{archiveName}"
             # make copy to avoid name duplication
             shutil.copy(options.inTarBall, archiveFullName)
 
@@ -2037,12 +1475,12 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         # upload source files
         if not options.noSubmit and not options.tarBallViaDDM:
             # upload sources via HTTP POST
-            tmpLog.info("upload sandbox")
+            tmp_log.info("upload sandbox")
             if options.vo is None:
                 use_cache_srv = True
             else:
                 use_cache_srv = False
-            status, out = Client.putFile(
+            status, out = client.putFile(
                 archiveName,
                 options.verbose,
                 useCacheSrv=use_cache_srv,
@@ -2053,29 +1491,39 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 archiveName = out.split(":")[-1]
             elif out != "True":
                 print(out)
-                tmpLog.error(f"failed to upload sandbox with {status}")
+                tmp_log.error(f"failed to upload sandbox with {status}")
                 sys.exit(EC_Post)
             # good run list
             if options.goodRunListXML != "":
-                options.goodRunListXML = PsubUtils.uploadGzippedFile(
+                options.goodRunListXML = psub_utils.uploadGzippedFile(
                     options.goodRunListXML,
-                    curDir,
-                    tmpLog,
-                    delFilesOnExit,
+                    cur_dir,
+                    tmp_log,
+                    files_to_delete_on_exit,
                     options.noSubmit,
                     options.verbose,
                 )
 
-    # special handling
-    specialHandling = ""
-    if options.express:
-        specialHandling += "express,"
-    if options.debugMode:
-        specialHandling += "debug,"
-    specialHandling = specialHandling[:-1]
+    return archiveName
 
-    #####################################################################
-    # make task
+
+def _build_task_param_map(
+    options,
+    athenaVer,
+    cacheVer,
+    nightVer,
+    includedSite,
+    fullExecString,
+    archiveName,
+    runDir,
+    filesToBeUsed,
+    tmpLog,
+    AthenaUtils,
+    MiscUtils,
+    PsubUtils,
+    Client,
+    PandaToolsPkgInfo,
+):
     taskParamMap = {}
     taskParamMap["taskName"] = options.outDS
     if not options.allowTaskDuplication:
@@ -2714,6 +2162,628 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 tmpLog.error("--nGBPerMergeJob must be positive")
                 sys.exit(EC_Config)
             taskParamMap["nGBPerMergeJob"] = options.nGBPerMergeJob
+    return taskParamMap
+
+
+# main
+def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False):
+    """
+    Execute prun command
+    :param get_taskparams: get task parameters and return them if True
+    :param ext_args: external arguments to be passed to prun
+    :param dry_mode: execute prun in dry mode
+    :param get_options: get options and return them if True
+    :return: task parameters or options if get_taskparams or get_options is True
+    """
+
+    #####################################################################
+    # parse command-line options
+
+    # tweak sys.argv
+    sys.argv.pop(0)
+    sys.argv.insert(0, "prun")
+
+    optP = _build_arg_parser()
+
+    from pandaclient import MiscUtils
+
+    # parse options
+    # check against the removed options first
+    for arg in sys.argv[1:]:
+        optName = arg.split("=", 1)[0]
+        if optName in DEPRECATED_OPTIONS:
+            print(f"!!Warning!! option {optName} has been deprecated, please stop using it anymore\n")
+            sys.argv.remove(arg)
+
+    # options, args = optP.parse_known_args()
+    options = optP.parse_args(ext_args)
+
+    if options.verbose:
+        print(options)
+        print("")
+
+    # load json
+    jsonExecStr = ""
+    if options.loadJson is not None:
+        loadOpts = MiscUtils.decodeJSON(options.loadJson)
+        for k in loadOpts:
+            v = loadOpts[k]
+            if isinstance(v, str):
+                try:
+                    v = int(v)
+                except Exception:
+                    pass
+            origK = k
+            if k == "exec":
+                k = "jobParams"
+            if not hasattr(options, k):
+                print(f"ERROR: unknown parameter {k} in {options.loadJson}")
+                sys.exit(0)
+            else:
+                setattr(options, k, v)
+            if v is True:
+                jsonExecStr += f" --{origK}"
+            else:
+                if isinstance(v, str):
+                    jsonExecStr += f" --{origK}='{v}'"
+                else:
+                    jsonExecStr += f" --{origK}={v}"
+        if options.verbose:
+            print("options after loading json")
+            print(options)
+            print("")
+
+    # return options
+    if get_options:
+        return vars(options)
+
+    # display version
+    from pandaclient import PandaToolsPkgInfo
+
+    if options.version:
+        print(f"Version: {PandaToolsPkgInfo.release_version}")
+        sys.exit(0)
+
+    #####################################################################
+    # initialize runtime environment
+
+    from pandaclient import AthenaUtils, Client, PLogger, PsubUtils
+
+    # full execution string
+    fullExecString = PsubUtils.convSysArgv()
+    fullExecString += jsonExecStr
+
+    # set dummy CMTSITE
+    if "CMTSITE" not in os.environ:
+        os.environ["CMTSITE"] = ""
+
+    # get logger
+    tmpLog = PLogger.getPandaLogger()
+
+    # use dev server
+    if options.devSrv:
+        Client.useDevServer()
+
+    # use INTR server
+    if options.intrSrv:
+        Client.useIntrServer()
+
+    # noCompile uses noBuild stuff
+    if options.noCompile:
+        options.noBuild = True
+
+    # not skip log files in inDS
+    if options.notSkipLog:
+        options.useLogAsInput = True
+
+    # old container execution mode
+    if options.oldContMode:
+        options.alrb = False
+
+    # use runGen
+    if options.useAthenaPackages and options.alrb:
+        options.directExecInContainer = False
+
+    # container options
+    if options.containerImage != "":
+        options.noBuild = True
+        if options.alrb:
+            options.useSandbox = True
+        if not options.useSandbox:
+            tmpLog.warning(
+                "Files in the run directory are not sent out by default when --containerImage is used. "
+                "Please use --useSandbox if you need those files on the grid."
+            )
+
+    # validate --transferType
+    invalid = get_invalid_transfer_types(options.transferType)
+    if invalid:
+        optP.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
+
+    #####################################################################
+    # load submission config and validate/normalize job options
+
+    # files to be deleted
+    files_to_delete_on_exit = []
+
+    # load submission configuration from xml file (if provided)
+    if options.loadXML is not None:
+        from pandaclient import ParseJobXML
+
+        xconfig = ParseJobXML.dom_parser(options.loadXML)
+        tmpLog.info("dump XML config")
+        xconfig.dump(options.verbose)
+        if options.outDS == "":
+            options.outDS = xconfig.outDS()
+        options.outputs = "all"
+        options.jobParams = "${XML_EXESTR}"
+        options.inDS = xconfig.inDS()
+        # check XML
+        try:
+            xconfig.files_in_DS(options.inDS)
+        except Exception:
+            errtype, errvalue = sys.exc_info()[:2]
+            print(errvalue)
+            tmpLog.error("verification of XML failed")
+            sys.exit(EC_Config)
+        # inDS match and secondaryDS filter will be determined later from xconfig
+        options.match = ""
+        options.secondaryDSs = xconfig.secondaryDSs_config(filter=False)
+        # read XML
+        xmlFH = open(options.loadXML)
+        options.loadXML = xmlFH.read()
+        xmlFH.close()
+
+    # save current dir
+    curDir = os.path.realpath(os.getcwd())
+
+    # remove whitespaces
+    if options.outputs != "":
+        options.outputs = re.sub(" ", "", options.outputs)
+
+    # warning for PQ
+    PsubUtils.get_warning_for_pq(options.site, options.excludedSite, tmpLog)
+
+    # warning for memory
+    is_confirmed = PsubUtils.get_warning_for_memory(options.memory, options.is_confirmed, options.nCore, tmpLog)
+    if not is_confirmed:
+        sys.exit(0)
+
+    # exclude sites
+    if options.excludedSite != []:
+        options.excludedSite = PsubUtils.splitCommaConcatenatedItems(options.excludedSite)
+
+    # use certain sites
+    includedSite = None
+    if re.search(",", options.site) is not None:
+        includedSite = PsubUtils.splitCommaConcatenatedItems([options.site])
+        options.site = "AUTO"
+
+    # set maxNFilesPerJob
+    PsubUtils.limit_maxNumInputs = options.maxNFilesPerJob
+
+    # list of output files which can be skipped
+    options.allowNoOutput = options.allowNoOutput.split(",")
+
+    # read datasets from file
+    if options.inDsTxt != "":
+        options.inDS = PsubUtils.readDsFromFile(options.inDsTxt)
+
+    # not expand inDS when setting parent
+    if options.parentTaskID:
+        options.notExpandInDS = True
+
+    # bulk submission
+    if options.inOutDsJson != "":
+        options.bulkSubmission = True
+    if options.bulkSubmission:
+        if options.inOutDsJson == "":
+            tmpLog.error("--inOutDsJson is missing")
+            sys.exit(EC_Config)
+        if options.eventPickEvtList != "":
+            tmpLog.error("cannot use --eventPickEvtList and --inOutDsJson at the same time")
+            sys.exit(EC_Config)
+        ioList = MiscUtils.decodeJSON(options.inOutDsJson)
+        for ioItem in ioList:
+            if not ioItem["outDS"].endswith("/"):
+                ioItem["outDS"] += "/"
+        options.inDS = ioList[0]["inDS"]
+        options.outDS = ioList[0]["outDS"]
+    else:
+        ioList = [{"inDS": options.inDS, "outDS": options.outDS}]
+
+    # enforce to use output dataset container
+    if not options.outDS.endswith("/"):
+        options.outDS = options.outDS + "/"
+
+    # absolute path for PFN list
+    if options.pfnList != "":
+        options.pfnList = os.path.realpath(options.pfnList)
+
+    # extract DBR from exec
+    tmpMatch = re.search("%DB:([^ '\";]+)", options.jobParams)
+    if tmpMatch is not None:
+        options.dbRelease = tmpMatch.group(1)
+        options.notExpandDBR = True
+
+    # check DBRelease
+    if options.dbRelease != "" and (options.dbRelease.find(":") == -1 and options.dbRelease != "LATEST"):
+        tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")
+        sys.exit(EC_Config)
+
+    # Good Run List
+    if options.goodRunListXML != "" and options.inDS != "":
+        tmpLog.error("cannot use --goodRunListXML and --inDS at the same time")
+        sys.exit(EC_Config)
+
+    # event picking
+    if options.eventPickEvtList != "" and options.inDS != "":
+        tmpLog.error("cannot use --eventPickEvtList and --inDS at the same time")
+        sys.exit(EC_Config)
+
+    # param check for event picking
+    if options.eventPickEvtList != "":
+        if options.eventPickDataType == "":
+            tmpLog.error("--eventPickDataType must be specified")
+            sys.exit(EC_Config)
+
+    # check rootVer
+    if options.rootVer != "":
+        if options.useAthenaPackages or options.athenaTag:
+            tmpLog.warning(
+                "--rootVer is ignored when --athenaTag or --useAthenaPackages is used, " "not to break the runtime environment by superseding the root version"
+            )
+            options.rootVer = ""
+        else:
+            # change / to .
+            options.rootVer = re.sub("/", ".", options.rootVer)
+
+    # check writeInputToTxt
+    if options.writeInputToTxt != "":
+        # remove %
+        options.writeInputToTxt = options.writeInputToTxt.replace("%", "")
+        # loop over all StreamName:FileName
+        for tmpItem in options.writeInputToTxt.split(","):
+            tmpItems = tmpItem.split(":")
+            if len(tmpItems) != 2:
+                tmpLog.error(f"invalid StreamName:FileName in --writeInputToTxt : {tmpItem}")
+                sys.exit(EC_Config)
+
+    # read list of files to be used
+    filesToBeUsed = []
+    if options.inputFileListName != "":
+        rFile = open(options.inputFileListName)
+        for line in rFile:
+            line = re.sub("\n", "", line)
+            line = line.strip()
+            if line != "":
+                filesToBeUsed.append(line)
+        rFile.close()
+
+    # remove whitespaces
+    if options.inDS != "":
+        options.inDS = options.inDS.replace(" ", "")
+
+    # persistent file
+    if options.persistentFile:
+        options.persistentFile = f"{options.persistentFile}:sources.{MiscUtils.wrappedUuidGen()}.__ow__"
+
+    # warning
+    if options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
+        tmpLog.warning(
+            "Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
+            "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
+        )
+
+    if options.maxNFilesPerJob < 5:
+        tmpLog.warning(
+            "Very small --maxNFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
+            "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
+        )
+
+    # warning for nFilesPerJob
+    if options.nFilesPerJob and options.nFilesPerJob > options.maxNFilesPerJob:
+        tmpLog.warning("--nFilesPerJob cannot be larger than --maxNFilesPerJob. It is set to the value of --maxNFilesPerJob")
+        options.nFilesPerJob = options.maxNFilesPerJob
+
+    # check grid-proxy
+    if not dry_mode:
+        PsubUtils.check_proxy(options.verbose, options.vomsRoles)
+
+    # convert in/outTarBall to full path
+    if options.inTarBall != "":
+        options.inTarBall = os.path.abspath(os.path.expanduser(options.inTarBall))
+    if options.outTarBall != "":
+        options.outTarBall = os.path.abspath(os.path.expanduser(options.outTarBall))
+
+    # check working dir
+    options.workDir = os.path.realpath(options.workDir)
+    if options.workDir != curDir and (not curDir.startswith(options.workDir + "/")):
+        tmpLog.error(f"you need to run prun in a directory under {options.workDir}")
+        sys.exit(EC_Config)
+
+    # avoid gathering the home dir
+    if (
+        "HOME" in os.environ
+        and not options.useHomeDir
+        and not options.useAthenaPackages
+        and os.path.realpath(os.path.expanduser(os.environ["HOME"])) == options.workDir
+        and not dry_mode
+    ):
+        tmpStr = (
+            "prun is being executed under the HOME directory "
+            "and is going to send all files under the dir including ~/Mail/* and ~/private/*. "
+            "Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)"
+        )
+        tmpLog.warning(tmpStr)
+        while True:
+            tmpAnswer = input("y/N: ")
+            tmpAnswer = tmpAnswer.strip()
+            if tmpAnswer in ["y", "N"]:
+                break
+        if tmpAnswer == "N":
+            sys.exit(EC_Config)
+
+    # run dir
+    runDir = "."
+    if curDir != options.workDir:
+        # remove special characters
+        wDirString = re.sub(r"[\+]", ".", options.workDir)
+        runDir = re.sub("^" + wDirString + "/", "", curDir)
+
+    # check maxCpuCount
+    if options.maxCpuCount > Client.maxCpuCountLimit:
+        tmpLog.error(f"too large maxCpuCount. Must be less than {Client.maxCpuCountLimit}")
+        sys.exit(EC_Config)
+
+    # create tmp dir
+    if options.tmpDir == "":
+        tmpDir = f"{curDir}/{MiscUtils.wrappedUuidGen()}"
+    else:
+        tmpDir = f"{os.path.abspath(options.tmpDir)}/{MiscUtils.wrappedUuidGen()}"
+    os.makedirs(tmpDir)
+
+    # exit action
+    def _onExit(dir, files, del_command):
+        for tmpFile in files:
+            del_command(f"rm -rf {tmpFile}")
+        del_command(f"rm -rf {dir}")
+
+    atexit.register(_onExit, tmpDir, files_to_delete_on_exit, commands_get_output)
+
+    #####################################################################
+    # resolve Athena environment, event picking, and remaining option checks
+
+    # parse tag
+    athenaVer = ""
+    cacheVer = ""
+    nightVer = ""
+    groupArea = ""
+    cmtConfig = ""
+    workArea = None
+    if options.useAthenaPackages:
+        # get Athena versions
+        stA, retA = AthenaUtils.getAthenaVer()
+        # failed
+        if not stA:
+            tmpLog.error("You need to setup Athena runtime to use --useAthenaPackages")
+            sys.exit(EC_Config)
+        workArea = retA["workArea"]
+        athenaVer = f"Atlas-{retA['athenaVer']}"
+        groupArea = retA["groupArea"]
+        cacheVer = retA["cacheVer"]
+        nightVer = retA["nightVer"]
+        cmtConfig = retA["cmtConfig"]
+        # override run directory
+        sString = re.sub(r"[\+]", ".", workArea)
+        runDir = re.sub(f"^{sString}", "", curDir)
+        if runDir == curDir:
+            errMsg = (
+                f"You need to run prun in a directory under {workArea}. "
+                f"If '{workArea}' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup."
+            )
+            tmpLog.error(errMsg)
+            sys.exit(EC_Config)
+        elif runDir == "":
+            runDir = "."
+        elif runDir.startswith("/"):
+            runDir = runDir[1:]
+        runDir = runDir + "/"
+    elif options.athenaTag != "":
+        athenaVer, cacheVer, nightVer = AthenaUtils.parse_athena_tag(options.athenaTag, options.verbose, tmpLog)
+
+    # set CMTCONFIG
+    options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer, cacheVer, nightVer, options.cmtConfig, options.verbose)
+
+    # check CMTCONFIG
+    if not AthenaUtils.checkCmtConfig(cmtConfig, options.cmtConfig, options.noBuild):
+        sys.exit(EC_Config)
+
+    # event picking
+    if options.eventPickEvtList != "":
+        epLockedBy = "prun"
+        if not options.noSubmit:
+            # request event picking
+            epStat, epOutput = Client.requestEventPicking(
+                options.eventPickEvtList,
+                options.eventPickDataType,
+                options.eventPickStreamName,
+                options.eventPickDS,
+                options.eventPickAmiTag,
+                [],
+                options.inputFileListName,
+                options.outDS,
+                epLockedBy,
+                fullExecString,
+                1,
+                options.eventPickWithGUID,
+                options.ei_api,
+                options.verbose,
+            )
+            # set input dataset
+            options.inDS = epOutput
+        else:
+            options.inDS = "dummy"
+        tmpLog.info(f"requested Event Picking service to stage input as {options.inDS}")
+
+    # additional files
+    if options.extFile == "":
+        options.extFile = []
+    else:
+        tmpItems = options.extFile.split(",")
+        options.extFile = []
+        # convert * to .*
+        for tmpItem in tmpItems:
+            options.extFile.append(tmpItem.replace("*", ".*"))
+
+    # user-specified merging script
+    if options.mergeScript != "":
+        # enable merging
+        options.mergeOutput = True
+        # add it to extFile
+        if not options.mergeScript in options.extFile:
+            options.extFile.append(options.mergeScript)
+
+    # glue packages
+    options.gluePackages = options.gluePackages.split(",")
+    try:
+        options.gluePackages.remove("")
+    except Exception:
+        pass
+
+    # set excludeFile
+    AthenaUtils.setExcludeFile(options.excludeFile)
+
+    # LFN matching
+    if options.match != "":
+        # convert . to \.
+        options.match = options.match.replace(".", r"\.")
+        # convert * to .*
+        options.match = options.match.replace("*", ".*")
+
+    # LFN anti-matching
+    if options.antiMatch != "":
+        # convert . to \.
+        options.antiMatch = options.antiMatch.replace(".", r"\.")
+        # convert * to .*
+        options.antiMatch = options.antiMatch.replace("*", ".*")
+
+    # get job script
+    if options.jobParams == "":
+        tmpLog.error("you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
+        sys.exit(EC_Config)
+
+    # replace : to = for backward compatibility
+    for optArg in ["RNDM"]:
+        options.jobParams = re.sub("%" + optArg + ":", "%" + optArg + "=", options.jobParams)
+
+    # check output dataset
+    if options.outDS == "":
+        tmpLog.error("no outDS is given\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
+        sys.exit(EC_Config)
+
+    # avoid inDS+pfnList
+    if options.pfnList != "":
+        # don't use inDS
+        if options.inDS != "":
+            tmpLog.error("--pfnList and --inDS cannot be used at the same time")
+            sys.exit(EC_Config)
+        # use site
+        if options.site == "AUTO":
+            tmpLog.error("--site must be specified when --pfnList is used")
+            sys.exit(EC_Config)
+
+    # secondary datasets
+    tmpStat, tmpOut = parse_secondary_datasets_opt(options.secondaryDSs)
+    if not tmpStat:
+        tmpLog.error(tmpOut)
+        sys.exit(EC_Config)
+    else:
+        options.secondaryDSs = tmpOut
+
+    # reusable secondary streams
+    if options.reusableSecondary == "":
+        options.reusableSecondary = []
+    else:
+        options.reusableSecondary = options.reusableSecondary.split(",")
+
+    # get nickname
+    if not dry_mode:
+        nickName = PsubUtils.getNickname()
+    else:
+        nickName = "dummy"
+
+    if nickName == "":
+        sys.exit(EC_Config)
+
+    # set Rucio accounting
+    PsubUtils.setRucioAccount(nickName, "prun", True)
+
+    # check nGBPerJob
+    if not options.nGBPerJob in [-1, "MAX"]:
+        # convert to int
+        try:
+            if options.nGBPerJob != "MAX":
+                options.nGBPerJob = int(options.nGBPerJob)
+        except Exception:
+            tmpLog.error("--nGBPerJob must be an integer or MAX")
+            sys.exit(EC_Config)
+        # check negative
+        if options.nGBPerJob <= 0:
+            tmpLog.error("--nGBPerJob must be positive")
+            sys.exit(EC_Config)
+        # incompatible parameters
+        if options.nFilesPerJob > 0:
+            tmpLog.error("--nFilesPerJob and --nGBPerJob must be used exclusively")
+            sys.exit(EC_Config)
+
+    # split options are mutually exclusive
+    if options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob != -1:
+        tmpLog.error("split by files, split by events and split by file size can not be used simultaneously")
+        sys.exit(EC_Config)
+
+    # split options are mutually exclusive
+    if options.nEventsPerJob > 0 and options.nGBPerJob != -1:
+        tmpLog.error("split by events and split by file size can not be used simultaneously")
+        sys.exit(EC_Config)
+
+    # translate --nJobs into nFiles / nFilesPerJob
+    set_n_files_from_n_jobs(options)
+
+    #####################################################################
+    # archive sources and send them to HTTP-reachable location
+
+    archiveName = _build_and_upload_sandbox(
+        options, dry_mode, tmpDir, tmpLog, curDir, files_to_delete_on_exit, workArea, runDir, groupArea, AthenaUtils, MiscUtils, Client, PsubUtils
+    )
+
+    # special handling
+    specialHandling = ""
+    if options.express:
+        specialHandling += "express,"
+    if options.debugMode:
+        specialHandling += "debug,"
+    specialHandling = specialHandling[:-1]
+
+    #####################################################################
+    # make task
+    taskParamMap = _build_task_param_map(
+        options,
+        athenaVer,
+        cacheVer,
+        nightVer,
+        includedSite,
+        fullExecString,
+        archiveName,
+        runDir,
+        filesToBeUsed,
+        tmpLog,
+        AthenaUtils,
+        MiscUtils,
+        PsubUtils,
+        Client,
+        PandaToolsPkgInfo,
+    )
 
     #####################################################################
     # submission

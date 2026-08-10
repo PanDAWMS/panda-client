@@ -1505,7 +1505,7 @@ if options.bulkSubmission:
         tmpLog.error("--inOutDsJson is missing")
         sys.exit(EC_Config)
     if options.eventPickEvtList != "":
-        tmpLog.error("cannnot use --eventPickEvtList and --inOutDsJson at the same time")
+        tmpLog.error("cannot use --eventPickEvtList and --inOutDsJson at the same time")
         sys.exit(EC_Config)
     ioList = MiscUtils.decodeJSON(options.inOutDsJson)
     for ioItem in ioList:
@@ -1589,12 +1589,12 @@ if options.dbRelease != "" and (options.dbRelease.find(":") == -1 and options.db
 
 # Good Run List
 if options.goodRunListXML != "" and options.inDS != "":
-    tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")
+    tmpLog.error("cannot use --goodRunListXML and --inDS at the same time")
     sys.exit(EC_Config)
 
 # event picking
 if options.eventPickEvtList != "" and options.inDS != "":
-    tmpLog.error("cannnot use --eventPickEvtList and --inDS at the same time")
+    tmpLog.error("cannot use --eventPickEvtList and --inDS at the same time")
     sys.exit(EC_Config)
 
 # param check for event picking
