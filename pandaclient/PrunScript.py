@@ -17,7 +17,11 @@ from pandaclient.CommonArgs import (
     set_n_files_from_n_jobs,
 )
 from pandaclient.Group_argparse import get_parser
-from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, parse_secondary_datasets_opt
+from pandaclient.MiscUtils import (
+    commands_get_output,
+    commands_get_status_output,
+    parse_secondary_datasets_opt,
+)
 
 
 # main
@@ -1791,142 +1795,143 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     options.noBuild,
                     options.verbose,
                 )
+
             # gather normal files
-            if True:
-                if options.useAthenaPackages:
-                    # go to workArea
-                    os.chdir(workArea)
-                    # gather files under work dir
-                    tmpLog.info("gathering files under {}/{}".format(workArea, runDir))
-                    archStartDir = runDir
-                    archStartDir = re.sub("/+$", "", archStartDir)
-                else:
-                    # go to work dir
-                    os.chdir(options.workDir)
-                    # gather files under work dir
-                    tmpLog.info("gathering files under %s" % options.workDir)
-                    archStartDir = "."
-                # get files in the working dir
-                if options.noCompile:
-                    skippedExt = []
-                else:
-                    skippedExt = [".o", ".a", ".so"]
-                skippedFlag = False
-                workDirFiles = []
-                if options.followLinks:
-                    osWalkList = os.walk(archStartDir, followlinks=True)
-                else:
-                    osWalkList = os.walk(archStartDir)
-                for tmpRoot, tmpDirs, tmpFiles in osWalkList:
-                    emptyFlag = True
-                    for tmpFile in tmpFiles:
-                        if options.useAthenaPackages:
-                            if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
-                                if options.verbose:
-                                    print("skip Athena archive %s" % tmpFile)
-                                continue
-                        tmpPath = "{}/{}".format(tmpRoot, tmpFile)
-                        # get size
-                        try:
-                            size = os.path.getsize(tmpPath)
-                        except Exception:
-                            # skip dead symlink
+            if options.useAthenaPackages:
+                # go to workArea
+                os.chdir(workArea)
+                # gather files under work dir
+                tmpLog.info("gathering files under {}/{}".format(workArea, runDir))
+                archStartDir = runDir
+                archStartDir = re.sub("/+$", "", archStartDir)
+            else:
+                # go to work dir
+                os.chdir(options.workDir)
+                # gather files under work dir
+                tmpLog.info("gathering files under %s" % options.workDir)
+                archStartDir = "."
+            # get files in the working dir
+            if options.noCompile:
+                skippedExt = []
+            else:
+                skippedExt = [".o", ".a", ".so"]
+            skippedFlag = False
+            workDirFiles = []
+            if options.followLinks:
+                osWalkList = os.walk(archStartDir, followlinks=True)
+            else:
+                osWalkList = os.walk(archStartDir)
+            for tmpRoot, tmpDirs, tmpFiles in osWalkList:
+                emptyFlag = True
+                for tmpFile in tmpFiles:
+                    if options.useAthenaPackages:
+                        if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
                             if options.verbose:
-                                type, value, traceBack = sys.exc_info()
-                                print("  Ignore : {}:{}".format(type, value))
+                                print("skip Athena archive %s" % tmpFile)
                             continue
-                        # check exclude files
-                        excludeFileFlag = False
-                        for tmpPatt in AthenaUtils.excludeFile:
-                            if re.search(tmpPatt, tmpPath) is not None:
-                                excludeFileFlag = True
-                                break
-                        if excludeFileFlag:
-                            continue
-                        # skipped extension
-                        isSkippedExt = False
-                        for tmpExt in skippedExt:
-                            if tmpPath.endswith(tmpExt):
-                                isSkippedExt = True
-                                break
-                        # check root
-                        isRoot = False
-                        if re.search(r"\.root(\.\d+)*$", tmpPath) is not None:
-                            isRoot = True
-                        # extra files
-                        isExtra = False
-                        for tmpExt in options.extFile:
-                            if re.search(tmpExt + "$", tmpPath) is not None:
-                                isExtra = True
-                                break
-                        # regular files
-                        if not isExtra:
-                            # unset emptyFlag even if all files are skipped
-                            emptyFlag = False
-                            # skipped extensions
-                            if isSkippedExt:
-                                print("  skip {} {}".format(str(skippedExt), tmpPath))
-                                skippedFlag = True
-                                continue
-                            # skip root
-                            if isRoot:
-                                print("  skip root file %s" % tmpPath)
-                                skippedFlag = True
-                                continue
-                            # check size
-                            if size > options.maxFileSize:
-                                print("  skip large file {}:{}B>{}B".format(tmpPath, size, options.maxFileSize))
-                                skippedFlag = True
-                                continue
-                        # remove ./
-                        tmpPath = re.sub(r"^\./", "", tmpPath)
-                        # append
-                        workDirFiles.append(tmpPath)
-                        if emptyFlag:
-                            emptyFlag = False
-                    # add empty directory
-                    if emptyFlag and tmpDirs == [] and tmpFiles == []:
-                        tmpPath = re.sub(r"^\./", "", tmpRoot)
-                        # check exclude pattern
-                        excludePatFlag = False
-                        for tmpPatt in AthenaUtils.excludeFile:
-                            if re.search(tmpPatt, tmpPath) is not None:
-                                excludePatFlag = True
-                                break
-                        if excludePatFlag:
-                            continue
-                        # skip tmpDir
-                        if tmpPath.split("/")[-1] == tmpDir.split("/")[-1]:
-                            continue
-                        # append
-                        workDirFiles.append(tmpPath)
-                if skippedFlag:
-                    tmpLog.info("please use --extFile if you need to send the skipped files to WNs")
-                # set archive name
-                if not options.useAthenaPackages:
-                    # create archive
-                    if options.noBuild and not options.noCompile:
-                        # use 'jobO' for noBuild
-                        archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
-                    else:
-                        # use 'sources' for normal build
-                        archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
-                    archiveFullName = "{}/{}".format(tmpDir, archiveName)
-                # collect files
-                for tmpFile in workDirFiles:
-                    # avoid self-archiving
-                    if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
+                    tmpPath = "{}/{}".format(tmpRoot, tmpFile)
+                    # get size
+                    try:
+                        size = os.path.getsize(tmpPath)
+                    except Exception:
+                        # skip dead symlink
                         if options.verbose:
-                            print("skip self-archiving for %s" % tmpFile)
+                            type, value, traceBack = sys.exc_info()
+                            print("  Ignore : {}:{}".format(type, value))
                         continue
-                    if os.path.islink(tmpFile):
-                        status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rh '{}' -f '{}'".format(tmpFile, archiveFullName))
-                    else:
-                        status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rf '{}' '{}'".format(archiveFullName, tmpFile))
+                    # check exclude files
+                    excludeFileFlag = False
+                    for tmpPatt in AthenaUtils.excludeFile:
+                        if re.search(tmpPatt, tmpPath) is not None:
+                            excludeFileFlag = True
+                            break
+                    if excludeFileFlag:
+                        continue
+                    # skipped extension
+                    isSkippedExt = False
+                    for tmpExt in skippedExt:
+                        if tmpPath.endswith(tmpExt):
+                            isSkippedExt = True
+                            break
+                    # check root
+                    isRoot = False
+                    if re.search(r"\.root(\.\d+)*$", tmpPath) is not None:
+                        isRoot = True
+                    # extra files
+                    isExtra = False
+                    for tmpExt in options.extFile:
+                        if re.search(tmpExt + "$", tmpPath) is not None:
+                            isExtra = True
+                            break
+                    # regular files
+                    if not isExtra:
+                        # unset emptyFlag even if all files are skipped
+                        emptyFlag = False
+                        # skipped extensions
+                        if isSkippedExt:
+                            print("  skip {} {}".format(str(skippedExt), tmpPath))
+                            skippedFlag = True
+                            continue
+                        # skip root
+                        if isRoot:
+                            print("  skip root file %s" % tmpPath)
+                            skippedFlag = True
+                            continue
+                        # check size
+                        if size > options.maxFileSize:
+                            print("  skip large file {}:{}B>{}B".format(tmpPath, size, options.maxFileSize))
+                            skippedFlag = True
+                            continue
+                    # remove ./
+                    tmpPath = re.sub(r"^\./", "", tmpPath)
+                    # append
+                    workDirFiles.append(tmpPath)
+                    if emptyFlag:
+                        emptyFlag = False
+                # add empty directory
+                if emptyFlag and tmpDirs == [] and tmpFiles == []:
+                    tmpPath = re.sub(r"^\./", "", tmpRoot)
+                    # check exclude pattern
+                    excludePatFlag = False
+                    for tmpPatt in AthenaUtils.excludeFile:
+                        if re.search(tmpPatt, tmpPath) is not None:
+                            excludePatFlag = True
+                            break
+                    if excludePatFlag:
+                        continue
+                    # skip tmpDir
+                    if tmpPath.split("/")[-1] == tmpDir.split("/")[-1]:
+                        continue
+                    # append
+                    workDirFiles.append(tmpPath)
+            if skippedFlag:
+                tmpLog.info("please use --extFile if you need to send the skipped files to WNs")
+            # set archive name
+            if not options.useAthenaPackages:
+                # create archive
+                if options.noBuild and not options.noCompile:
+                    # use 'jobO' for noBuild
+                    archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
+                else:
+                    # use 'sources' for normal build
+                    archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
+                archiveFullName = "{}/{}".format(tmpDir, archiveName)
+            # collect files
+            for tmpFile in workDirFiles:
+                # avoid self-archiving
+                if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
                     if options.verbose:
-                        print(tmpFile)
-                    if status != 0 or out != "":
-                        print(out)
+                        print("skip self-archiving for %s" % tmpFile)
+                    continue
+                if os.path.islink(tmpFile):
+                    status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rh '{}' -f '{}'".format(tmpFile, archiveFullName))
+                else:
+                    status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rf '{}' '{}'".format(archiveFullName, tmpFile))
+                if options.verbose:
+                    print(tmpFile)
+                if status != 0 or out != "":
+                    print(out)
+
             # go to tmpdir
             os.chdir(tmpDir)
 
