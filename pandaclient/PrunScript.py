@@ -24,6 +24,15 @@ from pandaclient.MiscUtils import (
 )
 
 
+def _format_size(num_bytes):
+    size = float(num_bytes)
+    for unit in ("B", "KB", "MB"):
+        if size < 1024:
+            return f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} GB"
+
+
 def _gather_sandbox_files(options, tmp_log, athena_utils, work_area, run_directory, tmp_directory, archive_full_name):
     # go to the directory files are gathered from
     if options.useAthenaPackages:
@@ -142,7 +151,7 @@ def _gather_sandbox_files(options, tmp_log, athena_utils, work_area, run_directo
             # append
             work_dir_files.append(tmp_path)
     # let the user know what went into the sandbox without having to scroll through the file list
-    summary = f"gathered {file_count} file(s), {total_size / (1024 * 1024):.1f} MB, for the sandbox"
+    summary = f"gathered {file_count} file(s), {_format_size(total_size)}, for the sandbox"
     if skipped_count:
         summary += f" ({skipped_count} file(s) skipped)"
     tmp_log.info(summary)
