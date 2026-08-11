@@ -2085,7 +2085,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     if options.priority is not None:
         taskParamMap["currentPriority"] = options.priority
     if not options.nGBPerJob in [-1, "MAX"]:
-        # don't set MAX since it is the defalt on the server side
+        # don't set MAX since it is the default on the server side
         taskParamMap["nGBPerJob"] = options.nGBPerJob
     no_input = options.inDS == "" and options.pfnList == "" and options.goodRunListXML == ""
     set_events_task_params(options, taskParamMap, no_input)

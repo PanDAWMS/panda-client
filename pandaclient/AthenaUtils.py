@@ -1442,7 +1442,7 @@ def getCmtConfig(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None, v
     # use user-specified cmtconfig
     if cmtConfig:
         return cmtConfig
-    # local settting
+    # local setting
     if "CMTCONFIG" in os.environ:
         return os.environ["CMTCONFIG"]
     # undefined in Athena
