@@ -3,6 +3,7 @@ import getpass
 import os
 import subprocess
 import sys
+import sysconfig
 
 from IPython.core.magic import register_line_magic
 
@@ -21,10 +22,12 @@ def setup():
     parser.read(conf_file)
     section = parser["main"]
 
-    # variables
-    panda_install_scripts = section["PANDA_INSTALL_SCRIPTS"]
-    panda_install_purelib = section["PANDA_INSTALL_PURELIB"]
-    panda_install_dir = section["PANDA_INSTALL_DIR"]
+    # variables: resolved from the current interpreter rather than the config file,
+    # since a wheel-installed panda-client bakes install paths from an isolated build
+    # environment that no longer exists at runtime
+    panda_install_scripts = sysconfig.get_path("scripts")
+    panda_install_purelib = sysconfig.get_path("purelib")
+    panda_install_dir = sysconfig.get_path("data")
 
     # PATH
     paths = os.environ["PATH"].split(":")

@@ -1,7 +1,7 @@
-export PATH=@@install_scripts@@:$PATH
+export PANDA_SYS=`python3 -c "import sysconfig; print(sysconfig.get_path('data'))"`
+export PATH=`python3 -c "import sysconfig; print(sysconfig.get_path('scripts'))"`:$PATH
 
 export PANDA_CONFIG_ROOT=~/.pathena
-export PANDA_SYS=@@install_dir@@
 
 export PANDA_PYTHONPATH=`bash ${PANDA_SYS}/etc/panda/site_path.sh`
 

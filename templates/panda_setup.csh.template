@@ -1,7 +1,7 @@
-setenv PATH @@install_scripts@@:$PATH
+setenv PANDA_SYS `python3 -c "import sysconfig; print(sysconfig.get_path('data'))"`
+setenv PATH `python3 -c "import sysconfig; print(sysconfig.get_path('scripts'))"`:$PATH
 
 setenv PANDA_CONFIG_ROOT ~/.pathena
-setenv PANDA_SYS @@install_dir@@
 setenv PANDA_PYTHONPATH `bash ${PANDA_SYS}/etc/panda/site_path.sh`
 
 if ($?PYTHONPATH) then
