@@ -1,5 +1,18 @@
-setenv PANDA_SYS `python3 -c "import sysconfig; print(sysconfig.get_path('data'))"`
-setenv PATH `python3 -c "import sysconfig; print(sysconfig.get_path('scripts'))"`:$PATH
+# prefer the python of an active virtualenv/conda env over a bare "python3" on
+# PATH, so this doesn't silently pick up a different install than the one this
+# file actually belongs to (matches the interpreter-selection order functions.sh
+# already uses for running panda-client commands)
+if ($?VIRTUAL_ENV) then
+    set _panda_python = ${VIRTUAL_ENV}/bin/python3
+else if ($?CONDA_PREFIX) then
+    set _panda_python = ${CONDA_PREFIX}/bin/python3
+else
+    set _panda_python = python3
+endif
+
+setenv PANDA_SYS `${_panda_python} -c "import sysconfig; print(sysconfig.get_path('data'))"`
+setenv PATH `${_panda_python} -c "import sysconfig; print(sysconfig.get_path('scripts'))"`:$PATH
+unset _panda_python
 
 setenv PANDA_CONFIG_ROOT ~/.pathena
 setenv PANDA_PYTHONPATH `bash ${PANDA_SYS}/etc/panda/site_path.sh`

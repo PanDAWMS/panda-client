@@ -1,5 +1,11 @@
-export PANDA_SYS=`python3 -c "import sysconfig; print(sysconfig.get_path('data'))"`
-export PATH=`python3 -c "import sysconfig; print(sysconfig.get_path('scripts'))"`:$PATH
+# resolve PANDA_SYS from this file's own location rather than a path baked in at
+# build time, since a wheel-installed panda-client may have been built in a
+# temporary, isolated build environment that no longer exists at runtime
+_panda_setup_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+export PANDA_SYS="$(cd "${_panda_setup_dir}/../.." && pwd)"
+unset _panda_setup_dir
+
+export PATH=${PANDA_SYS}/bin:$PATH
 
 export PANDA_CONFIG_ROOT=~/.pathena
 

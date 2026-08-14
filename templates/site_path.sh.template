@@ -1,7 +1,22 @@
 #!/bin/bash
 
-source ${PANDA_SYS}/etc/panda/share/functions.sh
-
-exec_p_command \
-"import sysconfig; "\
-"print(sysconfig.get_path('purelib'))"
+# find this install's site-packages directory relative to PANDA_SYS rather than
+# asking whatever python happens to be on PATH, which may not be the interpreter
+# panda-client was actually installed for (e.g. a --prefix install into a
+# non-activated environment)
+shopt -s nullglob
+candidates=(${PANDA_SYS}/lib/python*/site-packages ${PANDA_SYS}/lib64/python*/site-packages)
+s_path=""
+for c in "${candidates[@]}"; do
+    if [ -d "${c}/pandaclient" ]; then
+        s_path="$c"
+        break
+    fi
+done
+if [ -z "$s_path" ] && [ ${#candidates[@]} -gt 0 ]; then
+    s_path="${candidates[0]}"
+fi
+if [ -z "$s_path" ]; then
+    s_path="${PANDA_SYS}/lib/site-packages"
+fi
+echo "$s_path"
