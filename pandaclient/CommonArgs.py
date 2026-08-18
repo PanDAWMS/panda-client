@@ -18,7 +18,7 @@ def get_invalid_transfer_types(transfer_type_str):
 
 
 # Common arguments shared by pathena and prun, as (group_key, flags, kwargs) tuples.
-# group_key ("submit"/"input"/"job") selects the argparse group in add_common_arguments.
+# group_key ("submit"/"input"/"job"/"output") selects the argparse group in add_common_arguments.
 # Entries are added in this order, which determines the per-group help ordering.
 _COMMON_ARGS = [
     (
@@ -122,10 +122,21 @@ _COMMON_ARGS = [
             help="Number of events per file",
         ),
     ),
+    (
+        "output",
+        ["--mergeSingleFile"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="mergeSingleFile",
+            default=False,
+            help="By default, the merge step simply renames a single input file to reduce memory and disk usage. This option forces execution of the user-provided merge script even for a single input file.",
+        ),
+    ),
 ]
 
 
-def add_common_arguments(group_submit, group_input, group_job):
+def add_common_arguments(group_submit, group_input, group_job, group_output):
     """Register the common arguments onto the argparse groups
 
     Adds each entry in _COMMON_ARGS to the group selected by its group_key.
@@ -134,8 +145,9 @@ def add_common_arguments(group_submit, group_input, group_job):
         group_submit: argparse group for the "submit" group_key
         group_input: argparse group for the "input" group_key
         group_job: argparse group for the "job" group_key
+        group_output: argparse group for the "output" group_key
     """
-    groups = {"submit": group_submit, "input": group_input, "job": group_job}
+    groups = {"submit": group_submit, "input": group_input, "job": group_job, "output": group_output}
     for group_key, flags, kwargs in _COMMON_ARGS:
         groups[group_key].add_argument(*flags, **kwargs)
 
