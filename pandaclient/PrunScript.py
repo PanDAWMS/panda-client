@@ -9,13 +9,7 @@ import sys
 import time
 from urllib.parse import quote
 
-from pandaclient.CommonArgs import (
-    VALID_TRANSFER_TYPES,
-    add_common_arguments,
-    get_invalid_transfer_types,
-    set_events_task_params,
-    set_n_files_from_n_jobs,
-)
+from pandaclient.CommonArgs import VALID_TRANSFER_TYPES, add_common_arguments, get_invalid_transfer_types, set_events_task_params, set_n_files_from_n_jobs
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, parse_secondary_datasets_opt
 
@@ -103,7 +97,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     group_evtFilter = optP.add_group("evtFilter", "event filter such as good run and event pick")
     group_expert = optP.add_group("expert", "for experts/developers only")
 
-    add_common_arguments(group_submit, group_input, group_job)
+    add_common_arguments(group_submit, group_input, group_job, group_output)
 
     usage_containerJob = """Visit the following wiki page for examples:
       https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
@@ -2622,6 +2616,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         jobParameters = f"-r {runDir} "
         if options.mergeScript != "":
             jobParameters += f'-j "{options.mergeScript}" '
+        if options.mergeSingleFile:
+            jobParameters += "--mergeSingleFile "
         if options.rootVer != "":
             jobParameters += "--rootVer %s " % options.rootVer
         if options.cmtConfig not in ["", "NULL", None]:

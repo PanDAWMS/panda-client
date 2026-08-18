@@ -86,3 +86,5 @@ aggressive = 3
 
 [tool.isort]
 profile = "black"
+# keep in sync with tool.black line-length; profile="black" alone would default to 88
+line_length = 160
