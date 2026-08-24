@@ -28,6 +28,7 @@ dependencies = [
     "rich",
     "certifi",
     "httpx",
+    "typer",
 ]
 
 [project.optional-dependencies]
