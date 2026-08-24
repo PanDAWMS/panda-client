@@ -123,6 +123,17 @@ _COMMON_ARGS = [
         ),
     ),
     (
+        "input",
+        ["--skipEmptyInput"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="skipEmptyInput",
+            default=False,
+            help="Skip input files with zero events. The nevents metadata of input files must be available in rucio",
+        ),
+    ),
+    (
         "output",
         ["--mergeSingleFile"],
         dict(
@@ -185,7 +196,7 @@ def set_events_task_params(options, task_param_map, no_input=False):
     """Populate task parameters for event/file-based splitting
 
     Fills task_param_map with nEvents, nEventsPerJob, nFiles, nFilesPerJob,
-    nEventsPerFile, and useRealNumEvents as derived from options.
+    nEventsPerFile, useRealNumEvents, and skipEmptyInput as derived from options.
 
     args:
         options: parsed options namespace
@@ -209,6 +220,12 @@ def set_events_task_params(options, task_param_map, no_input=False):
             task_param_map["nEvents"] = options.nJobs if options.nJobs > 0 else 1
             task_param_map["nEventsPerJob"] = 1
     else:
+        # skip input files with zero events. The real number of events per file has to be
+        # taken from rucio unless the user fixed it with --nEventsPerFile
+        if options.skipEmptyInput:
+            task_param_map["skipEmptyInput"] = True
+            if options.nEventsPerFile <= 0:
+                task_param_map["useRealNumEvents"] = True
         if options.nFiles > 0:
             task_param_map["nFiles"] = options.nFiles
         if options.nFilesPerJob > 0:
