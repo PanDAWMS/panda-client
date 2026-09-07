@@ -244,7 +244,7 @@ class JobSpec:
             return "NULL"
         return ret
 
-    # override __setattr__ to collecte the changed attributes
+    # override __setattr__ to collect the changed attributes
     def __setattr__(self, name, value):
         oldVal = getattr(self, name)
         object.__setattr__(self, name, value)
@@ -742,11 +742,11 @@ class JobSpec:
     def setDecAttOnFailedES(self):
         self.set_special_handling("decAttOnFailedES")
 
-    # set fake flag to ignore in monigoring
+    # set fake flag to ignore in monitoring
     def setFakeJobToIgnore(self):
         self.set_special_handling("fakeJobToIgnore")
 
-    # remove fake flag to ignore in monigoring
+    # remove fake flag to ignore in monitoring
     def removeFakeJobToIgnore(self):
         if self.specialHandling is not None:
             items = self.specialHandling.split(",")

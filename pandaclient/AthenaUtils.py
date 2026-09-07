@@ -1442,7 +1442,7 @@ def getCmtConfig(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None, v
     # use user-specified cmtconfig
     if cmtConfig:
         return cmtConfig
-    # local settting
+    # local setting
     if "CMTCONFIG" in os.environ:
         return os.environ["CMTCONFIG"]
     # undefined in Athena
@@ -1467,7 +1467,7 @@ def checkCmtConfig(localCmtConfig, userCmtConfig, noBuild):
     # CMTCONFIG is undefined locally
     if localCmtConfig in ["", None]:
         return True
-    # user-specified CMTCONFIG is inconsitent with local CMTCONFIG
+    # user-specified CMTCONFIG is inconsistent with local CMTCONFIG
     if userCmtConfig != localCmtConfig and noBuild:
         errStr = "You cannot use --noBuild when --cmtConfig={} is inconsistent with local CMTCONFIG={} ".format(userCmtConfig, localCmtConfig)
         errStr += "since you need re-compile source files on remote worker-node. Please remove --noBuild"

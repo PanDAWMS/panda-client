@@ -10,13 +10,7 @@ import shutil
 import sys
 import time
 
-from pandaclient.CommonArgs import (
-    VALID_TRANSFER_TYPES,
-    add_common_arguments,
-    get_invalid_transfer_types,
-    set_events_task_params,
-    set_n_files_from_n_jobs,
-)
+from pandaclient.CommonArgs import VALID_TRANSFER_TYPES, add_common_arguments, get_invalid_transfer_types, set_events_task_params, set_n_files_from_n_jobs
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import parse_secondary_datasets_opt
 
@@ -131,7 +125,7 @@ group_submit = optP.add_group("submit", "job submission/site/retry")
 group_evtFilter = optP.add_group("evtFilter", "event filter such as good run and event pick")
 group_expert = optP.add_group("expert", "for experts/developers only")
 
-add_common_arguments(group_submit, group_input, group_job)
+add_common_arguments(group_submit, group_input, group_job, group_output)
 
 usage_containerJob = """Visit the following wiki page for examples:
   https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
@@ -1340,11 +1334,7 @@ group_job.add_argument(
 )
 
 from pandaclient import MiscUtils
-from pandaclient.MiscUtils import (
-    commands_get_output,
-    commands_get_status_output,
-    commands_get_status_output_with_env,
-)
+from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, commands_get_status_output_with_env
 
 # parse options
 # check against the removed options first
@@ -1931,8 +1921,8 @@ else:
             # use original command
             newJobO += tmpString + ";"
         else:
-            tmpLog.info("getting configration from AMI")
-            # get configration using GetCommand.py
+            tmpLog.info("getting configuration from AMI")
+            # get configuration using GetCommand.py
             com = "GetCommand.py " + re.sub("^[^ ]+ ", "", tmpString.strip())
             if options.verbose:
                 tmpLog.debug(com)
@@ -1950,7 +1940,7 @@ else:
             for amiStr in amiOut.split("\n"):
                 if amiStr != "" and not amiStr.startswith("#") and not amiStr.startswith("*"):
                     fullCommand = amiStr
-            # failed to extract configration
+            # failed to extract configuration
             if fullCommand == "":
                 tmpLog.error(amiOut)
                 errSt = "Failed to extract configuration from AMI's output"
@@ -2395,7 +2385,7 @@ else:
 if options.priority is not None:
     taskParamMap["currentPriority"] = options.priority
 if not options.nGBPerJob in [-1, "MAX"]:
-    # don't set MAX since it is the defalt on the server side
+    # don't set MAX since it is the default on the server side
     taskParamMap["nGBPerJob"] = options.nGBPerJob
 no_input = options.inDS == "" and options.pfnList == "" and options.goodRunListXML == ""
 set_events_task_params(options, taskParamMap, no_input)
@@ -2640,7 +2630,7 @@ if options.inDS != "":
     inputMap["IN"] = options.inDS
 elif options.pfnList != "":
     taskParamMap["pfnList"] = PsubUtils.getListPFN(options.pfnList)
-    # use noInput mecahism
+    # use noInput mechanism
     taskParamMap["noInput"] = True
     if options.nFiles == 0:
         taskParamMap["nFiles"] = len(taskParamMap["pfnList"])
@@ -3112,6 +3102,8 @@ if options.mergeOutput:
     jobParameters = f"-r {runDir} "
     if options.mergeScript != "":
         jobParameters += f'-j "{options.mergeScript}" '
+    if options.mergeSingleFile:
+        jobParameters += "--mergeSingleFile "
     if not options.noBuild:
         jobParameters += "-l ${LIB} "
     else:
