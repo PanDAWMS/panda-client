@@ -6,3 +6,8 @@ export PANDA_SYS=@@install_dir@@
 export PANDA_PYTHONPATH=`bash ${PANDA_SYS}/etc/panda/site_path.sh`
 
 export PYTHONPATH=${PANDA_PYTHONPATH}${PYTHONPATH:+:$PYTHONPATH}
+
+# bash tab-completion for pbook (skipped under non-bash shells)
+if [ -n "${BASH_VERSION:-}" ] && [ -r "${PANDA_SYS}/etc/panda/pbook_completion.sh" ]; then
+    . "${PANDA_SYS}/etc/panda/pbook_completion.sh"
+fi
