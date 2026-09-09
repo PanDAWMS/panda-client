@@ -77,6 +77,25 @@ function exec_p_command () {
         exit 1
     fi
 
+    # warn if the selected interpreter's version does not match what PANDA_PYTHONPATH
+    # was actually installed for. This commonly happens when an ATLAS release (asetup)
+    # is sourced AFTER panda_setup.sh: $VIRTUAL_ENV then points at a different Python
+    # than the one panda-client's dependencies were installed for, and the resulting
+    # failure is a SyntaxError from deep inside a dependency (e.g. anyio) with no hint
+    # of the real cause. Non-fatal -- best-effort detection, not a hard requirement --
+    # so it cannot break a setup that happens to work despite the mismatch.
+    if [[ -n "$PANDA_PYTHONPATH" ]]; then
+        pyver_installed=$(basename "$(dirname "$PANDA_PYTHONPATH")" 2>/dev/null)
+        pyver_selected=$("$PANDA_PYTHON_EXEC" -c 'import sys; print("python{}.{}".format(*sys.version_info))' 2>/dev/null)
+        if [[ "$pyver_installed" == python* && -n "$pyver_selected" && "$pyver_installed" != "$pyver_selected" ]]; then
+            echo "WARNING: panda-client's python packages were installed for ${pyver_installed}, but the selected interpreter"
+            echo "         (\$PANDA_PYTHON_EXEC=$PANDA_PYTHON_EXEC) is ${pyver_selected}. This usually means an ATLAS release"
+            echo "         (asetup) was sourced after panda_setup.sh, changing \$VIRTUAL_ENV to a different python."
+            echo "         If the command below fails with an import error, either re-source panda_setup.sh after asetup,"
+            echo "         or set \$PANDA_PYTHON_EXEC to a ${pyver_installed} interpreter explicitly."
+        fi
+    fi
+
     # execute
     local exec_string=$1
     shift
