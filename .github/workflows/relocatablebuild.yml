@@ -39,17 +39,33 @@ jobs:
         if: matrix.install == 'dnf'
         run: dnf install -y git tar gzip "python${{ matrix.python-version }}" "python${{ matrix.python-version }}-pip"
 
-      - name: Install the target Python (build from source)
+      - name: Cache the from-source Python build
         if: matrix.install == 'source'
+        id: cache-python
+        uses: actions/cache@v4
+        with:
+          path: /opt/python-${{ matrix.python-version }}
+          key: python-source-${{ matrix.python-version }}-el9-v1
+
+      - name: Install the target Python (build from source)
+        if: matrix.install == 'source' && steps.cache-python.outputs.cache-hit != 'true'
         # Pins an exact patch release (X.Y.0) -- bump when a newer patch of
         # 3.13/3.14 is needed. altinstall avoids overwriting the container's
-        # own python3/python3.9.
+        # own python3/python3.9. No --enable-optimizations: that's PGO, which
+        # roughly doubles build time to speed up the *runtime* -- irrelevant
+        # here since this interpreter only ever runs `pip install` once and
+        # is never shipped. Cached above, so only the first run per version
+        # actually compiles at all.
         run: |
           dnf groupinstall -y "Development Tools"
           dnf install -y git tar gzip openssl-devel bzip2-devel libffi-devel zlib-devel xz-devel sqlite-devel
           curl -fsSL "https://www.python.org/ftp/python/${{ matrix.python-version }}.0/Python-${{ matrix.python-version }}.0.tgz" -o python-src.tgz
           mkdir src && tar xzf python-src.tgz -C src --strip-components=1
-          cd src && ./configure --enable-optimizations && make -j"$(nproc)" && make altinstall
+          cd src && ./configure --prefix="/opt/python-${{ matrix.python-version }}" && make -j"$(nproc)" && make altinstall
+
+      - name: Add the from-source Python to PATH
+        if: matrix.install == 'source'
+        run: echo "/opt/python-${{ matrix.python-version }}/bin" >> "$GITHUB_PATH"
 
       - uses: actions/checkout@v4
         with:
