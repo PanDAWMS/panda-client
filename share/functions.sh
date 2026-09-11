@@ -77,48 +77,24 @@ function exec_p_command () {
         exit 1
     fi
 
-    # If the selected interpreter's version does not match what PANDA_PYTHONPATH was
-    # actually installed for, self-correct rather than just warn. This happens whenever
-    # something else in the shell (commonly ATLASLocalRootBase's setupATLAS -3/asetup,
-    # which sets PANDA_PYTHON_EXEC as a bare, $PATH-resolved "python3" for ITS OWN
-    # bundled panda tooling) overrides the interpreter panda-client would otherwise pick,
-    # with no awareness of this install's own, separately-versioned PANDA_PYTHONPATH.
-    # Left uncorrected, the failure surfaces as a SyntaxError from deep inside a
-    # dependency (e.g. anyio's _lazyimport.py) with no hint of the real cause.
-    #
-    # Two places are checked, in order, for a KNOWN-GOOD replacement -- never a guess:
-    #   1. PANDA_SYS/bin/pythonX.Y -- the interpreter this specific install's own
-    #      dependencies were installed for, if it ships one alongside itself.
-    #   2. pythonX.Y on $PATH -- many systems (e.g. AlmaLinux's python3.12 AppStream
-    #      module) ship version-suffixed binaries alongside the default python3
-    #      specifically so a version can be addressed explicitly, independent of
-    #      whatever "python3" itself currently resolves to.
-    # If neither exists, this falls back to a warning, since there is nothing safe
-    # to switch to.
+    # Warn if the selected interpreter's version does not match what PANDA_PYTHONPATH
+    # was actually installed for. This happens whenever something else in the shell
+    # (commonly ATLASLocalRootBase's setupATLAS -3/asetup, which sets PANDA_PYTHON_EXEC
+    # as a bare, $PATH-resolved "python3" for ITS OWN bundled panda tooling) overrides
+    # the interpreter panda-client would otherwise pick, with no awareness of this
+    # install's own, separately-versioned PANDA_PYTHONPATH. Left unnoticed, the failure
+    # surfaces as a SyntaxError from deep inside a dependency (e.g. anyio's
+    # _lazyimport.py) with no hint of the real cause. Warning only, not self-correcting
+    # -- the caller's own setup is expected to keep these in sync.
     if [[ -n "$PANDA_PYTHONPATH" ]]; then
         pyver_installed=$(basename "$(dirname "$PANDA_PYTHONPATH")" 2>/dev/null)
         pyver_selected=$("$PANDA_PYTHON_EXEC" -c 'import sys; print("python{}.{}".format(*sys.version_info))' 2>/dev/null)
         if [[ "$pyver_installed" == python* && -n "$pyver_selected" && "$pyver_installed" != "$pyver_selected" ]]; then
-            known_good_exec="${PANDA_SYS}/bin/${pyver_installed}"
-            known_good_source="\$PANDA_SYS/bin"
-            if [[ -z "$PANDA_SYS" || ! -x "$known_good_exec" ]]; then
-                known_good_exec=$(command -v "$pyver_installed" 2>/dev/null)
-                known_good_source="\$PATH"
-            fi
-            if [[ -n "$known_good_exec" && -x "$known_good_exec" ]]; then
-                echo "NOTE: \$PANDA_PYTHON_EXEC ($PANDA_PYTHON_EXEC, ${pyver_selected}) does not match the python"
-                echo "      panda-client's dependencies were installed for (${pyver_installed}) -- likely overridden by"
-                echo "      something else in the shell (e.g. ATLASLocalRootBase's setupATLAS -3/asetup). Using"
-                echo "      ${known_good_exec} instead (found via ${known_good_source})."
-                PANDA_PYTHON_EXEC="$known_good_exec"
-            else
-                echo "WARNING: panda-client's python packages were installed for ${pyver_installed}, but the selected interpreter"
-                echo "         (\$PANDA_PYTHON_EXEC=$PANDA_PYTHON_EXEC) is ${pyver_selected}. This usually means something else in"
-                echo "         the shell (e.g. an ATLAS release's asetup) overrode the interpreter panda-client would pick."
-                echo "         If the command below fails with an import error, set \$PANDA_PYTHON_EXEC to a ${pyver_installed}"
-                echo "         interpreter explicitly -- no ${pyver_installed} interpreter was found under \$PANDA_SYS/bin or"
-                echo "         on \$PATH to switch to automatically."
-            fi
+            echo "WARNING: panda-client's python packages were installed for ${pyver_installed}, but the selected interpreter"
+            echo "         (\$PANDA_PYTHON_EXEC=$PANDA_PYTHON_EXEC) is ${pyver_selected}. This usually means something else in"
+            echo "         the shell (e.g. an ATLAS release's asetup) overrode the interpreter panda-client would pick."
+            echo "         If the command below fails with an import error, set \$PANDA_PYTHON_EXEC to a ${pyver_installed}"
+            echo "         interpreter explicitly."
         fi
     fi
 
