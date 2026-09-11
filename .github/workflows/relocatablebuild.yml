@@ -2,7 +2,7 @@ name: Build relocatable ALRB tarball
 
 # Produces a single tarball bundling panda-client + dependencies for every
 # supported Python version, with the install path replaced by the literal
-# placeholder "fixMe-PANDACLIENT_BASE" instead of a real absolute path --
+# placeholder "/fixMe-PANDACLIENT_BASE" instead of a real absolute path --
 # so a downstream packager (e.g. ATLASLocalRootBase) can unpack it anywhere
 # and do a single global search/replace for the real install path, matching
 # how every other (non-pip) ATLAS software install is distributed.
@@ -57,7 +57,7 @@ jobs:
 
       - name: Install into a placeholder-path prefix
         env:
-          PANDA_INSTALL_TARGET: fixMe-PANDACLIENT_BASE
+          PANDA_INSTALL_TARGET: /fixMe-PANDACLIENT_BASE
         run: |
           "python${{ matrix.python-version }}" -m pip install --upgrade pip
           "python${{ matrix.python-version }}" -m pip install . --prefix="$PANDA_INSTALL_TARGET" --ignore-installed
@@ -66,12 +66,12 @@ jobs:
         # direct_url.json (PEP 610) records the local source checkout path
         # pip installed *from* on this runner -- meaningless downstream, and
         # nothing in panda-client reads it.
-        run: find fixMe-PANDACLIENT_BASE -name direct_url.json -delete
+        run: find /fixMe-PANDACLIENT_BASE -name direct_url.json -delete
 
       - uses: actions/upload-artifact@v4
         with:
           name: build-py${{ matrix.python-version }}
-          path: fixMe-PANDACLIENT_BASE
+          path: /fixMe-PANDACLIENT_BASE
 
   merge-and-release:
     needs: build-relocatable
