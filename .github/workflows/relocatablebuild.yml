@@ -76,6 +76,8 @@ jobs:
   merge-and-release:
     needs: build-relocatable
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed by softprops/action-gh-release to attach the tarball
     env:
       # bin/ and etc/panda/ are shared/identical across every Python version
       # except etc/panda/site_path.sh, whose fallback path is baked in at
