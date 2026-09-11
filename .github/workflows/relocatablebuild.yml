@@ -30,9 +30,9 @@ jobs:
           - python-version: "3.12"
             install: dnf
           - python-version: "3.13"
-            install: source
+            install: source   # not yet packaged for EL9 via dnf, confirmed empty in `dnf list available`
           - python-version: "3.14"
-            install: source
+            install: dnf       # confirmed available: python3.14-3.14.7-2.el9_8
 
     steps:
       - name: Install the target Python (dnf)
