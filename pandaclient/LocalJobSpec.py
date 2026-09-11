@@ -204,7 +204,7 @@ class LocalJobSpec:
             # convert datetime to str
             if type(val) == datetime.datetime:
                 val = val.strftime("%Y-%m-%d %H:%M:%S")
-            # add colum name for UPDATE
+            # add column name for UPDATE
             if forUpdate:
                 if attr == "id":
                     continue
