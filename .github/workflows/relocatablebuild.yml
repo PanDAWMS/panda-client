@@ -1,0 +1,135 @@
+name: Build relocatable ALRB tarball
+
+# Produces a single tarball bundling panda-client + dependencies for every
+# supported Python version, with the install path replaced by the literal
+# placeholder "/fixMe-PANDACLIENT_BASE" instead of a real absolute path --
+# so a downstream packager (e.g. ATLASLocalRootBase) can unpack it anywhere
+# and do a single global search/replace for the real install path, matching
+# how every other (non-pip) ATLAS software install is distributed.
+#
+# No interpreter is bundled: every dependency here is pure Python, so one
+# tarball works on any OS (CentOS7, Alma9, ...) for a given Python version --
+# only the *Python version* needs to match at the destination, not the OS.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-relocatable:
+    runs-on: ubuntu-latest
+    container: almalinux:9
+    strategy:
+      matrix:
+        include:
+          - python-version: "3.9"
+            install: dnf
+          - python-version: "3.11"
+            install: dnf
+          - python-version: "3.12"
+            install: dnf
+          - python-version: "3.13"
+            install: source   # not yet packaged for EL9 via dnf, confirmed empty in `dnf list available`
+          - python-version: "3.14"
+            install: dnf       # confirmed available: python3.14-3.14.7-2.el9_8
+
+    steps:
+      - name: Install the target Python (dnf)
+        if: matrix.install == 'dnf'
+        run: dnf install -y git tar gzip "python${{ matrix.python-version }}" "python${{ matrix.python-version }}-pip"
+
+      - name: Cache the from-source Python build
+        if: matrix.install == 'source'
+        id: cache-python
+        uses: actions/cache@v4
+        with:
+          path: /opt/python-${{ matrix.python-version }}
+          key: python-source-${{ matrix.python-version }}-el9-v1
+
+      - name: Install the target Python (build from source)
+        if: matrix.install == 'source' && steps.cache-python.outputs.cache-hit != 'true'
+        # Pins an exact patch release (X.Y.0) -- bump when a newer patch of
+        # 3.13/3.14 is needed. altinstall avoids overwriting the container's
+        # own python3/python3.9. No --enable-optimizations: that's PGO, which
+        # roughly doubles build time to speed up the *runtime* -- irrelevant
+        # here since this interpreter only ever runs `pip install` once and
+        # is never shipped. Cached above, so only the first run per version
+        # actually compiles at all.
+        run: |
+          dnf groupinstall -y "Development Tools"
+          dnf install -y git tar gzip openssl-devel bzip2-devel libffi-devel zlib-devel xz-devel sqlite-devel
+          curl -fsSL "https://www.python.org/ftp/python/${{ matrix.python-version }}.0/Python-${{ matrix.python-version }}.0.tgz" -o python-src.tgz
+          mkdir src && tar xzf python-src.tgz -C src --strip-components=1
+          cd src && ./configure --prefix="/opt/python-${{ matrix.python-version }}" && make -j"$(nproc)" && make altinstall
+
+      - name: Add the from-source Python to PATH
+        if: matrix.install == 'source'
+        run: echo "/opt/python-${{ matrix.python-version }}/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # needed for hatch's git-tag-based dynamic versioning
+
+      - name: Install into a placeholder-path prefix
+        env:
+          PANDA_INSTALL_TARGET: /fixMe-PANDACLIENT_BASE
+        run: |
+          "python${{ matrix.python-version }}" -m pip install --upgrade pip
+          "python${{ matrix.python-version }}" -m pip install . --prefix="$PANDA_INSTALL_TARGET" --ignore-installed
+
+      - name: Strip non-relocatable, non-functional metadata
+        # direct_url.json (PEP 610) records the local source checkout path
+        # pip installed *from* on this runner -- meaningless downstream, and
+        # nothing in panda-client reads it.
+        run: find /fixMe-PANDACLIENT_BASE -name direct_url.json -delete
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-py${{ matrix.python-version }}
+          path: /fixMe-PANDACLIENT_BASE
+
+  merge-and-release:
+    needs: build-relocatable
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed by softprops/action-gh-release to attach the tarball
+    env:
+      # bin/ and etc/panda/ are shared/identical across every Python version
+      # except etc/panda/site_path.sh, whose fallback path is baked in at
+      # build time and only reflects whichever version's install ran last.
+      # Pick that version explicitly here (matches the real ATLASLocalRootBase
+      # convention of "the highest built version wins the fallback") instead
+      # of leaving it to whatever order artifacts happen to merge in.
+      PRIMARY_PYTHON: "3.14"
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: build-py*
+          path: legs
+
+      - name: Merge into one relocatable tree
+        run: |
+          mkdir -p merged
+          cp -r "legs/build-py${PRIMARY_PYTHON}/bin" merged/bin
+          cp -r "legs/build-py${PRIMARY_PYTHON}/etc" merged/etc
+          mkdir -p merged/lib
+          for leg in legs/build-py*/lib/python*; do
+              cp -r "$leg" merged/lib/
+          done
+
+      - name: Package
+        run: |
+          VERSION="${{ github.event.release.tag_name || 'dev' }}"
+          mv merged "panda-client-${VERSION}"
+          tar czf "panda-client-${VERSION}-relocatable.tar.gz" "panda-client-${VERSION}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: panda-client-relocatable
+          path: panda-client-*-relocatable.tar.gz
+
+      - uses: softprops/action-gh-release@v2
+        if: github.event_name == 'release' && github.event.action == 'published'
+        with:
+          files: panda-client-*-relocatable.tar.gz

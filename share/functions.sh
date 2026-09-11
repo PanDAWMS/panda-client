@@ -77,6 +77,27 @@ function exec_p_command () {
         exit 1
     fi
 
+    # Warn if the selected interpreter's version does not match what PANDA_PYTHONPATH
+    # was actually installed for. This happens whenever something else in the shell
+    # (commonly ATLASLocalRootBase's setupATLAS -3/asetup, which sets PANDA_PYTHON_EXEC
+    # as a bare, $PATH-resolved "python3" for ITS OWN bundled panda tooling) overrides
+    # the interpreter panda-client would otherwise pick, with no awareness of this
+    # install's own, separately-versioned PANDA_PYTHONPATH. Left unnoticed, the failure
+    # surfaces as a SyntaxError from deep inside a dependency (e.g. anyio's
+    # _lazyimport.py) with no hint of the real cause. Warning only, not self-correcting
+    # -- the caller's own setup is expected to keep these in sync.
+    if [[ -n "$PANDA_PYTHONPATH" ]]; then
+        pyver_installed=$(basename "$(dirname "$PANDA_PYTHONPATH")" 2>/dev/null)
+        pyver_selected=$("$PANDA_PYTHON_EXEC" -c 'import sys; print("python{}.{}".format(*sys.version_info))' 2>/dev/null)
+        if [[ "$pyver_installed" == python* && -n "$pyver_selected" && "$pyver_installed" != "$pyver_selected" ]]; then
+            echo "WARNING: panda-client's python packages were installed for ${pyver_installed}, but the selected interpreter"
+            echo "         (\$PANDA_PYTHON_EXEC=$PANDA_PYTHON_EXEC) is ${pyver_selected}. This usually means something else in"
+            echo "         the shell (e.g. an ATLAS release's asetup) overrode the interpreter panda-client would pick."
+            echo "         If the command below fails with an import error, set \$PANDA_PYTHON_EXEC to a ${pyver_installed}"
+            echo "         interpreter explicitly."
+        fi
+    fi
+
     # execute
     local exec_string=$1
     shift
