@@ -90,11 +90,10 @@ function exec_p_command () {
         pyver_installed=$(basename "$(dirname "$PANDA_PYTHONPATH")" 2>/dev/null)
         pyver_selected=$("$PANDA_PYTHON_EXEC" -c 'import sys; print("python{}.{}".format(*sys.version_info))' 2>/dev/null)
         if [[ "$pyver_installed" == python* && -n "$pyver_selected" && "$pyver_installed" != "$pyver_selected" ]]; then
-            echo "WARNING: panda-client's python packages were installed for ${pyver_installed}, but the selected interpreter"
-            echo "         (\$PANDA_PYTHON_EXEC=$PANDA_PYTHON_EXEC) is ${pyver_selected}. This usually means something else in"
-            echo "         the shell (e.g. an ATLAS release's asetup) overrode the interpreter panda-client would pick."
-            echo "         If the command below fails with an import error, you might be using the wrong order."
-            echo "         'lsetup panda' is meant to be executed AFTER 'asetup ...'."
+            echo "WARNING: panda-client's python packages were installed for ${pyver_installed}, but the selected"
+            echo "         interpreter (\$PANDA_PYTHON_EXEC=$PANDA_PYTHON_EXEC) is ${pyver_selected}. An ATLAS release"
+            echo "         setup can override the interpreter panda-client would otherwise pick."
+            echo "         If panda-client commands fail with an import error, re-run 'lsetup panda' after 'asetup'."
         fi
     fi
 
