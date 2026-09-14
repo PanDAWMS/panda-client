@@ -93,8 +93,8 @@ function exec_p_command () {
             echo "WARNING: panda-client's python packages were installed for ${pyver_installed}, but the selected interpreter"
             echo "         (\$PANDA_PYTHON_EXEC=$PANDA_PYTHON_EXEC) is ${pyver_selected}. This usually means something else in"
             echo "         the shell (e.g. an ATLAS release's asetup) overrode the interpreter panda-client would pick."
-            echo "         If the command below fails with an import error, set \$PANDA_PYTHON_EXEC to a ${pyver_installed}"
-            echo "         interpreter explicitly."
+            echo "         If the command below fails with an import error, you might be using the wrong order."
+            echo "         'lsetup panda' is meant to be executed AFTER 'asetup ...'."
         fi
     fi
 
