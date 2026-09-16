@@ -97,7 +97,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     group_evtFilter = optP.add_group("evtFilter", "event filter such as good run and event pick")
     group_expert = optP.add_group("expert", "for experts/developers only")
 
-    add_common_arguments(group_submit, group_input, group_job, group_output)
+    add_common_arguments(group_submit, group_input, group_job, group_output, group_expert)
 
     usage_containerJob = """Visit the following wiki page for examples:
       https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
@@ -2052,6 +2052,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         taskParamMap["transHome"] = "AnalysisTransforms" + cacheVer + nightVer
     else:
         taskParamMap["transHome"] = None
+    if options.transPath != "":
+        taskParamMap["transPath"] = options.transPath
     if options.containerImage != "" and not options.alrb:
         taskParamMap["processingType"] = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-cont"
     else:
@@ -2654,6 +2656,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         taskParamMap["mergeSpec"] = {}
         taskParamMap["mergeSpec"]["useLocalIO"] = 1
         taskParamMap["mergeSpec"]["jobParameters"] = jobParameters
+        if options.mergeTransPath != "":
+            taskParamMap["mergeSpec"]["transPath"] = options.mergeTransPath
         taskParamMap["mergeOutput"] = True
 
         # check nGBPerJob
