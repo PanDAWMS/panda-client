@@ -125,7 +125,7 @@ group_submit = optP.add_group("submit", "job submission/site/retry")
 group_evtFilter = optP.add_group("evtFilter", "event filter such as good run and event pick")
 group_expert = optP.add_group("expert", "for experts/developers only")
 
-add_common_arguments(group_submit, group_input, group_job, group_output)
+add_common_arguments(group_submit, group_input, group_job, group_output, group_expert)
 
 usage_containerJob = """Visit the following wiki page for examples:
   https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
@@ -2359,6 +2359,8 @@ else:
     taskParamMap["container_name"] = options.containerImage
 taskParamMap["transUses"] = athenaVer
 taskParamMap["transHome"] = "AnalysisTransforms" + cacheVer + nightVer
+if options.transPath != "":
+    taskParamMap["transPath"] = options.transPath
 taskParamMap["processingType"] = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-athena"
 if options.trf:
     taskParamMap["processingType"] += "-trf"
@@ -3120,6 +3122,8 @@ if options.mergeOutput:
     taskParamMap["mergeSpec"] = {}
     taskParamMap["mergeSpec"]["useLocalIO"] = 1
     taskParamMap["mergeSpec"]["jobParameters"] = jobParameters
+    if options.mergeTransPath != "":
+        taskParamMap["mergeSpec"]["transPath"] = options.mergeTransPath
     taskParamMap["mergeOutput"] = True
     if options.nGBPerMergeJob != "MAX":
         # convert to int

@@ -18,7 +18,7 @@ def get_invalid_transfer_types(transfer_type_str):
 
 
 # Common arguments shared by pathena and prun, as (group_key, flags, kwargs) tuples.
-# group_key ("submit"/"input"/"job"/"output") selects the argparse group in add_common_arguments.
+# group_key ("submit"/"input"/"job"/"output"/"expert") selects the argparse group in add_common_arguments.
 # Entries are added in this order, which determines the per-group help ordering.
 _COMMON_ARGS = [
     (
@@ -144,10 +144,33 @@ _COMMON_ARGS = [
             help="By default, the merge step simply renames a single input file to reduce memory and disk usage. This option forces execution of the user-provided merge script even for a single input file.",
         ),
     ),
+    (
+        "expert",
+        ["--transPath"],
+        dict(
+            action="store",
+            dest="transPath",
+            default="",
+            metavar="URL",
+            help="Please don't use this option. Only for developers to override the transformation URL which is set by the server by default. "
+            "e.g., http://pandaserver.cern.ch:25085/trf/user/runGen-00-00-02",
+        ),
+    ),
+    (
+        "expert",
+        ["--mergeTransPath"],
+        dict(
+            action="store",
+            dest="mergeTransPath",
+            default="",
+            metavar="URL",
+            help="Please don't use this option. Only for developers to override the transformation URL for the merge step. Relevant only with --mergeOutput",
+        ),
+    ),
 ]
 
 
-def add_common_arguments(group_submit, group_input, group_job, group_output):
+def add_common_arguments(group_submit, group_input, group_job, group_output, group_expert):
     """Register the common arguments onto the argparse groups
 
     Adds each entry in _COMMON_ARGS to the group selected by its group_key.
@@ -157,8 +180,9 @@ def add_common_arguments(group_submit, group_input, group_job, group_output):
         group_input: argparse group for the "input" group_key
         group_job: argparse group for the "job" group_key
         group_output: argparse group for the "output" group_key
+        group_expert: argparse group for the "expert" group_key
     """
-    groups = {"submit": group_submit, "input": group_input, "job": group_job, "output": group_output}
+    groups = {"submit": group_submit, "input": group_input, "job": group_job, "output": group_output, "expert": group_expert}
     for group_key, flags, kwargs in _COMMON_ARGS:
         groups[group_key].add_argument(*flags, **kwargs)
 
