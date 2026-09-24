@@ -589,7 +589,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         action="store",
         dest="workDir",
         default=".",
-        help="All files under WORKDIR will be transfered to WNs (default=./)",
+        help="All files under WORKDIR will be transferred to WNs (default=./)",
     )
     group_build.add_argument(
         "--extFile",
