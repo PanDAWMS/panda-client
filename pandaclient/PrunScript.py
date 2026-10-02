@@ -1136,338 +1136,373 @@ def build_parser():
     return optP
 
 
-def prepare_sandbox(options, tmpLog, curDir, runDir, workArea, groupArea, tmpDir, delFilesOnExit, dry_mode):
+def prepare_sandbox(options, tmp_log, cur_dir, run_dir, work_area, group_area, tmp_dir, del_files_on_exit, dry_mode):
     """
-    Create the source archive and upload it to the PanDA cache. Changes the working directory
-    and may update options.goodRunListXML with the uploaded file name
-    :return: name of the uploaded archive, or None if no sandbox is used
+    Prepare the input sandbox (the user's source archive) and upload it to the PanDA cache.
+
+    The sandbox is obtained in one of three ways:
+      - by default, the files under the working directory (or the Athena work area with
+        --useAthenaPackages) are collected into a gzipped tarball in tmp_dir. Object files,
+        ROOT files and files larger than --maxFileSize are skipped unless they match --extFile
+      - with --tarBallViaDDM, the tarball pre-uploaded to DDM is used and nothing is uploaded
+      - with --inTarBall, a copy of the given tarball is used
+
+    Nothing is done when running a container without --useSandbox, or in dry mode.
+
+    Side effects:
+      - the process working directory is left at tmp_dir
+      - with --outTarBall, a copy of the tarball is saved there
+      - with --useRootCore, a RootCore work dir is created under cur_dir, its pattern is added to options.extFile, and the dir is added to del_files_on_exit
+      - when the sandbox is uploaded, the --goodRunListXML file is uploaded too and options.goodRunListXML is replaced with its uploaded name
+      - exits with EC_Config, EC_Archive or EC_Post on failure
+
+    :param options: parsed prun options
+    :param tmp_log: logger
+    :param cur_dir: directory prun was launched from
+    :param run_dir: cur_dir relative to --workDir, or to work_area with --useAthenaPackages
+    :param work_area: Athena work area, or "" when --useAthenaPackages is not set
+    :param group_area: Athena group area, or "" when --useAthenaPackages is not set
+    :param tmp_dir: temporary directory where the archive is created
+    :param del_files_on_exit: list of files to delete on exit, extended in place
+    :param dry_mode: skip sandbox creation and upload if True
+    :return: file name of the sandbox to be used by the task (the name of an identical, previously
+             uploaded sandbox if the server reuses one), or None if no sandbox is used
     """
     from pandaclient import AthenaUtils, Client, MiscUtils, PsubUtils
 
-    archiveName = None
+    archive_name = None
+
+    # containers ship the user code in the image, so a sandbox is only needed with --useSandbox
     if (options.containerImage == "" or options.useSandbox) and not dry_mode:
+        # case 1: build the sandbox from the local files
         if options.inTarBall == "" and options.tarBallViaDDM == "":
-            # copy RootCore packages
+            # RootCore: let RootCore's own grid_submit script stage the packages into a work dir
+            # under cur_dir, which is then picked up by the file collection below
             if options.useRootCore:
-                # check $ROOTCOREDIR
                 if "ROOTCOREDIR" not in os.environ:
-                    tmpErrMsg = "$ROOTCOREDIR is not defined in your environment. "
-                    tmpErrMsg += "Please setup RootCore runtime beforehand"
-                    tmpLog.error(tmpErrMsg)
+                    tmp_log.error("$ROOTCOREDIR is not defined in your environment. Please setup RootCore runtime beforehand")
                     sys.exit(EC_Config)
-                # check grid_submit.sh
-                rootCoreSubmitSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_submit.sh"
-                rootCoreCompileSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_compile.sh"
-                rootCoreRunSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_run.sh"
-                rootCoreSubmitNbSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_submit_nobuild.sh"
-                rootCoreCompileNbSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_compile_nobuild.sh"
-                rootCoreShList = [rootCoreSubmitSh, rootCoreCompileSh, rootCoreRunSh]
+
+                # scripts provided by RootCore. The *_nobuild variants are only needed with --noBuild
+                root_core_dir = os.environ["ROOTCOREDIR"]
+                root_core_submit_sh = f"{root_core_dir}/scripts/grid_submit.sh"
+                root_core_compile_sh = f"{root_core_dir}/scripts/grid_compile.sh"
+                root_core_run_sh = f"{root_core_dir}/scripts/grid_run.sh"
+                root_core_submit_nb_sh = f"{root_core_dir}/scripts/grid_submit_nobuild.sh"
+                root_core_compile_nb_sh = f"{root_core_dir}/scripts/grid_compile_nobuild.sh"
+                root_core_sh_list = [root_core_submit_sh, root_core_compile_sh, root_core_run_sh]
                 if options.noBuild:
-                    rootCoreShList.append(rootCoreSubmitNbSh)
+                    root_core_sh_list.append(root_core_submit_nb_sh)
                     if options.noCompile:
-                        rootCoreShList.append(rootCoreCompileNbSh)
-                for tmpShFile in rootCoreShList:
-                    if not os.path.exists(tmpShFile):
-                        tmpErrMsg = "%s doesn't exist. Please use a newer version of RootCore" % tmpShFile
-                        tmpLog.error(tmpErrMsg)
+                        root_core_sh_list.append(root_core_compile_nb_sh)
+                for sh_file in root_core_sh_list:
+                    if not os.path.exists(sh_file):
+                        tmp_log.error(f"{sh_file} doesn't exist. Please use a newer version of RootCore")
                         sys.exit(EC_Config)
-                tmpLog.info("copy RootCore packages to current dir")
-                # destination
-                pandaRootCoreWorkDirName = "__panda_rootCoreWorkDir"
-                rootCoreDestWorkDir = curDir + "/" + pandaRootCoreWorkDirName
-                # add all files to extFile
-                options.extFile.append(pandaRootCoreWorkDirName + "/.*")
-                # add to be deleted on exit
-                delFilesOnExit.append(rootCoreDestWorkDir)
+
+                tmp_log.info("copy RootCore packages to current dir")
+                root_core_work_dir_name = "__panda_rootCoreWorkDir"
+                root_core_dest_work_dir = f"{cur_dir}/{root_core_work_dir_name}"
+                # force-include everything in the work dir, so that compiled libraries are not dropped by the extension/size filters below
+                options.extFile.append(f"{root_core_work_dir_name}/.*")
+                # the work dir is only a staging area, so remove it when prun exits
+                del_files_on_exit.append(root_core_dest_work_dir)
+
                 if not options.noBuild:
-                    tmpStat = os.system("{} {}".format(rootCoreSubmitSh, rootCoreDestWorkDir))
+                    tmp_stat = os.system(f"{root_core_submit_sh} {root_core_dest_work_dir}")
                 else:
-                    tmpStat = os.system("{} {}".format(rootCoreSubmitNbSh, rootCoreDestWorkDir))
-                tmpStat %= 255
-                if tmpStat != 0:
-                    tmpErrMsg = "{} failed with {}".format(rootCoreSubmitSh, tmpStat)
-                    tmpLog.error(tmpErrMsg)
+                    tmp_stat = os.system(f"{root_core_submit_nb_sh} {root_core_dest_work_dir}")
+                # os.system returns the wait status, reduce it so that any failure is non-zero
+                tmp_stat %= 255
+                if tmp_stat != 0:
+                    tmp_log.error(f"{root_core_submit_sh} failed with {tmp_stat}")
                     sys.exit(EC_Config)
-                # copy build and run scripts
-                shutil.copy(rootCoreRunSh, rootCoreDestWorkDir)
-                shutil.copy(rootCoreCompileSh, rootCoreDestWorkDir)
+
+                # the worker nodes use these scripts to compile and run the RootCore packages
+                shutil.copy(root_core_run_sh, root_core_dest_work_dir)
+                shutil.copy(root_core_compile_sh, root_core_dest_work_dir)
                 if options.noCompile:
-                    shutil.copy(rootCoreCompileNbSh, rootCoreDestWorkDir)
-            # gather Athena packages
-            archiveName = ""
+                    shutil.copy(root_core_compile_nb_sh, root_core_dest_work_dir)
+
+            # Athena: archive the packages of the work area. Each helper appends to the tarball created by the previous one,
+            # which is why archive_name is passed along
+            archive_name = ""
             if options.useAthenaPackages:
                 if AthenaUtils.useCMake():
-                    # archive with cpack
-                    archiveName, archiveFullName = AthenaUtils.archiveWithCpack(True, tmpDir, options.verbose)
-                # set extFile
+                    # CMake releases: start the tarball from the cpack output of the build directory
+                    archive_name, archive_full_name = AthenaUtils.archiveWithCpack(True, tmp_dir, options.verbose)
+
+                # AthenaUtils keeps its own copy of the --extFile patterns
                 AthenaUtils.setExtFile(options.extFile)
+
                 if not options.noBuild:
-                    # archive sources
-                    archiveName, archiveFullName = AthenaUtils.archiveSourceFiles(
-                        workArea,
-                        runDir,
-                        curDir,
-                        tmpDir,
+                    # the job compiles on the worker node, so ship the full sources
+                    archive_name, archive_full_name = AthenaUtils.archiveSourceFiles(
+                        work_area,
+                        run_dir,
+                        cur_dir,
+                        tmp_dir,
                         options.verbose,
                         options.gluePackages,
                         dereferenceSymLinks=options.followLinks,
-                        archiveName=archiveName,
+                        archiveName=archive_name,
                     )
                 else:
-                    # archive jobO
-                    archiveName, archiveFullName = AthenaUtils.archiveJobOFiles(
-                        workArea,
-                        runDir,
-                        curDir,
-                        tmpDir,
+                    # --noBuild: no compilation on the worker node, ship only the job options
+                    archive_name, archive_full_name = AthenaUtils.archiveJobOFiles(
+                        work_area,
+                        run_dir,
+                        cur_dir,
+                        tmp_dir,
                         options.verbose,
-                        archiveName=archiveName,
+                        archiveName=archive_name,
                     )
-                # archive InstallArea
+
+                # add the InstallArea of the work area and the group area
                 AthenaUtils.archiveInstallArea(
-                    workArea,
-                    groupArea,
-                    archiveName,
-                    archiveFullName,
-                    tmpDir,
+                    work_area,
+                    group_area,
+                    archive_name,
+                    archive_full_name,
+                    tmp_dir,
                     options.noBuild,
                     options.verbose,
                 )
-            # gather normal files
-            if True:
-                if options.useAthenaPackages:
-                    # go to workArea
-                    os.chdir(workArea)
-                    # gather files under work dir
-                    tmpLog.info("gathering files under {}/{}".format(workArea, runDir))
-                    archStartDir = runDir
-                    archStartDir = re.sub("/+$", "", archStartDir)
-                else:
-                    # go to work dir
-                    os.chdir(options.workDir)
-                    # gather files under work dir
-                    tmpLog.info("gathering files under %s" % options.workDir)
-                    archStartDir = "."
-                # get files in the working dir
-                if options.noCompile:
-                    skippedExt = []
-                else:
-                    skippedExt = [".o", ".a", ".so"]
-                skippedFlag = False
-                workDirFiles = []
-                if options.followLinks:
-                    osWalkList = os.walk(archStartDir, followlinks=True)
-                else:
-                    osWalkList = os.walk(archStartDir)
-                for tmpRoot, tmpDirs, tmpFiles in osWalkList:
-                    emptyFlag = True
-                    for tmpFile in tmpFiles:
-                        if options.useAthenaPackages:
-                            if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
-                                if options.verbose:
-                                    print("skip Athena archive %s" % tmpFile)
-                                continue
-                        tmpPath = "{}/{}".format(tmpRoot, tmpFile)
-                        # get size
-                        try:
-                            size = os.path.getsize(tmpPath)
-                        except Exception:
-                            # skip dead symlink
+
+            # collect the plain files of the run directory. With Athena, paths are relative to work_area to match the layout of the Athena part of the tarball
+            if options.useAthenaPackages:
+                os.chdir(work_area)
+                tmp_log.info(f"gathering files under {work_area}/{run_dir}")
+                arch_start_dir = re.sub("/+$", "", run_dir)
+            else:
+                os.chdir(options.workDir)
+                tmp_log.info(f"gathering files under {options.workDir}")
+                arch_start_dir = "."
+
+            # build products are skipped since the job rebuilds them on the worker node, unless
+            # --noCompile is set, in which case the pre-compiled binaries have to be shipped
+            if options.noCompile:
+                skipped_ext = []
+            else:
+                skipped_ext = [".o", ".a", ".so"]
+            skipped_flag = False
+            work_dir_files = []
+            if options.followLinks:
+                os_walk_list = os.walk(arch_start_dir, followlinks=True)
+            else:
+                os_walk_list = os.walk(arch_start_dir)
+
+            for tmp_root, tmp_dirs, tmp_files in os_walk_list:
+                # True while the directory contains no regular file, used to keep empty directories
+                empty_flag = True
+                for tmp_file in tmp_files:
+                    # the Athena tarball may already be in the walked tree, don't archive it into itself
+                    if options.useAthenaPackages:
+                        if os.path.basename(tmp_file) == os.path.basename(archive_full_name):
                             if options.verbose:
-                                type, value, traceBack = sys.exc_info()
-                                print("  Ignore : {}:{}".format(type, value))
+                                print(f"skip Athena archive {tmp_file}")
                             continue
-                        # check exclude files
-                        excludeFileFlag = False
-                        for tmpPatt in AthenaUtils.excludeFile:
-                            if re.search(tmpPatt, tmpPath) is not None:
-                                excludeFileFlag = True
-                                break
-                        if excludeFileFlag:
-                            continue
-                        # skipped extension
-                        isSkippedExt = False
-                        for tmpExt in skippedExt:
-                            if tmpPath.endswith(tmpExt):
-                                isSkippedExt = True
-                                break
-                        # check root
-                        isRoot = False
-                        if re.search(r"\.root(\.\d+)*$", tmpPath) is not None:
-                            isRoot = True
-                        # extra files
-                        isExtra = False
-                        for tmpExt in options.extFile:
-                            if re.search(tmpExt + "$", tmpPath) is not None:
-                                isExtra = True
-                                break
-                        # regular files
-                        if not isExtra:
-                            # unset emptyFlag even if all files are skipped
-                            emptyFlag = False
-                            # skipped extensions
-                            if isSkippedExt:
-                                print("  skip {} {}".format(str(skippedExt), tmpPath))
-                                skippedFlag = True
-                                continue
-                            # skip root
-                            if isRoot:
-                                print("  skip root file %s" % tmpPath)
-                                skippedFlag = True
-                                continue
-                            # check size
-                            if size > options.maxFileSize:
-                                print("  skip large file {}:{}B>{}B".format(tmpPath, size, options.maxFileSize))
-                                skippedFlag = True
-                                continue
-                        # remove ./
-                        tmpPath = re.sub(r"^\./", "", tmpPath)
-                        # append
-                        workDirFiles.append(tmpPath)
-                        if emptyFlag:
-                            emptyFlag = False
-                    # add empty directory
-                    if emptyFlag and tmpDirs == [] and tmpFiles == []:
-                        tmpPath = re.sub(r"^\./", "", tmpRoot)
-                        # check exclude pattern
-                        excludePatFlag = False
-                        for tmpPatt in AthenaUtils.excludeFile:
-                            if re.search(tmpPatt, tmpPath) is not None:
-                                excludePatFlag = True
-                                break
-                        if excludePatFlag:
-                            continue
-                        # skip tmpDir
-                        if tmpPath.split("/")[-1] == tmpDir.split("/")[-1]:
-                            continue
-                        # append
-                        workDirFiles.append(tmpPath)
-                if skippedFlag:
-                    tmpLog.info("please use --extFile if you need to send the skipped files to WNs")
-                # set archive name
-                if not options.useAthenaPackages:
-                    # create archive
-                    if options.noBuild and not options.noCompile:
-                        # use 'jobO' for noBuild
-                        archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
-                    else:
-                        # use 'sources' for normal build
-                        archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
-                    archiveFullName = "{}/{}".format(tmpDir, archiveName)
-                # collect files
-                for tmpFile in workDirFiles:
-                    # avoid self-archiving
-                    if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
+                    tmp_path = f"{tmp_root}/{tmp_file}"
+
+                    # get size
+                    try:
+                        size = os.path.getsize(tmp_path)
+                    except Exception:
+                        # skip dead symlink
                         if options.verbose:
-                            print("skip self-archiving for %s" % tmpFile)
+                            exc_type, exc_value, _ = sys.exc_info()
+                            print(f"  Ignore : {exc_type}:{exc_value}")
                         continue
-                    if os.path.islink(tmpFile):
-                        status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rh '{}' -f '{}'".format(tmpFile, archiveFullName))
-                    else:
-                        status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rf '{}' '{}'".format(archiveFullName, tmpFile))
+
+                    # --excludeFile patterns always win, even over --extFile
+                    exclude_file_flag = False
+                    for tmp_patt in AthenaUtils.excludeFile:
+                        if re.search(tmp_patt, tmp_path) is not None:
+                            exclude_file_flag = True
+                            break
+                    if exclude_file_flag:
+                        continue
+
+                    # classify the file. The checks are applied below, only for files not forced in with --extFile
+                    is_skipped_ext = False
+                    for tmp_ext in skipped_ext:
+                        if tmp_path.endswith(tmp_ext):
+                            is_skipped_ext = True
+                            break
+
+                    # ROOT files (also with a numeric suffix, e.g. .root.1) are usually data, not code
+                    is_root = False
+                    if re.search(r"\.root(\.\d+)*$", tmp_path) is not None:
+                        is_root = True
+
+                    # files matching --extFile are always included
+                    is_extra = False
+                    for tmp_ext in options.extFile:
+                        if re.search(f"{tmp_ext}$", tmp_path) is not None:
+                            is_extra = True
+                            break
+
+                    if not is_extra:
+                        # the directory is not empty even if all its files are skipped
+                        empty_flag = False
+                        if is_skipped_ext:
+                            print(f"  skip {skipped_ext} {tmp_path}")
+                            skipped_flag = True
+                            continue
+                        if is_root:
+                            print(f"  skip root file {tmp_path}")
+                            skipped_flag = True
+                            continue
+                        if size > options.maxFileSize:
+                            print(f"  skip large file {tmp_path}:{size}B>{options.maxFileSize}B")
+                            skipped_flag = True
+                            continue
+
+                    tmp_path = re.sub(r"^\./", "", tmp_path)
+                    work_dir_files.append(tmp_path)
+                    if empty_flag:
+                        empty_flag = False
+
+                # keep empty leaf directories, since the user code may expect them to exist
+                if empty_flag and tmp_dirs == [] and tmp_files == []:
+                    tmp_path = re.sub(r"^\./", "", tmp_root)
+                    exclude_pat_flag = False
+                    for tmp_patt in AthenaUtils.excludeFile:
+                        if re.search(tmp_patt, tmp_path) is not None:
+                            exclude_pat_flag = True
+                            break
+                    if exclude_pat_flag:
+                        continue
+                    # tmp_dir is created under cur_dir by default and is still empty at this point
+                    if tmp_path.split("/")[-1] == tmp_dir.split("/")[-1]:
+                        continue
+                    work_dir_files.append(tmp_path)
+
+            if skipped_flag:
+                tmp_log.info("please use --extFile if you need to send the skipped files to WNs")
+
+            # without Athena, no tarball exists yet. The prefix matters: Client.putFile applies the larger
+            # size limit to "sources." archives, and "jobO." marks a sandbox that is not compiled
+            if not options.useAthenaPackages:
+                if options.noBuild and not options.noCompile:
+                    archive_name = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
+                else:
+                    archive_name = f"sources.{MiscUtils.wrappedUuidGen()}.tar"
+                archive_full_name = f"{tmp_dir}/{archive_name}"
+
+            # append the files one by one. Hidden files are excluded, and symlinked files are added with -h so that the tarball contains
+            # the file contents rather than a link that would dangle on the worker node
+            for tmp_file in work_dir_files:
+                # tmp_dir is created under cur_dir by default, so the archive can show up in the file list
+                if os.path.basename(tmp_file) == os.path.basename(archive_full_name):
                     if options.verbose:
-                        print(tmpFile)
-                    if status != 0 or out != "":
-                        print(out)
-            # go to tmpdir
-            os.chdir(tmpDir)
+                        print(f"skip self-archiving for {tmp_file}")
+                    continue
+                if os.path.islink(tmp_file):
+                    status, out = commands_get_status_output(f"tar --exclude '.[a-zA-Z]*' -rh '{tmp_file}' -f '{archive_full_name}'")
+                else:
+                    status, out = commands_get_status_output(f"tar --exclude '.[a-zA-Z]*' -rf '{archive_full_name}' '{tmp_file}'")
+                if options.verbose:
+                    print(tmp_file)
+                if status != 0 or out != "":
+                    print(out)
 
-            # make empty if archive doesn't exist
-            if not os.path.exists(archiveFullName):
-                commands_get_status_output("tar cvf %s --files-from /dev/null " % archiveName)
+            os.chdir(tmp_dir)
 
-            # compress
-            status, out = commands_get_status_output("gzip %s" % archiveName)
-            archiveName += ".gz"
+            # no file was collected, but the task still expects a sandbox
+            if not os.path.exists(archive_full_name):
+                commands_get_status_output(f"tar cvf {archive_name} --files-from /dev/null ")
+
+            # the tarball is built uncompressed because tar can't append to a compressed archive
+            status, out = commands_get_status_output(f"gzip {archive_name}")
+            archive_name += ".gz"
             if status != 0 or options.verbose:
                 print(out)
 
-            # check archive
-            status, out = commands_get_status_output(f"ls -l {archiveName}")
+            # gzip errors are only printed, so make sure the compressed archive was really written
+            status, out = commands_get_status_output(f"ls -l {archive_name}")
             if options.verbose:
                 print(out)
             if status != 0:
-                tmpLog.error("Failed to archive working area.\nIf you see 'Disk quota exceeded', try '--tmpDir /tmp'")
+                tmp_log.error("Failed to archive working area.\nIf you see 'Disk quota exceeded', try '--tmpDir /tmp'")
                 sys.exit(EC_Archive)
 
-            # check symlinks
+            # Athena work areas often contain symlinks to absolute paths (e.g. into the release), which don't exist on the worker node. Warn about them
             if options.useAthenaPackages:
-                tmpLog.info("checking sandbox")
+                tmp_log.info("checking sandbox")
                 for _ in range(5):
-                    status, out = commands_get_status_output("tar tvfz %s" % archiveName)
+                    status, out = commands_get_status_output(f"tar tvfz {archive_name}")
                     if status == 0:
                         break
                     time.sleep(5)
                 if status != 0:
-                    tmpLog.error(f"Failed to expand sandbox. {out}")
+                    tmp_log.error(f"Failed to expand sandbox. {out}")
                     sys.exit(EC_Archive)
+
+                # in "tar tv" output, symlinks have a mode starting with "l" and the target as the last field
                 symlinks = []
                 for line in out.split("\n"):
                     items = line.split()
                     if len(items) > 0 and items[0].startswith("l") and items[-1].startswith("/"):
                         symlinks.append(line)
                 if symlinks != []:
-                    tmpStr = "Found some unresolved symlinks which may cause a problem\n"
-                    tmpStr += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
-                    tmpStr += "   Please ignore if you believe they are harmless"
-                    tmpLog.warning(tmpStr)
+                    tmp_log.warning("Found some unresolved symlinks which may cause a problem\n" "   Please ignore if you believe they are harmless")
                     for symlink in symlinks:
-                        print("  %s" % symlink)
+                        print(f"  {symlink}")
+
+        # case 2: the sandbox was already uploaded to DDM, just refer to it by file name
         elif options.tarBallViaDDM:
-            # go to tmp dir
-            os.chdir(tmpDir)
-            # use sandbox pre-uploaded to DDM
-            archiveName = options.tarBallViaDDM.split(":")[-1]
+            os.chdir(tmp_dir)
+            # the option is given as scope:name, the task only needs the name
+            archive_name = options.tarBallViaDDM.split(":")[-1]
+
+        # case 3: reuse a tarball saved by an earlier prun call with --outTarBall
         else:
-            # go to tmp dir
-            os.chdir(tmpDir)
-            # use a saved copy
+            os.chdir(tmp_dir)
             if options.noCompile or not options.noBuild:
-                archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
-                archiveFullName = "{}/{}".format(tmpDir, archiveName)
+                archive_name = f"sources.{MiscUtils.wrappedUuidGen()}.tar"
             else:
-                archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
-                archiveFullName = "{}/{}".format(tmpDir, archiveName)
-            # make copy to avoid name duplication
-            shutil.copy(options.inTarBall, archiveFullName)
+                archive_name = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
+            archive_full_name = f"{tmp_dir}/{archive_name}"
+            # copy under a fresh unique name, so that every task gets its own sandbox file name
+            shutil.copy(options.inTarBall, archive_full_name)
 
-        # save
+        # keep a copy for later submissions with --inTarBall
         if options.outTarBall != "":
-            shutil.copy(archiveName, options.outTarBall)
+            shutil.copy(archive_name, options.outTarBall)
 
-        # upload source files
+        # upload the sandbox to the PanDA cache, from where the jobs download it via the task's sourceURL
         if not options.noSubmit and not options.tarBallViaDDM:
-            # upload sources via HTTP POST
-            tmpLog.info("upload sandbox")
-            if options.vo is None:
-                use_cache_srv = True
-            else:
-                use_cache_srv = False
+            tmp_log.info("upload sandbox")
+            # the dedicated cache server is used by default (no --vo, i.e. ATLAS). Other VOs upload to the PanDA server itself
+            use_cache_srv = options.vo is None
             status, out = Client.putFile(
-                archiveName,
+                archive_name,
                 options.verbose,
                 useCacheSrv=use_cache_srv,
                 reuseSandbox=True,
             )
+            # with reuseSandbox the server checks the checksum and, if an identical sandbox was uploaded before, returns its name instead of storing a new copy
             if out.startswith("NewFileName:"):
-                # found the same input sandbox to reuse
-                archiveName = out.split(":")[-1]
+                archive_name = out.split(":")[-1]
             elif out != "True":
                 print(out)
-                tmpLog.error("failed to upload sandbox with %s" % status)
+                tmp_log.error(f"failed to upload sandbox with {status}")
                 sys.exit(EC_Post)
-            # good run list
+
+            # the GRL is converted into input datasets by the task's preprocessing job, which fetches the file from the cache.
+            # The option is replaced by the name of the uploaded file
             if options.goodRunListXML != "":
                 options.goodRunListXML = PsubUtils.uploadGzippedFile(
                     options.goodRunListXML,
-                    curDir,
-                    tmpLog,
-                    delFilesOnExit,
+                    cur_dir,
+                    tmp_log,
+                    del_files_on_exit,
                     options.noSubmit,
                     options.verbose,
                 )
 
-    return archiveName
+    return archive_name
 
 
 # main

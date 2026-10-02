@@ -47,7 +47,7 @@ class fakeAppMgr(fakeProperty):
             self._streams = self.origTheApp._streams
         except Exception:
             self._streams = []
-        # for https://savannah.cern.ch/bugs/index.php?66675
+
         try:
             self.allConfigurables = self.origTheApp.allConfigurables
         except Exception:

@@ -2279,7 +2279,6 @@ if True:
                 symlinks.append(line)
         if symlinks != []:
             tmpStr = "Found some unresolved symlinks which may cause a problem\n"
-            tmpStr += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
             tmpStr += "   Please ignore if you believe they are harmless"
             tmpLog.warning(tmpStr)
             for symlink in symlinks:
