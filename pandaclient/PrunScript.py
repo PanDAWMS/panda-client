@@ -13,75 +13,66 @@ from pandaclient.CommonArgs import VALID_TRANSFER_TYPES, add_common_arguments, g
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import commands_get_status_output, parse_secondary_datasets_opt
 
+# default cloud/site
+defaultSite = "AUTO"
 
-# main
-def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False):
-    """
-    Execute prun command
-    :param get_taskparams: get task parameters and return them if True
-    :param ext_args: external arguments to be passed to prun
-    :param dry_mode: execute prun in dry mode
-    :param get_options: get options and return them if True
-    :return: task parameters or options if get_taskparams or get_options is True
-    """
-    # default cloud/site
-    defaultSite = "AUTO"
+# error code
+EC_Config = 10
+EC_Post = 50
+EC_Archive = 60
+EC_Submit = 90
 
-    # error code
-    EC_Config = 10
-    EC_Post = 50
-    EC_Archive = 60
-    EC_Submit = 90
-
-    # tweak sys.argv
-    sys.argv.pop(0)
-    sys.argv.insert(0, "prun")
-
-    usage = """prun [options]
+usage = """prun [options]
 
       HowTo is available at https://panda-wms.readthedocs.io/en/latest/client/prun.html"""
 
-    examples = """Examples:
+examples = """Examples:
       prun --exec "echo %IN > input.txt; root.exe; root -b -q macrotest.C" --athenaTag=22.0.0 --inDS ...
       prun --exec "cpptest %IN" --bexec "make" --athenaTag=22.0.0 --inDS ...
       prun --loadJson prunConfig.json   # read all prun options from one json file
     """
 
-    removedOpts = [  # list of deprecated options w.r.t version 0.6.25
-        "--buildInLastChunk",
-        "--cloud",
-        "--configJEM",
-        "--crossSite",
-        "--dbRunNumber",
-        "--disableRebrokerage",
-        "--enableJEM",
-        "--eventPickNumSites",
-        "--eventPickSkipDaTRI",
-        "--eventPickStagedDS",
-        "--forceStagedSecondary",
-        "--individualOutDS",
-        "--libDS",
-        "--long",
-        "--manaVer",
-        "--myproxy",
-        "--outputPath",
-        "--provenanceID",
-        "--removedDS",
-        "--requireLFC",
-        "--safetySize",
-        "--seriesLabel",
-        "--skipScan",
-        "--transferredDS",
-        "--useChirpServer",
-        "--useContElementBoundary",
-        "--useGOForOutput",
-        "--useMana",
-        "--useOldStyleOutput",
-        "--useRucio",
-        "--useShortLivedReplicas",
-        "--useSiteGroup",
-    ]
+removedOpts = [  # list of deprecated options w.r.t version 0.6.25
+    "--buildInLastChunk",
+    "--cloud",
+    "--configJEM",
+    "--crossSite",
+    "--dbRunNumber",
+    "--disableRebrokerage",
+    "--enableJEM",
+    "--eventPickNumSites",
+    "--eventPickSkipDaTRI",
+    "--eventPickStagedDS",
+    "--forceStagedSecondary",
+    "--individualOutDS",
+    "--libDS",
+    "--long",
+    "--manaVer",
+    "--myproxy",
+    "--outputPath",
+    "--provenanceID",
+    "--removedDS",
+    "--requireLFC",
+    "--safetySize",
+    "--seriesLabel",
+    "--skipScan",
+    "--transferredDS",
+    "--useChirpServer",
+    "--useContElementBoundary",
+    "--useGOForOutput",
+    "--useMana",
+    "--useOldStyleOutput",
+    "--useRucio",
+    "--useShortLivedReplicas",
+    "--useSiteGroup",
+]
 
+
+def build_parser():
+    """
+    Build the prun argument parser
+    :return: argument parser
+    """
     optP = get_parser(usage=usage, conflict_handler="resolve")
     optP.set_examples(examples)
 
@@ -1142,6 +1133,25 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     )
     group_build.add_argument("-3", action="store_true", dest="python3", default=False, help="Use python3")
 
+    return optP
+
+
+# main
+def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False):
+    """
+    Execute prun command
+    :param get_taskparams: get task parameters and return them if True
+    :param ext_args: external arguments to be passed to prun
+    :param dry_mode: execute prun in dry mode
+    :param get_options: get options and return them if True
+    :return: task parameters or options if get_taskparams or get_options is True
+    """
+    # tweak sys.argv
+    sys.argv.pop(0)
+    sys.argv.insert(0, "prun")
+
+    optP = build_parser()
+
     from pandaclient import MiscUtils
 
     # parse options
@@ -1149,15 +1159,15 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     for arg in sys.argv[1:]:
         optName = arg.split("=", 1)[0]
         if optName in removedOpts:
-            print("!!Warning!! option %s has been deprecated, pls dont use anymore\n" % optName)
+            print(f"!!Warning!! Option {optName} has been deprecated, please dont use anymore\n")
             sys.argv.remove(arg)
 
-    # options, args = optP.parse_known_args()
     options = optP.parse_args(ext_args)
 
     if options.verbose:
         print(options)
         print("")
+
     # load json
     jsonExecStr = ""
     if options.loadJson is not None:
