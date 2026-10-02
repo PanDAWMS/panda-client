@@ -76,6 +76,7 @@ exclude = [
 
 [tool.black]
 line-length=160
+target-version = ["py37"]
 
 [tool.autopep8]
 # https://pypi.org/project/autopep8/#pyproject-toml

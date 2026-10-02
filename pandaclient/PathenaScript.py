@@ -1334,7 +1334,7 @@ group_job.add_argument(
 )
 
 from pandaclient import MiscUtils
-from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, commands_get_status_output_with_env
+from pandaclient.MiscUtils import commands_get_status_output, commands_get_status_output_with_env
 
 # parse options
 # check against the removed options first
@@ -1714,13 +1714,18 @@ os.makedirs(tmpDir)
 
 
 # exit action
-def _onExit(dir, files, del_command):
-    for tmpFile in files:
-        del_command(f"rm -rf {tmpFile}")
-    del_command(f"rm -rf {dir}")
+def _onExit(tmp_dir, files):
+    for tmp_path in files + [tmp_dir]:
+        if os.path.isdir(tmp_path) and not os.path.islink(tmp_path):
+            shutil.rmtree(tmp_path, ignore_errors=True)
+        else:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
 
 
-atexit.register(_onExit, tmpDir, delFilesOnExit, commands_get_output)
+atexit.register(_onExit, tmpDir, delFilesOnExit)
 
 
 # get Athena versions

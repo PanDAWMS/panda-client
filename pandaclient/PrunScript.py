@@ -11,7 +11,7 @@ from urllib.parse import quote
 
 from pandaclient.CommonArgs import VALID_TRANSFER_TYPES, add_common_arguments, get_invalid_transfer_types, set_events_task_params, set_n_files_from_n_jobs
 from pandaclient.Group_argparse import get_parser
-from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, parse_secondary_datasets_opt
+from pandaclient.MiscUtils import commands_get_status_output, parse_secondary_datasets_opt
 
 
 # main
@@ -1492,12 +1492,17 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     os.makedirs(tmpDir)
 
     # exit action
-    def _onExit(dir, files, del_command):
-        for tmpFile in files:
-            del_command("rm -rf %s" % tmpFile)
-        del_command("rm -rf %s" % dir)
+    def _onExit(tmp_dir, files):
+        for tmp_path in files + [tmp_dir]:
+            if os.path.isdir(tmp_path) and not os.path.islink(tmp_path):
+                shutil.rmtree(tmp_path, ignore_errors=True)
+            else:
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
 
-    atexit.register(_onExit, tmpDir, delFilesOnExit, commands_get_output)
+    atexit.register(_onExit, tmpDir, delFilesOnExit)
 
     # parse tag
     athenaVer = ""
