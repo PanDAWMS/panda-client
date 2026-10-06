@@ -665,7 +665,7 @@ group_output.add_argument(
     dest="destSE",
     default="",
     type=str,
-    help="Destination strorage element",
+    help="Destination storage element",
 )
 group_print.add_argument(
     "-v",
@@ -992,7 +992,7 @@ group_build.add_argument(
     dest="vomsRoles",
     default=None,
     type=str,
-    help="generate proxy with paticular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
+    help="generate proxy with particular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
 )
 group_job.add_argument(
     "--useNextEvent",
@@ -1210,7 +1210,7 @@ group_input.add_argument(
     const=True,
     dest="respectLB",
     default=False,
-    help="To generate jobs repecting lumiblock boundaries",
+    help="To generate jobs respecting lumiblock boundaries",
 )
 
 
@@ -1264,14 +1264,14 @@ group_submit.add_argument(
     const=True,
     dest="useNewCode",
     default=False,
-    help="When task are resubmitted with the same outDS, the original souce code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries",
+    help="When task are resubmitted with the same outDS, the original source code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries",
 )
 group_config.add_argument(
     "--loadJson",
     action="store",
     dest="loadJson",
     default=None,
-    help="Read command-line parameters from a json file which contains a dict of {parameter: value}. Arguemnts for Athena can be specified as {'atehna_args': [...,]}",
+    help="Read command-line parameters from a json file which contains a dict of {parameter: value}. Arguments for Athena can be specified as {'athena_args': [...,]}",
 )
 group_config.add_argument(
     "--dumpJson",
@@ -1495,7 +1495,7 @@ if options.bulkSubmission:
         tmpLog.error("--inOutDsJson is missing")
         sys.exit(EC_Config)
     if options.eventPickEvtList != "":
-        tmpLog.error("cannnot use --eventPickEvtList and --inOutDsJson at the same time")
+        tmpLog.error("cannot use --eventPickEvtList and --inOutDsJson at the same time")
         sys.exit(EC_Config)
     ioList = MiscUtils.decodeJSON(options.inOutDsJson)
     for ioItem in ioList:
@@ -1579,12 +1579,12 @@ if options.dbRelease != "" and (options.dbRelease.find(":") == -1 and options.db
 
 # Good Run List
 if options.goodRunListXML != "" and options.inDS != "":
-    tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")
+    tmpLog.error("cannot use --goodRunListXML and --inDS at the same time")
     sys.exit(EC_Config)
 
 # event picking
 if options.eventPickEvtList != "" and options.inDS != "":
-    tmpLog.error("cannnot use --eventPickEvtList and --inDS at the same time")
+    tmpLog.error("cannot use --eventPickEvtList and --inDS at the same time")
     sys.exit(EC_Config)
 
 # param check for event picking

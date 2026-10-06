@@ -159,7 +159,7 @@ class dom_parser:
 
     @staticmethod
     def break_regex(v, N=100):
-        """breaks up a very long regex into a comma-separeted list of filters"""
+        """breaks up a very long regex into a comma-separated list of filters"""
         _REGEXLIM = 2**15 - 1000
         spl = v.split("|")
         res = []
