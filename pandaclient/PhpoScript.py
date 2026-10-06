@@ -246,7 +246,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         dest="vomsRoles",
         default=None,
         type=str,
-        help="generate proxy with paticular roles. " "e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
+        help="generate proxy with particular roles. " "e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
     )
     group_submit.add_argument("--noEmail", action="store_const", const=True, dest="noEmail", default=False, help="Suppress email notification")
 

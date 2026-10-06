@@ -154,7 +154,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         const=True,
         dest="respectLB",
         default=False,
-        help="To generate jobs repecting lumiblock boundaries",
+        help="To generate jobs respecting lumiblock boundaries",
     )
     group_output.add_argument(
         "--outDS",
@@ -191,7 +191,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         action="store",
         dest="destSE",
         default="",
-        help="Destination strorage element",
+        help="Destination storage element",
     )
     group_output.add_argument(
         "--noSeparateLog",
@@ -684,9 +684,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         action="store",
         dest="vomsRoles",
         default=None,
-        help="generate proxy with paticular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
+        help="generate proxy with particular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
     )
-    group_build.add_argument("--vo", action="store", dest="vo", default=None, help="virtual orgnaiztion name")
+    group_build.add_argument("--vo", action="store", dest="vo", default=None, help="virtual organization name")
     group_submit.add_argument(
         "--noEmail",
         action="store_const",
@@ -923,7 +923,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         const=True,
         dest="useNewCode",
         default=False,
-        help="When task are resubmitted with the same outDS, the original souce code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries",
+        help="When task are resubmitted with the same outDS, the original source code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries",
     )
     group_output.add_argument(
         "--allowTaskDuplication",
@@ -1331,7 +1331,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             tmpLog.error("--inOutDsJson is missing")
             sys.exit(EC_Config)
         if options.eventPickEvtList != "":
-            tmpLog.error("cannnot use --eventPickEvtList and --inOutDsJson at the same time")
+            tmpLog.error("cannot use --eventPickEvtList and --inOutDsJson at the same time")
             sys.exit(EC_Config)
         ioList = MiscUtils.decodeJSON(options.inOutDsJson)
         for ioItem in ioList:
@@ -1363,12 +1363,12 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # Good Run List
     if options.goodRunListXML != "" and options.inDS != "":
-        tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")
+        tmpLog.error("cannot use --goodRunListXML and --inDS at the same time")
         sys.exit(EC_Config)
 
     # event picking
     if options.eventPickEvtList != "" and options.inDS != "":
-        tmpLog.error("cannnot use --eventPickEvtList and --inDS at the same time")
+        tmpLog.error("cannot use --eventPickEvtList and --inDS at the same time")
         sys.exit(EC_Config)
 
     # param check for event picking
@@ -1460,7 +1460,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         and os.path.realpath(os.path.expanduser(os.environ["HOME"])) == options.workDir
         and not dry_mode
     ):
-        tmpStr = "prun is executed just under the HOME directoy "
+        tmpStr = "prun is executed just under the HOME directory "
         tmpStr += "and is going to send all files under the dir including ~/Mail/* and ~/private/*. "
         tmpStr += "Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)"
         tmpLog.warning(tmpStr)
