@@ -10,7 +10,15 @@ import shutil
 import sys
 import time
 
-from pandaclient.CommonArgs import VALID_TRANSFER_TYPES, add_common_arguments, get_invalid_transfer_types, set_events_task_params, set_n_files_from_n_jobs
+from pandaclient.CommonArgs import (
+    VALID_TRANSFER_TYPES,
+    add_common_arguments,
+    get_allow_no_output_job_params,
+    get_invalid_transfer_types,
+    get_unmatched_allow_no_output_patterns,
+    set_events_task_params,
+    set_n_files_from_n_jobs,
+)
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import parse_secondary_datasets_opt
 
@@ -870,15 +878,6 @@ group_build.add_argument(
     default="",
     help="list of glue packages which pathena cannot find due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf",
 )
-action = group_job.add_argument(
-    "--allowNoOutput",
-    action="store",
-    dest="allowNoOutput",
-    default="",
-    type=str,
-    help="A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. Jobs go to finished even if they are not produced on WN",
-)
-group_output.shareWithMe(action)
 group_submit.add_argument(
     "--excludedSite",
     action="append",
@@ -2969,6 +2968,13 @@ taskParamMap["jobParameters"] += [
     {"type": "constant", "value": f'-o "{outMap}" '},
 ]
 taskParamMap["jobParameters"] += tmpParamList
+# output files allowed not to be produced
+taskParamMap["jobParameters"] += get_allow_no_output_job_params(tmpParamList)
+for tmpPatt in get_unmatched_allow_no_output_patterns(options.allowNoOutput, tmpParamList):
+    tmpLog.warning(
+        f"--allowNoOutput pattern '{tmpPatt}' matches none of output filename templates "
+        f"{[item['value'] for item in tmpParamList if item.get('param_type') == 'output']}"
+    )
 
 
 # jobO parameter

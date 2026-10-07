@@ -30,6 +30,13 @@ def wrappedUuidGen():
     return str(uuid.uuid4())
 
 
+# check if a --allowNoOutput pattern matches the end of an output filename template
+def match_allow_no_output(pattern, lfn):
+    if pattern == "":
+        return False
+    return re.search("^.*" + pattern + "$", lfn) is not None
+
+
 # make JEDI job parameter
 def makeJediJobParam(
     lfn,
@@ -65,13 +72,8 @@ def makeJediJobParam(
         if not padding:
             dictItem["padding"] = padding
         if allowNoOutput is not None:
-            for tmpPatt in allowNoOutput:
-                if tmpPatt == "":
-                    continue
-                tmpPatt = "^.*" + tmpPatt + "$"
-                if re.search(tmpPatt, lfn) is not None:
-                    dictItem["allowNoOutput"] = True
-                    break
+            if any(match_allow_no_output(tmpPatt, lfn) for tmpPatt in allowNoOutput):
+                dictItem["allowNoOutput"] = True
     elif paramType == "input":
         dictItem["type"] = "template"
         dictItem["value"] = lfn
