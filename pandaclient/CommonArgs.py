@@ -1,5 +1,7 @@
 """Common CLI arguments and helper functions shared by pathena and prun"""
 
+from pandaclient.MiscUtils import match_allow_no_output
+
 VALID_TRANSFER_TYPES = {"root", "direct", "davs", "file"}
 
 
@@ -141,8 +143,10 @@ _COMMON_ARGS = [
             action="store",
             dest="allowNoOutput",
             default="",
-            help="A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. "
-            "Jobs go to finished even if they are not produced on WN",
+            help="A comma-separated list of regexp patterns for output files which are allowed not to be produced. "
+            "Jobs go to finished even if those files are not produced on WN. "
+            "Patterns are evaluated at submission time against output filename templates such as user.X.$JEDITASKID._${SN/P}.out.root, "
+            "and must match up to the end of the template, e.g. out.root or .*\\.root",
         ),
         ("output",),
     ),
@@ -224,6 +228,19 @@ def get_allow_no_output_job_params(param_list):
     if not file_names:
         return []
     return [{"type": "constant", "value": f"--allowNoOutput={','.join(file_names)}"}]
+
+
+def get_unmatched_allow_no_output_patterns(patterns, param_list):
+    """Return --allowNoOutput patterns which match no output filename template
+
+    args:
+        patterns: list of --allowNoOutput patterns
+        param_list: list of job parameter dicts including output templates
+    returns:
+        list of non-empty patterns which do not match any output filename template
+    """
+    templates = [item["value"] for item in param_list if item.get("param_type") == "output"]
+    return [pattern for pattern in patterns if pattern != "" and not any(match_allow_no_output(pattern, template) for template in templates)]
 
 
 def set_n_files_from_n_jobs(options):

@@ -15,6 +15,7 @@ from pandaclient.CommonArgs import (
     add_common_arguments,
     get_allow_no_output_job_params,
     get_invalid_transfer_types,
+    get_unmatched_allow_no_output_patterns,
     set_events_task_params,
     set_n_files_from_n_jobs,
 )
@@ -2969,6 +2970,11 @@ taskParamMap["jobParameters"] += [
 taskParamMap["jobParameters"] += tmpParamList
 # output files allowed not to be produced
 taskParamMap["jobParameters"] += get_allow_no_output_job_params(tmpParamList)
+for tmpPatt in get_unmatched_allow_no_output_patterns(options.allowNoOutput, tmpParamList):
+    tmpLog.warning(
+        f"--allowNoOutput pattern '{tmpPatt}' matches none of output filename templates "
+        f"{[item['value'] for item in tmpParamList if item.get('param_type') == 'output']}"
+    )
 
 
 # jobO parameter
