@@ -9,7 +9,14 @@ import sys
 import time
 from urllib.parse import quote
 
-from pandaclient.CommonArgs import VALID_TRANSFER_TYPES, add_common_arguments, get_invalid_transfer_types, set_events_task_params, set_n_files_from_n_jobs
+from pandaclient.CommonArgs import (
+    VALID_TRANSFER_TYPES,
+    add_common_arguments,
+    get_allow_no_output_job_params,
+    get_invalid_transfer_types,
+    set_events_task_params,
+    set_n_files_from_n_jobs,
+)
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, parse_secondary_datasets_opt
 
@@ -612,14 +619,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         default="",
         help="A local file which specifies names of files to be used in the input dataset. " "One filename per line in the local file",
     )
-    action = group_job.add_argument(
-        "--allowNoOutput",
-        action="store",
-        dest="allowNoOutput",
-        default="",
-        help="A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. Jobs go to finish even if they are not produced on WN",
-    )
-    group_output.shareWithMe(action)
     group_submit.add_argument(
         "--excludedSite",
         action="append",
@@ -2315,6 +2314,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     "value": f'-o "{str(outMap)}"',
                 },
             ]
+        # output files allowed not to be produced
+        taskParamMap["jobParameters"] += get_allow_no_output_job_params(taskParamMap["jobParameters"])
     # input
     if options.inDS != "":
         tmpDict = {

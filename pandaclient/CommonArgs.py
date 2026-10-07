@@ -17,8 +17,9 @@ def get_invalid_transfer_types(transfer_type_str):
     return set(transfer_type_str.split(",")) - VALID_TRANSFER_TYPES
 
 
-# Common arguments shared by pathena and prun, as (group_key, flags, kwargs) tuples.
+# Common arguments shared by pathena and prun, as (group_key, flags, kwargs[, shared_group_keys]) tuples.
 # group_key ("submit"/"input"/"job"/"output"/"expert") selects the argparse group in add_common_arguments.
+# The optional shared_group_keys is a tuple of group keys where the argument is also shown in the help.
 # Entries are added in this order, which determines the per-group help ordering.
 _COMMON_ARGS = [
     (
@@ -134,6 +135,18 @@ _COMMON_ARGS = [
         ),
     ),
     (
+        "job",
+        ["--allowNoOutput"],
+        dict(
+            action="store",
+            dest="allowNoOutput",
+            default="",
+            help="A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. "
+            "Jobs go to finished even if they are not produced on WN",
+        ),
+        ("output",),
+    ),
+    (
         "output",
         ["--mergeSingleFile"],
         dict(
@@ -173,7 +186,8 @@ _COMMON_ARGS = [
 def add_common_arguments(group_submit, group_input, group_job, group_output, group_expert):
     """Register the common arguments onto the argparse groups
 
-    Adds each entry in _COMMON_ARGS to the group selected by its group_key.
+    Adds each entry in _COMMON_ARGS to the group selected by its group_key,
+    and shares it with the groups selected by its optional shared_group_keys.
 
     args:
         group_submit: argparse group for the "submit" group_key
@@ -183,8 +197,33 @@ def add_common_arguments(group_submit, group_input, group_job, group_output, gro
         group_expert: argparse group for the "expert" group_key
     """
     groups = {"submit": group_submit, "input": group_input, "job": group_job, "output": group_output, "expert": group_expert}
-    for group_key, flags, kwargs in _COMMON_ARGS:
-        groups[group_key].add_argument(*flags, **kwargs)
+    for group_key, flags, kwargs, *shared_group_keys in _COMMON_ARGS:
+        action = groups[group_key].add_argument(*flags, **kwargs)
+        for shared_group_key in shared_group_keys[0] if shared_group_keys else ():
+            groups[shared_group_key].shareWithMe(action)
+
+
+def get_allow_no_output_job_params(param_list):
+    """Make job parameters to tell runGen/runAthena output files allowed not to be produced
+
+    Collects filename templates of outputs flagged with allowNoOutput by
+    MiscUtils.makeJediJobParam. The templates are resolved to real LFNs by JEDI.
+
+    args:
+        param_list: list of job parameter dicts including output templates
+    returns:
+        list with a constant job parameter for --allowNoOutput,
+        or an empty list when no output matches --allowNoOutput
+    """
+    file_names = []
+    for item in param_list:
+        # skip regex outputs since they are not checked on WN
+        if item.get("param_type") == "output" and item.get("allowNoOutput") and not item["value"].startswith("regex|"):
+            if item["value"] not in file_names:
+                file_names.append(item["value"])
+    if not file_names:
+        return []
+    return [{"type": "constant", "value": f"--allowNoOutput={','.join(file_names)}"}]
 
 
 def set_n_files_from_n_jobs(options):
