@@ -23,6 +23,7 @@ import rlcompleter
 import signal
 import sys
 import tempfile
+import types
 from concurrent.futures import ThreadPoolExecutor
 from inspect import Parameter, signature
 from typing import (
@@ -439,13 +440,47 @@ _HELP_GROUPS = [
 ]
 
 
+# `X | None` is a types.UnionType rather than a typing.Union on Python 3.10-3.13
+_UnionType = getattr(types, "UnionType", None)
+
+
+def _strip_annotated(ann):
+    """Annotated[X, ...] -> X, the Typer metadata removed."""
+    while get_origin(ann) is Annotated:
+        ann = get_args(ann)[0]
+    return ann
+
+
+def _is_union(ann) -> bool:
+    origin = get_origin(ann)
+    return origin is Union or (_UnionType is not None and origin is _UnionType)
+
+
+def _union_members(ann) -> list:
+    """The members of a union, flattened and deduplicated, with Annotated stripped from each.
+
+    On Python <= 3.10 get_type_hints wraps a parameter defaulting to None in an extra
+    Optional, outside the Annotated: `site: Annotated[Optional[str], typer.Option()] = None`
+    comes back as Optional[Annotated[Optional[str], OptionInfo]]. Flattening turns that into
+    the same (str, NoneType) as on newer Pythons.
+    """
+    members = []
+    for arg in get_args(ann):
+        arg = _strip_annotated(arg)
+        for member in _union_members(arg) if _is_union(arg) else [arg]:
+            if member not in members:
+                members.append(member)
+    return members
+
+
 def _type_name(ann) -> str:
     """Render a resolved type annotation as a short, human-readable name (Optional[str], Literal[...], etc.)."""
+    ann = _strip_annotated(ann)
     if ann is None or ann is type(None):
         return ""
     origin = get_origin(ann)
-    if origin is Union:
-        args = get_args(ann)
+    if _is_union(ann):
+        args = _union_members(ann)
         non_none = [a for a in args if a is not type(None)]
         if len(non_none) == 1 and len(args) == 2:
             return f"Optional[{_type_name(non_none[0])}]"
@@ -467,17 +502,50 @@ def _format_signature(func) -> str:
         hints = {}
     parts = []
     for pname, p in signature(func).parameters.items():
-        ann = hints.get(pname)
-        while hasattr(ann, "__metadata__"):
-            ann = ann.__origin__
         piece = pname
-        type_str = _type_name(ann)
+        type_str = _type_name(hints.get(pname))
         if type_str:
             piece += f": {type_str}"
         if p.default is not Parameter.empty:
             piece += f" = {p.default!r}"
         parts.append(piece)
     return f"({', '.join(parts)})"
+
+
+def _typer_info(ann):
+    """The typer.Option/typer.Argument metadata in an annotation, or None.
+
+    It sits in Annotated[..., OptionInfo], which Python <= 3.10 nests inside an Optional
+    (see _union_members), so unions are searched too.
+    """
+    if get_origin(ann) is Annotated:
+        for meta in ann.__metadata__:
+            if isinstance(meta, typer.models.ParameterInfo):
+                return meta
+        return _typer_info(get_args(ann)[0])
+    if _is_union(ann):
+        for arg in get_args(ann):
+            info = _typer_info(arg)
+            if info is not None:
+                return info
+    return None
+
+
+def _param_help(func) -> list:
+    """(name, help) for each parameter with a help text, as `pbook <command> --help` shows them.
+
+    Hidden parameters are left out, as they are from --help.
+    """
+    try:
+        hints = get_type_hints(func, include_extras=True)
+    except Exception:
+        return []
+    params = []
+    for pname in signature(func).parameters:
+        info = _typer_info(hints.get(pname))
+        if info is not None and info.help and not getattr(info, "hidden", False):
+            params.append((pname, info.help))
+    return params
 
 
 @app.command()
@@ -497,6 +565,16 @@ def help(
         console.print(f"\n[bold cyan]{name}[/bold cyan][bold]{_esc(_format_signature(func))}[/bold]")
         doc = (func.__doc__ or "No description.").strip()
         console.print(f"\n{_esc(doc)}\n")
+        params = _param_help(func)
+        if params:
+            console.print("[bold]Parameters:[/bold]")
+            param_table = Table(box=None, show_header=False, padding=(0, 2, 0, 2))
+            param_table.add_column(style="bold cyan", no_wrap=True)
+            param_table.add_column()
+            for pname, phelp in params:
+                param_table.add_row(_esc(pname), _esc(phelp))
+            console.print(param_table)
+            console.print()
         return
 
     table = Table(box=box.SIMPLE, show_header=True, header_style="bold magenta")
@@ -690,7 +768,7 @@ def retry(
     ] = None,
     nGBPerJob: Annotated[
         Optional[float],
-        typer.Option("--nGBPerJob", help="Maximum input size in GB to be processed by a single job in the task.."),
+        typer.Option("--nGBPerJob", help="Maximum input size in GB to be processed by a single job in the task."),
     ] = None,
     nFiles: Annotated[Optional[int], typer.Option("--nFiles", help="Total number of input files to be processed by the task.")] = None,
     nEvents: Annotated[
