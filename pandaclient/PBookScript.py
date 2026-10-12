@@ -12,7 +12,11 @@ callables with ordinary defaults - the same function is used to build the
 directly into the interactive REPL namespace (`>>> command(...)`).
 """
 
-from __future__ import annotations
+# No `from __future__ import annotations` here: it turns the annotations into strings that
+# Typer resolves with get_type_hints, which on Python <= 3.10 wraps an option defaulting to
+# None in an extra Optional around its Annotated[..., typer.Option(...)]. Typer then no longer
+# sees the typer.Option, and falls back to lowercased option names without help texts
+# (`--excludedsite` instead of `--excludedSite`).
 
 import atexit
 import code
@@ -799,7 +803,14 @@ def retry(
             help="Force files from the primary dataset to be staged to local disk instead of using direct access",
         ),
     ] = None,
-    newOpts: Annotated[Optional[str], typer.Option("--new-opts", hidden=True)] = None,
+    newOpts: Annotated[
+        Optional[str],
+        typer.Option(
+            "--new-opts",
+            help="Interactive mode only: raw dict of task-retry options, e.g. {'excludedSite': 'siteA,siteB'}, "
+            "overriding the individual options. Not supported from the shell CLI.",
+        ),
+    ] = None,
 ) -> None:
     """Retry failed/canceled tasks.
 
