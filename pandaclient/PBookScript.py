@@ -753,11 +753,62 @@ def finish(
     return core.finish(ids, soft=soft)
 
 
+# The options newOpts accepts: the individual retry options below (including their aliases),
+# mapped to the task parameter the server expects for each, as the individual options are sent.
+# The server silently ignores task parameters a retry cannot change, so anything else is refused
+# before the request is sent.
+_RETRY_NEW_OPTS = {
+    "site": "site",
+    "excludedSite": "excludedSite",
+    "includedSite": "includedSite",
+    "nFilesPerJob": "nFilesPerJob",
+    "nMaxFilesPerJob": "nMaxFilesPerJob",
+    "maxNFilesPerJob": "nMaxFilesPerJob",
+    "nGBPerJob": "nGBPerJob",
+    "nFiles": "nFiles",
+    "nEvents": "nEvents",
+    "loopingCheck": "loopingCheck",
+    "memory": "ramCount",
+    "ramCount": "ramCount",
+    "avoidVP": "avoidVP",
+    "ignoreMissingInDS": "ignoreMissingInDS",
+    "forceStaged": "forceStaged",
+    "maxCore": "maxCoreCount",
+}
+
+
+def _translate_retry_new_opts(new_opts):
+    """newOpts as the task parameters to send, or None (with the error reported) when it is not valid."""
+    if not isinstance(new_opts, dict):
+        typer.echo(
+            f"Error: newOpts must be a dict of retry options, e.g. {{'excludedSite': 'siteA,siteB'}}, got {new_opts!r}. "
+            "newOpts is only supported in interactive mode. Nothing was retried.",
+            err=True,
+        )
+        return None
+    invalid = [key for key in new_opts if key not in _RETRY_NEW_OPTS]
+    if invalid:
+        typer.echo(
+            f"Error: invalid option(s) in newOpts: {', '.join(map(str, invalid))}. Nothing was retried. " f"Valid options: {', '.join(_RETRY_NEW_OPTS)}.",
+            err=True,
+        )
+        return None
+    translated = {}
+    for key, value in new_opts.items():
+        param = _RETRY_NEW_OPTS[key]
+        if param in translated and translated[param] != value:
+            aliases = [k for k in new_opts if _RETRY_NEW_OPTS[k] == param]
+            typer.echo(f"Error: newOpts sets {' and '.join(aliases)} to different values. Nothing was retried.", err=True)
+            return None
+        translated[param] = value
+    return translated
+
+
 @app.command()
 def retry(
     task_ids: Annotated[str, typer.Argument(help="Task ID, comma-separated IDs, or 'all'")],
-    days: Annotated[int, typer.Option("--days", help="Look-back window when task_ids='all'")] = 14,
-    limit: Annotated[int, typer.Option("--limit", help="Max tasks to retry when task_ids='all'")] = 1000,
+    days: Annotated[Optional[int], typer.Option("--days", help="Look-back window in days when task_ids='all' (default 14)")] = None,
+    limit: Annotated[Optional[int], typer.Option("--limit", help="Max tasks to retry when task_ids='all' (default 1000)")] = None,
     site: Annotated[Optional[str], typer.Option("--site", help="Run the task on a particular PanDA queue")] = None,
     excludedSite: Annotated[Optional[str], typer.Option("--excludedSite", help="Comma separated list of PanDA queues to exclude, e.g. 'siteA,siteB'")] = None,
     includedSite: Annotated[Optional[str], typer.Option("--includedSite", help="Comma separated list of PanDA queues to include, e.g. 'siteA,siteB'")] = None,
@@ -820,11 +871,13 @@ def retry(
     files are skipped to avoid job duplication when retrying failed subjobs.
 
     If task_ids is 'all', it retries 1000 tasks at most that have finished for the last 14
-    days. It is possible to retry more tasks by setting the days and limit options. If
-    named arguments are specified, they are applied to all retried tasks.
+    days. It is possible to retry more tasks by setting the days and limit options, which are
+    only valid with 'all'. If named arguments are specified, they are applied to all retried tasks.
 
     In interactive mode, newOpts can be passed with a raw dict of task-retry options and it overrides
-    all of the individual options above. newOpts is not supported from the shell CLI.
+    all of the individual options above. newOpts is not supported from the shell CLI. Its keys are
+    the names of the individual options (site, excludedSite, ..., memory or ramCount, maxCore); any
+    other key is reported as an error and nothing is retried.
 
     example:
       >>> retry(123)
@@ -840,10 +893,27 @@ def retry(
       $ pbook retry all --days=30 --limit=2000
 
     """
-    core = _ensure_init()
+    ids = _parse_ids(task_ids)
+    for name, value in (("days", days), ("limit", limit)):
+        if value is None:
+            continue
+        if isinstance(value, dict):
+            typer.echo(f"Error: '{name}' got a dict; pass retry options by name, e.g. newOpts={value!r}. Nothing was retried.", err=True)
+            return
+        if isinstance(value, bool) or not isinstance(value, int):
+            typer.echo(f"Error: '{name}' must be an integer, got {value!r}. Nothing was retried.", err=True)
+            return
+        if ids != "all":
+            typer.echo(f"Error: '{name}' is only valid when task_ids is 'all'. Nothing was retried.", err=True)
+            return
+    days = 14 if days is None else days
+    limit = 1000 if limit is None else limit
     if newOpts is not None:
-        opts = newOpts
-    else:
+        opts = _translate_retry_new_opts(newOpts)
+        if opts is None:
+            return
+    core = _ensure_init()
+    if newOpts is None:
         new_opts = {
             k: v
             for k, v in {
@@ -865,7 +935,6 @@ def retry(
             if v is not None
         }
         opts = new_opts or None
-    ids = _parse_ids(task_ids)
     if isinstance(ids, list):
         return _parallel(lambda tid: core.retry(tid, newOpts=opts), ids)
     elif ids == "all":
