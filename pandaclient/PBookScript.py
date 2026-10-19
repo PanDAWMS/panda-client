@@ -12,7 +12,11 @@ callables with ordinary defaults - the same function is used to build the
 directly into the interactive REPL namespace (`>>> command(...)`).
 """
 
-from __future__ import annotations
+# No `from __future__ import annotations` here: it turns the annotations into strings that
+# Typer resolves with get_type_hints, which on Python <= 3.10 wraps an option defaulting to
+# None in an extra Optional around its Annotated[..., typer.Option(...)]. Typer then no longer
+# sees the typer.Option, and falls back to lowercased option names without help texts
+# (`--excludedsite` instead of `--excludedSite`).
 
 import atexit
 import code
@@ -23,6 +27,7 @@ import rlcompleter
 import signal
 import sys
 import tempfile
+import types
 from concurrent.futures import ThreadPoolExecutor
 from inspect import Parameter, signature
 from typing import (
@@ -439,13 +444,47 @@ _HELP_GROUPS = [
 ]
 
 
+# `X | None` is a types.UnionType rather than a typing.Union on Python 3.10-3.13
+_UnionType = getattr(types, "UnionType", None)
+
+
+def _strip_annotated(ann):
+    """Annotated[X, ...] -> X, the Typer metadata removed."""
+    while get_origin(ann) is Annotated:
+        ann = get_args(ann)[0]
+    return ann
+
+
+def _is_union(ann) -> bool:
+    origin = get_origin(ann)
+    return origin is Union or (_UnionType is not None and origin is _UnionType)
+
+
+def _union_members(ann) -> list:
+    """The members of a union, flattened and deduplicated, with Annotated stripped from each.
+
+    On Python <= 3.10 get_type_hints wraps a parameter defaulting to None in an extra
+    Optional, outside the Annotated: `site: Annotated[Optional[str], typer.Option()] = None`
+    comes back as Optional[Annotated[Optional[str], OptionInfo]]. Flattening turns that into
+    the same (str, NoneType) as on newer Pythons.
+    """
+    members = []
+    for arg in get_args(ann):
+        arg = _strip_annotated(arg)
+        for member in _union_members(arg) if _is_union(arg) else [arg]:
+            if member not in members:
+                members.append(member)
+    return members
+
+
 def _type_name(ann) -> str:
     """Render a resolved type annotation as a short, human-readable name (Optional[str], Literal[...], etc.)."""
+    ann = _strip_annotated(ann)
     if ann is None or ann is type(None):
         return ""
     origin = get_origin(ann)
-    if origin is Union:
-        args = get_args(ann)
+    if _is_union(ann):
+        args = _union_members(ann)
         non_none = [a for a in args if a is not type(None)]
         if len(non_none) == 1 and len(args) == 2:
             return f"Optional[{_type_name(non_none[0])}]"
@@ -467,17 +506,50 @@ def _format_signature(func) -> str:
         hints = {}
     parts = []
     for pname, p in signature(func).parameters.items():
-        ann = hints.get(pname)
-        while hasattr(ann, "__metadata__"):
-            ann = ann.__origin__
         piece = pname
-        type_str = _type_name(ann)
+        type_str = _type_name(hints.get(pname))
         if type_str:
             piece += f": {type_str}"
         if p.default is not Parameter.empty:
             piece += f" = {p.default!r}"
         parts.append(piece)
     return f"({', '.join(parts)})"
+
+
+def _typer_info(ann):
+    """The typer.Option/typer.Argument metadata in an annotation, or None.
+
+    It sits in Annotated[..., OptionInfo], which Python <= 3.10 nests inside an Optional
+    (see _union_members), so unions are searched too.
+    """
+    if get_origin(ann) is Annotated:
+        for meta in ann.__metadata__:
+            if isinstance(meta, typer.models.ParameterInfo):
+                return meta
+        return _typer_info(get_args(ann)[0])
+    if _is_union(ann):
+        for arg in get_args(ann):
+            info = _typer_info(arg)
+            if info is not None:
+                return info
+    return None
+
+
+def _param_help(func) -> list:
+    """(name, help) for each parameter with a help text, as `pbook <command> --help` shows them.
+
+    Hidden parameters are left out, as they are from --help.
+    """
+    try:
+        hints = get_type_hints(func, include_extras=True)
+    except Exception:
+        return []
+    params = []
+    for pname in signature(func).parameters:
+        info = _typer_info(hints.get(pname))
+        if info is not None and info.help and not getattr(info, "hidden", False):
+            params.append((pname, info.help))
+    return params
 
 
 @app.command()
@@ -497,6 +569,16 @@ def help(
         console.print(f"\n[bold cyan]{name}[/bold cyan][bold]{_esc(_format_signature(func))}[/bold]")
         doc = (func.__doc__ or "No description.").strip()
         console.print(f"\n{_esc(doc)}\n")
+        params = _param_help(func)
+        if params:
+            console.print("[bold]Parameters:[/bold]")
+            param_table = Table(box=None, show_header=False, padding=(0, 2, 0, 2))
+            param_table.add_column(style="bold cyan", no_wrap=True)
+            param_table.add_column()
+            for pname, phelp in params:
+                param_table.add_row(_esc(pname), _esc(phelp))
+            console.print(param_table)
+            console.print()
         return
 
     table = Table(box=box.SIMPLE, show_header=True, header_style="bold magenta")
@@ -671,11 +753,62 @@ def finish(
     return core.finish(ids, soft=soft)
 
 
+# The options newOpts accepts: the individual retry options below (including their aliases),
+# mapped to the task parameter the server expects for each, as the individual options are sent.
+# The server silently ignores task parameters a retry cannot change, so anything else is refused
+# before the request is sent.
+_RETRY_NEW_OPTS = {
+    "site": "site",
+    "excludedSite": "excludedSite",
+    "includedSite": "includedSite",
+    "nFilesPerJob": "nFilesPerJob",
+    "nMaxFilesPerJob": "nMaxFilesPerJob",
+    "maxNFilesPerJob": "nMaxFilesPerJob",
+    "nGBPerJob": "nGBPerJob",
+    "nFiles": "nFiles",
+    "nEvents": "nEvents",
+    "loopingCheck": "loopingCheck",
+    "memory": "ramCount",
+    "ramCount": "ramCount",
+    "avoidVP": "avoidVP",
+    "ignoreMissingInDS": "ignoreMissingInDS",
+    "forceStaged": "forceStaged",
+    "maxCore": "maxCoreCount",
+}
+
+
+def _translate_retry_new_opts(new_opts):
+    """newOpts as the task parameters to send, or None (with the error reported) when it is not valid."""
+    if not isinstance(new_opts, dict):
+        typer.echo(
+            f"Error: newOpts must be a dict of retry options, e.g. {{'excludedSite': 'siteA,siteB'}}, got {new_opts!r}. "
+            "newOpts is only supported in interactive mode. Nothing was retried.",
+            err=True,
+        )
+        return None
+    invalid = [key for key in new_opts if key not in _RETRY_NEW_OPTS]
+    if invalid:
+        typer.echo(
+            f"Error: invalid option(s) in newOpts: {', '.join(map(str, invalid))}. Nothing was retried. " f"Valid options: {', '.join(_RETRY_NEW_OPTS)}.",
+            err=True,
+        )
+        return None
+    translated = {}
+    for key, value in new_opts.items():
+        param = _RETRY_NEW_OPTS[key]
+        if param in translated and translated[param] != value:
+            aliases = [k for k in new_opts if _RETRY_NEW_OPTS[k] == param]
+            typer.echo(f"Error: newOpts sets {' and '.join(aliases)} to different values. Nothing was retried.", err=True)
+            return None
+        translated[param] = value
+    return translated
+
+
 @app.command()
 def retry(
     task_ids: Annotated[str, typer.Argument(help="Task ID, comma-separated IDs, or 'all'")],
-    days: Annotated[int, typer.Option("--days", help="Look-back window when task_ids='all'")] = 14,
-    limit: Annotated[int, typer.Option("--limit", help="Max tasks to retry when task_ids='all'")] = 1000,
+    days: Annotated[Optional[int], typer.Option("--days", help="Look-back window in days when task_ids='all' (default 14)")] = None,
+    limit: Annotated[Optional[int], typer.Option("--limit", help="Max tasks to retry when task_ids='all' (default 1000)")] = None,
     site: Annotated[Optional[str], typer.Option("--site", help="Run the task on a particular PanDA queue")] = None,
     excludedSite: Annotated[Optional[str], typer.Option("--excludedSite", help="Comma separated list of PanDA queues to exclude, e.g. 'siteA,siteB'")] = None,
     includedSite: Annotated[Optional[str], typer.Option("--includedSite", help="Comma separated list of PanDA queues to include, e.g. 'siteA,siteB'")] = None,
@@ -690,7 +823,7 @@ def retry(
     ] = None,
     nGBPerJob: Annotated[
         Optional[float],
-        typer.Option("--nGBPerJob", help="Maximum input size in GB to be processed by a single job in the task.."),
+        typer.Option("--nGBPerJob", help="Maximum input size in GB to be processed by a single job in the task."),
     ] = None,
     nFiles: Annotated[Optional[int], typer.Option("--nFiles", help="Total number of input files to be processed by the task.")] = None,
     nEvents: Annotated[
@@ -721,7 +854,14 @@ def retry(
             help="Force files from the primary dataset to be staged to local disk instead of using direct access",
         ),
     ] = None,
-    newOpts: Annotated[Optional[str], typer.Option("--new-opts", hidden=True)] = None,
+    newOpts: Annotated[
+        Optional[str],
+        typer.Option(
+            "--new-opts",
+            help="Interactive mode only: raw dict of task-retry options, e.g. {'excludedSite': 'siteA,siteB'}, "
+            "overriding the individual options. Not supported from the shell CLI.",
+        ),
+    ] = None,
 ) -> None:
     """Retry failed/canceled tasks.
 
@@ -731,11 +871,13 @@ def retry(
     files are skipped to avoid job duplication when retrying failed subjobs.
 
     If task_ids is 'all', it retries 1000 tasks at most that have finished for the last 14
-    days. It is possible to retry more tasks by setting the days and limit options. If
-    named arguments are specified, they are applied to all retried tasks.
+    days. It is possible to retry more tasks by setting the days and limit options, which are
+    only valid with 'all'. If named arguments are specified, they are applied to all retried tasks.
 
     In interactive mode, newOpts can be passed with a raw dict of task-retry options and it overrides
-    all of the individual options above. newOpts is not supported from the shell CLI.
+    all of the individual options above. newOpts is not supported from the shell CLI. Its keys are
+    the names of the individual options (site, excludedSite, ..., memory or ramCount, maxCore); any
+    other key is reported as an error and nothing is retried.
 
     example:
       >>> retry(123)
@@ -751,10 +893,27 @@ def retry(
       $ pbook retry all --days=30 --limit=2000
 
     """
-    core = _ensure_init()
+    ids = _parse_ids(task_ids)
+    for name, value in (("days", days), ("limit", limit)):
+        if value is None:
+            continue
+        if isinstance(value, dict):
+            typer.echo(f"Error: '{name}' got a dict; pass retry options by name, e.g. newOpts={value!r}. Nothing was retried.", err=True)
+            return
+        if isinstance(value, bool) or not isinstance(value, int):
+            typer.echo(f"Error: '{name}' must be an integer, got {value!r}. Nothing was retried.", err=True)
+            return
+        if ids != "all":
+            typer.echo(f"Error: '{name}' is only valid when task_ids is 'all'. Nothing was retried.", err=True)
+            return
+    days = 14 if days is None else days
+    limit = 1000 if limit is None else limit
     if newOpts is not None:
-        opts = newOpts
-    else:
+        opts = _translate_retry_new_opts(newOpts)
+        if opts is None:
+            return
+    core = _ensure_init()
+    if newOpts is None:
         new_opts = {
             k: v
             for k, v in {
@@ -776,7 +935,6 @@ def retry(
             if v is not None
         }
         opts = new_opts or None
-    ids = _parse_ids(task_ids)
     if isinstance(ids, list):
         return _parallel(lambda tid: core.retry(tid, newOpts=opts), ids)
     elif ids == "all":

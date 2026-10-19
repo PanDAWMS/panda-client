@@ -10,7 +10,15 @@ import shutil
 import sys
 import time
 
-from pandaclient.CommonArgs import VALID_TRANSFER_TYPES, add_common_arguments, get_invalid_transfer_types, set_events_task_params, set_n_files_from_n_jobs
+from pandaclient.CommonArgs import (
+    VALID_TRANSFER_TYPES,
+    add_common_arguments,
+    get_allow_no_output_job_params,
+    get_invalid_transfer_types,
+    get_unmatched_allow_no_output_patterns,
+    set_events_task_params,
+    set_n_files_from_n_jobs,
+)
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import parse_secondary_datasets_opt
 
@@ -665,7 +673,7 @@ group_output.add_argument(
     dest="destSE",
     default="",
     type=str,
-    help="Destination strorage element",
+    help="Destination storage element",
 )
 group_print.add_argument(
     "-v",
@@ -870,15 +878,6 @@ group_build.add_argument(
     default="",
     help="list of glue packages which pathena cannot find due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf",
 )
-action = group_job.add_argument(
-    "--allowNoOutput",
-    action="store",
-    dest="allowNoOutput",
-    default="",
-    type=str,
-    help="A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. Jobs go to finished even if they are not produced on WN",
-)
-group_output.shareWithMe(action)
 group_submit.add_argument(
     "--excludedSite",
     action="append",
@@ -992,7 +991,7 @@ group_build.add_argument(
     dest="vomsRoles",
     default=None,
     type=str,
-    help="generate proxy with paticular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
+    help="generate proxy with particular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
 )
 group_job.add_argument(
     "--useNextEvent",
@@ -1210,7 +1209,7 @@ group_input.add_argument(
     const=True,
     dest="respectLB",
     default=False,
-    help="To generate jobs repecting lumiblock boundaries",
+    help="To generate jobs respecting lumiblock boundaries",
 )
 
 
@@ -1264,14 +1263,14 @@ group_submit.add_argument(
     const=True,
     dest="useNewCode",
     default=False,
-    help="When task are resubmitted with the same outDS, the original souce code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries",
+    help="When task are resubmitted with the same outDS, the original source code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries",
 )
 group_config.add_argument(
     "--loadJson",
     action="store",
     dest="loadJson",
     default=None,
-    help="Read command-line parameters from a json file which contains a dict of {parameter: value}. Arguemnts for Athena can be specified as {'atehna_args': [...,]}",
+    help="Read command-line parameters from a json file which contains a dict of {parameter: value}. Arguments for Athena can be specified as {'athena_args': [...,]}",
 )
 group_config.add_argument(
     "--dumpJson",
@@ -1495,7 +1494,7 @@ if options.bulkSubmission:
         tmpLog.error("--inOutDsJson is missing")
         sys.exit(EC_Config)
     if options.eventPickEvtList != "":
-        tmpLog.error("cannnot use --eventPickEvtList and --inOutDsJson at the same time")
+        tmpLog.error("cannot use --eventPickEvtList and --inOutDsJson at the same time")
         sys.exit(EC_Config)
     ioList = MiscUtils.decodeJSON(options.inOutDsJson)
     for ioItem in ioList:
@@ -1579,12 +1578,12 @@ if options.dbRelease != "" and (options.dbRelease.find(":") == -1 and options.db
 
 # Good Run List
 if options.goodRunListXML != "" and options.inDS != "":
-    tmpLog.error("cannnot use --goodRunListXML and --inDS at the same time")
+    tmpLog.error("cannot use --goodRunListXML and --inDS at the same time")
     sys.exit(EC_Config)
 
 # event picking
 if options.eventPickEvtList != "" and options.inDS != "":
-    tmpLog.error("cannnot use --eventPickEvtList and --inDS at the same time")
+    tmpLog.error("cannot use --eventPickEvtList and --inDS at the same time")
     sys.exit(EC_Config)
 
 # param check for event picking
@@ -2973,6 +2972,13 @@ taskParamMap["jobParameters"] += [
     {"type": "constant", "value": f'-o "{outMap}" '},
 ]
 taskParamMap["jobParameters"] += tmpParamList
+# output files allowed not to be produced
+taskParamMap["jobParameters"] += get_allow_no_output_job_params(tmpParamList)
+for tmpPatt in get_unmatched_allow_no_output_patterns(options.allowNoOutput, tmpParamList):
+    tmpLog.warning(
+        f"--allowNoOutput pattern '{tmpPatt}' matches none of output filename templates "
+        f"{[item['value'] for item in tmpParamList if item.get('param_type') == 'output']}"
+    )
 
 
 # jobO parameter

@@ -9,7 +9,15 @@ import sys
 import time
 from urllib.parse import quote
 
-from pandaclient.CommonArgs import VALID_TRANSFER_TYPES, add_common_arguments, get_invalid_transfer_types, set_events_task_params, set_n_files_from_n_jobs
+from pandaclient.CommonArgs import (
+    VALID_TRANSFER_TYPES,
+    add_common_arguments,
+    get_allow_no_output_job_params,
+    get_invalid_transfer_types,
+    get_unmatched_allow_no_output_patterns,
+    set_events_task_params,
+    set_n_files_from_n_jobs,
+)
 from pandaclient.Group_argparse import get_parser
 from pandaclient.MiscUtils import commands_get_status_output, parse_secondary_datasets_opt
 
@@ -145,7 +153,7 @@ def build_parser():
         const=True,
         dest="respectLB",
         default=False,
-        help="To generate jobs repecting lumiblock boundaries",
+        help="To generate jobs respecting lumiblock boundaries",
     )
     group_output.add_argument(
         "--outDS",
@@ -182,7 +190,7 @@ def build_parser():
         action="store",
         dest="destSE",
         default="",
-        help="Destination strorage element",
+        help="Destination storage element",
     )
     group_output.add_argument(
         "--noSeparateLog",
@@ -603,14 +611,6 @@ def build_parser():
         default="",
         help="A local file which specifies names of files to be used in the input dataset. " "One filename per line in the local file",
     )
-    action = group_job.add_argument(
-        "--allowNoOutput",
-        action="store",
-        dest="allowNoOutput",
-        default="",
-        help="A comma-separated list of regexp patterns. Output files are allowed not to be produced if their filenames match with one of regexp patterns. Jobs go to finish even if they are not produced on WN",
-    )
-    group_output.shareWithMe(action)
     group_submit.add_argument(
         "--excludedSite",
         action="append",
@@ -675,9 +675,9 @@ def build_parser():
         action="store",
         dest="vomsRoles",
         default=None,
-        help="generate proxy with paticular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
+        help="generate proxy with particular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
     )
-    group_build.add_argument("--vo", action="store", dest="vo", default=None, help="virtual orgnaiztion name")
+    group_build.add_argument("--vo", action="store", dest="vo", default=None, help="virtual organization name")
     group_submit.add_argument(
         "--noEmail",
         action="store_const",
@@ -914,7 +914,7 @@ def build_parser():
         const=True,
         dest="useNewCode",
         default=False,
-        help="When task are resubmitted with the same outDS, the original souce code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries",
+        help="When task are resubmitted with the same outDS, the original source code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries",
     )
     group_output.add_argument(
         "--allowTaskDuplication",
@@ -1821,6 +1821,13 @@ def build_task_parameters(
                     "value": f'-o "{str(outMap)}"',
                 },
             ]
+        # output files allowed not to be produced
+        taskParamMap["jobParameters"] += get_allow_no_output_job_params(taskParamMap["jobParameters"])
+    for tmp_patter in get_unmatched_allow_no_output_patterns(options.allowNoOutput, taskParamMap["jobParameters"]):
+        tmp_log.warning(
+            f"--allowNoOutput pattern '{tmp_patter}' matches none of output filename templates "
+            f"{[item['value'] for item in taskParamMap['jobParameters'] if item.get('param_type') == 'output']}"
+        )
     # input
     if options.inDS != "":
         tmpDict = {

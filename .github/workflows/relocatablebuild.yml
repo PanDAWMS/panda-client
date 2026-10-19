@@ -35,9 +35,14 @@ jobs:
             install: dnf       # confirmed available: python3.14-3.14.7-2.el9_8
 
     steps:
+      - name: Install base tools
+        # Unconditional: the from-source path skips its install step on a
+        # cache hit, but tar is still needed below to pack the tree.
+        run: dnf install -y git tar gzip
+
       - name: Install the target Python (dnf)
         if: matrix.install == 'dnf'
-        run: dnf install -y git tar gzip "python${{ matrix.python-version }}" "python${{ matrix.python-version }}-pip"
+        run: dnf install -y "python${{ matrix.python-version }}" "python${{ matrix.python-version }}-pip"
 
       - name: Cache the from-source Python build
         if: matrix.install == 'source'
@@ -58,7 +63,7 @@ jobs:
         # actually compiles at all.
         run: |
           dnf groupinstall -y "Development Tools"
-          dnf install -y git tar gzip openssl-devel bzip2-devel libffi-devel zlib-devel xz-devel sqlite-devel
+          dnf install -y openssl-devel bzip2-devel libffi-devel zlib-devel xz-devel sqlite-devel
           curl -fsSL "https://www.python.org/ftp/python/${{ matrix.python-version }}.0/Python-${{ matrix.python-version }}.0.tgz" -o python-src.tgz
           mkdir src && tar xzf python-src.tgz -C src --strip-components=1
           cd src && ./configure --prefix="/opt/python-${{ matrix.python-version }}" && make -j"$(nproc)" && make altinstall
@@ -84,10 +89,15 @@ jobs:
         # nothing in panda-client reads it.
         run: find /fixMe-PANDACLIENT_BASE -name direct_url.json -delete
 
+      - name: Pack the tree
+        # upload-artifact does not preserve file modes (bin/* would lose +x),
+        # so ship a tarball between jobs instead of the raw tree.
+        run: tar -C /fixMe-PANDACLIENT_BASE -czf build.tar.gz .
+
       - uses: actions/upload-artifact@v4
         with:
           name: build-py${{ matrix.python-version }}
-          path: /fixMe-PANDACLIENT_BASE
+          path: build.tar.gz
 
   merge-and-release:
     needs: build-relocatable
@@ -108,20 +118,31 @@ jobs:
           pattern: build-py*
           path: legs
 
+      - name: Unpack each leg
+        run: |
+          for d in legs/build-py*/; do
+              tar -xzf "${d}build.tar.gz" -C "$d"
+              rm "${d}build.tar.gz"
+          done
+
       - name: Merge into one relocatable tree
         run: |
           mkdir -p merged
-          cp -r "legs/build-py${PRIMARY_PYTHON}/bin" merged/bin
-          cp -r "legs/build-py${PRIMARY_PYTHON}/etc" merged/etc
+          cp -a "legs/build-py${PRIMARY_PYTHON}/bin" merged/bin
+          cp -a "legs/build-py${PRIMARY_PYTHON}/etc" merged/etc
           mkdir -p merged/lib
           for leg in legs/build-py*/lib/python*; do
-              cp -r "$leg" merged/lib/
+              cp -a "$leg" merged/lib/
           done
 
       - name: Package
         run: |
           VERSION="${{ github.event.release.tag_name || 'dev' }}"
           mv merged "panda-client-${VERSION}"
+          if find "panda-client-${VERSION}/bin" -type f ! -perm -u+x | grep .; then
+              echo "non-executable files in bin/" >&2
+              exit 1
+          fi
           tar czf "panda-client-${VERSION}-relocatable.tar.gz" "panda-client-${VERSION}"
 
       - uses: actions/upload-artifact@v4
