@@ -24,15 +24,32 @@ _STATUS_STYLE = {
     "exhausted": "magenta",
     "paused": "dark_orange",
     "throttled": "dark_orange",
-    # native workflow and step statuses; the names above that they share keep their style
+}
+
+# Workflow and step statuses. Deliberately standalone rather than derived from _STATUS_STYLE:
+# a workflow, a step and a task are three different vocabularies that happen to share some names,
+# and inheriting meant a colour chosen for a task silently became the colour of a step. Every
+# status either class can hold is listed here, so changing one changes nothing else. The lists are
+# WorkflowStatus and WFStepStatus in pandaserver/workflow/workflow_base.py; a status missing here
+# renders unstyled.
+_WORKFLOW_STATUS_STYLE = {
+    # before anything runs
+    "registered": "magenta",
     "parsed": "magenta",
     "checking": "magenta",
-    "checked": "magenta",
-    "checked_true": "magenta",
+    "ready": "magenta",
+    # deciding whether the step runs at all
+    "checked": "orange1",
+    "checked_true": "orange1",
     "checked_false": "dark_orange",
-    "pending": "dark_orange",
+    # waiting on inputs, then on its way
+    "pending": "yellow",
     "starting": "cyan",
-    "closed": "dark_orange",
+    "running": "bold cyan",
+    # final statuses, all bold
+    "done": "bold green",
+    "failed": "bold dark_red",
+    "closed": "bold steel_blue",
     "cancelled": "bold red",
 }
 
@@ -170,7 +187,7 @@ class LocalNativeWorkflowSpec(object):
 
     @staticmethod
     def _status_text(status):
-        return Text(status or "", style=_STATUS_STYLE.get(status or "", ""))
+        return Text(status or "", style=_WORKFLOW_STATUS_STYLE.get(status or "", ""))
 
     @staticmethod
     def _task_url(target_id):
@@ -207,17 +224,21 @@ class LocalNativeWorkflowSpec(object):
             return "-"
         return f"{progress.get('n_files_finished')}|{progress.get('n_files_failed')}|{progress.get('n_files')}"
 
-    def _print_header(self):
-        header = (
-            f"workflow_id={self._dict.get('workflow_id')}  name={self._dict.get('name') or '-'}  "
-            f"status={self._dict.get('status')}  submitted_as={self._dict.get('submitted_as')}  user={self._dict.get('user')}"
-        )
-        _console.print(header, highlight=False)
+    def _header_text(self, separator="  "):
+        """The header line, with the workflow's status coloured as the steps' statuses are"""
+        header = Text()
+        header.append(f"workflow_id={self._dict.get('workflow_id')}{separator}name={self._dict.get('name') or '-'}{separator}status=")
+        header.append_text(self._status_text(self._dict.get("status")))
+        header.append(f"{separator}submitted_as={self._dict.get('submitted_as')}{separator}user={self._dict.get('user')}")
+        return header
+
+    def _print_header(self, console, separator="  "):
+        console.print(self._header_text(separator), highlight=False)
         if self._dict.get("parent_id"):
-            _console.print(f"  sub-workflow of workflow_id={self._dict['parent_id']}", highlight=False)
+            console.print(f"  sub-workflow of workflow_id={self._dict['parent_id']}", highlight=False)
         if self._dict.get("reason"):
             # a failed workflow should say why without needing a second command
-            _console.print(f"  reason: {self._dict['reason']}", highlight=False)
+            console.print(f"  reason: {self._dict['reason']}", highlight=False)
 
     def _make_steps_table(self, long=False):
         t = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold", title_justify="left")
@@ -279,7 +300,7 @@ class LocalNativeWorkflowSpec(object):
             console.print(self._make_data_table())
 
     def print_standard(self, long=False):
-        self._print_header()
+        self._print_header(_console)
         self._print_sections(_console, long=long)
 
     def print_json(self):
@@ -290,12 +311,8 @@ class LocalNativeWorkflowSpec(object):
         plain_console = Console(width=10000, no_color=True, highlight=False)
         self._plain = True
         try:
-            plain_console.print(
-                f"workflow_id={self._dict.get('workflow_id')} name={self._dict.get('name') or '-'} "
-                f"status={self._dict.get('status')} submitted_as={self._dict.get('submitted_as')} user={self._dict.get('user')}"
-            )
-            if self._dict.get("reason"):
-                plain_console.print(f"  reason: {self._dict['reason']}")
+            # the console strips the colour; a single space keeps the line machine-readable
+            self._print_header(plain_console, separator=" ")
             self._print_sections(plain_console)
         finally:
             self._plain = False
