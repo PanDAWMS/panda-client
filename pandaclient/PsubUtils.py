@@ -10,11 +10,6 @@ from urllib.parse import quote
 from . import Client, MiscUtils, PLogger
 from .MiscUtils import commands_get_status_output, commands_get_status_output_with_env
 
-# error code
-EC_Config = 10
-EC_Post = 11
-
-
 cacheProxyStatus = None
 cacheVomsStatus = None
 cacheActimeStatus = None
@@ -121,7 +116,7 @@ def check_proxy(verbose, voms_role, refresh_info=False, generate_new=True):
     if status != 0:
         tmpLog.error(output)
         tmpLog.error("Could not generate a grid proxy")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     else:
         tmpLog.info("Succeeded")
     return check_proxy(verbose, voms_role, refresh_info=True, generate_new=False)
@@ -433,7 +428,7 @@ def readDsFromFile(txtName):
         errType, errValue = sys.exc_info()[:2]
         tmpLog = PLogger.getPandaLogger()
         tmpLog.error(f"cannot read datasets from {txtName} due to {errType}:{errValue}")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     return dsList
 
 
@@ -623,7 +618,7 @@ def uploadGzippedFile(origFileName, currentDir, tmpLog, delFilesOnExit, nosubmit
             # failed
             print(out)
             tmpLog.error(f"Failed with {status}")
-            sys.exit(EC_Post)
+            sys.exit(MiscUtils.EC_Post)
     # delete
     os.remove(gzipFullPath)
     # return new filename
@@ -645,7 +640,7 @@ def getListPFN(pfnFile):
         # get logger
         tmpLog = PLogger.getPandaLogger()
         tmpLog.error(f"{pfnFile} doesn't contain any PFNs")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     return inputFileList
 
 
@@ -681,7 +676,7 @@ def checkTaskParam(taskParamMap, unlimitNumOutputs):
             if tmpErrStr:
                 tmpLog = PLogger.getPandaLogger()
                 tmpLog.error(tmpErrStr)
-                return (EC_Config, tmpErrStr)
+                return (MiscUtils.EC_Config, tmpErrStr)
     if not unlimitNumOutputs and nOutputs > maxNumOutputs:
         errStr = (
             f"Too many output files (={nOutputs}) per job. The default limit is {maxNumOutputs}. "
@@ -691,7 +686,7 @@ def checkTaskParam(taskParamMap, unlimitNumOutputs):
         )
         tmpLog = PLogger.getPandaLogger()
         tmpLog.error(errStr)
-        return (EC_Config, errStr)
+        return (MiscUtils.EC_Config, errStr)
     return (0, None)
 
 

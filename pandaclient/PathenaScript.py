@@ -24,17 +24,6 @@ from pandaclient.Group_argparse import get_parser
 
 ####################################################################
 
-# error code
-EC_Config = 10
-EC_CMT = 20
-EC_Extractor = 30
-EC_Dataset = 40
-EC_Post = 50
-EC_Archive = 60
-EC_Split = 70
-EC_MyProxy = 80
-EC_Submit = 90
-
 # tweak sys.argv
 sys.argv.pop(0)
 sys.argv.insert(0, "pathena")
@@ -1330,7 +1319,7 @@ for tmp_arg in args:
         break
     if tmp_arg.startswith("-"):
         tmpLog.error(f"unrecognized argument: {tmp_arg}")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
 # use dev server
 if options.devSrv:
@@ -1352,7 +1341,7 @@ if options.componentAccumulator:
 if options.noCompile:
     if options.noBuild:
         tmpLog.error("--noBuild and --noCompile cannot be used simultaneously")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     options.noBuild = True
 
 # set noBuild for container
@@ -1363,7 +1352,7 @@ if options.containerImage != "":
 invalid = get_invalid_transfer_types(options.transferType)
 if invalid:
     tmpLog.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 
 # files to be deleted
 delFilesOnExit = []
@@ -1416,10 +1405,10 @@ if options.inOutDsJson != "":
 if options.bulkSubmission:
     if options.inOutDsJson == "":
         tmpLog.error("--inOutDsJson is missing")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     if options.eventPickEvtList != "":
         tmpLog.error("cannot use --eventPickEvtList and --inOutDsJson at the same time")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     ioList = MiscUtils.decodeJSON(options.inOutDsJson)
     for ioItem in ioList:
         if not ioItem["outDS"].endswith("/"):
@@ -1432,20 +1421,20 @@ else:
 # error
 if options.outDS == "":
     tmpLog.error("no outDS is given\n pathena [--inDS input] --outDS output myJobO.py")
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 if options.nJobs < -1:
     tmpLog.error("Number of jobs should be a positive integer")
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 if options.pfnList != "":
     if options.inDS != "":
         tmpLog.error("--pfnList and --inDS cannot be used at the same time")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     if options.shipinput:
         tmpLog.error("--shipInput and --inDS cannot be used at the same time")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     if options.site == "AUTO":
         tmpLog.error("--site must be specified when --pfnList is used")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
 # absolute path for PFN list
 usePfnList = False
@@ -1456,12 +1445,12 @@ if options.pfnList != "":
 # split options are mutually exclusive
 if options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob != -1:
     tmpLog.error("split by files, split by events and split by file size can not be used simultaneously")
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 
 # split options are mutually exclusive
 if options.nEventsPerJob > 0 and options.nGBPerJob != -1:
     tmpLog.error("split by events and split by file size can not be used simultaneously")
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 
 # check nGBPerJob
 if not options.nGBPerJob in [-1, "MAX"]:
@@ -1471,15 +1460,15 @@ if not options.nGBPerJob in [-1, "MAX"]:
             options.nGBPerJob = int(options.nGBPerJob)
     except Exception:
         tmpLog.error("--nGBPerJob must be an integer or MAX")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     # check negative
     if options.nGBPerJob <= 0:
         tmpLog.error("--nGBPerJob must be positive")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     # incompatible parameters
     if options.nFilesPerJob > 0:
         tmpLog.error("--nFilesPerJob and --nGBPerJob must be used exclusively")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
 # trf parameter
 if options.trf == False:
@@ -1498,26 +1487,26 @@ if options.useAMIEventLevelSplit is None:
 # check DBRelease
 if options.dbRelease != "" and (options.dbRelease.find(":") == -1 and options.dbRelease != "LATEST"):
     tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 
 # Good Run List
 if options.goodRunListXML != "" and options.inDS != "":
     tmpLog.error("cannot use --goodRunListXML and --inDS at the same time")
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 
 # event picking
 if options.eventPickEvtList != "" and options.inDS != "":
     tmpLog.error("cannot use --eventPickEvtList and --inDS at the same time")
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 
 # param check for event picking
 if options.eventPickEvtList != "":
     if options.eventPickDataType == "":
         tmpLog.error("--eventPickDataType must be specified")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     if options.trf != False:
         tmpLog.error("--eventPickEvtList doesn't work with --trf until official transformations support event picking")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
 
 # additional files
@@ -1586,7 +1575,7 @@ set_n_files_from_n_jobs(options)
 # check
 if options.inDS != "" and options.nJobs > 0 and options.nFilesPerJob < 0 and options.nFiles == 0 and options.nEventsPerJob < 0:
     tmpLog.error("--split requires --nFilesPerJob or --nFiles or --nEventsPerJob when --inDS is specified")
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 
 # remove whitespaces
 if options.inDS != "":
@@ -1606,7 +1595,7 @@ PsubUtils.check_proxy(options.verbose, options.vomsRoles)
 nickName = PsubUtils.getNickname(options.verbose)
 
 if nickName == "":
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 
 # set Rucio accounting
 PsubUtils.setRucioAccount(nickName, "pathena", True)
@@ -1626,7 +1615,7 @@ if options.outRunConfig != "":
 # check maxCpuCount
 if options.maxCpuCount > Client.maxCpuCountLimit:
     tmpLog.error(f"too large maxCpuCount. Must be less than {Client.maxCpuCountLimit}")
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 
 # create tmp dir
 if options.tmpDir == "":
@@ -1655,7 +1644,7 @@ stA, retA = AthenaUtils.getAthenaVer(cmt_verbose)
 # failed
 if not stA:
     if options.containerImage == "":
-        sys.exit(EC_CMT)
+        sys.exit(MiscUtils.EC_CMT)
     # disable Athena checks when using container image without Athena runtime env
     retA = {
         "workArea": os.getcwd(),
@@ -1684,7 +1673,7 @@ options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer, cacheVer, nightVer, opti
 
 # check CMTCONFIG
 if not AthenaUtils.checkCmtConfig(retA["cmtConfig"], options.cmtConfig, options.noBuild):
-    sys.exit(EC_CMT)
+    sys.exit(MiscUtils.EC_CMT)
 
 tmpLog.info(f"using CMTCONFIG={options.cmtConfig}")
 
@@ -1696,7 +1685,7 @@ if runDir == currentDir and not AthenaUtils.useCMake() and options.containerImag
     errMsg = f"You need to run pathena in a directory under {workArea}. "
     errMsg += f"If '{workArea}' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup."
     tmpLog.error(errMsg)
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 elif runDir == "":
     runDir = "."
 elif runDir.startswith("/"):
@@ -1757,7 +1746,7 @@ else:
         jobO += f" {arg}"
 if jobO == "":
     tmpLog.error("no jobOptions is given\n   pathena [--inDS input] --outDS output myJobO.py")
-    sys.exit(EC_Config)
+    sys.exit(MiscUtils.EC_Config)
 
 
 if options.inRunConfig == "":
@@ -1789,7 +1778,7 @@ else:
 if not options.trf:
     # extractor failed
     if not ret:
-        sys.exit(EC_Extractor)
+        sys.exit(MiscUtils.EC_Extractor)
     # shipped files
     if runConfig.other.inputFiles:
         for fileName in runConfig.other.inputFiles:
@@ -1801,7 +1790,7 @@ if not options.trf:
             # check ship files in the current dir
             if not os.path.exists(fileName):
                 tmpLog.error(f"{fileName} needs exist in the current directory when --shipInput is used")
-                sys.exit(EC_Extractor)
+                sys.exit(MiscUtils.EC_Extractor)
             # append to extFile
             options.extFile.append(fileName)
             if not runConfig.input.shipFiles:
@@ -1857,7 +1846,7 @@ else:
                 errSt += "Using AMI=tag in --trf is disallowed since it may overload the AMI server. "
                 errSt += "Please use explicit configuration parameters in --trf"
                 tmpLog.error(errSt)
-                sys.exit(EC_Config)
+                sys.exit(MiscUtils.EC_Config)
             # get full command string
             fullCommand = ""
             for amiStr in amiOut.split("\n"):
@@ -1868,7 +1857,7 @@ else:
                 tmpLog.error(amiOut)
                 errSt = "Failed to extract configuration from AMI's output"
                 tmpLog.error(errSt)
-                sys.exit(EC_Config)
+                sys.exit(MiscUtils.EC_Config)
             # replace
             newJobO += fullCommand + ";"
     # remove redundant ;
@@ -1972,7 +1961,7 @@ if tmpOutKeys == [] and options.extOutFile == [] and not options.noOutput:
     errStr += "If you are sure that your job doesn't produce any output file "
     errStr += "(e.g., HelloWorldOptions.py) please use --noOutput. "
     tmpLog.error(errStr)
-    sys.exit(EC_Extractor)
+    sys.exit(MiscUtils.EC_Extractor)
 
 # set extOutFile to runConfig
 if options.extOutFile != []:
@@ -1984,7 +1973,7 @@ if not runConfig.input.shipFiles:
 for file in runConfig.input.shipFiles:
     if not os.path.exists(file):
         tmpLog.error(f"{file} needs exist in the current directory when using --shipInput")
-        sys.exit(EC_Extractor)
+        sys.exit(MiscUtils.EC_Extractor)
 
 # get random number
 runConfig.other["rndmNumbers"] = []
@@ -2098,7 +2087,7 @@ if options.inDS != "" or options.shipinput or options.pfnList != "":
     tmpStat, tmpOut = MiscUtils.parse_secondary_datasets_opt(options.secondaryDSs)
     if not tmpStat:
         tmpLog.error(tmpOut)
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     else:
         options.secondaryDSs = tmpOut
 
@@ -2178,7 +2167,7 @@ if True:
         if status != 0:
             print(out)
             tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'")
-            sys.exit(EC_Archive)
+            sys.exit(MiscUtils.EC_Archive)
 
         # check symlinks
         tmpLog.info("checking sandbox")
@@ -2189,7 +2178,7 @@ if True:
             time.sleep(5)
         if status != 0:
             tmpLog.error(f"Failed to expand sandbox. {out}")
-            sys.exit(EC_Archive)
+            sys.exit(MiscUtils.EC_Archive)
         symlinks = []
         for line in out.split("\n"):
             items = line.split()
@@ -2235,7 +2224,7 @@ if True:
             # failed
             print(out)
             tmpLog.error(f"Failed with {status}")
-            sys.exit(EC_Post)
+            sys.exit(MiscUtils.EC_Post)
         # good run list
         if options.goodRunListXML != "":
             options.goodRunListXML = PsubUtils.uploadGzippedFile(
@@ -3061,11 +3050,11 @@ if options.mergeOutput:
             options.nGBPerMergeJob = int(options.nGBPerMergeJob)
         except Exception:
             tmpLog.error("--nGBPerMergeJob must be an integer")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
         # check negative
         if options.nGBPerMergeJob <= 0:
             tmpLog.error("--nGBPerMergeJob must be positive")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
         taskParamMap["nGBPerMergeJob"] = options.nGBPerMergeJob
 
 
@@ -3102,7 +3091,7 @@ for iSubmission, ioItem in enumerate(ioList):
     # check outDS format
     if not PsubUtils.checkOutDsName(options.outDS, options.official, nickName, options.mergeOutput, options.verbose):
         tmpLog.error(f"invalid output datasetname:{options.outDS}")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     # check task parameters
     exitCode, tmpStr = PsubUtils.checkTaskParam(newTaskParamMap, options.unlimitNumOutputs)
     if exitCode != 0 and len(ioList) == 1:
@@ -3126,7 +3115,7 @@ for iSubmission, ioItem in enumerate(ioList):
         if status != 0:
             tmpStr = f"task submission failed with {status}"
             tmpLog.error(tmpStr)
-            exitCode = EC_Submit
+            exitCode = MiscUtils.EC_Submit
         else:
             if tmpOut[0] in [0, 3]:
                 tmpStr = tmpOut[1]
@@ -3139,7 +3128,7 @@ for iSubmission, ioItem in enumerate(ioList):
             else:
                 tmpStr = f"task submission failed. {tmpOut[1]}"
                 tmpLog.error(tmpStr)
-                exitCode = EC_Submit
+                exitCode = MiscUtils.EC_Submit
     dumpItem = copy.deepcopy(vars(options))
     dumpItem["returnCode"] = exitCode
     dumpItem["returnOut"] = tmpStr

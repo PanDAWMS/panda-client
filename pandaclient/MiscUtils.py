@@ -25,6 +25,14 @@ except ImportError:
     FileSpec.FileSpec.__module__ = "pandaserver.taskbuffer.FileSpec"
 
 
+# exit codes of the client commands
+EC_Config = 10
+EC_CMT = 20
+EC_Extractor = 30
+EC_Post = 50
+EC_Archive = 60
+EC_Submit = 90
+
 # options obsolete in both pathena and prun
 COMMON_OBSOLETE_OPTIONS = [
     "--cloud",
