@@ -25,6 +25,112 @@ except ImportError:
     FileSpec.FileSpec.__module__ = "pandaserver.taskbuffer.FileSpec"
 
 
+# options obsolete in pathena w.r.t. version 0.4.9
+PATHENA_OBSOLETE_OPTIONS = [
+    "--ara",
+    "--araOutFile",
+    "--ares",
+    "--blong",
+    "--burstSubmit",
+    "--cloud",
+    "--configJEM",
+    "--corCheck",
+    "--crossSite",
+    "--dbRunNumber",
+    "--disableRebrokerage",
+    "--enableJEM",
+    "--eventPickStagedDS",
+    "--individualOutDS",
+    "--libDS",
+    "--long",
+    "--mcData",
+    "--myproxy",
+    "--nCavPerJob",
+    "--nHighMinPerJob",
+    "--nLowMinPerJob",
+    "--nMinPerJob",
+    "--nSkipFiles",
+    "--noLock",
+    "--notUseTagLookup",
+    "--outputPath",
+    "--panda_cacheSrvURL",
+    "--panda_dbRelease",
+    "--panda_devidedByGUID",
+    "--panda_eventPickRunEvtDat",
+    "--panda_fullPathJobOs",
+    "--panda_inDS",
+    "--panda_inDSForEP",
+    "--panda_jobsetID",
+    "--panda_origFullExecString",
+    "--panda_parentJobsetID",
+    "--panda_runConfig",
+    "--panda_singleLine",
+    "--panda_srcName",
+    "--panda_srvURL",
+    "--panda_suppressMsg",
+    "--panda_tagParentFile",
+    "--panda_trf",
+    "--parentDS",
+    "--prestage",
+    "--provenanceID",
+    "--removeBurstLimit",
+    "--removeFileList",
+    "--removedDS",
+    "--seriesLabel",
+    "--skipScan",
+    "--splitWithNthFiledOfLFN",
+    "--tagQuery",
+    "--tagStreamRef",
+    "--transferredDS",
+    "--useAIDA",
+    "--useChirpServer",
+    "--useContElementBoundary",
+    "--useExperimental",
+    "--useGOForOutput",
+    "--useNthFieldForLFN",
+    "--useOldStyleOutput",
+    "--useShortLivedReplicas",
+    "--useSiteGroup",
+    "--useTagInTRF",
+]
+
+# options obsolete in prun w.r.t. version 0.6.25
+PRUN_OBSOLETE_OPTIONS = [
+    "--buildInLastChunk",
+    "--cloud",
+    "--configJEM",
+    "--crossSite",
+    "--dbRunNumber",
+    "--disableRebrokerage",
+    "--enableJEM",
+    "--eventPickNumSites",
+    "--eventPickSkipDaTRI",
+    "--eventPickStagedDS",
+    "--forceStagedSecondary",
+    "--individualOutDS",
+    "--libDS",
+    "--long",
+    "--manaVer",
+    "--myproxy",
+    "--outputPath",
+    "--provenanceID",
+    "--removedDS",
+    "--requireLFC",
+    "--safetySize",
+    "--seriesLabel",
+    "--skipScan",
+    "--transferredDS",
+    "--useChirpServer",
+    "--useContElementBoundary",
+    "--useGOForOutput",
+    "--useMana",
+    "--useOldStyleOutput",
+    "--useRucio",
+    "--useShortLivedReplicas",
+    "--useSiteGroup",
+]
+
+
 # wrapper for uuidgen
 def wrappedUuidGen():
     return str(uuid.uuid4())
@@ -371,3 +477,12 @@ def query_yes_no(question):
             return valid[choice]
         else:
             sys.stdout.write("Please respond with 'y' or 'n'")
+
+
+# remove obsolete options from the argument list, warning the user about each one
+def remove_obsolete_options(arguments, obsolete_options):
+    for argument in arguments[1:]:
+        option_name = argument.split("=", 1)[0]
+        if option_name in obsolete_options:
+            print(f"!!WARNING!! option {option_name} is obsolete and will be ignored. Please update your command line arguments.\n")
+            arguments.remove(argument)

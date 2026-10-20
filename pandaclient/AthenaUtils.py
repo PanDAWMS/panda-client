@@ -83,13 +83,13 @@ def getAthenaVer(verbose=True):
         if len(lines) < 2:
             if verbose:
                 print(out)
-                tmpLog.error("cmt gave wrong info")
+                tmpLog.error("could not determine the Athena release from cmt. Did you set up an Athena runtime environment, e.g. with asetup?")
             return False, {}
     # private work area
     res = re.search(r"\(in ([^\)]+)\)", lines[0])
     if res is None:
         print(lines[0])
-        tmpLog.error("no TestArea. could not get path to private work area")
+        tmpLog.error("could not determine the path to the private TestArea from cmt.")
         return False, {}
     workArea = os.path.realpath(res.group(1))
     # get Athena version and group area
@@ -1491,8 +1491,7 @@ def getJobOtoUseAmiForAutoConf(inDS, tmpDir):
     # create jobO fragment
     optFileName = tmpDir + "/" + MiscUtils.wrappedUuidGen() + ".py"
     oFile = open(optFileName, "w")
-    oFile.write(
-        """
+    oFile.write("""
 try:
     import AthenaCommon.AthenaCommonFlags
     
@@ -1518,9 +1517,7 @@ try:
                 pass
 except Exception:
     pass
-"""
-        % (inputFiles, inputFiles)
-    )
+""" % (inputFiles, inputFiles))
     oFile.close()
     # return file name
     return optFileName

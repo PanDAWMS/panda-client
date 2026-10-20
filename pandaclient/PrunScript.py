@@ -9,6 +9,7 @@ import sys
 import time
 from urllib.parse import quote
 
+from pandaclient import MiscUtils
 from pandaclient.CommonArgs import (
     VALID_TRANSFER_TYPES,
     add_common_arguments,
@@ -19,7 +20,6 @@ from pandaclient.CommonArgs import (
     set_n_files_from_n_jobs,
 )
 from pandaclient.Group_argparse import get_parser
-from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, parse_secondary_datasets_opt
 
 
 # main
@@ -54,41 +54,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
       prun --exec "cpptest %IN" --bexec "make" --athenaTag=22.0.0 --inDS ...
       prun --loadJson prunConfig.json   # read all prun options from one json file
     """
-
-    removedOpts = [  # list of deprecated options w.r.t version 0.6.25
-        "--buildInLastChunk",
-        "--cloud",
-        "--configJEM",
-        "--crossSite",
-        "--dbRunNumber",
-        "--disableRebrokerage",
-        "--enableJEM",
-        "--eventPickNumSites",
-        "--eventPickSkipDaTRI",
-        "--eventPickStagedDS",
-        "--forceStagedSecondary",
-        "--individualOutDS",
-        "--libDS",
-        "--long",
-        "--manaVer",
-        "--myproxy",
-        "--outputPath",
-        "--provenanceID",
-        "--removedDS",
-        "--requireLFC",
-        "--safetySize",
-        "--seriesLabel",
-        "--skipScan",
-        "--transferredDS",
-        "--useChirpServer",
-        "--useContElementBoundary",
-        "--useGOForOutput",
-        "--useMana",
-        "--useOldStyleOutput",
-        "--useRucio",
-        "--useShortLivedReplicas",
-        "--useSiteGroup",
-    ]
 
     optP = get_parser(usage=usage, conflict_handler="resolve")
     optP.set_examples(examples)
@@ -1142,15 +1107,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     )
     group_build.add_argument("-3", action="store_true", dest="python3", default=False, help="Use python3")
 
-    from pandaclient import MiscUtils
-
     # parse options
-    # check against the removed options first
-    for arg in sys.argv[1:]:
-        optName = arg.split("=", 1)[0]
-        if optName in removedOpts:
-            print("!!Warning!! option %s has been deprecated, pls dont use anymore\n" % optName)
-            sys.argv.remove(arg)
+    # check against the obsolete options first
+    MiscUtils.remove_obsolete_options(sys.argv, MiscUtils.PRUN_OBSOLETE_OPTIONS)
 
     # options, args = optP.parse_known_args()
     options = optP.parse_args(ext_args)
@@ -1497,7 +1456,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             del_command("rm -rf %s" % tmpFile)
         del_command("rm -rf %s" % dir)
 
-    atexit.register(_onExit, tmpDir, delFilesOnExit, commands_get_output)
+    atexit.register(_onExit, tmpDir, delFilesOnExit, MiscUtils.commands_get_output)
 
     # parse tag
     athenaVer = ""
@@ -1636,7 +1595,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             sys.exit(EC_Config)
 
     # secondary datasets
-    tmpStat, tmpOut = parse_secondary_datasets_opt(options.secondaryDSs)
+    tmpStat, tmpOut = MiscUtils.parse_secondary_datasets_opt(options.secondaryDSs)
     if not tmpStat:
         tmpLog.error(tmpOut)
         sys.exit(EC_Config)
@@ -1914,9 +1873,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                             print("skip self-archiving for %s" % tmpFile)
                         continue
                     if os.path.islink(tmpFile):
-                        status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rh '{}' -f '{}'".format(tmpFile, archiveFullName))
+                        status, out = MiscUtils.commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rh '{}' -f '{}'".format(tmpFile, archiveFullName))
                     else:
-                        status, out = commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rf '{}' '{}'".format(archiveFullName, tmpFile))
+                        status, out = MiscUtils.commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rf '{}' '{}'".format(archiveFullName, tmpFile))
                     if options.verbose:
                         print(tmpFile)
                     if status != 0 or out != "":
@@ -1926,16 +1885,16 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
             # make empty if archive doesn't exist
             if not os.path.exists(archiveFullName):
-                commands_get_status_output("tar cvf %s --files-from /dev/null " % archiveName)
+                MiscUtils.commands_get_status_output("tar cvf %s --files-from /dev/null " % archiveName)
 
             # compress
-            status, out = commands_get_status_output("gzip %s" % archiveName)
+            status, out = MiscUtils.commands_get_status_output("gzip %s" % archiveName)
             archiveName += ".gz"
             if status != 0 or options.verbose:
                 print(out)
 
             # check archive
-            status, out = commands_get_status_output(f"ls -l {archiveName}")
+            status, out = MiscUtils.commands_get_status_output(f"ls -l {archiveName}")
             if options.verbose:
                 print(out)
             if status != 0:
@@ -1946,7 +1905,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if options.useAthenaPackages:
                 tmpLog.info("checking sandbox")
                 for _ in range(5):
-                    status, out = commands_get_status_output("tar tvfz %s" % archiveName)
+                    status, out = MiscUtils.commands_get_status_output("tar tvfz %s" % archiveName)
                     if status == 0:
                         break
                     time.sleep(5)

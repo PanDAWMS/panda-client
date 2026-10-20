@@ -76,6 +76,8 @@ exclude = [
 
 [tool.black]
 line-length=160
+# oldest Python the code must run on. Without it, Black infers py37-py315 from requires-python
+target-version = ["py39"]
 
 [tool.autopep8]
 # https://pypi.org/project/autopep8/#pyproject-toml
