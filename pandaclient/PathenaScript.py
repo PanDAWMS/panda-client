@@ -10,6 +10,7 @@ import shutil
 import sys
 import time
 
+from pandaclient import MiscUtils
 from pandaclient.CommonArgs import (
     VALID_TRANSFER_TYPES,
     add_common_arguments,
@@ -20,7 +21,6 @@ from pandaclient.CommonArgs import (
     set_n_files_from_n_jobs,
 )
 from pandaclient.Group_argparse import get_parser
-from pandaclient.MiscUtils import parse_secondary_datasets_opt
 
 ####################################################################
 
@@ -48,75 +48,6 @@ examples = """Examples:
   pathena --inDS=... --outDS=... --trf "Reco_tf.py --inputAODFile %IN --outputDAODFile %OUT.pool.root ..."
   pathena --inOutDsJson=inout.json --trf "..."
 """
-
-removedOpts = [  # list of deprecated options w.r.t version 0.4.9
-    "--ara",
-    "--araOutFile",
-    "--ares",
-    "--blong",
-    "--burstSubmit",
-    "--cloud",
-    "--configJEM",
-    "--corCheck",
-    "--crossSite",
-    "--dbRunNumber",
-    "--disableRebrokerage",
-    "--enableJEM",
-    "--eventPickStagedDS",
-    "--individualOutDS",
-    "--libDS",
-    "--long",
-    "--mcData",
-    "--myproxy",
-    "--nCavPerJob",
-    "--nHighMinPerJob",
-    "--nLowMinPerJob",
-    "--nMinPerJob",
-    "--nSkipFiles",
-    "--noLock",
-    "--notUseTagLookup",
-    "--outputPath",
-    "--panda_cacheSrvURL",
-    "--panda_dbRelease",
-    "--panda_devidedByGUID",
-    "--panda_eventPickRunEvtDat",
-    "--panda_fullPathJobOs",
-    "--panda_inDS",
-    "--panda_inDSForEP",
-    "--panda_jobsetID",
-    "--panda_origFullExecString",
-    "--panda_parentJobsetID",
-    "--panda_runConfig",
-    "--panda_singleLine",
-    "--panda_srcName",
-    "--panda_srvURL",
-    "--panda_suppressMsg",
-    "--panda_tagParentFile",
-    "--panda_trf",
-    "--parentDS",
-    "--prestage",
-    "--provenanceID",
-    "--removeBurstLimit",
-    "--removeFileList",
-    "--removedDS",
-    "--seriesLabel",
-    "--skipScan",
-    "--splitWithNthFiledOfLFN",
-    "--tagQuery",
-    "--tagStreamRef",
-    "--transferredDS",
-    "--useAIDA",
-    "--useChirpServer",
-    "--useContElementBoundary",
-    "--useExperimental",
-    "--useGOForOutput",
-    "--useNthFieldForLFN",
-    "--useOldStyleOutput",
-    "--useShortLivedReplicas",
-    "--useSiteGroup",
-    "--useTagInTRF",
-    "-l",
-]
 
 optP = get_parser(usage=usage, conflict_handler="resolve")
 optP.set_examples(examples)
@@ -1332,16 +1263,9 @@ group_job.add_argument(
     help="Max walltime for each job in hours. Note that this option works only " "when the nevents metadata of input files are available in rucio",
 )
 
-from pandaclient import MiscUtils
-from pandaclient.MiscUtils import commands_get_output, commands_get_status_output, commands_get_status_output_with_env
-
 # parse options
-# check against the removed options first
-for arg in sys.argv[1:]:
-    optName = arg.split("=", 1)[0]
-    if optName in removedOpts:
-        print(f"!!Warning!! option {optName} has been deprecated, pls dont use anymore\n")
-        sys.argv.remove(arg)
+# check against the obsolete options first
+MiscUtils.remove_obsolete_options(sys.argv, MiscUtils.PATHENA_OBSOLETE_OPTIONS)
 
 # using parse_known_args for passing arguments with -
 options, args = optP.parse_known_args()
@@ -1719,7 +1643,7 @@ def _onExit(dir, files, del_command):
     del_command(f"rm -rf {dir}")
 
 
-atexit.register(_onExit, tmpDir, delFilesOnExit, commands_get_output)
+atexit.register(_onExit, tmpDir, delFilesOnExit, MiscUtils.commands_get_output)
 
 
 # get Athena versions
@@ -1925,7 +1849,7 @@ else:
             com = "GetCommand.py " + re.sub("^[^ ]+ ", "", tmpString.strip())
             if options.verbose:
                 tmpLog.debug(com)
-            amiSt, amiOut = commands_get_status_output_with_env(com)
+            amiSt, amiOut = MiscUtils.commands_get_status_output_with_env(com)
             amiSt %= 255
             if amiSt != 0:
                 tmpLog.error(amiOut)
@@ -2171,7 +2095,7 @@ if options.inDS != "" or options.shipinput or options.pfnList != "":
             options.beamGasODS, options.nBeamGasO = MiscUtils.getDatasetNameAndNumFiles(options.beamGasODS, options.nBeamGasO, "BeamGas Oxygen")
 
     # general secondaries
-    tmpStat, tmpOut = parse_secondary_datasets_opt(options.secondaryDSs)
+    tmpStat, tmpOut = MiscUtils.parse_secondary_datasets_opt(options.secondaryDSs)
     if not tmpStat:
         tmpLog.error(tmpOut)
         sys.exit(EC_Config)
@@ -2243,14 +2167,14 @@ if True:
         # remove some athena specific files
         AthenaUtils.deleteAthenaStuff(currentDir)
         if not os.path.exists(archiveName):
-            commands_get_status_output(f"tar -cf {archiveName} -T /dev/null")
+            MiscUtils.commands_get_status_output(f"tar -cf {archiveName} -T /dev/null")
         # compress
-        status, out = commands_get_status_output(f"gzip -f {archiveName}")
+        status, out = MiscUtils.commands_get_status_output(f"gzip -f {archiveName}")
         if status != 0 or options.verbose:
             print(out)
         archiveName += ".gz"
         # check archive
-        status, out = commands_get_status_output(f"ls -l {archiveName}")
+        status, out = MiscUtils.commands_get_status_output(f"ls -l {archiveName}")
         if status != 0:
             print(out)
             tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'")
@@ -2259,7 +2183,7 @@ if True:
         # check symlinks
         tmpLog.info("checking sandbox")
         for _ in range(5):
-            status, out = commands_get_status_output(f"tar tvfz {archiveName}")
+            status, out = MiscUtils.commands_get_status_output(f"tar tvfz {archiveName}")
             if status == 0:
                 break
             time.sleep(5)
