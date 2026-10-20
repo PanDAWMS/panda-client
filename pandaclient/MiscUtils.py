@@ -484,5 +484,5 @@ def remove_obsolete_options(arguments, obsolete_options):
     for argument in arguments[1:]:
         option_name = argument.split("=", 1)[0]
         if option_name in obsolete_options:
-            print(f"!!Warning!! option {option_name} is obsolete and will be ignored\n")
+            print(f"!!WARNING!! option {option_name} is obsolete and will be ignored. Please update your command line arguments.\n")
             arguments.remove(argument)
