@@ -1,6 +1,8 @@
 task_active_superstatus_list = ["running", "submitting", "registered", "ready"]
 task_final_superstatus_list = ["finished", "failed", "done", "broken", "aborted"]
 
+import json
+
 from rich import box
 from rich.console import Console
 from rich.table import Table
@@ -22,6 +24,16 @@ _STATUS_STYLE = {
     "exhausted": "magenta",
     "paused": "dark_orange",
     "throttled": "dark_orange",
+    # native workflow and step statuses; the names above that they share keep their style
+    "parsed": "magenta",
+    "checking": "magenta",
+    "checked": "magenta",
+    "checked_true": "magenta",
+    "checked_false": "dark_orange",
+    "pending": "dark_orange",
+    "starting": "cyan",
+    "closed": "dark_orange",
+    "cancelled": "bold red",
 }
 
 
@@ -140,3 +152,150 @@ class LocalTaskSpec:
                 continue
             t.add_row(aname, str(getattr(self, aname, None)))
         _console.print(t)
+
+
+class LocalNativeWorkflowSpec(object):
+    """A PanDA native workflow as the server reports it, rendered for pbook
+
+    The server answers with one dictionary holding the workflow, its steps and its data, so this
+    holds that dictionary rather than flattening it into attributes: the parts are tables, not
+    fields of one record.
+    """
+
+    def __init__(self, workflow_dict):
+        self._dict = workflow_dict or {}
+        self._step_name_by_id = {step.get("step_id"): step.get("name") for step in self._dict.get("steps", [])}
+        # set while rendering the plain format, where a terminal hyperlink is as unwanted as colour
+        self._plain = False
+
+    @staticmethod
+    def _status_text(status):
+        return Text(status or "", style=_STATUS_STYLE.get(status or "", ""))
+
+    @staticmethod
+    def _task_url(target_id):
+        return f"https://bigpanda.cern.ch/task/{target_id}/"
+
+    def _target_text(self, step):
+        """The step's target, linked to BigPanDA when it is a task and plain when it is not"""
+        target_id = step.get("target_id")
+        if not target_id:
+            return "-"
+        # a sub-workflow step targets a child workflow, and an unsubmitted step can still hold the
+        # ${TASKID} placeholder; neither is a task to link to
+        if not self._plain and step.get("flavor") == "panda_task" and str(target_id).isdigit():
+            url = self._task_url(target_id)
+            return Text(str(target_id), style=f"link {url}")
+        return str(target_id)
+
+    def _parents_text(self, step):
+        names = [self._step_name_by_id.get(parent_id) or str(parent_id) for parent_id in step.get("parent_step_ids") or []]
+        return ", ".join(sorted(names)) or "-"
+
+    @staticmethod
+    def _progress_text(step):
+        progress = step.get("progress")
+        if not progress:
+            # nothing to measure: not a task, or not submitted yet
+            return "-"
+        return f"{progress.get('pct_finished')}%"
+
+    @staticmethod
+    def _files_text(step):
+        progress = step.get("progress")
+        if not progress:
+            return "-"
+        return f"{progress.get('n_files_finished')}|{progress.get('n_files_failed')}|{progress.get('n_files')}"
+
+    def _print_header(self):
+        header = (
+            f"workflow_id={self._dict.get('workflow_id')}  name={self._dict.get('name') or '-'}  "
+            f"status={self._dict.get('status')}  submitted_as={self._dict.get('submitted_as')}  user={self._dict.get('user')}"
+        )
+        _console.print(header, highlight=False)
+        if self._dict.get("parent_id"):
+            _console.print(f"  sub-workflow of workflow_id={self._dict['parent_id']}", highlight=False)
+        if self._dict.get("reason"):
+            # a failed workflow should say why without needing a second command
+            _console.print(f"  reason: {self._dict['reason']}", highlight=False)
+
+    def _make_steps_table(self, long=False):
+        t = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold", title_justify="left")
+        t.add_column("#", justify="right")
+        t.add_column("Name")
+        t.add_column("Status", justify="right")
+        t.add_column("Flavor")
+        t.add_column("PSLabel")
+        t.add_column("Progress", justify="right")
+        if long:
+            t.add_column("Files (done|failed|total)")
+        t.add_column("TargetID", justify="right")
+        t.add_column("Parents")
+        if long:
+            t.add_column("Reason")
+        for step in self._dict.get("steps", []):
+            row = [
+                str(step.get("member_id") if step.get("member_id") is not None else "-"),
+                str(step.get("name")),
+                self._status_text(step.get("status")),
+                str(step.get("flavor")),
+                str(step.get("prod_source_label") or "-"),
+                self._progress_text(step),
+            ]
+            if long:
+                row.append(self._files_text(step))
+            row.append(self._target_text(step))
+            row.append(self._parents_text(step))
+            if long:
+                row.append(str(step.get("reason") or "-"))
+            t.add_row(*row)
+        return t
+
+    def _make_data_table(self):
+        t = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold", title_justify="left")
+        t.add_column("Name")
+        t.add_column("Status", justify="right")
+        t.add_column("Type")
+        t.add_column("TargetID")
+        for data in self._dict.get("data", []):
+            t.add_row(
+                str(data.get("name")),
+                self._status_text(data.get("status")),
+                str(data.get("type")),
+                str(data.get("target_id") or "-"),
+            )
+        return t
+
+    def _print_sections(self, console, long=False):
+        steps = self._dict.get("steps", [])
+        console.print(f"\n steps ({len(steps)}):", highlight=False)
+        # an empty section is said, not drawn: a table of headings with no rows under it reads as
+        # though something failed to load
+        if steps:
+            console.print(self._make_steps_table(long=long))
+        data = self._dict.get("data", [])
+        console.print(f" data ({len(data)}):", highlight=False)
+        if data:
+            console.print(self._make_data_table())
+
+    def print_standard(self, long=False):
+        self._print_header()
+        self._print_sections(_console, long=long)
+
+    def print_json(self):
+        print(json.dumps(self._dict, indent=2))
+
+    def print_plain(self):
+        # no colour and no links, for piping somewhere that cannot render them
+        plain_console = Console(width=10000, no_color=True, highlight=False)
+        self._plain = True
+        try:
+            plain_console.print(
+                f"workflow_id={self._dict.get('workflow_id')} name={self._dict.get('name') or '-'} "
+                f"status={self._dict.get('status')} submitted_as={self._dict.get('submitted_as')} user={self._dict.get('user')}"
+            )
+            if self._dict.get("reason"):
+                plain_console.print(f"  reason: {self._dict['reason']}")
+            self._print_sections(plain_console)
+        finally:
+            self._plain = False

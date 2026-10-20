@@ -381,6 +381,42 @@ class PBookCore:
             return False, None
         return True, output[-1]
 
+    # get a native workflow
+    def get_native_workflow(self, workflow_id):
+        """Fetch a PanDA native workflow whole: its status, its steps with their relations and
+        progress, and its data. Distinct from the workflow commands above, which act on an iDDS
+        request_id; this takes a native workflow_id and goes to the PanDA server directly.
+        """
+        tmpLog = PLogger.getPandaLogger()
+        status, output = Client.get_workflow_details(workflow_id, verbose=self.verbose)
+        # communication error
+        if status != 0:
+            tmpLog.error(output)
+            tmpLog.error(f"Failed to get workflow_id={workflow_id}")
+            return None
+        tmpStat, tmpDiag = output
+        if not tmpStat:
+            tmpLog.error(tmpDiag)
+            tmpLog.error(f"Failed to get workflow_id={workflow_id}")
+            return None
+        return tmpDiag
+
+    # show a native workflow
+    def show_native_workflow(self, workflow_id, format="standard"):
+        """Fetch a native workflow and print it. get_native_workflow returns the same data
+        unrendered, for a caller that wants to work with it rather than read it.
+        """
+        workflow_dict = self.get_native_workflow(workflow_id)
+        if not workflow_dict:
+            return
+        spec = localSpecs.LocalNativeWorkflowSpec(workflow_dict)
+        if format == "json":
+            spec.print_json()
+        elif format == "plain":
+            spec.print_plain()
+        else:
+            spec.print_standard(long=(format == "long"))
+
     # set secret
     def set_secret(self, key, value, is_file=False):
         # get logger
