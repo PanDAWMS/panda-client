@@ -305,7 +305,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         const=True,
         dest="followLinks",
         default=False,
-        help="Resolve symlinks to directories when building the input tarball. This option requires python2.6 or higher",
+        help="Resolve symlinks to directories when building the input tarball",
     )
 
     # I do not know which group "--useHomeDir" should go?
