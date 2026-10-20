@@ -92,7 +92,6 @@ def show_task(jeditaskid, verbose=False, mode="inline"):
             else:
                 t_color = "orange"
             if d.jobStatus not in legend_set:
-                show_legend = True
                 legend_set.add(d.jobStatus)
                 exectime_fig.add_trace(
                     go.Scatter(

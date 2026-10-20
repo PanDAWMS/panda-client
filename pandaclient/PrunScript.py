@@ -35,12 +35,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # default cloud/site
     defaultSite = "AUTO"
 
-    # error code
-    EC_Config = 10
-    EC_Post = 50
-    EC_Archive = 60
-    EC_Submit = 90
-
     # tweak sys.argv
     sys.argv.pop(0)
     sys.argv.insert(0, "prun")
@@ -305,7 +299,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         const=True,
         dest="followLinks",
         default=False,
-        help="Resolve symlinks to directories when building the input tarball. This option requires python2.6 or higher",
+        help="Resolve symlinks to directories when building the input tarball",
     )
 
     # I do not know which group "--useHomeDir" should go?
@@ -1234,7 +1228,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             errtype, errvalue = sys.exc_info()[:2]
             print(errvalue)
             tmpLog.error("verification of XML failed")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
         # inDS match and secondaryDS filter will be determined later from xconfig
         options.match = ""
         options.secondaryDSs = xconfig.secondaryDSs_config(filter=False)
@@ -1288,10 +1282,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     if options.bulkSubmission:
         if options.inOutDsJson == "":
             tmpLog.error("--inOutDsJson is missing")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
         if options.eventPickEvtList != "":
             tmpLog.error("cannot use --eventPickEvtList and --inOutDsJson at the same time")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
         ioList = MiscUtils.decodeJSON(options.inOutDsJson)
         for ioItem in ioList:
             if not ioItem["outDS"].endswith("/"):
@@ -1318,23 +1312,23 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # check DBRelease
     if options.dbRelease != "" and (options.dbRelease.find(":") == -1 and options.dbRelease != "LATEST"):
         tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
     # Good Run List
     if options.goodRunListXML != "" and options.inDS != "":
         tmpLog.error("cannot use --goodRunListXML and --inDS at the same time")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
     # event picking
     if options.eventPickEvtList != "" and options.inDS != "":
         tmpLog.error("cannot use --eventPickEvtList and --inDS at the same time")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
     # param check for event picking
     if options.eventPickEvtList != "":
         if options.eventPickDataType == "":
             tmpLog.error("--eventPickDataType must be specified")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
 
     # check rootVer
     if options.rootVer != "":
@@ -1356,7 +1350,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             tmpItems = tmpItem.split(":")
             if len(tmpItems) != 2:
                 tmpLog.error("invalid StreamName:FileName in --writeInputToTxt : %s" % tmpItem)
-                sys.exit(EC_Config)
+                sys.exit(MiscUtils.EC_Config)
 
     # read list of files to be used
     filesToBeUsed = []
@@ -1409,7 +1403,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     options.workDir = os.path.realpath(options.workDir)
     if options.workDir != curDir and (not curDir.startswith(options.workDir + "/")):
         tmpLog.error("you need to run prun in a directory under %s" % options.workDir)
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
     # avoid gathering the home dir
     if (
@@ -1429,7 +1423,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if tmpAnswer in ["y", "N"]:
                 break
         if tmpAnswer == "N":
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
 
     # run dir
     runDir = "."
@@ -1441,7 +1435,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # check maxCpuCount
     if options.maxCpuCount > Client.maxCpuCountLimit:
         tmpLog.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
     # create tmp dir
     if options.tmpDir == "":
@@ -1470,7 +1464,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         # failed
         if not stA:
             tmpLog.error("You need to setup Athena runtime to use --useAthenaPackages")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
         workArea = retA["workArea"]
         athenaVer = "Atlas-%s" % retA["athenaVer"]
         groupArea = retA["groupArea"]
@@ -1484,7 +1478,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             errMsg = "You need to run prun in a directory under %s. " % workArea
             errMsg += "If '%s' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup." % workArea
             tmpLog.error(errMsg)
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
         elif runDir == "":
             runDir = "."
         elif runDir.startswith("/"):
@@ -1498,7 +1492,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # check CMTCONFIG
     if not AthenaUtils.checkCmtConfig(cmtConfig, options.cmtConfig, options.noBuild):
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
     # event picking
     if options.eventPickEvtList != "":
@@ -1572,7 +1566,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # get job script
     if options.jobParams == "":
         tmpLog.error("you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
     # replace : to = for backward compatibility
     for optArg in ["RNDM"]:
@@ -1581,24 +1575,24 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # check output dataset
     if options.outDS == "":
         tmpLog.error("no outDS is given\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
     # avoid inDS+pfnList
     if options.pfnList != "":
         # don't use inDS
         if options.inDS != "":
             tmpLog.error("--pfnList and --inDS cannot be used at the same time")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
         # use site
         if options.site == "AUTO":
             tmpLog.error("--site must be specified when --pfnList is used")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
 
     # secondary datasets
     tmpStat, tmpOut = MiscUtils.parse_secondary_datasets_opt(options.secondaryDSs)
     if not tmpStat:
         tmpLog.error(tmpOut)
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     else:
         options.secondaryDSs = tmpOut
 
@@ -1615,7 +1609,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         nickName = "dummy"
 
     if nickName == "":
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
     # set Rucio accounting
     PsubUtils.setRucioAccount(nickName, "prun", True)
@@ -1628,25 +1622,25 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 options.nGBPerJob = int(options.nGBPerJob)
         except Exception:
             tmpLog.error("--nGBPerJob must be an integer or MAX")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
         # check negative
         if options.nGBPerJob <= 0:
             tmpLog.error("--nGBPerJob must be positive")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
         # incompatible parameters
         if options.nFilesPerJob > 0:
             tmpLog.error("--nFilesPerJob and --nGBPerJob must be used exclusively")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
 
     # split options are mutually exclusive
     if options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob != -1:
         tmpLog.error("split by files, split by events and split by file size can not be used simultaneously")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
     # split options are mutually exclusive
     if options.nEventsPerJob > 0 and options.nGBPerJob != -1:
         tmpLog.error("split by events and split by file size can not be used simultaneously")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
     # translate --nJobs into nFiles / nFilesPerJob
     set_n_files_from_n_jobs(options)
@@ -1665,7 +1659,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     tmpErrMsg = "$ROOTCOREDIR is not defined in your environment. "
                     tmpErrMsg += "Please setup RootCore runtime beforehand"
                     tmpLog.error(tmpErrMsg)
-                    sys.exit(EC_Config)
+                    sys.exit(MiscUtils.EC_Config)
                 # check grid_submit.sh
                 rootCoreSubmitSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_submit.sh"
                 rootCoreCompileSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_compile.sh"
@@ -1681,7 +1675,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     if not os.path.exists(tmpShFile):
                         tmpErrMsg = "%s doesn't exist. Please use a newer version of RootCore" % tmpShFile
                         tmpLog.error(tmpErrMsg)
-                        sys.exit(EC_Config)
+                        sys.exit(MiscUtils.EC_Config)
                 tmpLog.info("copy RootCore packages to current dir")
                 # destination
                 pandaRootCoreWorkDirName = "__panda_rootCoreWorkDir"
@@ -1698,7 +1692,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 if tmpStat != 0:
                     tmpErrMsg = "{} failed with {}".format(rootCoreSubmitSh, tmpStat)
                     tmpLog.error(tmpErrMsg)
-                    sys.exit(EC_Config)
+                    sys.exit(MiscUtils.EC_Config)
                 # copy build and run scripts
                 shutil.copy(rootCoreRunSh, rootCoreDestWorkDir)
                 shutil.copy(rootCoreCompileSh, rootCoreDestWorkDir)
@@ -1899,7 +1893,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 print(out)
             if status != 0:
                 tmpLog.error("Failed to archive working area.\nIf you see 'Disk quota exceeded', try '--tmpDir /tmp'")
-                sys.exit(EC_Archive)
+                sys.exit(MiscUtils.EC_Archive)
 
             # check symlinks
             if options.useAthenaPackages:
@@ -1911,7 +1905,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     time.sleep(5)
                 if status != 0:
                     tmpLog.error(f"Failed to expand sandbox. {out}")
-                    sys.exit(EC_Archive)
+                    sys.exit(MiscUtils.EC_Archive)
                 symlinks = []
                 for line in out.split("\n"):
                     items = line.split()
@@ -1966,7 +1960,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             elif out != "True":
                 print(out)
                 tmpLog.error("failed to upload sandbox with %s" % status)
-                sys.exit(EC_Post)
+                sys.exit(MiscUtils.EC_Post)
             # good run list
             if options.goodRunListXML != "":
                 options.goodRunListXML = PsubUtils.uploadGzippedFile(
@@ -2215,7 +2209,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     tmpErrMsg = "dataset name suffix '%s' is used for multiple files in --outputs. " % tmpDsSuffix
                     tmpErrMsg += "each output must have a unique suffix."
                     tmpLog.error(tmpErrMsg)
-                    sys.exit(EC_Config)
+                    sys.exit(MiscUtils.EC_Config)
                 dsSuffix.append(tmpDsSuffix)
             if tmpLFN.startswith("regex|"):
                 # regex
@@ -2233,13 +2227,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 if "/" in tmpNewLFN:
                     tmp_err_msg = "An output file name %s contains '/'." % tmpNewLFN
                     tmpLog.error(tmp_err_msg)
-                    sys.exit(EC_Config)
+                    sys.exit(MiscUtils.EC_Config)
                 # check invalid characters
                 checked = PsubUtils.check_invalid_char(tmpNewLFN, is_file=True)
                 if checked is not None:
                     tmp_err_msg = 'An output file name {} contains an invalid character "{}".'.format(tmpNewLFN, checked)
                     tmpLog.error(tmp_err_msg)
-                    sys.exit(EC_Config)
+                    sys.exit(MiscUtils.EC_Config)
                 if len(outDatasetName.split(".")) > 2:
                     lfn = "{}.{}".format(*outDatasetName.split(".")[:2])
                 else:
@@ -2633,11 +2627,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 options.nGBPerMergeJob = int(options.nGBPerMergeJob)
             except Exception:
                 tmpLog.error("--nGBPerMergeJob must be an integer")
-                sys.exit(EC_Config)
+                sys.exit(MiscUtils.EC_Config)
             # check negative
             if options.nGBPerMergeJob <= 0:
                 tmpLog.error("--nGBPerMergeJob must be positive")
-                sys.exit(EC_Config)
+                sys.exit(MiscUtils.EC_Config)
             taskParamMap["nGBPerMergeJob"] = options.nGBPerMergeJob
 
     #####################################################################
@@ -2681,7 +2675,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         ):
             tmpStr = "invalid output datasetname:%s" % options.outDS
             tmpLog.error(tmpStr)
-            exitCode = EC_Config
+            exitCode = MiscUtils.EC_Config
         # check task parameters
         if exitCode == 0:
             exitCode, tmpStr = PsubUtils.checkTaskParam(newTaskParamMap, options.unlimitNumOutputs)
@@ -2716,7 +2710,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if status != 0:
                 tmpStr = f"task submission failed with {status}"
                 tmpLog.error(tmpStr)
-                exitCode = EC_Submit
+                exitCode = MiscUtils.EC_Submit
             else:
                 if tmpOut[0] in [0, 3]:
                     tmpStr = tmpOut[1]
@@ -2729,7 +2723,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 else:
                     tmpStr = f"task submission failed. {tmpOut[1]}"
                     tmpLog.error(tmpStr)
-                    exitCode = EC_Submit
+                    exitCode = MiscUtils.EC_Submit
         dumpItem = copy.deepcopy(vars(options))
         dumpItem["returnCode"] = exitCode
         dumpItem["returnOut"] = tmpStr

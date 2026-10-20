@@ -1614,8 +1614,6 @@ def call_idds_command(
         255: communication failure
        a tuple of (True, response from iDDS), or (False, diagnostic message) if failed
     """
-    tmp_log = PLogger.getPandaLogger()
-
     # instantiate the HTTP client
     client = _HttpClient()
     client.ssl_certificate = _x509_proxy_path()

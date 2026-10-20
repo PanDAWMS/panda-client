@@ -8,10 +8,6 @@ from . import MiscUtils, PLogger
 from .MiscUtils import commands_fail_on_non_zero_exit_status, commands_get_output, commands_get_output_with_env
 from .PsubUtils import check_invalid_char
 
-# error code
-EC_Config = 10
-EC_Archive = 60
-
 
 # get CMT projects
 def getCmtProjects(dir="."):
@@ -619,7 +615,7 @@ def getExtendedExtStreamName(sIndex, sName, enableExtension=False, addEXTNPrefix
         tmpLog.error(
             "Invalid stream extension name! If you use --useFileFieldAsStream, all %OUT instances in --trf must contain a distinct suffix, e.g. %OUT.AOD.pool.root"
         )
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
 
     return tmpBaseExtName
 
@@ -815,7 +811,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                             if verbose:
                                 print(relPath)
 
-                            commands_fail_on_non_zero_exit_status(comStr, EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+                            commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
                     continue
                 # else
                 if dereferenceSymLinks:
@@ -826,7 +822,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                 if verbose:
                     print("{}/{}".format(pack, item))
 
-                commands_fail_on_non_zero_exit_status(comStr, EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+                commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
         # back to previous dir
         os.chdir(_curdir)
 
@@ -894,7 +890,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
             if verbose:
                 print(relPath)
 
-            commands_fail_on_non_zero_exit_status(comStr, EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+            commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
             files_in_run_dir.append(os.path.abspath(file))
     # check if extFile is includedor tmp_file_path in files_in_run_dir):
     for tmp_ext_file in user_set_ext_files:
@@ -955,7 +951,7 @@ def archiveJobOFiles(workArea, runDir, currentDir, tmpDir, verbose, archiveName=
         if verbose:
             print(relPath)
 
-        commands_fail_on_non_zero_exit_status(comStr, EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+        commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
     # return
     return archiveName, archiveFullName
@@ -1061,14 +1057,14 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
                     if verbose:
                         print(file)
 
-                    commands_fail_on_non_zero_exit_status(comStr, EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+                    commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
     # append groupArea to sources
     if groupArea != "" and (not nobuild):
         os.chdir(tmpDir)
         if os.path.exists(groupFileName):
             comStr = "tar -rh '{}' -f '{}'".format(groupFileName, archiveFullName)
-            commands_fail_on_non_zero_exit_status(comStr, EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+            commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
             commands_get_output("rm -rf %s" % groupFullName)
 
@@ -1098,7 +1094,9 @@ def archiveWithCpack(withSource, tmpDir, verbose):
         comStr += '-D CPACK_PACKAGE_VERSION_MINOR="" -D CPACK_PACKAGE_VERSION_PATCH="" '
         comStr += '-D CPACK_PACKAGE_DESCRIPTION="" '
 
-        commands_fail_on_non_zero_exit_status(comStr, EC_Config, verbose_cmd=verbose, verbose_output=verbose, logger=tmpLog, error_log_msg="cpack failed")
+        commands_fail_on_non_zero_exit_status(
+            comStr, MiscUtils.EC_Config, verbose_cmd=verbose, verbose_output=verbose, logger=tmpLog, error_log_msg="cpack failed"
+        )
 
     else:
         use_cpack = False
@@ -1113,7 +1111,7 @@ def archiveWithCpack(withSource, tmpDir, verbose):
     else:
         comStr = f"tar cf {archiveName} -T /dev/null > /dev/null 2>&1"
 
-    commands_fail_on_non_zero_exit_status(comStr, EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+    commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
     os.chdir(_curdir)
     return archiveName, archiveFullName
@@ -1226,10 +1224,10 @@ def convertConfToOutput(
         if extOutStreams is not None:
             if len(extOutStreams) != len(extOutFile):
                 tmpLog.error("Missmatched --outputStreamNames (%s) to ext output files (%s)" % extOutStreams, extOutFile)
-                sys.exit(EC_Config)
+                sys.exit(MiscUtils.EC_Config)
             if len(extOutStreams) != len(set(extOutStreams)):
                 tmpLog.error("All output stream names indicated with --outputStreamNames (%s) must be different" % extOutStreams)
-                sys.exit(EC_Config)
+                sys.exit(MiscUtils.EC_Config)
         streams = []
         for sIndex, sName in enumerate(extOutFile):
             # change * to X and add .tgz
@@ -1248,7 +1246,7 @@ def convertConfToOutput(
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
         if len(streams) != len(set(streams)):
             tmpLog.error("All output stream names taken from the %OUT declarations (e.g. %OUT.streamname.root) and --extOutFile must be different")
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
     if runConfig.output.outTAGX:
         for sName, oName in runConfig.output.outTAGX:
             lfn = "{}.{}._${{SN/P}}.{}".format(outDSwoSlash, sName, oName)
@@ -1374,7 +1372,7 @@ def convertConfToOutput(
                 if checked is not None:
                     tmp_log = PLogger.getPandaLogger()
                     tmp_log.error('Invalid character "{}" used in output filename {}'.format(checked, stream))
-                    sys.exit(EC_Config)
+                    sys.exit(MiscUtils.EC_Config)
 
     # set destination
     if destination != "":
@@ -1399,7 +1397,7 @@ def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None
         except Exception as e:
             tmp_log = PLogger.getPandaLogger()
             tmp_log.error("failed to parse architecture {} : {}".format(architecture, e))
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
     # get CMTCONFIG
     cmt_config = ""
     spec_str = ""
@@ -1450,7 +1448,7 @@ def getCmtConfig(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None, v
         # get logger
         tmpLog = PLogger.getPandaLogger()
         tmpLog.error("environment variable CMTCONFIG is undefined. Please set --cmtConfig")
-        sys.exit(EC_Config)
+        sys.exit(MiscUtils.EC_Config)
     return None
 
 
@@ -1574,7 +1572,7 @@ def parse_athena_tag(athena_tag, verbose, tmp_log):
         # CMTCONFIG
         if item in ["32", "64"]:
             tmp_log.error("%s in --athenaTag is unsupported. Please use --cmtConfig instead" % item)
-            sys.exit(EC_Config)
+            sys.exit(MiscUtils.EC_Config)
         # ignoring AtlasOffline
         if item in ["AtlasOffline"]:
             continue
