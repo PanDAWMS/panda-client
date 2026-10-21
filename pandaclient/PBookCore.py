@@ -402,9 +402,10 @@ class PBookCore:
         return tmpDiag
 
     # show a native workflow
-    def show_native_workflow(self, workflow_id, format="standard"):
+    def show_native_workflow(self, workflow_id, format="standard", show_data=False):
         """Fetch a native workflow and print it. get_native_workflow returns the same data
-        unrendered, for a caller that wants to work with it rather than read it.
+        unrendered, for a caller that wants to work with it rather than read it. The json format
+        is the server's answer verbatim, so it always carries the data whatever show_data says.
         """
         workflow_dict = self.get_native_workflow(workflow_id)
         if not workflow_dict:
@@ -413,9 +414,9 @@ class PBookCore:
         if format == "json":
             spec.print_json()
         elif format == "plain":
-            spec.print_plain()
+            spec.print_plain(show_data=show_data)
         else:
-            spec.print_standard(long=(format == "long"))
+            spec.print_standard(long=(format == "long"), show_data=show_data)
 
     # set secret
     def set_secret(self, key, value, is_file=False):

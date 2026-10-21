@@ -48,9 +48,9 @@ _WORKFLOW_STATUS_STYLE = {
     "running": "bold cyan",
     # final statuses, all bold
     "done": "bold green",
-    "failed": "bold dark_red",
+    "failed": "bold red",
     "closed": "bold steel_blue",
-    "cancelled": "bold red",
+    "cancelled": "bold light_coral",
 }
 
 
@@ -224,12 +224,21 @@ class LocalNativeWorkflowSpec(object):
             return "-"
         return f"{progress.get('n_files_finished')}|{progress.get('n_files_failed')}|{progress.get('n_files')}"
 
+    @staticmethod
+    def _quoted(value):
+        """Quote a free-text field, since a workflow name or a user name can contain spaces
+
+        Without it, "user=Rody Wee" leaves no way to see where the value ends, and a workflow name
+        with a space in it would break the line in the middle.
+        """
+        return f'"{value}"' if value else "-"
+
     def _header_text(self, separator="  "):
         """The header line, with the workflow's status coloured as the steps' statuses are"""
         header = Text()
-        header.append(f"workflow_id={self._dict.get('workflow_id')}{separator}name={self._dict.get('name') or '-'}{separator}status=")
+        header.append(f"workflow_id={self._dict.get('workflow_id')}{separator}name={self._quoted(self._dict.get('name'))}{separator}status=")
         header.append_text(self._status_text(self._dict.get("status")))
-        header.append(f"{separator}submitted_as={self._dict.get('submitted_as')}{separator}user={self._dict.get('user')}")
+        header.append(f"{separator}submitted_as={self._dict.get('submitted_as')}{separator}user={self._quoted(self._dict.get('user'))}")
         return header
 
     def _print_header(self, console, separator="  "):
@@ -287,7 +296,7 @@ class LocalNativeWorkflowSpec(object):
             )
         return t
 
-    def _print_sections(self, console, long=False):
+    def _print_sections(self, console, long=False, show_data=False):
         steps = self._dict.get("steps", [])
         console.print(f"\n steps ({len(steps)}):", highlight=False)
         # an empty section is said, not drawn: a table of headings with no rows under it reads as
@@ -295,24 +304,29 @@ class LocalNativeWorkflowSpec(object):
         if steps:
             console.print(self._make_steps_table(long=long))
         data = self._dict.get("data", [])
+        if not show_data:
+            # the dataset names are long enough to dominate the output, and the steps are what is
+            # usually being looked at, so the count is reported and the table left out
+            console.print(f" data ({len(data)}), not shown; pass --show_data to see it", highlight=False)
+            return
         console.print(f" data ({len(data)}):", highlight=False)
         if data:
             console.print(self._make_data_table())
 
-    def print_standard(self, long=False):
+    def print_standard(self, long=False, show_data=False):
         self._print_header(_console)
-        self._print_sections(_console, long=long)
+        self._print_sections(_console, long=long, show_data=show_data)
 
     def print_json(self):
         print(json.dumps(self._dict, indent=2))
 
-    def print_plain(self):
+    def print_plain(self, show_data=False):
         # no colour and no links, for piping somewhere that cannot render them
         plain_console = Console(width=10000, no_color=True, highlight=False)
         self._plain = True
         try:
             # the console strips the colour; a single space keeps the line machine-readable
             self._print_header(plain_console, separator=" ")
-            self._print_sections(plain_console)
+            self._print_sections(plain_console, show_data=show_data)
         finally:
             self._plain = False
