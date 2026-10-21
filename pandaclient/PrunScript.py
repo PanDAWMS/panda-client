@@ -269,7 +269,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         const=True,
         dest="express",
         default=False,
-        help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before large submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities",
+        help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N), only the first M runXYZ subjobs will have higher priorities",
     )
     group_print.add_argument(
         "--debugMode",
@@ -325,7 +325,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         const=True,
         dest="bulkSubmission",
         default=False,
-        help="Bulk submit tasks. When this option is used, --inOutDsJson is required while --inDS and --outDS are ignored. It is possible to use %%DATASET_IN and %%DATASET_OUT in --exec which are replaced with actual dataset names when tasks are submitted, and %%BULKSEQNUMBER which is replaced with a sequential number of tasks in the bulk submission",
+        help="Bulk submit tasks. When this option is used, --inOutDsJson is required while --inDS and --outDS are ignored. It is possible to use %%DATASET_IN and %%DATASET_OUT in --trf (pathena) or --exec (prun) which are replaced with actual dataset names when tasks are submitted, and %%BULKSEQNUMBER which is replaced with a sequential number of tasks in the bulk submission",
     )
     group_build.add_argument(
         "--noCompile",
@@ -415,7 +415,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         default=-1,
         type=int,
         choices=[1, 8],
-        help="The number of CPU cores. nCore=1 or 8. The number of available cores is defined in an environment variable, $ATHENA_CORE_NUMBER, on WNs, or %%CORE_NUMBER in --exec",
+        help="The number of CPU cores. nCore=1 or 8. The number of available cores is defined in an environment variable, $ATHENA_CORE_NUMBER, on WNs, or %%CORE_NUMBER in --trf (pathena) or --exec (prun)",
     )
     group_submit.add_argument(
         "--maxCore",
@@ -727,7 +727,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         action="store",
         dest="inTarBall",
         default="",
-        help="Use a gzipped tarball of local files as input for buildXYZ. Generall the tarball is created by using --outTarBall",
+        help="Use a gzipped tarball of local files as input for buildXYZ. Generally the tarball is created by using --outTarBall",
     )
     group_build.add_argument(
         "--tarBallViaDDM",
@@ -786,7 +786,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         action="store",
         dest="mergeScript",
         default="",
-        help="Specify user-defied script execution string for output merging",
+        help="Specify user-defined script or execution string for output merging",
     )
     group_output.shareWithMe(action)
     group_print.add_argument(

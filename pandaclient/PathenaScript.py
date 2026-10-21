@@ -127,7 +127,7 @@ group_input.add_argument(
     dest="inDsTxt",
     default="",
     type=str,
-    help="a text file which contains the list of datasets to run over. newlines are replaced by commas and the result is set to --inDS. lines starting with # are ignored",
+    help="A text file which contains the list of datasets to run over. newlines are replaced by commas and the result is set to --inDS. lines starting with # are ignored",
 )
 action = group_input.add_argument(
     "--inOutDsJson",
@@ -371,7 +371,7 @@ group_submit.add_argument(
     const=True,
     dest="express",
     default=False,
-    help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N),  only the first M runXYZ subjobs will have higher priorities",
+    help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N), only the first M runXYZ subjobs will have higher priorities",
 )
 group_print.add_argument(
     "--debugMode",
@@ -448,7 +448,7 @@ action = group_job.add_argument(
     dest="mergeScript",
     default="",
     type=str,
-    help="Specify user-defied script or execution string for output merging",
+    help="Specify user-defined script or execution string for output merging",
 )
 group_output.shareWithMe(action)
 group_job.add_argument(
@@ -625,7 +625,7 @@ group_submit.add_argument(
     const=True,
     dest="bulkSubmission",
     default=False,
-    help="Bulk submit tasks. When this option is used, --inOutDsJson is required while --inDS and --outDS are ignored. It is possible to use %%DATASET_IN and %%DATASET_OUT in --trf which are replaced with actual dataset names when tasks are submitted, and %%BULKSEQNUMBER which is replaced with a sequential number of tasks in the bulk submission",
+    help="Bulk submit tasks. When this option is used, --inOutDsJson is required while --inDS and --outDS are ignored. It is possible to use %%DATASET_IN and %%DATASET_OUT in --trf (pathena) or --exec (prun) which are replaced with actual dataset names when tasks are submitted, and %%BULKSEQNUMBER which is replaced with a sequential number of tasks in the bulk submission",
 )
 group_build.add_argument(
     "--noCompile",
@@ -694,7 +694,7 @@ group_submit.add_argument(
     default=-1,
     type=int,
     choices=[1, 8],
-    help="The number of CPU cores. nCore=1 or 8. The number of available cores is defined in an environment variable, $ATHENA_CORE_NUMBER, on WNs, or %%CORE_NUMBER in --trf",
+    help="The number of CPU cores. nCore=1 or 8. The number of available cores is defined in an environment variable, $ATHENA_CORE_NUMBER, on WNs, or %%CORE_NUMBER in --trf (pathena) or --exec (prun)",
 )
 group_submit.add_argument(
     "--maxCore",
@@ -856,7 +856,7 @@ group_build.add_argument(
     dest="tmpDir",
     default="",
     type=str,
-    help="Temporary directory in which an archive file is created",
+    help="Temporary directory where an archive file is created",
 )
 group_input.add_argument(
     "--shipInput",
@@ -1006,7 +1006,7 @@ group_build.add_argument(
     dest="outTarBall",
     default="",
     type=str,
-    help="Save a gzipped tarball of local files which is the input to buildXYZ",
+    help="Save a gzipped tarball of local files which is the input for buildXYZ",
 )
 group_build.add_argument(
     "--inTarBall",
@@ -1014,7 +1014,7 @@ group_build.add_argument(
     dest="inTarBall",
     default="",
     type=str,
-    help="Use a gzipped tarball of local files as input to buildXYZ. Generall the tarball is created by using --outTarBall",
+    help="Use a gzipped tarball of local files as input for buildXYZ. Generally the tarball is created by using --outTarBall",
 )
 group_build.add_argument(
     "--tarBallViaDDM",
