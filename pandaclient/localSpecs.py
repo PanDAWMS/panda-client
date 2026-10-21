@@ -48,9 +48,9 @@ _WORKFLOW_STATUS_STYLE = {
     "running": "bold cyan",
     # final statuses, all bold
     "done": "bold green",
-    "failed": "bold red",
+    "failed": "bold light_coral",
     "closed": "bold steel_blue",
-    "cancelled": "bold light_coral",
+    "cancelled": "bold light_pink3",
 }
 
 
@@ -307,7 +307,7 @@ class LocalNativeWorkflowSpec(object):
         if not show_data:
             # the dataset names are long enough to dominate the output, and the steps are what is
             # usually being looked at, so the count is reported and the table left out
-            console.print(f" data ({len(data)}), not shown; pass --show_data to see it", highlight=False)
+            console.print(f" data ({len(data)}) (pass --show_data to see)", highlight=False)
             return
         console.print(f" data ({len(data)}):", highlight=False)
         if data:
