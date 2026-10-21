@@ -202,6 +202,16 @@ _COMMON_ARGS = [
         dict(action="store", dest="nGBPerMergeJob", default="MAX", help="Instantiate one merge job per NGBPERMERGEJOB GB of pre-merged files"),
     ),
     (
+        "submit",
+        ["--site"],
+        dict(
+            action="store",
+            dest="site",
+            default="AUTO",
+            help="Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites",
+        ),
+    ),
+    (
         "input",
         ["--notExpandInDS"],
         dict(
@@ -210,6 +220,16 @@ _COMMON_ARGS = [
             dest="notExpandInDS",
             default=False,
             help="Allow jobs to use files across dataset boundaries in input dataset container",
+        ),
+    ),
+    (
+        "input",
+        ["--inDsTxt"],
+        dict(
+            action="store",
+            dest="inDsTxt",
+            default="",
+            help="A text file which contains the list of datasets to run over. Newlines are replaced by commas and the result is set to --inDS. Lines starting with # are ignored",
         ),
     ),
     (

@@ -75,14 +75,6 @@ group_pathena.add_argument(
     default=False,
     help="Displays version",
 )
-group_submit.add_argument(
-    "--site",
-    action="store",
-    dest="site",
-    default="AUTO",
-    type=str,
-    help="Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites",
-)
 group_build.add_argument(
     "--athenaTag",
     action="store",
@@ -98,14 +90,6 @@ group_input.add_argument(
     default="",
     type=str,
     help="Input dataset names. wildcard and/or comma can be used to concatenate multiple datasets",
-)
-group_input.add_argument(
-    "--inDsTxt",
-    action="store",
-    dest="inDsTxt",
-    default="",
-    type=str,
-    help="A text file which contains the list of datasets to run over. newlines are replaced by commas and the result is set to --inDS. lines starting with # are ignored",
 )
 group_input.add_argument(
     "--secondaryDSs",

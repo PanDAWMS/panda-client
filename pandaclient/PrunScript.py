@@ -32,9 +32,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     :param get_options: get options and return them if True
     :return: task parameters or options if get_taskparams or get_options is True
     """
-    # default cloud/site
-    defaultSite = "AUTO"
-
     # tweak sys.argv
     sys.argv.pop(0)
     sys.argv.insert(0, "prun")
@@ -91,13 +88,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         dest="inDS",
         default="",
         help="Name of an input dataset or dataset container",
-    )
-    group_input.add_argument(
-        "--inDsTxt",
-        action="store",
-        dest="inDsTxt",
-        default="",
-        help="A text file which contains the list of datasets to run over. Newlines are replaced by commas and the result is set to --inDS. Lines starting with # are ignored",
     )
     group_output.add_argument(
         "--outputs",
@@ -168,13 +158,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         dest="useNumFilesInSecDSsAsRatio",
         default=False,
         help="Set the option when the nFiles field in --secondaryDSs means the ratio to the number of primary files",
-    )
-    group_submit.add_argument(
-        "--site",
-        action="store",
-        dest="site",
-        default=defaultSite,
-        help="Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites",
     )
     group_input.add_argument(
         "--match",
