@@ -14,13 +14,13 @@ def build_parser():
     """
     usage = """prun [options]
 
-      HowTo is available at https://panda-wms.readthedocs.io/en/latest/client/prun.html"""
+  HowTo is available at https://panda-wms.readthedocs.io/en/latest/client/prun.html"""
 
     examples = """Examples:
-      prun --exec "echo %IN > input.txt; root.exe; root -b -q macrotest.C" --athenaTag=22.0.0 --inDS ...
-      prun --exec "cpptest %IN" --bexec "make" --athenaTag=22.0.0 --inDS ...
-      prun --loadJson prunConfig.json   # read all prun options from one json file
-    """
+  prun --exec "echo %IN > input.txt; root.exe; root -b -q macrotest.C" --athenaTag=22.0.0 --inDS ...
+  prun --exec "cpptest %IN" --bexec "make" --athenaTag=22.0.0 --inDS ...
+  prun --loadJson prunConfig.json   # read all prun options from one json file
+"""
 
     optP = get_parser(usage=usage, conflict_handler="resolve")
     optP.set_examples(examples)
@@ -38,13 +38,13 @@ def build_parser():
     group_expert = optP.add_group("expert", "for experts/developers only")
 
     usage_containerJob = """Visit the following wiki page for examples:
-      https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
+  https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
 
-    Please test the job interactively first prior to submitting to the grid.
-    Check the following on how to test container job interactively:
-      https://twiki.cern.ch/twiki/bin/viewauth/AtlasComputing/SingularityInAtlas
-    """
-    group_containerJob = optP.add_group("containerJob", "For container-based jobs", usage=usage_containerJob)
+Please test the job interactively first prior to submitting to the grid.
+Check the following on how to test container job interactively:
+  https://twiki.cern.ch/twiki/bin/viewauth/AtlasComputing/SingularityInAtlas
+"""
+    group_containerJob = optP.add_group("containerJob", "for container-based jobs", usage=usage_containerJob)
 
     add_common_arguments(optP)
 
@@ -61,6 +61,7 @@ def build_parser():
     group_input.add_argument(
         "--inDS",
         action="store",
+        metavar="DATASET",
         dest="inDS",
         default="",
         help="Name of an input dataset or dataset container",
@@ -68,9 +69,10 @@ def build_parser():
     group_output.add_argument(
         "--outputs",
         action="store",
+        metavar="FILE[,FILE...]",
         dest="outputs",
         default="",
-        help="Names of output files. Comma separated. e.g., --outputs out1.dat,out2.txt. You can specify a suffix for each output container like <datasetNameSuffix>:<outputFileName>. e.g., --outputs AAA:out1.dat,BBB:out2.txt. In this case output container names are outDS_AAA/ and outDS_BBB/ instead of outDS_out1.dat/ and outDS_out2.txt/",
+        help="Names of output files. Comma separated. E.g., --outputs out1.dat,out2.txt. You can specify a suffix for each output container like <datasetNameSuffix>:<outputFileName>. E.g., --outputs AAA:out1.dat,BBB:out2.txt. In this case output container names are outDS_AAA/ and outDS_BBB/ instead of outDS_out1.dat/ and outDS_out2.txt/",
     )
     group_output.add_argument(
         "--noSeparateLog",
@@ -97,7 +99,7 @@ def build_parser():
         const=True,
         dest="useHomeDir",
         default=False,
-        help="execute prun just under the HOME dir",
+        help="Execute prun just under the HOME dir",
     )
     group_build.add_argument(
         "--noBuild",
@@ -110,6 +112,7 @@ def build_parser():
     group_input.add_argument(
         "--secondaryDSs",
         action="store",
+        metavar="STREAM:N:DATASET[:...][,...]",
         dest="secondaryDSs",
         default="",
         help="List of secondary datasets when the job requires multiple inputs. "
@@ -118,11 +121,12 @@ def build_parser():
         "nFiles is the number of files per job by default, while it means the ratio to the number of primary "
         "files when --useNumFilesInSecDSsAsRatio is set. DatasetName is the dataset name. "
         "Pattern is used to filter files in the dataset. nSkipFiles is the number of files to skip in the dataset. "
-        "FileNameList is a file listing names of files to be used in the dataset. ",
+        "FileNameList is a file listing names of files to be used in the dataset",
     )
     group_input.add_argument(
         "--reusableSecondary",
         action="store",
+        metavar="STREAM[,STREAM...]",
         dest="reusableSecondary",
         default="",
         help="A comma-separated list of secondary streams which reuse files when all files are used",
@@ -138,6 +142,7 @@ def build_parser():
     group_input.add_argument(
         "--match",
         action="store",
+        metavar="PATTERN",
         dest="match",
         default="",
         help="Use only files matching with given pattern",
@@ -145,6 +150,7 @@ def build_parser():
     group_input.add_argument(
         "--antiMatch",
         action="store",
+        metavar="PATTERN",
         dest="antiMatch",
         default="",
         help="Skip files matching with given pattern",
@@ -155,7 +161,7 @@ def build_parser():
         const=True,
         dest="notSkipLog",
         default=False,
-        help="Don't skip log files in input datasets (obsolete. use --useLogAsInput instead)",
+        help="Don't skip log files in input datasets (obsolete, use --useLogAsInput instead)",
     )
 
     group_build.add_argument(
@@ -177,6 +183,7 @@ def build_parser():
     group_input.add_argument(
         "--nSkipFiles",
         action="store",
+        metavar="N",
         dest="nSkipFiles",
         default=0,
         type=int,
@@ -185,9 +192,10 @@ def build_parser():
     group_job.add_argument(
         "--exec",
         action="store",
+        metavar="CMD",
         dest="jobParams",
         default="",
-        help='execution string. e.g., --exec "./myscript arg1 arg2"',
+        help='Execution string. E.g., --exec "./myscript arg1 arg2"',
     )
     group_output.add_argument(
         "--execWithRealFileNames",
@@ -200,6 +208,7 @@ def build_parser():
     group_build.add_argument(
         "--maxFileSize",
         action="store",
+        metavar="BYTES",
         dest="maxFileSize",
         default=1024 * 1024,
         type=int,
@@ -208,6 +217,7 @@ def build_parser():
     group_build.add_argument(
         "--athenaTag",
         action="store",
+        metavar="TAGS",
         dest="athenaTag",
         default="",
         help="Tags to setup Athena on remote WNs, e.g., --athenaTag=AtlasProduction,14.2.24.3",
@@ -215,6 +225,7 @@ def build_parser():
     group_build.add_argument(
         "--rootVer",
         action="store",
+        metavar="VERSION",
         dest="rootVer",
         default="",
         help="Specify a ROOT version which is not included in Athena, e.g., --rootVer=5.28/00",
@@ -229,9 +240,10 @@ def build_parser():
     group_build.add_argument(
         "--extFile",
         action="store",
+        metavar="FILE[,FILE...]",
         dest="extFile",
         default="",
-        help="root or large files under WORKDIR are not sent to WNs by default. If you want to send some skipped files, specify their names, e.g., data.root,data.tgz",
+        help="ROOT or large files under WORKDIR are not sent to WNs by default. If you want to send some skipped files, specify their names, e.g., data.root,data.tgz",
     )
     group_input.add_argument(
         "--useLogAsInput",
@@ -239,16 +251,17 @@ def build_parser():
         const=True,
         dest="useLogAsInput",
         default=False,
-        help="log.tgz files in inDS are ignored by default. This option allows log files to be used as input",
+        help="Log.tgz files in inDS are ignored by default. This option allows log files to be used as input",
     )
     group_submit.add_argument(
         "--processingType",
         action="store",
+        metavar="TYPE",
         dest="processingType",
         default="prun",
-        help="set processingType",
+        help="Set processingType",
     )
-    group_build.add_argument("--vo", action="store", dest="vo", default=None, help="virtual organization name")
+    group_build.add_argument("--vo", action="store", dest="vo", default=None, help="Virtual organization name")
     group_expert.add_argument(
         "--msgDriven",
         action="store_const",
@@ -260,6 +273,7 @@ def build_parser():
     group_expert.add_argument(
         "--persistentFile",
         action="store",
+        metavar="FILE",
         dest="persistentFile",
         default="",
         help="Please don't use this option. Only for junction steps " "to keep persistent information in workflows",
@@ -267,13 +281,15 @@ def build_parser():
     group_build.add_argument(
         "--bexec",
         action="store",
+        metavar="CMD",
         dest="bexec",
         default="",
-        help='execution string for build stage. e.g., --bexec "make"',
+        help='Execution string for build stage. E.g., --bexec "make"',
     )
     group_job.add_argument(
         "--maxNFilesPerJob",
         action="store",
+        metavar="N",
         dest="maxNFilesPerJob",
         default=200,
         type=int,
@@ -282,16 +298,18 @@ def build_parser():
     group_input.add_argument(
         "--writeInputToTxt",
         action="store",
+        metavar="STREAM:FILE[,STREAM:FILE...]",
         dest="writeInputToTxt",
         default="",
-        help="Write the input file list to a file so that your application gets the list from the file instead of stdin. The argument is a comma separated list of StreamName:FileName. e.g., IN:input1.txt,IN2:input2.txt",
+        help="Write the input file list to a file so that your application gets the list from the file instead of stdin. The argument is a comma separated list of StreamName:FileName. E.g., IN:input1.txt,IN2:input2.txt",
     )
     group_build.add_argument(
         "--dbRelease",
         action="store",
+        metavar="DATASET:FILE",
         dest="dbRelease",
         default="",
-        help="DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used. Most likely the --useAthenaPackages or --athenaTag option is required to setup Athena runtime on WN",
+        help="DBRelease or CDRelease (DatasetName:FileName). E.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used. Most likely the --useAthenaPackages or --athenaTag option is required to setup Athena runtime on WN",
     )
     group_build.add_argument(
         "--notExpandDBR",
@@ -313,13 +331,15 @@ def build_parser():
     group_config.add_argument(
         "--loadXML",
         action="store",
+        metavar="FILE",
         dest="loadXML",
         default=None,
-        help="Expert mode: load complete submission configuration from an XML file ",
+        help="Expert mode: load complete submission configuration from an XML file",
     )
     group_config.add_argument(
         "--loadJson",
         action="store",
+        metavar="FILE",
         dest="loadJson",
         default=None,
         help="Read command-line parameters from a json file which contains a dict of {parameter: value}",
@@ -327,6 +347,7 @@ def build_parser():
     group_config.add_argument(
         "--dumpTaskParams",
         action="store",
+        metavar="FILE",
         dest="dumpTaskParams",
         default=None,
         help="Dump task parameters to a json file",
@@ -430,13 +451,14 @@ def build_parser():
     group_containerJob.add_argument(
         "--alrbArgs",
         action="store",
+        metavar="ARGS",
         dest="alrbArgs",
         default=None,
         help="Additional arguments for ALRB to run the container. "
         '"setupATLAS -c --help" shows available ALRB arguments. For example, '
         '--alrbArgs "--nocvmfs	--nohome" to skip mounting /cvmfs and $HOME. '
         "This option is mainly for experts who know how the system and the container "
-        "communicates with each other and how additional ALRB arguments affect "
+        "communicate with each other and how additional ALRB arguments affect "
         "the consequence",
     )
     group_containerJob.add_argument(
@@ -446,7 +468,7 @@ def build_parser():
         dest="oldContMode",
         default=False,
         help="Use runcontainer for container execution. Note that this option will be "
-        "deleted near future. Try the new ARLB scheme as soon as possible and report "
+        "deleted near future. Try the new ALRB scheme as soon as possible and report "
         "if there is a problem",
     )
 

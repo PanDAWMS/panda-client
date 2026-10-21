@@ -45,7 +45,7 @@ _COMMON_ARGS = [
             dest="transferType",
             default=None,
             metavar="TYPE[,TYPE...]",
-            help="Comma-separated transfer types to restrict input access. Allowed values: root, direct, davs, file. If not specified, all transfer types are allowed.",
+            help="Comma-separated transfer types to restrict input access. Allowed values: root, direct, davs, file. If not specified, all transfer types are allowed",
         ),
     ),
     (
@@ -64,6 +64,7 @@ _COMMON_ARGS = [
         ["--nEvents"],
         dict(
             action="store",
+            metavar="N",
             dest="nEvents",
             default=-1,
             type=int,
@@ -75,6 +76,7 @@ _COMMON_ARGS = [
         ["--nFiles", "--nfiles"],
         dict(
             action="store",
+            metavar="N",
             dest="nFiles",
             default=0,
             type=int,
@@ -86,6 +88,7 @@ _COMMON_ARGS = [
         ["--nFilesPerJob"],
         dict(
             action="store",
+            metavar="N",
             dest="nFilesPerJob",
             default=-1,
             type=int,
@@ -109,6 +112,7 @@ _COMMON_ARGS = [
         ["--nEventsPerJob"],
         dict(
             action="store",
+            metavar="N",
             dest="nEventsPerJob",
             default=-1,
             type=int,
@@ -121,6 +125,7 @@ _COMMON_ARGS = [
         ["--nEventsPerFile"],
         dict(
             action="store",
+            metavar="N",
             dest="nEventsPerFile",
             default=0,
             type=int,
@@ -143,12 +148,13 @@ _COMMON_ARGS = [
         ["--allowNoOutput"],
         dict(
             action="store",
+            metavar="PATTERN[,PATTERN...]",
             dest="allowNoOutput",
             default="",
             help="A comma-separated list of regexp patterns for output files which are allowed not to be produced. "
             "Jobs go to finished even if those files are not produced on WN. "
             "Patterns are evaluated at submission time against output filename templates such as user.X.$JEDITASKID._${SN/P}.out.root, "
-            "and must match up to the end of the template, e.g. out.root or .*\\.root",
+            "and must match up to the end of the template, e.g., out.root or .*\\.root",
         ),
         ("output",),
     ),
@@ -160,7 +166,7 @@ _COMMON_ARGS = [
             const=True,
             dest="mergeSingleFile",
             default=False,
-            help="By default, the merge step simply renames a single input file to reduce memory and disk usage. This option forces execution of the user-provided merge script even for a single input file.",
+            help="By default, the merge step simply renames a single input file to reduce memory and disk usage. This option forces execution of the user-provided merge script even for a single input file",
         ),
     ),
     (
@@ -208,7 +214,7 @@ _COMMON_ARGS = [
             action="store",
             dest="site",
             default="AUTO",
-            help="Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g. siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g. siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites",
+            help="Site name where jobs are sent. If omitted, jobs are automatically sent to sites where input is available. A comma-separated list of sites can be specified (e.g., siteA,siteB,siteC), so that best sites are chosen from the given site list. If AUTO is appended at the end of the list (e.g., siteA,siteB,siteC,AUTO), jobs are sent to any sites if input is not found in the previous sites",
         ),
     ),
     (
@@ -227,6 +233,7 @@ _COMMON_ARGS = [
         ["--inDsTxt"],
         dict(
             action="store",
+            metavar="FILE",
             dest="inDsTxt",
             default="",
             help="A text file which contains the list of datasets to run over. Newlines are replaced by commas and the result is set to --inDS. Lines starting with # are ignored",
@@ -237,12 +244,13 @@ _COMMON_ARGS = [
         ["--inOutDsJson"],
         dict(
             action="store",
+            metavar="FILE",
             dest="inOutDsJson",
             default="",
             help="A json file to specify input and output datasets for bulk submission. "
             "It contains a json dump of [{'inDS': a comma-concatenated input dataset names, "
             "'outDS': output dataset name}, ...]. "
-            "When this option is used --bulkSubmission is automatically set internally.",
+            "When this option is used --bulkSubmission is automatically set internally",
         ),
         ("output",),
     ),
@@ -256,18 +264,28 @@ _COMMON_ARGS = [
     (
         "evtFilter",
         ["--goodRunListXML"],
-        dict(action="store", dest="goodRunListXML", default="", help="Good Run List XML which will be converted to datasets by AMI"),
+        dict(action="store", metavar="FILE", dest="goodRunListXML", default="", help="Good Run List XML which will be converted to datasets by AMI"),
     ),
     (
         "evtFilter",
         ["--goodRunListDataType"],
-        dict(action="store", dest="goodRunDataType", default="", help="specify data type when converting Good Run List XML to datasets, e.g, AOD (default)"),
+        dict(
+            action="store",
+            metavar="TYPE",
+            dest="goodRunDataType",
+            default="",
+            help="Specify data type when converting Good Run List XML to datasets, e.g., AOD (default)",
+        ),
     ),
     (
         "evtFilter",
         ["--goodRunListProdStep"],
         dict(
-            action="store", dest="goodRunProdStep", default="", help="specify production step when converting Good Run List to datasets, e.g, merge (default)"
+            action="store",
+            metavar="STEP",
+            dest="goodRunProdStep",
+            default="",
+            help="Specify production step when converting Good Run List to datasets, e.g., merge (default)",
         ),
     ),
     (
@@ -275,6 +293,7 @@ _COMMON_ARGS = [
         ["--goodRunListDS"],
         dict(
             action="store",
+            metavar="PATTERN[,PATTERN...]",
             dest="goodRunListDS",
             default="",
             help=r'A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used',
@@ -284,31 +303,32 @@ _COMMON_ARGS = [
     (
         "evtFilter",
         ["--eventPickEvtList"],
-        dict(action="store", dest="eventPickEvtList", default="", help="a file name which contains a list of runs/events for event picking"),
+        dict(action="store", metavar="FILE", dest="eventPickEvtList", default="", help="A file name which contains a list of runs/events for event picking"),
     ),
     (
         "evtFilter",
         ["--eventPickDataType"],
-        dict(action="store", dest="eventPickDataType", default="", help="type of data for event picking. one of AOD,ESD,RAW"),
+        dict(action="store", metavar="TYPE", dest="eventPickDataType", default="", help="Type of data for event picking. One of AOD,ESD,RAW"),
     ),
     (
         "evtFilter",
         ["--ei_api"],
-        dict(action="store", dest="ei_api", default="", help="flag to signalise mc in event picking"),
+        dict(action="store", metavar="VALUE", dest="ei_api", default="", help="Flag to signalise mc in event picking"),
     ),
     (
         "evtFilter",
         ["--eventPickStreamName"],
-        dict(action="store", dest="eventPickStreamName", default="", help="stream name for event picking. e.g., physics_CosmicCaloEM"),
+        dict(action="store", metavar="STREAM", dest="eventPickStreamName", default="", help="Stream name for event picking. E.g., physics_CosmicCaloEM"),
     ),
     (
         "evtFilter",
         ["--eventPickDS"],
         dict(
             action="store",
+            metavar="PATTERN[,PATTERN...]",
             dest="eventPickDS",
             default="",
-            help=r'A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*',
+            help=r'A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. E.g., data\*',
         ),
         ("input",),
     ),
@@ -317,9 +337,10 @@ _COMMON_ARGS = [
         ["--eventPickAmiTag"],
         dict(
             action="store",
+            metavar="TAG",
             dest="eventPickAmiTag",
             default="",
-            help=r'AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*',
+            help=r'AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. E.g., f2\*',
         ),
     ),
     (
@@ -360,9 +381,10 @@ _COMMON_ARGS = [
         ["--addNthFieldOfInDSToLFN"],
         dict(
             action="store",
+            metavar="N[,N...]",
             dest="addNthFieldOfInDSToLFN",
             default="",
-            help="A middle name is added to LFNs of output files when they are produced from one dataset in the input container or input dataset list. The middle name is extracted from the dataset name. E.g., if --addNthFieldOfInDSToLFN=2 and the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is extracted and LFN is something like user.hoge.TASKID.00160387.blah. Concatenate multiple field numbers with commas if necessary, e.g., --addNthFieldOfInDSToLFN=2,6.",
+            help="A middle name is added to LFNs of output files when they are produced from one dataset in the input container or input dataset list. The middle name is extracted from the dataset name. E.g., if --addNthFieldOfInDSToLFN=2 and the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is extracted and LFN is something like user.hoge.TASKID.00160387.blah. Concatenate multiple field numbers with commas if necessary, e.g., --addNthFieldOfInDSToLFN=2,6",
         ),
     ),
     (
@@ -370,6 +392,7 @@ _COMMON_ARGS = [
         ["--addNthFieldOfInFileToLFN"],
         dict(
             action="store",
+            metavar="N[,N...]",
             dest="addNthFieldOfInFileToLFN",
             default="",
             help="A middle name is added to LFNs of output files similarly as --addNthFieldOfInDSToLFN, but strings are extracted from input file names",
@@ -378,17 +401,17 @@ _COMMON_ARGS = [
     (
         "output",
         ["--mergeOutput"],
-        dict(action="store_const", const=True, dest="mergeOutput", default=False, help="merge output files"),
+        dict(action="store_const", const=True, dest="mergeOutput", default=False, help="Merge output files"),
     ),
     (
         "output",
         ["--mergeLog"],
-        dict(action="store_const", const=True, dest="mergeLog", default=False, help="merge log files. relevant only with --mergeOutput"),
+        dict(action="store_const", const=True, dest="mergeLog", default=False, help="Merge log files. Relevant only with --mergeOutput"),
     ),
     (
         "job",
         ["--mergeScript"],
-        dict(action="store", dest="mergeScript", default="", help="Specify user-defined script or execution string for output merging"),
+        dict(action="store", metavar="SCRIPT", dest="mergeScript", default="", help="Specify user-defined script or execution string for output merging"),
         ("output",),
     ),
     (
@@ -399,7 +422,7 @@ _COMMON_ARGS = [
     (
         "output",
         ["--destSE"],
-        dict(action="store", dest="destSE", default="", help="Destination storage element"),
+        dict(action="store", metavar="SE", dest="destSE", default="", help="Destination storage element"),
     ),
     (
         "submit",
@@ -431,7 +454,9 @@ _COMMON_ARGS = [
     (
         "submit",
         ["--memory"],
-        dict(action="store", dest="memory", default=-1, type=int, help="Required memory size in MB per core. e.g., for 1GB per core --memory 1024"),
+        dict(
+            action="store", metavar="MB", dest="memory", default=-1, type=int, help="Required memory size in MB per core. E.g., for 1GB per core --memory 1024"
+        ),
     ),
     (
         "submit",
@@ -443,6 +468,7 @@ _COMMON_ARGS = [
         ["--outDiskCount"],
         dict(
             action="store",
+            metavar="KB",
             dest="outDiskCount",
             default=None,
             type=int,
@@ -457,6 +483,7 @@ _COMMON_ARGS = [
         ["--nCore"],
         dict(
             action="store",
+            metavar="N",
             dest="nCore",
             default=-1,
             type=int,
@@ -469,10 +496,11 @@ _COMMON_ARGS = [
         ["--maxCore"],
         dict(
             action="store",
+            metavar="N",
             dest="maxCore",
             default=None,
             type=int,
-            help="The maximum number of CPU cores that a single job is allowed to utilize. Use this option to prevent jobs that do not scale efficiently with additional cores from occupying many core resources.",
+            help="The maximum number of CPU cores that a single job is allowed to utilize. Use this option to prevent jobs that do not scale efficiently with additional cores from occupying many core resources",
         ),
     ),
     (
@@ -512,9 +540,10 @@ _COMMON_ARGS = [
         ["--descriptionInLFN"],
         dict(
             action="store",
+            metavar="DESCRIPTION",
             dest="descriptionInLFN",
             default="",
-            help="LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something",
+            help="LFN is user.nickname.jobsetID.something (e.g., user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something",
         ),
     ),
     (
@@ -522,9 +551,10 @@ _COMMON_ARGS = [
         ["--excludeFile"],
         dict(
             action="store",
+            metavar="PATTERN[,PATTERN...]",
             dest="excludeFile",
             default="",
-            help=r'specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C',
+            help=r'Specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. E.g., doc,\*.C',
         ),
     ),
     (
@@ -532,9 +562,10 @@ _COMMON_ARGS = [
         ["--gluePackages"],
         dict(
             action="store",
+            metavar="PACKAGE[,PACKAGE...]",
             dest="gluePackages",
             default="",
-            help="list of glue packages which pathena cannot find due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf",
+            help="List of glue packages which pathena cannot find due to empty i686-slc4-gcc34-opt. E.g., External/AtlasHepMC,External/Lhapdf",
         ),
     ),
     (
@@ -542,6 +573,7 @@ _COMMON_ARGS = [
         ["--excludedSite"],
         dict(
             action="append",
+            metavar="SITE[,SITE...]",
             dest="excludedSite",
             default=[],
             help="A comma-separated list of sites which are not used for site section, "
@@ -556,33 +588,34 @@ _COMMON_ARGS = [
     (
         "submit",
         ["--framework"],
-        dict(action="store", dest="framework", default="", help="set framework used for task submission"),
+        dict(action="store", metavar="NAME", dest="framework", default="", help="Set framework used for task submission"),
     ),
     (
         "submit",
         ["--prodSourceLabel"],
-        dict(action="store", dest="prodSourceLabel", default="", help="set prodSourceLabel"),
+        dict(action="store", metavar="LABEL", dest="prodSourceLabel", default="", help="Set prodSourceLabel"),
     ),
     (
         "submit",
         ["--workingGroup"],
-        dict(action="store", dest="workingGroup", default=None, help="set workingGroup"),
+        dict(action="store", metavar="GROUP", dest="workingGroup", default=None, help="Set workingGroup"),
     ),
     (
         "build",
         ["--tmpDir"],
-        dict(action="store", dest="tmpDir", default="", help="Temporary directory where an archive file is created"),
+        dict(action="store", metavar="DIR", dest="tmpDir", default="", help="Temporary directory where an archive file is created"),
     ),
     (
         "submit",
         ["--disableAutoRetry"],
-        dict(action="store_const", const=True, dest="disableAutoRetry", default=False, help="disable automatic job retry on the server side"),
+        dict(action="store_const", const=True, dest="disableAutoRetry", default=False, help="Disable automatic job retry on the server side"),
     ),
     (
         "input",
         ["--inputFileList"],
         dict(
             action="store",
+            metavar="FILE",
             dest="inputFileList",
             default="",
             help="A local file which specifies names of files to be used in the input dataset. " "One filename per line in the local file",
@@ -595,13 +628,13 @@ _COMMON_ARGS = [
             action="store",
             dest="vomsRoles",
             default=None,
-            help="generate proxy with particular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
+            help="Generate proxy with particular roles. E.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
         ),
     ),
     (
         "output",
         ["--spaceToken"],
-        dict(action="store", dest="spaceToken", default="", help="spacetoken for outputs. e.g., ATLASLOCALGROUPDISK"),
+        dict(action="store", metavar="TOKEN", dest="spaceToken", default="", help="Spacetoken for outputs. E.g., ATLASLOCALGROUPDISK"),
     ),
     (
         "expert",
@@ -611,7 +644,7 @@ _COMMON_ARGS = [
     (
         "job",
         ["--respectSplitRule"],
-        dict(action="store_const", const=True, dest="respectSplitRule", default=False, help="force scout jobs to follow split rules like nGBPerJob"),
+        dict(action="store_const", const=True, dest="respectSplitRule", default=False, help="Force scout jobs to follow split rules like nGBPerJob"),
     ),
     (
         "expert",
@@ -634,13 +667,14 @@ _COMMON_ARGS = [
     (
         "build",
         ["--outTarBall"],
-        dict(action="store", dest="outTarBall", default="", help="Save a gzipped tarball of local files which is the input for buildXYZ"),
+        dict(action="store", metavar="FILE", dest="outTarBall", default="", help="Save a gzipped tarball of local files which is the input for buildXYZ"),
     ),
     (
         "build",
         ["--inTarBall"],
         dict(
             action="store",
+            metavar="FILE",
             dest="inTarBall",
             default="",
             help="Use a gzipped tarball of local files as input for buildXYZ. Generally the tarball is created by using --outTarBall",
@@ -651,6 +685,7 @@ _COMMON_ARGS = [
         ["--tarBallViaDDM"],
         dict(
             action="store",
+            metavar="DATASET:FILE",
             dest="tarBallViaDDM",
             default="",
             help="Use a gzipped tarball pre-uploaded to DDM as input for buildXYZ. --tarBallViaDDM=datasetName:fileName",
@@ -659,7 +694,13 @@ _COMMON_ARGS = [
     (
         "input",
         ["--pfnList"],
-        dict(action="store", dest="pfnList", default="", help="Name of file which contains a list of input PFNs. Those files can be un-registered in DDM"),
+        dict(
+            action="store",
+            metavar="FILE",
+            dest="pfnList",
+            default="",
+            help="Name of file which contains a list of input PFNs. Those files can be un-registered in DDM",
+        ),
     ),
     (
         "build",
@@ -671,7 +712,7 @@ _COMMON_ARGS = [
             help="CMTCONFIG is extracted from local environment variables when tasks are submitted, "
             "to set up the same environment on remote worker-nodes. "
             "This option allows to set up another CMTCONFIG "
-            "remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt.",
+            "remotely. E.g., --cmtConfig x86_64-slc5-gcc43-opt",
         ),
     ),
     (
@@ -690,6 +731,7 @@ _COMMON_ARGS = [
         ["--skipFilesUsedBy"],
         dict(
             action="store",
+            metavar="TASKID[,TASKID...]",
             dest="skipFilesUsedBy",
             default="",
             help="A comma-separated list of TaskIDs. Files used by those tasks are skipped when running a new task",
@@ -698,7 +740,14 @@ _COMMON_ARGS = [
     (
         "submit",
         ["--maxAttempt"],
-        dict(action="store", dest="maxAttempt", default=-1, type=int, help="Maximum number of reattempts for each job (3 by default and not larger than 50)"),
+        dict(
+            action="store",
+            metavar="N",
+            dest="maxAttempt",
+            default=-1,
+            type=int,
+            help="Maximum number of reattempts for each job (3 by default and not larger than 50)",
+        ),
     ),
     (
         "submit",
@@ -708,7 +757,7 @@ _COMMON_ARGS = [
     (
         "containerJob",
         ["--containerImage"],
-        dict(action="store", dest="containerImage", default="", help="Name of a container image"),
+        dict(action="store", metavar="IMAGE", dest="containerImage", default="", help="Name of a container image"),
     ),
     (
         "containerJob",
@@ -727,14 +776,14 @@ _COMMON_ARGS = [
             "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
             "CPU with avx2 support and nvidia GPU. "
             "GPU attributes can also be appended as colon-separated key=value pairs in the shorthand "
-            "(e.g. #&nvidia:vram>=40960:driver>=575.0:model=.*A100.*); supported keys: vram, cuda, uarch, driver, model. "
-            "Use = or == for exact match, != for model exclusion (e.g. model!=.*P100.* excludes P100 queues). "
+            "(e.g., #&nvidia:vram>=40960:driver>=575.0:model=.*A100.*); supported keys: vram, cuda, uarch, driver, model. "
+            "Use = or == for exact match, != for model exclusion (e.g., model!=.*P100.* excludes P100 queues). "
             "This option also allows to specify a json-serialized dictionary. The gpu_spec supports: "
-            'model (regexp, e.g. {"model": ".*A100.*"} to require an A100, or {"model": {"pattern": ".*P100.*", "excl": true}} to exclude P100 queues, case-insensitive); '
-            'version (minimum CUDA version, e.g. {"version": ">=12.0"}); '
-            'vram (GPU memory in MB as an operator-prefixed string, e.g. {"vram": ">=40960"} for at least 40 GB or {"vram": "==40960"} for exactly 40 GB); '
-            'microarchitecture (GPU microarch generation, e.g. {"microarchitecture": "Ampere"} or {"microarchitecture": ["Ampere", "Hopper"]}); '
-            'driver_version (NVIDIA kernel driver version, e.g. {"driver_version": ">=575.0"} for minimum or {"driver_version": "==575.51.03"} for exact). '
+            'model (regexp, e.g., {"model": ".*A100.*"} to require an A100, or {"model": {"pattern": ".*P100.*", "excl": true}} to exclude P100 queues, case-insensitive); '
+            'version (minimum CUDA version, e.g., {"version": ">=12.0"}); '
+            'vram (GPU memory in MB as an operator-prefixed string, e.g., {"vram": ">=40960"} for at least 40 GB or {"vram": "==40960"} for exactly 40 GB); '
+            'microarchitecture (GPU microarch generation, e.g., {"microarchitecture": "Ampere"} or {"microarchitecture": ["Ampere", "Hopper"]}); '
+            'driver_version (NVIDIA kernel driver version, e.g., {"driver_version": ">=575.0"} for minimum or {"driver_version": "==575.51.03"} for exact). '
             "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, microarchitecture, version, driver_version) use worker node GPU monitoring data. "
             "See https://panda-wms.readthedocs.io/en/latest/advanced/brokerage.html#checks-for-cpu-and-or-gpu-hardware",
         ),
@@ -770,6 +819,7 @@ _COMMON_ARGS = [
         ["--dumpJson"],
         dict(
             action="store",
+            metavar="FILE",
             dest="dumpJson",
             default=None,
             help="Dump all command-line parameters and submission result such as returnCode, returnOut, jediTaskID, and bulkSeqNumber if --bulkSubmission is used, to a json file",
@@ -780,6 +830,7 @@ _COMMON_ARGS = [
         ["--parentTaskID"],
         dict(
             action="store",
+            metavar="TASKID",
             dest="parentTaskID",
             default=None,
             type=int,
@@ -797,7 +848,7 @@ _COMMON_ARGS = [
             help="Set priority of the task (1000 by default). The value must be between 900 and 1100. "
             "Note that priorities of tasks are relevant only in "
             "each user's share, i.e., your tasks cannot jump over other user's tasks "
-            "even if you give higher priorities.",
+            "even if you give higher priorities",
         ),
     ),
     (
@@ -808,7 +859,7 @@ _COMMON_ARGS = [
             const=True,
             dest="osMatching",
             default=False,
-            help="To let the brokerage choose sites which have the same OS as the local machine has.",
+            help="To let the brokerage choose sites which have the same OS as the local machine has",
         ),
     ),
     (
@@ -816,6 +867,7 @@ _COMMON_ARGS = [
         ["--cpuTimePerEvent"],
         dict(
             action="store",
+            metavar="SECONDS",
             dest="cpuTimePerEvent",
             default=-1,
             type=int,
@@ -832,6 +884,7 @@ _COMMON_ARGS = [
         ["--maxWalltime"],
         dict(
             action="store",
+            metavar="HOURS",
             dest="maxWalltime",
             default=0,
             type=int,

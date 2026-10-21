@@ -44,7 +44,7 @@ Please test the job interactively first prior to submitting to the grid.
 Check the following on how to test container job interactively:
   https://twiki.cern.ch/twiki/bin/viewauth/AtlasComputing/SingularityInAtlas
 """
-    group_containerJob = optP.add_group("containerJob", "For container-based jobs", usage=usage_containerJob)
+    group_containerJob = optP.add_group("containerJob", "for container-based jobs", usage=usage_containerJob)
 
     add_common_arguments(optP)
 
@@ -62,14 +62,16 @@ Check the following on how to test container job interactively:
     group_build.add_argument(
         "--athenaTag",
         action="store",
+        metavar="TAGS",
         dest="athenaTag",
         default="",
         type=str,
-        help="Use different version of Athena on remote WN. By default the same version which you are locally using is set up on WN. e.g., --athenaTag=AtlasProduction,14.2.24.3",
+        help="Use different version of Athena on remote WN. By default the same version which you are locally using is set up on WN. E.g., --athenaTag=AtlasProduction,14.2.24.3",
     )
     group_input.add_argument(
         "--inDS",
         action="store",
+        metavar="DATASET",
         dest="inDS",
         default="",
         type=str,
@@ -78,6 +80,7 @@ Check the following on how to test container job interactively:
     group_input.add_argument(
         "--secondaryDSs",
         action="store",
+        metavar="STREAM:N:DATASET[:...][,...]",
         dest="secondaryDSs",
         default="",
         help="A versatile option to specify arbitrary secondary inputs that takes a list of " "secondary datasets. See PandaRun wiki page for detail",
@@ -85,6 +88,7 @@ Check the following on how to test container job interactively:
     group_input.add_argument(
         "--minDS",
         action="store",
+        metavar="DATASET",
         dest="minDS",
         default="",
         type=str,
@@ -93,6 +97,7 @@ Check the following on how to test container job interactively:
     group_job.add_argument(
         "--nMin",
         action="store",
+        metavar="N",
         dest="nMin",
         default=-1,
         type=int,
@@ -109,6 +114,7 @@ Check the following on how to test container job interactively:
     group_input.add_argument(
         "--lowMinDS",
         action="store",
+        metavar="DATASET",
         dest="lowMinDS",
         default="",
         type=str,
@@ -117,6 +123,7 @@ Check the following on how to test container job interactively:
     group_job.add_argument(
         "--nLowMin",
         action="store",
+        metavar="N",
         dest="nLowMin",
         default=-1,
         type=int,
@@ -133,6 +140,7 @@ Check the following on how to test container job interactively:
     group_input.add_argument(
         "--highMinDS",
         action="store",
+        metavar="DATASET",
         dest="highMinDS",
         default="",
         type=str,
@@ -141,6 +149,7 @@ Check the following on how to test container job interactively:
     group_job.add_argument(
         "--nHighMin",
         action="store",
+        metavar="N",
         dest="nHighMin",
         default=-1,
         type=int,
@@ -160,11 +169,12 @@ Check the following on how to test container job interactively:
         const=True,
         dest="randomMin",
         default=False,
-        help="randomize files in minimum bias dataset",
+        help="Randomize files in minimum bias dataset",
     )
     group_input.add_argument(
         "--cavDS",
         action="store",
+        metavar="DATASET",
         dest="cavDS",
         default="",
         type=str,
@@ -173,6 +183,7 @@ Check the following on how to test container job interactively:
     group_job.add_argument(
         "--nCav",
         action="store",
+        metavar="N",
         dest="nCav",
         default=-1,
         type=int,
@@ -192,7 +203,7 @@ Check the following on how to test container job interactively:
         const=True,
         dest="randomCav",
         default=False,
-        help="randomize files in cavern dataset",
+        help="Randomize files in cavern dataset",
     )
     group_submit.add_argument(
         "--sameSecRetry",
@@ -208,7 +219,7 @@ Check the following on how to test container job interactively:
         const=True,
         dest="useAMIEventLevelSplit",
         default=None,
-        help="retrieve the number of events per file from AMI to split the job using --nEventsPerJob",
+        help="Retrieve the number of events per file from AMI to split the job using --nEventsPerJob",
     )
     group_output.add_argument(
         "--appendStrToExtStream",
@@ -216,7 +227,7 @@ Check the following on how to test container job interactively:
         const=True,
         dest="appendStrToExtStream",
         default=False,
-        help="append the first part of filenames to extra stream names when using --trf. E.g., if this option is used %%OUT.AOD.pool.root will be contained in an EXT0_AOD dataset instead of an EXT0 dataset",
+        help="Append the first part of filenames to extra stream names when using --trf. E.g., if this option is used %%OUT.AOD.pool.root will be contained in an EXT0_AOD dataset instead of an EXT0 dataset",
     )
     group_output.add_argument(
         "--useFileFieldAsStream",
@@ -224,12 +235,13 @@ Check the following on how to test container job interactively:
         const=True,
         dest="useFileFieldAsStream",
         default=False,
-        help="use the first part of filenames as output stream names when using --trf. E.g., if this option is used %%OUT.AOD.pool.root will be contained in an AOD dataset instead of an EXT0 dataset",
+        help="Use the first part of filenames as output stream names when using --trf. E.g., if this option is used %%OUT.AOD.pool.root will be contained in an AOD dataset instead of an EXT0 dataset",
     )
     group_output.add_argument(
         "--outputStreamNames",
         nargs="+",
-        help="use custom output stream names when using --trf, instead of the default EXT# suffixes; must specify one stream name for each job output (%%OUT instance, or --extOutFile entries)",
+        metavar="STREAM",
+        help="Use custom output stream names when using --trf, instead of the default EXT# suffixes; must specify one stream name for each job output (%%OUT instance, or --extOutFile entries)",
     )
     group_job.add_argument(
         "--useCommonHalo",
@@ -237,11 +249,12 @@ Check the following on how to test container job interactively:
         const=False,
         dest="useCommonHalo",
         default=True,
-        help="use an integrated DS for BeamHalo",
+        help="Use an integrated DS for BeamHalo",
     )
     group_input.add_argument(
         "--beamHaloDS",
         action="store",
+        metavar="DATASET",
         dest="beamHaloDS",
         default="",
         type=str,
@@ -250,6 +263,7 @@ Check the following on how to test container job interactively:
     group_input.add_argument(
         "--beamHaloADS",
         action="store",
+        metavar="DATASET",
         dest="beamHaloADS",
         default="",
         type=str,
@@ -258,6 +272,7 @@ Check the following on how to test container job interactively:
     group_input.add_argument(
         "--beamHaloCDS",
         action="store",
+        metavar="DATASET",
         dest="beamHaloCDS",
         default="",
         type=str,
@@ -266,6 +281,7 @@ Check the following on how to test container job interactively:
     group_job.add_argument(
         "--nBeamHalo",
         action="store",
+        metavar="N",
         dest="nBeamHalo",
         default=-1,
         type=int,
@@ -274,6 +290,7 @@ Check the following on how to test container job interactively:
     group_job.add_argument(
         "--nBeamHaloA",
         action="store",
+        metavar="N",
         dest="nBeamHaloA",
         default=-1,
         type=int,
@@ -282,6 +299,7 @@ Check the following on how to test container job interactively:
     group_job.add_argument(
         "--nBeamHaloC",
         action="store",
+        metavar="N",
         dest="nBeamHaloC",
         default=-1,
         type=int,
@@ -293,11 +311,12 @@ Check the following on how to test container job interactively:
         const=False,
         dest="useCommonGas",
         default=True,
-        help="use an integrated DS for BeamGas",
+        help="Use an integrated DS for BeamGas",
     )
     group_input.add_argument(
         "--beamGasDS",
         action="store",
+        metavar="DATASET",
         dest="beamGasDS",
         default="",
         type=str,
@@ -306,6 +325,7 @@ Check the following on how to test container job interactively:
     group_input.add_argument(
         "--beamGasHDS",
         action="store",
+        metavar="DATASET",
         dest="beamGasHDS",
         default="",
         type=str,
@@ -314,6 +334,7 @@ Check the following on how to test container job interactively:
     group_input.add_argument(
         "--beamGasCDS",
         action="store",
+        metavar="DATASET",
         dest="beamGasCDS",
         default="",
         type=str,
@@ -322,6 +343,7 @@ Check the following on how to test container job interactively:
     group_input.add_argument(
         "--beamGasODS",
         action="store",
+        metavar="DATASET",
         dest="beamGasODS",
         default="",
         type=str,
@@ -330,6 +352,7 @@ Check the following on how to test container job interactively:
     group_job.add_argument(
         "--nBeamGas",
         action="store",
+        metavar="N",
         dest="nBeamGas",
         default=-1,
         type=int,
@@ -338,6 +361,7 @@ Check the following on how to test container job interactively:
     group_job.add_argument(
         "--nBeamGasH",
         action="store",
+        metavar="N",
         dest="nBeamGasH",
         default=-1,
         type=int,
@@ -346,6 +370,7 @@ Check the following on how to test container job interactively:
     group_job.add_argument(
         "--nBeamGasC",
         action="store",
+        metavar="N",
         dest="nBeamGasC",
         default=-1,
         type=int,
@@ -354,6 +379,7 @@ Check the following on how to test container job interactively:
     group_job.add_argument(
         "--nBeamGasO",
         action="store",
+        metavar="N",
         dest="nBeamGasO",
         default=-1,
         type=int,
@@ -403,6 +429,7 @@ Check the following on how to test container job interactively:
     action = group_job.add_argument(
         "--nThreads",
         action="store",
+        metavar="N",
         dest="nThreads",
         default=-1,
         type=int,
@@ -413,30 +440,34 @@ Check the following on how to test container job interactively:
     group_build.add_argument(
         "--extFile",
         action="store",
+        metavar="FILE[,FILE...]",
         dest="extFile",
         default="",
-        help="pathena exports files with some special extensions (.C, .dat, .py .xml) in the current directory. If you want to add other files, specify their names, e.g., data1.root,data2.doc",
+        help="Pathena exports files with some special extensions (.C, .dat, .py .xml) in the current directory. If you want to add other files, specify their names, e.g., data1.root,data2.doc",
     )
     group_output.add_argument(
         "--extOutFile",
         action="store",
+        metavar="FILE[,FILE...]",
         dest="extOutFile",
         default="",
-        help=r'A comma-separated list of extra output files which cannot be extracted automatically. Either \ or "" is required when a wildcard is used. e.g., output1.txt,output2.dat,JiveXML_\*.xml',
+        help=r'A comma-separated list of extra output files which cannot be extracted automatically. Either \ or "" is required when a wildcard is used. E.g., output1.txt,output2.dat,JiveXML_\*.xml',
     )
     group_output.add_argument(
         "--supStream",
         action="store",
+        metavar="STREAM[,STREAM...]",
         dest="supStream",
         default="",
-        help=r'suppress some output streams. Either \ or "" is required when a wildcard is used. e.g., ESD,TAG,GLOBAL,StreamDESD\* ',
+        help=r'Suppress some output streams. Either \ or "" is required when a wildcard is used. E.g., ESD,TAG,GLOBAL,StreamDESD\*',
     )
     group_submit.add_argument(
         "--processingType",
         action="store",
+        metavar="TYPE",
         dest="processingType",
         default="pathena",
-        help="set processingType",
+        help="Set processingType",
     )
     group_input.add_argument(
         "--generalInput",
@@ -465,17 +496,19 @@ Check the following on how to test container job interactively:
     group_build.add_argument(
         "--dbRelease",
         action="store",
+        metavar="DATASET:FILE",
         dest="dbRelease",
         default="",
         type=str,
-        help="DBRelease or CDRelease (DatasetName:FileName). e.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used",
+        help="DBRelease or CDRelease (DatasetName:FileName). E.g., ddo.000001.Atlas.Ideal.DBRelease.v050101:DBRelease-5.1.1.tar.gz. If --dbRelease=LATEST, the latest DBRelease is used",
     )
     group_build.add_argument(
         "--addPoolFC",
         action="store",
+        metavar="FILE[,FILE...]",
         dest="addPoolFC",
         default="",
-        help="file names to be inserted into PoolFileCatalog.xml except input files. e.g., MyCalib1.root,MyGeom2.root",
+        help="File names to be inserted into PoolFileCatalog.xml except input files. E.g., MyCalib1.root,MyGeom2.root",
     )
     group_job.add_argument(
         "--useNextEvent",
@@ -483,14 +516,15 @@ Check the following on how to test container job interactively:
         const=True,
         dest="useNextEvent",
         default=False,
-        help="Set this option if your jobO uses theApp.nextEvent(), e.g. for G4. Note that this option is not required when you run transformations using --trf",
+        help="Set this option if your jobO uses theApp.nextEvent(), e.g., for G4. Note that this option is not required when you run transformations using --trf",
     )
     group_job.add_argument(
         "--trf",
         action="store",
+        metavar="CMD",
         dest="trf",
         default=False,
-        help='run transformation, e.g. --trf "csc_atlfast_trf.py %%IN %%OUT.AOD.root %%OUT.ntuple.root -1 0"',
+        help='Run transformation, e.g., --trf "csc_atlfast_trf.py %%IN %%OUT.AOD.root %%OUT.ntuple.root -1 0"',
     )
     group_job.add_argument(
         "--useArgJson",
@@ -498,7 +532,7 @@ Check the following on how to test container job interactively:
         const=True,
         dest="useArgJson",
         default=None,
-        help="convert --key=value arguments in --trf into a JSON dict and pass it to the transformation via --argjson. This is useful to avoid the command line length limit on the shell",
+        help="Convert --key=value arguments in --trf into a JSON dict and pass it to the transformation via --argjson. This is useful to avoid the command line length limit on the shell",
     )
     group_input.add_argument(
         "--notSkipMissing",
@@ -514,11 +548,12 @@ Check the following on how to test container job interactively:
         const=True,
         dest="forceDirectIO",
         default=False,
-        help="Use directIO if directIO is available at the site ",
+        help="Use directIO if directIO is available at the site",
     )
     group_input.add_argument(
         "--inputType",
         action="store",
+        metavar="PATTERN",
         dest="inputType",
         default="",
         type=str,
@@ -527,6 +562,7 @@ Check the following on how to test container job interactively:
     group_config.add_argument(
         "--outRunConfig",
         action="store",
+        metavar="FILE",
         dest="outRunConfig",
         default="",
         type=str,
@@ -535,6 +571,7 @@ Check the following on how to test container job interactively:
     group_config.add_argument(
         "--inRunConfig",
         action="store",
+        metavar="FILE",
         dest="inRunConfig",
         default="",
         type=str,
@@ -558,7 +595,7 @@ Check the following on how to test container job interactively:
         type=str,
         default="",
         metavar="BOOTSTRAP",
-        help="location of bootstrap file",
+        help="Location of bootstrap file",
     )
     group_job.add_argument(
         "-s",
@@ -566,7 +603,7 @@ Check the following on how to test container job interactively:
         const=True,
         dest="codeTrace",
         default=False,
-        help="show printout of included files",
+        help="Show printout of included files",
     )
     group_job.add_argument(
         "--CA",
@@ -580,6 +617,7 @@ Check the following on how to test container job interactively:
     group_config.add_argument(
         "--loadJson",
         action="store",
+        metavar="FILE",
         dest="loadJson",
         default=None,
         help="Read command-line parameters from a json file which contains a dict of {parameter: value}. Arguments for Athena can be specified as {'athena_args': [...,]}",
