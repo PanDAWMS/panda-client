@@ -4,7 +4,7 @@ These do not touch the network. They verify that an empty stdlib trust store
 (e.g. a python.org macOS framework build) triggers a fall-back to the bundled
 certifi roots, so OIDC login works without setting SSL_CERT_FILE.
 
-Run with: python -m unittest pandaclient.test_openidc_ssl
+Run with: python -m unittest pandaclient.tests.test_openidc_ssl
 """
 
 import ssl

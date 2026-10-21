@@ -16,7 +16,6 @@ from pandaclient.Client import (
     getTaskStatus,
     getUserJobMetadata,
     increase_attempt_nr,
-    insertTaskParams,
     killTask,
     pauseTask,
     reactivateTask,
