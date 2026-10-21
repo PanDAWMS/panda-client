@@ -7,7 +7,12 @@ export PANDA_PYTHONPATH=`bash ${PANDA_SYS}/etc/panda/site_path.sh`
 
 export PYTHONPATH=${PANDA_PYTHONPATH}${PYTHONPATH:+:$PYTHONPATH}
 
-# bash tab-completion for pbook (skipped under non-bash shells)
-if [ -n "${BASH_VERSION:-}" ] && [ -r "${PANDA_SYS}/etc/panda/pbook_completion.sh" ]; then
-    . "${PANDA_SYS}/etc/panda/pbook_completion.sh"
+# bash tab-completion for pbook, prun and pathena (skipped under non-bash shells)
+if [ -n "${BASH_VERSION:-}" ]; then
+    for _panda_cmd in pbook prun pathena; do
+        if [ -r "${PANDA_SYS}/etc/panda/${_panda_cmd}_completion.sh" ]; then
+            . "${PANDA_SYS}/etc/panda/${_panda_cmd}_completion.sh"
+        fi
+    done
+    unset _panda_cmd
 fi

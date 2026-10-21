@@ -73,12 +73,39 @@ class CustomBuildHook(BuildHookInterface):
                     out_fh.write(file_data)
                 self._generated_files.append(out_f)
 
+        # generate bash completion scripts from the argument parsers into templates/, so that they
+        # are installed into etc/panda/ like the instantiated templates
+        self.generate_completion_scripts()
+
         # post install only for client installation
         if not os.path.exists(os.path.join(self.params["install_purelib"], "pandacommon")):
             target = "pandatools"
             if not os.path.exists(os.path.join(self.params["install_purelib"], target)) and not os.path.exists(target):
                 os.symlink("pandaclient", target)
                 self._created_symlinks.append(target)
+
+    def generate_completion_scripts(self):
+        # the argument modules must only import the standard library, since they are imported here
+        # without the runtime dependencies of the client
+        sys.path.insert(0, self.root)
+        dont_write_bytecode = sys.dont_write_bytecode
+        sys.dont_write_bytecode = True
+        try:
+            from pandaclient import PathenaArgs, PrunArgs
+
+            # command name -> (parser factory, glob of files completed as positional arguments)
+            commands = {
+                "prun": (PrunArgs.build_parser, None),
+                "pathena": (PathenaArgs.build_parser, "*.py"),
+            }
+            for prog, (build_parser, positional_glob) in commands.items():
+                out_f = os.path.join(self.root, "templates", f"{prog}_completion.sh")
+                with open(out_f, "w") as out_fh:
+                    out_fh.write(build_parser().format_bash_completion(prog, positional_glob=positional_glob))
+                self._generated_files.append(out_f)
+        finally:
+            sys.dont_write_bytecode = dont_write_bytecode
+            sys.path.remove(self.root)
 
     def finalize(self, version, build_data, artifact_path):
         # remove build-time artifacts created by initialize() so in-place builds

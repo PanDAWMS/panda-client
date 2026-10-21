@@ -1,4 +1,5 @@
 import argparse
+import re
 import shutil
 import sys
 import textwrap
@@ -6,6 +7,38 @@ from collections import OrderedDict
 
 # cap the help width on wide terminals, since very long lines are hard to read
 MAX_HELP_WIDTH = 120
+
+# bash completion script filled in by GroupArgParser.format_bash_completion. The @@NAME@@ placeholders
+# (as in templates/) are replaced instead of using str.format, so that the bash braces need no escaping
+BASH_COMPLETION_TEMPLATE = """# bash tab-completion for @@PROG@@
+# Generated from the argument parser by packages/hatch_build.py at build time. Do not edit by hand.
+
+@@FUNC@@() {
+    local cur prev opts
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    # bash splits --opt=value at "=" into separate words
+    if [[ "$cur" == "=" ]]; then
+        cur=""
+    elif [[ "$prev" == "=" ]]; then
+        prev="${COMP_WORDS[COMP_CWORD-2]}"
+    fi
+    opts="@@OPTIONS@@"
+
+    case "$prev" in
+@@CASES@@
+    *)
+        if [[ "$cur" == -* ]]; then
+            COMPREPLY=($(compgen -W "$opts" -- "$cur"))
+        else
+@@POSITIONAL@@
+        fi
+        ;;
+    esac
+    return 0
+}
+complete -F @@FUNC@@ @@PROG@@
+"""
 
 
 # check string args if they can be encoded with utf-8
@@ -89,6 +122,63 @@ class GroupArgParser(argparse.ArgumentParser):
 
         formatter.add_text(self.examples)
         return formatter.format_help()
+
+    def format_bash_completion(self, prog, positional_glob=None):
+        """Generate a standalone bash completion script for the options of this parser
+
+        Options with choices complete their choices, options whose metavar is FILE (or a list of FILE)
+        complete file names, options whose metavar ends with DIR complete directories, and other options
+        taking a value get no suggestions. Hidden options are not offered.
+
+        args:
+            prog: name of the command to complete
+            positional_glob: glob of files to suggest for positional arguments, e.g. "*.py", or None
+        returns:
+            bash script as a string
+        """
+        options, file_opts, dir_opts, value_opts = [], [], [], []
+        choice_cases = []
+        for action in self._actions:
+            if not action.option_strings or action.help == argparse.SUPPRESS:
+                continue
+            options += action.option_strings
+            if action.nargs == 0:
+                continue
+            opts = "|".join(action.option_strings)
+            metavar = action.metavar if isinstance(action.metavar, str) else ""
+            if action.choices:
+                words = " ".join(str(choice) for choice in action.choices)
+                choice_cases.append(f'        {opts}) COMPREPLY=($(compgen -W "{words}" -- "$cur")) ;;')
+            elif metavar == "FILE" or metavar.startswith("FILE["):
+                file_opts += action.option_strings
+            elif metavar.endswith("DIR"):
+                dir_opts += action.option_strings
+            else:
+                value_opts += action.option_strings
+
+        cases = choice_cases[:]
+        if file_opts:
+            cases.append(f'        {"|".join(file_opts)}) compopt -o filenames 2>/dev/null; COMPREPLY=($(compgen -f -- "$cur")) ;;')
+        if dir_opts:
+            cases.append(f'        {"|".join(dir_opts)}) compopt -o filenames 2>/dev/null; COMPREPLY=($(compgen -d -- "$cur")) ;;')
+        if value_opts:
+            cases.append(f'        {"|".join(value_opts)}) COMPREPLY=() ;;')
+        if positional_glob:
+            positional = f"""            compopt -o filenames 2>/dev/null
+            COMPREPLY=($(compgen -d -- "$cur") $(compgen -f -X '!{positional_glob}' -- "$cur"))"""
+        else:
+            positional = '            COMPREPLY=($(compgen -W "$opts" -- "$cur"))'
+        params = {
+            "PROG": prog,
+            "FUNC": "_" + re.sub(r"\W", "_", prog) + "_completion",
+            "OPTIONS": " ".join(options),
+            "CASES": "\n".join(cases),
+            "POSITIONAL": positional,
+        }
+        script = BASH_COMPLETION_TEMPLATE
+        for key, value in params.items():
+            script = script.replace(f"@@{key}@@", value)
+        return script
 
     def shareWithGroup(self, action, group):
         # share option action to another group
