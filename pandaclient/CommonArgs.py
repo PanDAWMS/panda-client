@@ -1,5 +1,7 @@
 """Common CLI arguments and helper functions shared by pathena and prun"""
 
+import argparse
+
 from pandaclient.MiscUtils import match_allow_no_output
 
 VALID_TRANSFER_TYPES = {"root", "direct", "davs", "file"}
@@ -20,7 +22,7 @@ def get_invalid_transfer_types(transfer_type_str):
 
 
 # Common arguments shared by pathena and prun, as (group_key, flags, kwargs[, shared_group_keys]) tuples.
-# group_key ("submit"/"input"/"job"/"output"/"expert") selects the argparse group in add_common_arguments.
+# group_key is the name of the argparse group (as given to parser.add_group) where the argument is added.
 # The optional shared_group_keys is a tuple of group keys where the argument is also shown in the help.
 # Entries are added in this order, which determines the per-group help ordering.
 _COMMON_ARGS = [
@@ -184,27 +186,634 @@ _COMMON_ARGS = [
             help="Please don't use this option. Only for developers to override the transformation URL for the merge step. Relevant only with --mergeOutput",
         ),
     ),
+    (
+        "job",
+        ["--nGBPerJob"],
+        dict(
+            action="store",
+            dest="nGBPerJob",
+            default=-1,
+            help="Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value",
+        ),
+    ),
+    (
+        "job",
+        ["--nGBPerMergeJob"],
+        dict(action="store", dest="nGBPerMergeJob", default="MAX", help="Instantiate one merge job per NGBPERMERGEJOB GB of pre-merged files"),
+    ),
+    (
+        "input",
+        ["--notExpandInDS"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="notExpandInDS",
+            default=False,
+            help="Allow jobs to use files across dataset boundaries in input dataset container",
+        ),
+    ),
+    (
+        "input",
+        ["--inOutDsJson"],
+        dict(
+            action="store",
+            dest="inOutDsJson",
+            default="",
+            help="A json file to specify input and output datasets for bulk submission. "
+            "It contains a json dump of [{'inDS': a comma-concatenated input dataset names, "
+            "'outDS': output dataset name}, ...]. "
+            "When this option is used --bulkSubmission is automatically set internally.",
+        ),
+        ("output",),
+    ),
+    (
+        "input",
+        ["--notExpandSecDSs"],
+        dict(
+            action="store_const", const=True, dest="notExpandSecDSs", default=False, help="Use files across dataset boundaries in secondary dataset containers"
+        ),
+    ),
+    (
+        "evtFilter",
+        ["--goodRunListXML"],
+        dict(action="store", dest="goodRunListXML", default="", help="Good Run List XML which will be converted to datasets by AMI"),
+    ),
+    (
+        "evtFilter",
+        ["--goodRunListDataType"],
+        dict(action="store", dest="goodRunDataType", default="", help="specify data type when converting Good Run List XML to datasets, e.g, AOD (default)"),
+    ),
+    (
+        "evtFilter",
+        ["--goodRunListProdStep"],
+        dict(
+            action="store", dest="goodRunProdStep", default="", help="specify production step when converting Good Run List to datasets, e.g, merge (default)"
+        ),
+    ),
+    (
+        "evtFilter",
+        ["--goodRunListDS"],
+        dict(
+            action="store",
+            dest="goodRunListDS",
+            default="",
+            help=r'A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used',
+        ),
+        ("input",),
+    ),
+    (
+        "evtFilter",
+        ["--eventPickEvtList"],
+        dict(action="store", dest="eventPickEvtList", default="", help="a file name which contains a list of runs/events for event picking"),
+    ),
+    (
+        "evtFilter",
+        ["--eventPickDataType"],
+        dict(action="store", dest="eventPickDataType", default="", help="type of data for event picking. one of AOD,ESD,RAW"),
+    ),
+    (
+        "evtFilter",
+        ["--ei_api"],
+        dict(action="store", dest="ei_api", default="", help="flag to signalise mc in event picking"),
+    ),
+    (
+        "evtFilter",
+        ["--eventPickStreamName"],
+        dict(action="store", dest="eventPickStreamName", default="", help="stream name for event picking. e.g., physics_CosmicCaloEM"),
+    ),
+    (
+        "evtFilter",
+        ["--eventPickDS"],
+        dict(
+            action="store",
+            dest="eventPickDS",
+            default="",
+            help=r'A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*',
+        ),
+        ("input",),
+    ),
+    (
+        "evtFilter",
+        ["--eventPickAmiTag"],
+        dict(
+            action="store",
+            dest="eventPickAmiTag",
+            default="",
+            help=r'AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*',
+        ),
+    ),
+    (
+        "evtFilter",
+        ["--eventPickWithGUID"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="eventPickWithGUID",
+            default=False,
+            help="Using GUIDs together with run and event numbers in eventPickEvtList to skip event lookup",
+        ),
+    ),
+    (
+        "submit",
+        ["--express"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="express",
+            default=False,
+            help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N), only the first M runXYZ subjobs will have higher priorities",
+        ),
+    ),
+    (
+        "print",
+        ["--debugMode"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="debugMode",
+            default=False,
+            help="Send the job with the debug mode on. If this option is specified the subjob will send stdout to the panda monitor every 5 min. The number of debug subjobs per user is limited. When this option is used and the quota has already exceeded, the panda server suppresses the option so that subjobs will run without the debug mode. If you submit multiple subjobs in a single job, only the first subjob will set the debug mode on. Note that you can turn the debug mode on/off by using pbook after jobs are submitted",
+        ),
+    ),
+    (
+        "output",
+        ["--addNthFieldOfInDSToLFN"],
+        dict(
+            action="store",
+            dest="addNthFieldOfInDSToLFN",
+            default="",
+            help="A middle name is added to LFNs of output files when they are produced from one dataset in the input container or input dataset list. The middle name is extracted from the dataset name. E.g., if --addNthFieldOfInDSToLFN=2 and the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is extracted and LFN is something like user.hoge.TASKID.00160387.blah. Concatenate multiple field numbers with commas if necessary, e.g., --addNthFieldOfInDSToLFN=2,6.",
+        ),
+    ),
+    (
+        "output",
+        ["--addNthFieldOfInFileToLFN"],
+        dict(
+            action="store",
+            dest="addNthFieldOfInFileToLFN",
+            default="",
+            help="A middle name is added to LFNs of output files similarly as --addNthFieldOfInDSToLFN, but strings are extracted from input file names",
+        ),
+    ),
+    (
+        "output",
+        ["--mergeOutput"],
+        dict(action="store_const", const=True, dest="mergeOutput", default=False, help="merge output files"),
+    ),
+    (
+        "output",
+        ["--mergeLog"],
+        dict(action="store_const", const=True, dest="mergeLog", default=False, help="merge log files. relevant only with --mergeOutput"),
+    ),
+    (
+        "job",
+        ["--mergeScript"],
+        dict(action="store", dest="mergeScript", default="", help="Specify user-defined script or execution string for output merging"),
+        ("output",),
+    ),
+    (
+        "output",
+        ["--outDS"],
+        dict(action="store", dest="outDS", default="", help="Name of an output dataset. OUTDS will contain all output files"),
+    ),
+    (
+        "output",
+        ["--destSE"],
+        dict(action="store", dest="destSE", default="", help="Destination storage element"),
+    ),
+    (
+        "submit",
+        ["--noEmail"],
+        dict(action="store_const", const=True, dest="noEmail", default=False, help="Suppress email notification"),
+    ),
+    (
+        "submit",
+        ["--bulkSubmission"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="bulkSubmission",
+            default=False,
+            help="Bulk submit tasks. When this option is used, --inOutDsJson is required while --inDS and --outDS are ignored. It is possible to use %%DATASET_IN and %%DATASET_OUT in --trf (pathena) or --exec (prun) which are replaced with actual dataset names when tasks are submitted, and %%BULKSEQNUMBER which is replaced with a sequential number of tasks in the bulk submission",
+        ),
+    ),
+    (
+        "build",
+        ["--noCompile"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="noCompile",
+            default=False,
+            help="Just upload a tarball in the build step to avoid the tighter size limit imposed by --noBuild. The tarball contains binaries compiled on your local computer, so that compilation is skipped in the build step on remote WN",
+        ),
+    ),
+    (
+        "submit",
+        ["--memory"],
+        dict(action="store", dest="memory", default=-1, type=int, help="Required memory size in MB per core. e.g., for 1GB per core --memory 1024"),
+    ),
+    (
+        "submit",
+        ["--fixedRamCount"],
+        dict(action="store_const", const=True, dest="fixedRamCount", default=False, help="Use fixed memory size instead of estimated memory size"),
+    ),
+    (
+        "submit",
+        ["--outDiskCount"],
+        dict(
+            action="store",
+            dest="outDiskCount",
+            default=None,
+            type=int,
+            help="Expected output size in kB per 1 MB of input. The system automatically calculates this "
+            "value using successful jobs and the value contains a safety offset (100kB). "
+            "Use this option to disable it when jobs cannot have enough input files "
+            "due to the offset",
+        ),
+    ),
+    (
+        "submit",
+        ["--nCore"],
+        dict(
+            action="store",
+            dest="nCore",
+            default=-1,
+            type=int,
+            choices=[1, 8],
+            help="The number of CPU cores. nCore=1 or 8. The number of available cores is defined in an environment variable, $ATHENA_CORE_NUMBER, on WNs, or %%CORE_NUMBER in --trf (pathena) or --exec (prun)",
+        ),
+    ),
+    (
+        "submit",
+        ["--maxCore"],
+        dict(
+            action="store",
+            dest="maxCore",
+            default=None,
+            type=int,
+            help="The maximum number of CPU cores that a single job is allowed to utilize. Use this option to prevent jobs that do not scale efficiently with additional cores from occupying many core resources.",
+        ),
+    ),
+    (
+        "input",
+        ["--avoidVP"],
+        dict(action="store_const", const=True, dest="avoidVP", default=False, help="Not to use sites where virtual placement is enabled"),
+    ),
+    (
+        "submit",
+        ["--maxCpuCount"],
+        dict(action="store", dest="maxCpuCount", default=0, type=int, help=argparse.SUPPRESS),
+    ),
+    (
+        "expert",
+        ["--noLoopingCheck"],
+        dict(action="store_const", const=True, dest="noLoopingCheck", default=False, help="Disable looping job check"),
+    ),
+    (
+        "output",
+        ["--official"],
+        dict(action="store_const", const=True, dest="official", default=False, help="Produce official dataset"),
+    ),
+    (
+        "output",
+        ["--descriptionInLFN"],
+        dict(
+            action="store",
+            dest="descriptionInLFN",
+            default="",
+            help="LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something",
+        ),
+    ),
+    (
+        "build",
+        ["--excludeFile"],
+        dict(
+            action="store",
+            dest="excludeFile",
+            default="",
+            help=r'specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C',
+        ),
+    ),
+    (
+        "build",
+        ["--gluePackages"],
+        dict(
+            action="store",
+            dest="gluePackages",
+            default="",
+            help="list of glue packages which pathena cannot find due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf",
+        ),
+    ),
+    (
+        "submit",
+        ["--excludedSite"],
+        dict(
+            action="append",
+            dest="excludedSite",
+            default=[],
+            help="A comma-separated list of sites which are not used for site section, "
+            "e.g., ABC,OPQ*,XYZ which excludes ABC, XYZ, and OPQ<blah> due to the wildcard",
+        ),
+    ),
+    (
+        "submit",
+        ["--noSubmit"],
+        dict(action="store_const", const=True, dest="noSubmit", default=False, help="Don't submit jobs"),
+    ),
+    (
+        "submit",
+        ["--framework"],
+        dict(action="store", dest="framework", default="", help="set framework used for task submission"),
+    ),
+    (
+        "submit",
+        ["--prodSourceLabel"],
+        dict(action="store", dest="prodSourceLabel", default="", help="set prodSourceLabel"),
+    ),
+    (
+        "submit",
+        ["--workingGroup"],
+        dict(action="store", dest="workingGroup", default=None, help="set workingGroup"),
+    ),
+    (
+        "build",
+        ["--tmpDir"],
+        dict(action="store", dest="tmpDir", default="", help="Temporary directory where an archive file is created"),
+    ),
+    (
+        "submit",
+        ["--disableAutoRetry"],
+        dict(action="store_const", const=True, dest="disableAutoRetry", default=False, help="disable automatic job retry on the server side"),
+    ),
+    (
+        "build",
+        ["--voms"],
+        dict(
+            action="store",
+            dest="vomsRoles",
+            default=None,
+            help="generate proxy with particular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
+        ),
+    ),
+    (
+        "output",
+        ["--spaceToken"],
+        dict(action="store", dest="spaceToken", default="", help="spacetoken for outputs. e.g., ATLASLOCALGROUPDISK"),
+    ),
+    (
+        "expert",
+        ["--expertOnly_skipScout"],
+        dict(action="store_const", const=True, dest="skipScout", default=False, help=argparse.SUPPRESS),
+    ),
+    (
+        "job",
+        ["--respectSplitRule"],
+        dict(action="store_const", const=True, dest="respectSplitRule", default=False, help="force scout jobs to follow split rules like nGBPerJob"),
+    ),
+    (
+        "expert",
+        ["--devSrv"],
+        dict(
+            action="store_const", const=True, dest="devSrv", default=False, help="Please don't use this option. Only for developers to use the dev panda server"
+        ),
+    ),
+    (
+        "expert",
+        ["--intrSrv"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="intrSrv",
+            default=False,
+            help="Please don't use this option. Only for developers to use the intr panda server",
+        ),
+    ),
+    (
+        "build",
+        ["--outTarBall"],
+        dict(action="store", dest="outTarBall", default="", help="Save a gzipped tarball of local files which is the input for buildXYZ"),
+    ),
+    (
+        "build",
+        ["--inTarBall"],
+        dict(
+            action="store",
+            dest="inTarBall",
+            default="",
+            help="Use a gzipped tarball of local files as input for buildXYZ. Generally the tarball is created by using --outTarBall",
+        ),
+    ),
+    (
+        "build",
+        ["--tarBallViaDDM"],
+        dict(
+            action="store",
+            dest="tarBallViaDDM",
+            default="",
+            help="Use a gzipped tarball pre-uploaded to DDM as input for buildXYZ. --tarBallViaDDM=datasetName:fileName",
+        ),
+    ),
+    (
+        "input",
+        ["--pfnList"],
+        dict(action="store", dest="pfnList", default="", help="Name of file which contains a list of input PFNs. Those files can be un-registered in DDM"),
+    ),
+    (
+        "build",
+        ["--cmtConfig"],
+        dict(
+            action="store",
+            dest="cmtConfig",
+            default=None,
+            help="CMTCONFIG is extracted from local environment variables when tasks are submitted, "
+            "to set up the same environment on remote worker-nodes. "
+            "This option allows to set up another CMTCONFIG "
+            "remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt.",
+        ),
+    ),
+    (
+        "output",
+        ["--allowTaskDuplication"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="allowTaskDuplication",
+            default=False,
+            help="As a general rule each task has a unique outDS and history of file usage is recorded per task. This option allows multiple tasks to contribute to the same outDS. Typically useful to submit a new task with the outDS which was used by another broken task. Use this option very carefully at your own risk, since file duplication happens when the second task runs on the same input which the first task successfully processed",
+        ),
+    ),
+    (
+        "input",
+        ["--skipFilesUsedBy"],
+        dict(
+            action="store",
+            dest="skipFilesUsedBy",
+            default="",
+            help="A comma-separated list of TaskIDs. Files used by those tasks are skipped when running a new task",
+        ),
+    ),
+    (
+        "submit",
+        ["--maxAttempt"],
+        dict(action="store", dest="maxAttempt", default=-1, type=int, help="Maximum number of reattempts for each job (3 by default and not larger than 50)"),
+    ),
+    (
+        "submit",
+        ["-y"],
+        dict(action="store_true", dest="is_confirmed", default=False, help="Answer yes for all questions"),
+    ),
+    (
+        "containerJob",
+        ["--containerImage"],
+        dict(action="store", dest="containerImage", default="", help="Name of a container image"),
+    ),
+    (
+        "containerJob",
+        ["--architecture"],
+        dict(
+            action="store",
+            dest="architecture",
+            default="",
+            help="Base OS platform, CPU, and/or GPU requirements. "
+            "The format is @base_platform#CPU_spec&GPU_spec "
+            "where base platform, CPU, or GPU spec can be omitted. "
+            "If base platform is not specified it is automatically taken from "
+            "$ALRB_USER_PLATFORM. "
+            "CPU_spec = architecture<-vendor<-instruction set>>, "
+            "GPU_spec = vendor<-model>. A wildcard can be used if there is no special "
+            "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
+            "CPU with avx2 support and nvidia GPU. "
+            "GPU attributes can also be appended as colon-separated key=value pairs in the shorthand "
+            "(e.g. #&nvidia:vram>=40960:driver>=575.0:model=.*A100.*); supported keys: vram, cuda, uarch, driver, model. "
+            "Use = or == for exact match, != for model exclusion (e.g. model!=.*P100.* excludes P100 queues). "
+            "This option also allows to specify a json-serialized dictionary. The gpu_spec supports: "
+            'model (regexp, e.g. {"model": ".*A100.*"} to require an A100, or {"model": {"pattern": ".*P100.*", "excl": true}} to exclude P100 queues, case-insensitive); '
+            'version (minimum CUDA version, e.g. {"version": ">=12.0"}); '
+            'vram (GPU memory in MB as an operator-prefixed string, e.g. {"vram": ">=40960"} for at least 40 GB or {"vram": "==40960"} for exactly 40 GB); '
+            'microarchitecture (GPU microarch generation, e.g. {"microarchitecture": "Ampere"} or {"microarchitecture": ["Ampere", "Hopper"]}); '
+            'driver_version (NVIDIA kernel driver version, e.g. {"driver_version": ">=575.0"} for minimum or {"driver_version": "==575.51.03"} for exact). '
+            "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, microarchitecture, version, driver_version) use worker node GPU monitoring data. "
+            "See https://panda-wms.readthedocs.io/en/latest/advanced/brokerage.html#checks-for-cpu-and-or-gpu-hardware",
+        ),
+    ),
+    (
+        "build",
+        ["-3"],
+        dict(action="store_true", dest="python3", default=False, help="Use python3"),
+    ),
+    (
+        "input",
+        ["--respectLB"],
+        dict(action="store_const", const=True, dest="respectLB", default=False, help="To generate jobs respecting lumiblock boundaries"),
+    ),
+    (
+        "expert",
+        ["--queueData"],
+        dict(action="store", dest="queueData", default="", help="Please don't use this option. Only for developers"),
+    ),
+    (
+        "submit",
+        ["--useNewCode"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="useNewCode",
+            default=False,
+            help="When task are resubmitted with the same outDS, the original source code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries",
+        ),
+    ),
+    (
+        "config",
+        ["--dumpJson"],
+        dict(
+            action="store",
+            dest="dumpJson",
+            default=None,
+            help="Dump all command-line parameters and submission result such as returnCode, returnOut, jediTaskID, and bulkSeqNumber if --bulkSubmission is used, to a json file",
+        ),
+    ),
+    (
+        "config",
+        ["--parentTaskID"],
+        dict(
+            action="store",
+            dest="parentTaskID",
+            default=None,
+            type=int,
+            help="Specifies the parent task ID, allowing this task running concurrently with its parent task",
+        ),
+    ),
+    (
+        "submit",
+        ["--priority"],
+        dict(
+            action="store",
+            dest="priority",
+            default=None,
+            type=int,
+            help="Set priority of the task (1000 by default). The value must be between 900 and 1100. "
+            "Note that priorities of tasks are relevant only in "
+            "each user's share, i.e., your tasks cannot jump over other user's tasks "
+            "even if you give higher priorities.",
+        ),
+    ),
+    (
+        "submit",
+        ["--osMatching"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="osMatching",
+            default=False,
+            help="To let the brokerage choose sites which have the same OS as the local machine has.",
+        ),
+    ),
+    (
+        "job",
+        ["--cpuTimePerEvent"],
+        dict(
+            action="store",
+            dest="cpuTimePerEvent",
+            default=-1,
+            type=int,
+            help="Expected HS06 seconds per event (~= 10 * the expected duration per event in seconds)",
+        ),
+    ),
+    (
+        "job",
+        ["--fixedCpuTime"],
+        dict(action="store_const", const=True, dest="fixedCpuTime", default=False, help="Use fixed cpuTime instead of estimated cpuTime"),
+    ),
+    (
+        "job",
+        ["--maxWalltime"],
+        dict(
+            action="store",
+            dest="maxWalltime",
+            default=0,
+            type=int,
+            help="Max walltime for each job in hours. Note that this option works only " "when the nevents metadata of input files are available in rucio",
+        ),
+    ),
 ]
 
 
-def add_common_arguments(group_submit, group_input, group_job, group_output, group_expert):
-    """Register the common arguments onto the argparse groups
+def add_common_arguments(parser):
+    """Register the common arguments onto the argparse groups of the parser
 
     Adds each entry in _COMMON_ARGS to the group selected by its group_key,
     and shares it with the groups selected by its optional shared_group_keys.
+    The groups must have been created with parser.add_group before calling this function.
 
     args:
-        group_submit: argparse group for the "submit" group_key
-        group_input: argparse group for the "input" group_key
-        group_job: argparse group for the "job" group_key
-        group_output: argparse group for the "output" group_key
-        group_expert: argparse group for the "expert" group_key
+        parser: GroupArgParser of pathena or prun
     """
-    groups = {"submit": group_submit, "input": group_input, "job": group_job, "output": group_output, "expert": group_expert}
+    groups = parser.groups_dict
     for group_key, flags, kwargs, *shared_group_keys in _COMMON_ARGS:
-        action = groups[group_key].add_argument(*flags, **kwargs)
+        action = groups[group_key.upper()].add_argument(*flags, **kwargs)
         for shared_group_key in shared_group_keys[0] if shared_group_keys else ():
-            groups[shared_group_key].shareWithMe(action)
+            groups[shared_group_key.upper()].shareWithMe(action)
 
 
 def get_allow_no_output_job_params(param_list):

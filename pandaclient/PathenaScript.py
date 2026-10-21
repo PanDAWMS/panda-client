@@ -53,8 +53,6 @@ group_submit = optP.add_group("submit", "job submission/site/retry")
 group_evtFilter = optP.add_group("evtFilter", "event filter such as good run and event pick")
 group_expert = optP.add_group("expert", "for experts/developers only")
 
-add_common_arguments(group_submit, group_input, group_job, group_output, group_expert)
-
 usage_containerJob = """Visit the following wiki page for examples:
   https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
 
@@ -63,6 +61,8 @@ Check the following on how to test container job interactively:
   https://twiki.cern.ch/twiki/bin/viewauth/AtlasComputing/SingularityInAtlas
 """
 group_containerJob = optP.add_group("containerJob", "For container-based jobs", usage=usage_containerJob)
+
+add_common_arguments(optP)
 
 optP.add_helpGroup(addHelp="Some options such as --inOutDsJson may SPAN several groups")
 
@@ -74,20 +74,6 @@ group_pathena.add_argument(
     dest="version",
     default=False,
     help="Displays version",
-)
-group_job.add_argument(
-    "--nGBPerJob",
-    action="store",
-    dest="nGBPerJob",
-    default=-1,
-    help="Instantiate one sub job per NGBPERJOB GB of input files. --nGBPerJob=MAX sets the size to the default maximum value",
-)
-group_job.add_argument(
-    "--nGBPerMergeJob",
-    action="store",
-    dest="nGBPerMergeJob",
-    default="MAX",
-    help="Instantiate one merge job per NGBPERMERGEJOB GB of pre-merged files",
 )
 group_submit.add_argument(
     "--site",
@@ -114,14 +100,6 @@ group_input.add_argument(
     help="Input dataset names. wildcard and/or comma can be used to concatenate multiple datasets",
 )
 group_input.add_argument(
-    "--notExpandInDS",
-    action="store_const",
-    const=True,
-    dest="notExpandInDS",
-    default=False,
-    help="Allow jobs to use files across dataset boundaries in input dataset container",
-)
-group_input.add_argument(
     "--inDsTxt",
     action="store",
     dest="inDsTxt",
@@ -129,31 +107,12 @@ group_input.add_argument(
     type=str,
     help="A text file which contains the list of datasets to run over. newlines are replaced by commas and the result is set to --inDS. lines starting with # are ignored",
 )
-action = group_input.add_argument(
-    "--inOutDsJson",
-    action="store",
-    dest="inOutDsJson",
-    default="",
-    help="A json file to specify input and output datasets for bulk submission. "
-    "It contains a json dump of [{'inDS': a comma-concatenated input dataset names, "
-    "'outDS': output dataset name}, ...]. "
-    "When this option is used --bulkSubmission is automatically set internally.",
-)
-group_output.shareWithMe(action)
 group_input.add_argument(
     "--secondaryDSs",
     action="store",
     dest="secondaryDSs",
     default="",
     help="A versatile option to specify arbitrary secondary inputs that takes a list of " "secondary datasets. See PandaRun wiki page for detail",
-)
-group_input.add_argument(
-    "--notExpandSecDSs",
-    action="store_const",
-    const=True,
-    dest="notExpandSecDSs",
-    default=False,
-    help="Use files across dataset boundaries in secondary dataset containers",
 )
 group_input.add_argument(
     "--minDS",
@@ -267,96 +226,6 @@ group_input.add_argument(
     default=False,
     help="randomize files in cavern dataset",
 )
-group_evtFilter.add_argument(
-    "--goodRunListXML",
-    action="store",
-    dest="goodRunListXML",
-    default="",
-    type=str,
-    help="Good Run List XML which will be converted to datasets by AMI",
-)
-group_evtFilter.add_argument(
-    "--goodRunListDataType",
-    action="store",
-    dest="goodRunDataType",
-    default="",
-    type=str,
-    help="specify data type when converting Good Run List XML to datasets, e.g, AOD (default)",
-)
-group_evtFilter.add_argument(
-    "--goodRunListProdStep",
-    action="store",
-    dest="goodRunProdStep",
-    default="",
-    type=str,
-    help="specify production step when converting Good Run List to datasets, e.g, merge (default)",
-)
-action = group_evtFilter.add_argument(
-    "--goodRunListDS",
-    action="store",
-    dest="goodRunListDS",
-    default="",
-    type=str,
-    help=r'A comma-separated list of pattern strings. Datasets which are converted from Good Run List XML will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. If this option is omitted all datasets will be used',
-)
-group_input.shareWithMe(action)
-group_evtFilter.add_argument(
-    "--eventPickEvtList",
-    action="store",
-    dest="eventPickEvtList",
-    default="",
-    type=str,
-    help="a file name which contains a list of runs/events for event picking",
-)
-group_evtFilter.add_argument(
-    "--eventPickDataType",
-    action="store",
-    dest="eventPickDataType",
-    default="",
-    type=str,
-    help="type of data for event picking. one of AOD,ESD,RAW",
-)
-group_evtFilter.add_argument(
-    "--ei_api",
-    action="store",
-    dest="ei_api",
-    default="",
-    type=str,
-    help="flag to signalise mc in event picking",
-)
-group_evtFilter.add_argument(
-    "--eventPickStreamName",
-    action="store",
-    dest="eventPickStreamName",
-    default="",
-    type=str,
-    help="stream name for event picking. e.g., physics_CosmicCaloEM",
-)
-action = group_evtFilter.add_argument(
-    "--eventPickDS",
-    action="store",
-    dest="eventPickDS",
-    default="",
-    type=str,
-    help=r'A comma-separated list of pattern strings. Datasets which are converted from the run/event list will be used when they match with one of the pattern strings. Either \ or "" is required when a wild-card is used. e.g., data\*',
-)
-group_input.shareWithMe(action)
-group_evtFilter.add_argument(
-    "--eventPickAmiTag",
-    action="store",
-    dest="eventPickAmiTag",
-    default="",
-    type=str,
-    help=r'AMI tag used to match TAG collections names. This option is required when you are interested in older data than the latest one. Either \ or "" is required when a wild-card is used. e.g., f2\*',
-)
-group_evtFilter.add_argument(
-    "--eventPickWithGUID",
-    action="store_const",
-    const=True,
-    dest="eventPickWithGUID",
-    default=False,
-    help="Using GUIDs together with run and event numbers in eventPickEvtList to skip event lookup",
-)
 group_submit.add_argument(
     "--sameSecRetry",
     action="store_const",
@@ -364,38 +233,6 @@ group_submit.add_argument(
     dest="sameSecRetry",
     default=True,
     help="Use the same secondary input files when jobs are retried",
-)
-group_submit.add_argument(
-    "--express",
-    action="store_const",
-    const=True,
-    dest="express",
-    default=False,
-    help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N), only the first M runXYZ subjobs will have higher priorities",
-)
-group_print.add_argument(
-    "--debugMode",
-    action="store_const",
-    const=True,
-    dest="debugMode",
-    default=False,
-    help="Send the job with the debug mode on. If this option is specified the subjob will send stdout to the panda monitor every 5 min. The number of debug subjobs per user is limited. When this option is used and the quota has already exceeded, the panda server suppresses the option so that subjobs will run without the debug mode. If you submit multiple subjobs in a single job, only the first subjob will set the debug mode on. Note that you can turn the debug mode on/off by using pbook after jobs are submitted",
-)
-group_output.add_argument(
-    "--addNthFieldOfInDSToLFN",
-    action="store",
-    dest="addNthFieldOfInDSToLFN",
-    default="",
-    type=str,
-    help="A middle name is added to LFNs of output files when they are produced from one dataset in the input container or input dataset list. The middle name is extracted from the dataset name. E.g., if --addNthFieldOfInDSToLFN=2 and the dataset name is data10_7TeV.00160387.physics_Muon..., 00160387 is extracted and LFN is something like user.hoge.TASKID.00160387.blah. Concatenate multiple field numbers with commas if necessary, e.g., --addNthFieldOfInDSToLFN=2,6.",
-)
-group_output.add_argument(
-    "--addNthFieldOfInFileToLFN",
-    action="store",
-    dest="addNthFieldOfInFileToLFN",
-    default="",
-    type=str,
-    help="A middle name is added to LFNs of output files similarly as --addNthFieldOfInDSToLFN, but strings are extracted from input file names",
 )
 group_job.add_argument(
     "--useAMIEventLevelSplit",
@@ -426,31 +263,6 @@ group_output.add_argument(
     nargs="+",
     help="use custom output stream names when using --trf, instead of the default EXT# suffixes; must specify one stream name for each job output (%%OUT instance, or --extOutFile entries)",
 )
-group_output.add_argument(
-    "--mergeOutput",
-    action="store_const",
-    const=True,
-    dest="mergeOutput",
-    default=False,
-    help="merge output files",
-)
-group_output.add_argument(
-    "--mergeLog",
-    action="store_const",
-    const=True,
-    dest="mergeLog",
-    default=False,
-    help="merge log files. relevant only with --mergeOutput",
-)
-action = group_job.add_argument(
-    "--mergeScript",
-    action="store",
-    dest="mergeScript",
-    default="",
-    type=str,
-    help="Specify user-defined script or execution string for output merging",
-)
-group_output.shareWithMe(action)
 group_job.add_argument(
     "--useCommonHalo",
     action="store_const",
@@ -579,22 +391,6 @@ group_job.add_argument(
     type=int,
     help="Number of beam gas files for Oxygen per sub job",
 )
-group_output.add_argument(
-    "--outDS",
-    action="store",
-    dest="outDS",
-    default="",
-    type=str,
-    help="Name of an output dataset. OUTDS will contain all output files",
-)
-group_output.add_argument(
-    "--destSE",
-    action="store",
-    dest="destSE",
-    default="",
-    type=str,
-    help="Destination storage element",
-)
 group_print.add_argument(
     "-v",
     action="store_const",
@@ -603,14 +399,6 @@ group_print.add_argument(
     default=False,
     help="Verbose",
 )
-group_submit.add_argument(
-    "--noEmail",
-    action="store_const",
-    const=True,
-    dest="noEmail",
-    default=False,
-    help="Suppress email notification",
-)
 group_build.add_argument(
     "--noBuild",
     action="store_const",
@@ -618,22 +406,6 @@ group_build.add_argument(
     dest="noBuild",
     default=False,
     help="Skip buildJob",
-)
-group_submit.add_argument(
-    "--bulkSubmission",
-    action="store_const",
-    const=True,
-    dest="bulkSubmission",
-    default=False,
-    help="Bulk submit tasks. When this option is used, --inOutDsJson is required while --inDS and --outDS are ignored. It is possible to use %%DATASET_IN and %%DATASET_OUT in --trf (pathena) or --exec (prun) which are replaced with actual dataset names when tasks are submitted, and %%BULKSEQNUMBER which is replaced with a sequential number of tasks in the bulk submission",
-)
-group_build.add_argument(
-    "--noCompile",
-    action="store_const",
-    const=True,
-    dest="noCompile",
-    default=False,
-    help="Just upload a tarball in the build step to avoid the tighter size limit imposed by --noBuild. The tarball contains binaries compiled on your local computer, so that compilation is skipped in the build step on remote WN",
 )
 action = group_output.add_argument(
     "--noOutput",
@@ -660,50 +432,6 @@ group_job.add_argument(
     default=False,
     help="Use AMI for AutoConfiguration",
 )
-group_submit.add_argument(
-    "--memory",
-    action="store",
-    dest="memory",
-    default=-1,
-    type=int,
-    help="Required memory size in MB per core. e.g., for 1GB per core --memory 1024",
-)
-group_submit.add_argument(
-    "--fixedRamCount",
-    action="store_const",
-    const=True,
-    dest="fixedRamCount",
-    default=False,
-    help="Use fixed memory size instead of estimated memory size",
-)
-group_submit.add_argument(
-    "--outDiskCount",
-    action="store",
-    dest="outDiskCount",
-    default=None,
-    type=int,
-    help="Expected output size in kB per 1 MB of input. The system automatically calculates this "
-    "value using successful jobs and the value contains a safety offset (100kB). "
-    "Use this option to disable it when jobs cannot have enough input files "
-    "due to the offset",
-)
-group_submit.add_argument(
-    "--nCore",
-    action="store",
-    dest="nCore",
-    default=-1,
-    type=int,
-    choices=[1, 8],
-    help="The number of CPU cores. nCore=1 or 8. The number of available cores is defined in an environment variable, $ATHENA_CORE_NUMBER, on WNs, or %%CORE_NUMBER in --trf (pathena) or --exec (prun)",
-)
-group_submit.add_argument(
-    "--maxCore",
-    action="store",
-    dest="maxCore",
-    default=None,
-    type=int,
-    help="The maximum number of CPU cores that a single job is allowed to utilize. Use this option to prevent jobs that do not scale efficiently with additional cores from occupying many core resources.",
-)
 action = group_job.add_argument(
     "--nThreads",
     action="store",
@@ -714,38 +442,6 @@ action = group_job.add_argument(
     help="The number of threads for AthenaMT. If this option is set to 8, Athena is executed with --threads=$ATHENA_PROC_NUMBER at sites. The number of available threads is defined in an environment variable, $ATHENA_PROC_NUMBER, on WNs, or %%PROC_NUMBER in --trf",
 )
 group_submit.shareWithMe(action)
-group_input.add_argument(
-    "--avoidVP",
-    action="store_const",
-    const=True,
-    dest="avoidVP",
-    default=False,
-    help="Not to use sites where virtual placement is enabled",
-)
-group_submit.add_argument(
-    "--maxCpuCount",
-    action="store",
-    dest="maxCpuCount",
-    default=0,
-    type=int,
-    help=argparse.SUPPRESS,
-)
-group_expert.add_argument(
-    "--noLoopingCheck",
-    action="store_const",
-    const=True,
-    dest="noLoopingCheck",
-    default=False,
-    help="Disable looping job check",
-)
-group_output.add_argument(
-    "--official",
-    action="store_const",
-    const=True,
-    dest="official",
-    default=False,
-    help="Produce official dataset",
-)
 action = group_job.add_argument(
     "--unlimitNumOutputs",
     action="store_const",
@@ -756,26 +452,12 @@ action = group_job.add_argument(
 )
 group_output.shareWithMe(action)
 
-group_output.add_argument(
-    "--descriptionInLFN",
-    action="store",
-    dest="descriptionInLFN",
-    default="",
-    help="LFN is user.nickname.jobsetID.something (e.g. user.harumaki.12345.AOD._00001.pool) by default. This option allows users to put a description string into LFN. i.e., user.nickname.jobsetID.description.something",
-)
 group_build.add_argument(
     "--extFile",
     action="store",
     dest="extFile",
     default="",
     help="pathena exports files with some special extensions (.C, .dat, .py .xml) in the current directory. If you want to add other files, specify their names, e.g., data1.root,data2.doc",
-)
-group_build.add_argument(
-    "--excludeFile",
-    action="store",
-    dest="excludeFile",
-    default="",
-    help=r'specify a comma-separated string to exclude files and/or directories when gathering files in local working area. Either \ or "" is required when a wildcard is used. e.g., doc,\*.C',
 )
 group_output.add_argument(
     "--extOutFile",
@@ -791,56 +473,12 @@ group_output.add_argument(
     default="",
     help=r'suppress some output streams. Either \ or "" is required when a wildcard is used. e.g., ESD,TAG,GLOBAL,StreamDESD\* ',
 )
-group_build.add_argument(
-    "--gluePackages",
-    action="store",
-    dest="gluePackages",
-    default="",
-    help="list of glue packages which pathena cannot find due to empty i686-slc4-gcc34-opt. e.g., External/AtlasHepMC,External/Lhapdf",
-)
-group_submit.add_argument(
-    "--excludedSite",
-    action="append",
-    dest="excludedSite",
-    default=[],
-    help="A comma-separated list of sites which are not used for site section, "
-    "e.g., ABC,OPQ*,XYZ which excludes ABC, XYZ, and OPQ<blah> due to the wildcard",
-)
-group_submit.add_argument(
-    "--noSubmit",
-    action="store_const",
-    const=True,
-    dest="noSubmit",
-    default=False,
-    help="Don't submit jobs",
-)
-group_submit.add_argument(
-    "--framework",
-    action="store",
-    dest="framework",
-    default="",
-    help="set framework used for task submission",
-)
-group_submit.add_argument(
-    "--prodSourceLabel",
-    action="store",
-    dest="prodSourceLabel",
-    default="",
-    help="set prodSourceLabel",
-)
 group_submit.add_argument(
     "--processingType",
     action="store",
     dest="processingType",
     default="pathena",
     help="set processingType",
-)
-group_submit.add_argument(
-    "--workingGroup",
-    action="store",
-    dest="workingGroup",
-    default=None,
-    help="set workingGroup",
 )
 group_input.add_argument(
     "--generalInput",
@@ -850,14 +488,6 @@ group_input.add_argument(
     default=False,
     help="Read input files with general format except POOL,ROOT,ByteStream",
 )
-group_build.add_argument(
-    "--tmpDir",
-    action="store",
-    dest="tmpDir",
-    default="",
-    type=str,
-    help="Temporary directory where an archive file is created",
-)
 group_input.add_argument(
     "--shipInput",
     action="store_const",
@@ -865,14 +495,6 @@ group_input.add_argument(
     dest="shipinput",
     default=False,
     help="Ship input files to remote WNs",
-)
-group_submit.add_argument(
-    "--disableAutoRetry",
-    action="store_const",
-    const=True,
-    dest="disableAutoRetry",
-    default=False,
-    help="disable automatic job retry on the server side",
 )
 group_input.add_argument(
     "--fileList",
@@ -905,14 +527,6 @@ group_input.add_argument(
     type=str,
     help="A local file which specifies names of files to be used in the input dataset. " "One filename per line in the local file",
 )
-group_build.add_argument(
-    "--voms",
-    action="store",
-    dest="vomsRoles",
-    default=None,
-    type=str,
-    help="generate proxy with particular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
-)
 group_job.add_argument(
     "--useNextEvent",
     action="store_const",
@@ -936,14 +550,6 @@ group_job.add_argument(
     default=None,
     help="convert --key=value arguments in --trf into a JSON dict and pass it to the transformation via --argjson. This is useful to avoid the command line length limit on the shell",
 )
-group_output.add_argument(
-    "--spaceToken",
-    action="store",
-    dest="spaceToken",
-    default="",
-    type=str,
-    help="spacetoken for outputs. e.g., ATLASLOCALGROUPDISK",
-)
 group_input.add_argument(
     "--notSkipMissing",
     action="store_const",
@@ -960,38 +566,6 @@ group_input.add_argument(
     default=False,
     help="Use directIO if directIO is available at the site ",
 )
-group_expert.add_argument(
-    "--expertOnly_skipScout",
-    action="store_const",
-    const=True,
-    dest="skipScout",
-    default=False,
-    help=argparse.SUPPRESS,
-)
-group_job.add_argument(
-    "--respectSplitRule",
-    action="store_const",
-    const=True,
-    dest="respectSplitRule",
-    default=False,
-    help="force scout jobs to follow split rules like nGBPerJob",
-)
-group_expert.add_argument(
-    "--devSrv",
-    action="store_const",
-    const=True,
-    dest="devSrv",
-    default=False,
-    help="Please don't use this option. Only for developers to use the dev panda server",
-)
-group_expert.add_argument(
-    "--intrSrv",
-    action="store_const",
-    const=True,
-    dest="intrSrv",
-    default=False,
-    help="Please don't use this option. Only for developers to use the intr panda server",
-)
 group_input.add_argument(
     "--inputType",
     action="store",
@@ -999,29 +573,6 @@ group_input.add_argument(
     default="",
     type=str,
     help="A regular expression pattern. Only files matching with the pattern in input dataset are used",
-)
-group_build.add_argument(
-    "--outTarBall",
-    action="store",
-    dest="outTarBall",
-    default="",
-    type=str,
-    help="Save a gzipped tarball of local files which is the input for buildXYZ",
-)
-group_build.add_argument(
-    "--inTarBall",
-    action="store",
-    dest="inTarBall",
-    default="",
-    type=str,
-    help="Use a gzipped tarball of local files as input for buildXYZ. Generally the tarball is created by using --outTarBall",
-)
-group_build.add_argument(
-    "--tarBallViaDDM",
-    action="store",
-    dest="tarBallViaDDM",
-    default="",
-    help="Use a gzipped tarball pre-uploaded to DDM as input for buildXYZ. --tarBallViaDDM=datasetName:fileName",
 )
 group_config.add_argument(
     "--outRunConfig",
@@ -1038,98 +589,6 @@ group_config.add_argument(
     default="",
     type=str,
     help="Use a saved config information to skip config extraction",
-)
-group_input.add_argument(
-    "--pfnList",
-    action="store",
-    dest="pfnList",
-    default="",
-    type=str,
-    help="Name of file which contains a list of input PFNs. Those files can be un-registered in DDM",
-)
-group_build.add_argument(
-    "--cmtConfig",
-    action="store",
-    dest="cmtConfig",
-    default=None,
-    help="CMTCONFIG is extracted from local environment variables when tasks are submitted, "
-    "to set up the same environment on remote worker-nodes. "
-    "This option allows to set up another CMTCONFIG "
-    "remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt.",
-)
-group_output.add_argument(
-    "--allowTaskDuplication",
-    action="store_const",
-    const=True,
-    dest="allowTaskDuplication",
-    default=False,
-    help="As a general rule each task has a unique outDS and history of file usage is recorded per task. This option allows multiple tasks to contribute to the same outDS. Typically useful to submit a new task with the outDS which was used by another broken task. Use this option very carefully at your own risk, since file duplication happens when the second task runs on the same input which the first task successfully processed",
-)
-group_input.add_argument(
-    "--skipFilesUsedBy",
-    action="store",
-    dest="skipFilesUsedBy",
-    default="",
-    type=str,
-    help="A comma-separated list of TaskIDs. Files used by those tasks are skipped when running a new task",
-)
-group_submit.add_argument(
-    "--maxAttempt",
-    action="store",
-    dest="maxAttempt",
-    default=-1,
-    type=int,
-    help="Maximum number of reattempts for each job (3 by default and not larger than 50)",
-)
-group_submit.add_argument(
-    "-y",
-    action="store_true",
-    dest="is_confirmed",
-    default=False,
-    help="Answer yes for all questions",
-)
-group_containerJob.add_argument(
-    "--containerImage",
-    action="store",
-    dest="containerImage",
-    default="",
-    type=str,
-    help="Name of a container image",
-)
-group_containerJob.add_argument(
-    "--architecture",
-    action="store",
-    dest="architecture",
-    default="",
-    help="Base OS platform, CPU, and/or GPU requirements. "
-    "The format is @base_platform#CPU_spec&GPU_spec "
-    "where base platform, CPU, or GPU spec can be omitted. "
-    "If base platform is not specified it is automatically taken from "
-    "$ALRB_USER_PLATFORM. "
-    "CPU_spec = architecture<-vendor<-instruction set>>, "
-    "GPU_spec = vendor<-model>. A wildcard can be used if there is no special "
-    "requirement for the attribute. E.g., #x86_64-*-avx2&nvidia to ask for x86_64 "
-    "CPU with avx2 support and nvidia GPU. "
-    "GPU attributes can also be appended as colon-separated key=value pairs in the shorthand "
-    "(e.g. #&nvidia:vram>=40960:driver>=575.0:model=.*A100.*); supported keys: vram, cuda, uarch, driver, model. "
-    "Use = or == for exact match, != for model exclusion (e.g. model!=.*P100.* excludes P100 queues). "
-    "This option also allows to specify a json-serialized dictionary. The gpu_spec supports: "
-    'model (regexp, e.g. {"model": ".*A100.*"} to require an A100, or {"model": {"pattern": ".*P100.*", "excl": true}} to exclude P100 queues, case-insensitive); '
-    'version (minimum CUDA version, e.g. {"version": ">=12.0"}); '
-    'vram (GPU memory in MB as an operator-prefixed string, e.g. {"vram": ">=40960"} for at least 40 GB or {"vram": "==40960"} for exactly 40 GB); '
-    'microarchitecture (GPU microarch generation, e.g. {"microarchitecture": "Ampere"} or {"microarchitecture": ["Ampere", "Hopper"]}); '
-    'driver_version (NVIDIA kernel driver version, e.g. {"driver_version": ">=575.0"} for minimum or {"driver_version": "==575.51.03"} for exact). '
-    "CRIC is used to identify GPU-capable queues; attribute checks (model, vram, microarchitecture, version, driver_version) use worker node GPU monitoring data. "
-    "See https://panda-wms.readthedocs.io/en/latest/advanced/brokerage.html#checks-for-cpu-and-or-gpu-hardware",
-)
-group_build.add_argument("-3", action="store_true", dest="python3", default=False, help="Use python3")
-group_input.add_argument(
-    "--respectLB",
-    action="store_const",
-    const=True,
-    dest="respectLB",
-    default=False,
-    help="To generate jobs respecting lumiblock boundaries",
 )
 
 
@@ -1169,87 +628,12 @@ group_job.add_argument(
     help=argparse.SUPPRESS,
 )
 
-group_expert.add_argument(
-    "--queueData",
-    action="store",
-    dest="queueData",
-    default="",
-    type=str,
-    help="Please don't use this option. Only for developers",
-)
-group_submit.add_argument(
-    "--useNewCode",
-    action="store_const",
-    const=True,
-    dest="useNewCode",
-    default=False,
-    help="When task are resubmitted with the same outDS, the original source code is used to re-run on failed/unprocessed files. This option uploads new source code so that jobs will run with new binaries",
-)
 group_config.add_argument(
     "--loadJson",
     action="store",
     dest="loadJson",
     default=None,
     help="Read command-line parameters from a json file which contains a dict of {parameter: value}. Arguments for Athena can be specified as {'athena_args': [...,]}",
-)
-group_config.add_argument(
-    "--dumpJson",
-    action="store",
-    dest="dumpJson",
-    default=None,
-    help="Dump all command-line parameters and submission result such as returnCode, returnOut, jediTaskID, and bulkSeqNumber if --bulkSubmission is used, to a json file",
-)
-group_config.add_argument(
-    "--parentTaskID",
-    "--parentTaskID",
-    action="store",
-    dest="parentTaskID",
-    default=None,
-    type=int,
-    help="Specifies the parent task ID, allowing this task running concurrently with its parent task",
-)
-group_submit.add_argument(
-    "--priority",
-    action="store",
-    dest="priority",
-    default=None,
-    type=int,
-    help="Set priority of the task (1000 by default). The value must be between 900 and 1100. "
-    "Note that priorities of tasks are relevant only in "
-    "each user's share, i.e., your tasks cannot jump over other user's tasks "
-    "even if you give higher priorities.",
-)
-group_submit.add_argument(
-    "--osMatching",
-    action="store_const",
-    const=True,
-    dest="osMatching",
-    default=False,
-    help="To let the brokerage choose sites which have the same OS as the local machine has.",
-)
-group_job.add_argument(
-    "--cpuTimePerEvent",
-    action="store",
-    dest="cpuTimePerEvent",
-    default=-1,
-    type=int,
-    help="Expected HS06 seconds per event (~= 10 * the expected duration per event in seconds)",
-)
-group_job.add_argument(
-    "--fixedCpuTime",
-    action="store_const",
-    const=True,
-    dest="fixedCpuTime",
-    default=False,
-    help="Use fixed cpuTime instead of estimated cpuTime",
-)
-group_job.add_argument(
-    "--maxWalltime",
-    action="store",
-    dest="maxWalltime",
-    default=0,
-    type=int,
-    help="Max walltime for each job in hours. Note that this option works only " "when the nevents metadata of input files are available in rucio",
 )
 
 # parse options
