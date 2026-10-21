@@ -1821,6 +1821,21 @@ def submit_workflow(params, **kwargs):
     return {"params": params}
 
 
+@http_request_decorator(endpoint="workflow/get_workflow_details", method="get", json_out=True, output_mode="extended")
+def get_workflow_details(workflow_id, verbose=False):
+    """Get a PanDA native workflow with its steps, their relations and progress, and its data
+    args:
+       workflow_id: the native workflow ID
+       verbose: True to see verbose message
+    returns:
+       status code
+          0: communication succeeded to the panda server
+        255: communication failure
+       a tuple of (True/False and the workflow dictionary, or a diagnostic message on False)
+    """
+    return {"workflow_id": workflow_id}
+
+
 @http_request_decorator(endpoint="creds/set_user_secrets", method="post", json_out=True, output_mode="extended")
 def set_user_secret(key, value, verbose=False):
     """Set a user secret

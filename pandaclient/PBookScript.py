@@ -438,7 +438,7 @@ def _main(
 _HELP_GROUPS = [
     ("Tasks", ["show", "showl", "kill", "finish", "retry", "debug"]),
     ("Files & input", ["get_user_job_metadata", "recover_lost_files", "reload_input"]),
-    ("Workflows", ["show_workflow", "kill_workflow", "retry_workflow", "finish_workflow", "pause_workflow", "resume_workflow"]),
+    ("Workflows", ["show_workflow", "show_native_workflow", "kill_workflow", "retry_workflow", "finish_workflow", "pause_workflow", "resume_workflow"]),
     ("Secrets", ["set_secret", "list_secrets", "delete_secret", "delete_all_secrets"]),
     ("Auth", ["generate_credential"]),
 ]
@@ -1041,6 +1041,36 @@ def show_workflow(
     _, output = core.execute_workflow_command("get_status", request_id)
     if output:
         print(output)
+
+
+@app.command(name="show_native_workflow")
+def show_native_workflow(
+    workflow_id: Annotated[int, typer.Argument(help="Native workflow ID")],
+    format: Annotated[Literal["standard", "long", "json", "plain"], typer.Option("--format", help="Output format")] = "standard",
+    show_data: Annotated[bool, typer.Option("--show_data", help="Also show the data passing between the steps")] = False,
+) -> None:
+    """Show a PanDA native workflow.
+
+    Print the workflow with its steps and the data passing between them. Each step shows which
+    steps feed it, the task it runs and how far that task has got, as a percentage of the input
+    files finished. A step whose target is not a task, or which has not been submitted yet, has no
+    progress to report. The data passing between the steps is counted but not listed unless
+    show_data is given, since the dataset names are long. Note that this takes a native workflow
+    ID, unlike show_workflow, which takes an iDDS request ID.
+
+    example:
+      >>> show_native_workflow(136)
+      >>> show_native_workflow(136, format='long')
+      >>> show_native_workflow(136, show_data=True)
+
+      $ pbook show_native_workflow 136 --format=json
+      $ pbook show_native_workflow 136 --show_data
+    """
+    show_data = _require_bool("show_data", show_data)
+    if show_data is _INVALID:
+        return
+    core = _ensure_init()
+    core.show_native_workflow(workflow_id, format=format, show_data=show_data)
 
 
 @app.command(name="kill_workflow")
