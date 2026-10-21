@@ -20,22 +20,23 @@ def build_parser():
   pathena --inDS=... --outDS=... jobO_1.py jobO_2.py
   pathena --inDS=... --outDS=... --trf "Reco_tf.py --inputAODFile %IN --outputDAODFile %OUT.pool.root ..."
   pathena --inOutDsJson=inout.json --trf "..."
+  pathena --helpGroup JOB
 """
 
     optP = get_parser(usage=usage, conflict_handler="resolve")
     optP.set_examples(examples)
 
     # define option groups
-    group_print = optP.add_group("print", "info print")
-    group_pathena = optP.add_group("pathena", "about pathena itself")
-    group_config = optP.add_group("config", "single configuration file to set multiple options")
-    group_input = optP.add_group("input", "input dataset(s)/files/format/seed")
-    group_output = optP.add_group("output", "output dataset/files")
-    group_job = optP.add_group("job", "job running control on grid")
-    group_build = optP.add_group("build", "build/compile the package and env setup")
-    group_submit = optP.add_group("submit", "job submission/site/retry")
-    group_evtFilter = optP.add_group("evtFilter", "event filter such as good run and event pick")
-    group_expert = optP.add_group("expert", "for experts/developers only")
+    group_print = optP.add_group("print", "debug and verbose printout")
+    group_pathena = optP.add_group("pathena", "pathena version")
+    group_config = optP.add_group("config", "load/dump options, results and task parameters from/to files")
+    group_input = optP.add_group("input", "input datasets/files and their selection, including pile-up inputs")
+    group_output = optP.add_group("output", "output datasets, file names and merging")
+    group_job = optP.add_group("job", "job splitting, per-job limits and the payload to run")
+    group_build = optP.add_group("build", "packing of local files and setup of the remote build/runtime environment")
+    group_submit = optP.add_group("submit", "site selection, resources, priority and retries")
+    group_evtFilter = optP.add_group("evtFilter", "event selection by Good Run List or event picking")
+    group_expert = optP.add_group("expert", "for experts and developers only")
 
     usage_containerJob = """Visit the following wiki page for examples:
   https://twiki.cern.ch/twiki/bin/view/PanDA/PandaRun#Run_user_containers_jobs
@@ -44,7 +45,7 @@ Please test the job interactively first prior to submitting to the grid.
 Check the following on how to test container job interactively:
   https://twiki.cern.ch/twiki/bin/viewauth/AtlasComputing/SingularityInAtlas
 """
-    group_containerJob = optP.add_group("containerJob", "for container-based jobs", usage=usage_containerJob)
+    group_containerJob = optP.add_group("containerJob", "running jobs in containers and hardware requirements", usage=usage_containerJob)
 
     add_common_arguments(optP)
 
