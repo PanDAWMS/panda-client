@@ -182,14 +182,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         help="Don't skip log files in input datasets (obsolete. use --useLogAsInput instead)",
     )
 
-    group_output.add_argument(
-        "--unlimitNumOutputs",
-        action="store_const",
-        const=True,
-        dest="unlimitNumOutputs",
-        default=False,
-        help="Remove the limit on the number of outputs. Note that having too many outputs per job causes a severe load on the system. You may be banned if you carelessly use this option",
-    )
     group_build.add_argument(
         "--useRootCore",
         action="store_const",
@@ -264,13 +256,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         dest="extFile",
         default="",
         help="root or large files under WORKDIR are not sent to WNs by default. If you want to send some skipped files, specify their names, e.g., data.root,data.tgz",
-    )
-    group_input.add_argument(
-        "--inputFileList",
-        action="store",
-        dest="inputFileListName",
-        default="",
-        help="A local file which specifies names of files to be used in the input dataset. " "One filename per line in the local file",
     )
     group_input.add_argument(
         "--useLogAsInput",
@@ -513,6 +498,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             origK = k
             if k == "exec":
                 k = "jobParams"
+            # old name of the attribute for --inputFileList
+            elif k == "inputFileListName":
+                k = "inputFileList"
             if not hasattr(options, k):
                 print(f"ERROR: unknown parameter {k} in {options.loadJson}")
                 sys.exit(0)
@@ -546,10 +534,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # full execution string
     fullExecString = PsubUtils.convSysArgv()
     fullExecString += jsonExecStr
-
-    # set dummy CMTSITE
-    if "CMTSITE" not in os.environ:
-        os.environ["CMTSITE"] = ""
 
     # get logger
     tmpLog = PLogger.getPandaLogger()
@@ -742,8 +726,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # read list of files to be used
     filesToBeUsed = []
-    if options.inputFileListName != "":
-        rFile = open(options.inputFileListName)
+    if options.inputFileList != "":
+        rFile = open(options.inputFileList)
         for line in rFile:
             line = re.sub("\n", "", line)
             line = line.strip()
@@ -894,7 +878,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 options.eventPickDS,
                 options.eventPickAmiTag,
                 [],
-                options.inputFileListName,
+                options.inputFileList,
                 options.outDS,
                 epLockedBy,
                 fullExecString,

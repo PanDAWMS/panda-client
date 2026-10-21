@@ -426,16 +426,6 @@ action = group_job.add_argument(
     help="The number of threads for AthenaMT. If this option is set to 8, Athena is executed with --threads=$ATHENA_PROC_NUMBER at sites. The number of available threads is defined in an environment variable, $ATHENA_PROC_NUMBER, on WNs, or %%PROC_NUMBER in --trf",
 )
 group_submit.shareWithMe(action)
-action = group_job.add_argument(
-    "--unlimitNumOutputs",
-    action="store_const",
-    const=True,
-    dest="unlimitNumOutputs",
-    default=False,
-    help="Remove the limit on the number of outputs. Note that having too many outputs per job causes a severe load on the system. You may be banned if you carelessly use this option",
-)
-group_output.shareWithMe(action)
-
 group_build.add_argument(
     "--extFile",
     action="store",
@@ -502,14 +492,6 @@ group_build.add_argument(
     dest="addPoolFC",
     default="",
     help="file names to be inserted into PoolFileCatalog.xml except input files. e.g., MyCalib1.root,MyGeom2.root",
-)
-group_input.add_argument(
-    "--inputFileList",
-    action="store",
-    dest="inputFileList",
-    default="",
-    type=str,
-    help="A local file which specifies names of files to be used in the input dataset. " "One filename per line in the local file",
 )
 group_job.add_argument(
     "--useNextEvent",

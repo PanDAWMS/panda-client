@@ -496,6 +496,18 @@ _COMMON_ARGS = [
         dict(action="store_const", const=True, dest="official", default=False, help="Produce official dataset"),
     ),
     (
+        "job",
+        ["--unlimitNumOutputs"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="unlimitNumOutputs",
+            default=False,
+            help="Remove the limit on the number of outputs. Note that having too many outputs per job causes a severe load on the system. You may be banned if you carelessly use this option",
+        ),
+        ("output",),
+    ),
+    (
         "output",
         ["--descriptionInLFN"],
         dict(
@@ -565,6 +577,16 @@ _COMMON_ARGS = [
         "submit",
         ["--disableAutoRetry"],
         dict(action="store_const", const=True, dest="disableAutoRetry", default=False, help="disable automatic job retry on the server side"),
+    ),
+    (
+        "input",
+        ["--inputFileList"],
+        dict(
+            action="store",
+            dest="inputFileList",
+            default="",
+            help="A local file which specifies names of files to be used in the input dataset. " "One filename per line in the local file",
+        ),
     ),
     (
         "build",
