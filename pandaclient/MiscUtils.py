@@ -112,6 +112,7 @@ PRUN_OBSOLETE_OPTIONS = COMMON_OBSOLETE_OPTIONS + [
     "--eventPickNumSites",
     "--eventPickSkipDaTRI",
     "--forceStagedSecondary",
+    "--loadXML",
     "--manaVer",
     "--requireLFC",
     "--safetySize",

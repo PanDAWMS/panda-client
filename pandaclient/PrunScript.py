@@ -816,13 +816,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         "remotely. e.g., --cmtConfig x86_64-slc5-gcc43-opt.",
     )
     group_config.add_argument(
-        "--loadXML",
-        action="store",
-        dest="loadXML",
-        default=None,
-        help="Expert mode: load complete submission configuration from an XML file ",
-    )
-    group_config.add_argument(
         "--loadJson",
         action="store",
         dest="loadJson",
@@ -1208,34 +1201,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # files to be deleted
     delFilesOnExit = []
-
-    # load submission configuration from xml file (if provided)
-    if options.loadXML is not None:
-        from pandaclient import ParseJobXML
-
-        xconfig = ParseJobXML.dom_parser(options.loadXML)
-        tmpLog.info("dump XML config")
-        xconfig.dump(options.verbose)
-        if options.outDS == "":
-            options.outDS = xconfig.outDS()
-        options.outputs = "all"
-        options.jobParams = "${XML_EXESTR}"
-        options.inDS = xconfig.inDS()
-        # check XML
-        try:
-            xconfig.files_in_DS(options.inDS)
-        except Exception:
-            errtype, errvalue = sys.exc_info()[:2]
-            print(errvalue)
-            tmpLog.error("verification of XML failed")
-            sys.exit(MiscUtils.EC_Config)
-        # inDS match and secondaryDS filter will be determined later from xconfig
-        options.match = ""
-        options.secondaryDSs = xconfig.secondaryDSs_config(filter=False)
-        # read XML
-        xmlFH = open(options.loadXML)
-        options.loadXML = xmlFH.read()
-        xmlFH.close()
 
     # save current dir
     curDir = os.path.realpath(os.getcwd())
@@ -2102,9 +2067,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         matchURL = re.search("(http.*://[^/]+)/", Client.baseURLSSL)
     if matchURL is not None:
         taskParamMap["sourceURL"] = matchURL.group(1)
-    # XML config
-    if options.loadXML is not None:
-        taskParamMap["loadXML"] = options.loadXML
+
     # middle name
     if options.addNthFieldOfInFileToLFN != "":
         taskParamMap["addNthFieldToLFN"] = options.addNthFieldOfInFileToLFN
@@ -2254,20 +2217,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 allowNoOutput=options.allowNoOutput,
             )
             outMap[tmpLFN] = lfn
-        if options.loadXML:
-            taskParamMap["jobParameters"] += [
-                {
-                    "type": "constant",
-                    "value": '-o "${XML_OUTMAP}"',
-                },
-            ]
-        else:
-            taskParamMap["jobParameters"] += [
-                {
-                    "type": "constant",
-                    "value": f'-o "{str(outMap)}"',
-                },
-            ]
+
+        taskParamMap["jobParameters"] += [
+            {
+                "type": "constant",
+                "value": f'-o "{str(outMap)}"',
+            },
+        ]
         # output files allowed not to be produced
         taskParamMap["jobParameters"] += get_allow_no_output_job_params(taskParamMap["jobParameters"])
     for tmpPatt in get_unmatched_allow_no_output_patterns(options.allowNoOutput, taskParamMap["jobParameters"]):
@@ -2286,7 +2242,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         }
         if options.useLogAsInput:
             del tmpDict["exclude"]
-        if options.loadXML is None and not options.notExpandInDS:
+        if not options.notExpandInDS:
             tmpDict["expand"] = True
         if options.notExpandInDS:
             tmpDict["consolidate"] = ".".join(options.outDS.split(".")[:2]) + "." + MiscUtils.wrappedUuidGen() + "/"
@@ -2332,28 +2288,20 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         taskParamMap["noInput"] = True
 
     # exec string
-    if options.loadXML is None:
-        taskParamMap["jobParameters"] += [
-            {
-                "type": "constant",
-                "value": '-p "',
-                "padding": False,
-            },
-        ]
-        taskParamMap["jobParameters"] += PsubUtils.convertParamStrToJediParam(options.jobParams, {}, "", True, False, includeIO=False)
-        taskParamMap["jobParameters"] += [
-            {
-                "type": "constant",
-                "value": '"',
-            },
-        ]
-    else:
-        taskParamMap["jobParameters"] += [
-            {
-                "type": "constant",
-                "value": f'-p "{options.jobParams}"',
-            },
-        ]
+    taskParamMap["jobParameters"] += [
+        {
+            "type": "constant",
+            "value": '-p "',
+            "padding": False,
+        },
+    ]
+    taskParamMap["jobParameters"] += PsubUtils.convertParamStrToJediParam(options.jobParams, {}, "", True, False, includeIO=False)
+    taskParamMap["jobParameters"] += [
+        {
+            "type": "constant",
+            "value": '"',
+        },
+    ]
 
     # param for DBR
     if options.dbRelease != "":
@@ -2387,7 +2335,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             tmpMap = options.secondaryDSs[tmpDsName]
             # make template item
             streamName = tmpMap["streamName"]
-            if options.loadXML is None and not options.notExpandSecDSs:
+            if not options.notExpandSecDSs:
                 expandFlag = True
             else:
                 expandFlag = False
