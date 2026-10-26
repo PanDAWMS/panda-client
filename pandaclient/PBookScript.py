@@ -170,9 +170,6 @@ def _setup() -> None:
     readline.parse_and_bind("tab: complete")
     readline.parse_and_bind("set show-all-if-ambiguous On")
 
-    if "CMTSITE" not in os.environ:
-        os.environ["CMTSITE"] = ""
-
     pconf_dir = os.path.expanduser(os.environ.get("PANDA_CONFIG_ROOT", "~/.panda"))
     os.makedirs(pconf_dir, exist_ok=True)
 
