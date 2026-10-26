@@ -311,13 +311,6 @@ def build_parser():
         help="Verbose",
     )
     group_config.add_argument(
-        "--loadXML",
-        action="store",
-        dest="loadXML",
-        default=None,
-        help="Expert mode: load complete submission configuration from an XML file ",
-    )
-    group_config.add_argument(
         "--loadJson",
         action="store",
         dest="loadJson",
