@@ -198,7 +198,7 @@ class PandaAPI:
             except Exception:
                 pass
         # delete dump file
-        if not dump_file:
+        if dump_file:
             os.remove(dump_file)
         return stat, ret
 
