@@ -1,32 +1,26 @@
-# How to install
-
-Download the code
+# How to install                                                                                                                                                                                                                                                                                                  
+```                                                                                                                                                                                                                                                                                                               
+pip install panda-client
 ```
-git clone https://github.com/PanDAWMS/panda-client.git
-cd panda-client
+Then set up the environment (the path is the prefix of the Python environment you installed into, e.g. your virtualenv):
 ```
-and install it
-```
-PANDA_INSTALL_TARGET=/path/to/install/dir pip install .
-```
-or create the tar ball
-```
-python -m build -s
-pip install dist/panda-client-*.tar.gz
-```
-
-# How to use
-```
-source /path/to/install/dir/etc/panda/panda_setup.[c]sh
+source <prefix>/etc/panda/panda_setup.[c]sh
 prun -h
 pathena -h
 ```
 
-# Release Notes
+## Installing from source
+For development, or to install into a custom location:
+```                                                                                                                                                                                                                                                            
+git clone https://github.com/PanDAWMS/panda-client.git
+cd panda-client
+PANDA_INSTALL_TARGET=/path/to/install/dir pip install .
+```
 
+# Release Notes
 https://github.com/PanDAWMS/panda-client/releases
 
-# CVMFS deployment
+# ATLAS CVMFS deployment 
 Request atlas-adc-tier3sw-install to install the new specific version on CVMFS. They will download the package from the github release page.
 
 # Uploading to pip
