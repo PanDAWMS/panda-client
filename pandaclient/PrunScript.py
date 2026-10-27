@@ -131,9 +131,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # save current dir
     curDir = os.path.realpath(os.getcwd())
 
-    # remove whitespaces
-    if options.outputs != "":
-        options.outputs = re.sub(" ", "", options.outputs)
+    # remove spaces
+    options.outputs = options.outputs.replace(" ", "")
 
     # site, memory, and input options handled the same way as in the other tool
     includedSite = process_common_options(options, tmp_log)
@@ -170,7 +169,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             options.rootVer = ""
         else:
             # change / to .
-            options.rootVer = re.sub("/", ".", options.rootVer)
+            options.rootVer = options.rootVer.replace("/", ".")
 
     # check writeInputToTxt
     if options.writeInputToTxt != "":
@@ -188,7 +187,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     if options.inputFileList != "":
         rFile = open(options.inputFileList)
         for line in rFile:
-            line = re.sub("\n", "", line)
+            line = line.replace("\n", "")
             line = line.strip()
             if line != "":
                 filesToBeUsed.append(line)

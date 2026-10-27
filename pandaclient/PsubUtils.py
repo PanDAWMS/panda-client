@@ -415,9 +415,8 @@ def readDsFromFile(txtName):
         # read lines
         txt = open(txtName)
         for tmpLine in txt:
-            # remove \n
-            tmpLine = re.sub("\n", "", tmpLine)
-            # remove white spaces
+            # remove \n and white spaces
+            tmpLine = tmpLine.replace("\n", "")
             tmpLine = tmpLine.strip()
             # skip comment or empty
             if tmpLine.startswith("#") or tmpLine == "":
@@ -627,7 +626,7 @@ def getListPFN(pfnFile):
     rFile = open(pfnFile)
     inputFileList = []
     for line in rFile:
-        line = re.sub("\n", "", line)
+        line = line.replace("\n", "")
         line = line.strip()
         if line != "" and not line.startswith("#"):
             inputFileList.append(line)

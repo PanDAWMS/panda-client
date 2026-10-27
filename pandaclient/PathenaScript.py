@@ -189,7 +189,7 @@ except Exception:
     pass
 AthenaUtils.set_user_set_ext_files(options.extFile)
 
-options.extOutFile = re.sub(" ", "", options.extOutFile)
+options.extOutFile = options.extOutFile.replace(" ", "")
 options.extOutFile = options.extOutFile.split(",")
 try:
     options.extOutFile.remove("")
@@ -213,7 +213,7 @@ for tmpItem in tmpList:
 if options.inputFileList != "":
     rFile = open(options.inputFileList)
     for line in rFile:
-        line = re.sub("\n", "", line)
+        line = line.replace("\n", "")
         line = line.strip()
         if line != "":
             options.filelist.append(line)
