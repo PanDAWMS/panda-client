@@ -83,7 +83,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     fullExecString += jsonExecStr
 
     # get logger
-    tmpLog = PLogger.getPandaLogger()
+    tmp_log = PLogger.getPandaLogger()
 
     # use dev server
     if options.devSrv:
@@ -115,7 +115,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         if options.alrb:
             options.useSandbox = True
         if not options.useSandbox:
-            tmpLog.warning(
+            tmp_log.warning(
                 "Files in the run directory are not sent out by default when --containerImage is used. "
                 "Please use --useSandbox if you need those files on the grid."
             )
@@ -136,13 +136,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         options.outputs = re.sub(" ", "", options.outputs)
 
     # site, memory, and input options handled the same way as in the other tool
-    includedSite = process_common_options(options, tmpLog)
+    includedSite = process_common_options(options, tmp_log)
 
     # set maxNFilesPerJob
     PsubUtils.limit_maxNumInputs = options.maxNFilesPerJob
 
     # bulk submission
-    ioList = get_bulk_io_list(options, tmpLog)
+    ioList = get_bulk_io_list(options, tmp_log)
 
     # enforce to use output dataset container
     if not options.outDS.endswith("/"):
@@ -159,12 +159,12 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         options.notExpandDBR = True
 
     # check DBRelease, good run list, and event picking
-    check_input_options(options, tmpLog)
+    check_input_options(options, tmp_log)
 
     # check rootVer
     if options.rootVer != "":
         if options.useAthenaPackages or options.athenaTag:
-            tmpLog.warning(
+            tmp_log.warning(
                 "--rootVer is ignored when --athenaTag or --useAthenaPackages is used, " "not to break the runtime environment by superseding the root version"
             )
             options.rootVer = ""
@@ -180,7 +180,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         for tmpItem in options.writeInputToTxt.split(","):
             tmpItems = tmpItem.split(":")
             if len(tmpItems) != 2:
-                tmpLog.error("invalid StreamName:FileName in --writeInputToTxt : %s" % tmpItem)
+                tmp_log.error("invalid StreamName:FileName in --writeInputToTxt : %s" % tmpItem)
                 sys.exit(MiscUtils.EC_Config)
 
     # read list of files to be used
@@ -204,20 +204,20 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # warning
     if options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
-        tmpLog.warning(
+        tmp_log.warning(
             "Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
             "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
         )
 
     if options.maxNFilesPerJob < 5:
-        tmpLog.warning(
+        tmp_log.warning(
             "Very small --maxNFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
             "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
         )
 
     # warning for nFilesPerJob
     if options.nFilesPerJob and options.nFilesPerJob > options.maxNFilesPerJob:
-        tmpLog.warning("--nFilesPerJob cannot be larger than --maxNFilesPerJob. It is set to the value of --maxNFilesPerJob")
+        tmp_log.warning("--nFilesPerJob cannot be larger than --maxNFilesPerJob. It is set to the value of --maxNFilesPerJob")
         options.nFilesPerJob = options.maxNFilesPerJob
 
     # check grid-proxy
@@ -233,7 +233,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # check working dir
     options.workDir = os.path.realpath(options.workDir)
     if options.workDir != curDir and (not curDir.startswith(options.workDir + "/")):
-        tmpLog.error("you need to run prun in a directory under %s" % options.workDir)
+        tmp_log.error("you need to run prun in a directory under %s" % options.workDir)
         sys.exit(MiscUtils.EC_Config)
 
     # avoid gathering the home dir
@@ -247,7 +247,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         tmpStr = "prun is executed just under the HOME directory "
         tmpStr += "and is going to send all files under the dir including ~/Mail/* and ~/private/*. "
         tmpStr += "Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)"
-        tmpLog.warning(tmpStr)
+        tmp_log.warning(tmpStr)
         while True:
             tmpAnswer = input("y/N: ")
             tmpAnswer = tmpAnswer.strip()
@@ -265,7 +265,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # check maxCpuCount
     if options.maxCpuCount > Client.maxCpuCountLimit:
-        tmpLog.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
+        tmp_log.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
         sys.exit(MiscUtils.EC_Config)
 
     # create tmp dir
@@ -294,7 +294,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         stA, retA = AthenaUtils.getAthenaVer()
         # failed
         if not stA:
-            tmpLog.error("You need to setup Athena runtime to use --useAthenaPackages")
+            tmp_log.error("You need to setup Athena runtime to use --useAthenaPackages")
             sys.exit(MiscUtils.EC_Config)
         workArea = retA["workArea"]
         athenaVer = "Atlas-%s" % retA["athenaVer"]
@@ -306,9 +306,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         sString = re.sub(r"[\+]", ".", workArea)
         runDir = re.sub("^%s" % sString, "", curDir)
         if runDir == curDir:
-            errMsg = "You need to run prun in a directory under %s. " % workArea
-            errMsg += "If '%s' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup." % workArea
-            tmpLog.error(errMsg)
+            error_message = (
+                f"You need to run prun in a directory under {workArea}. "
+                f"If {workArea} is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup."
+            )
+            tmp_log.error(error_message)
             sys.exit(MiscUtils.EC_Config)
         elif runDir == "":
             runDir = "."
@@ -316,7 +318,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             runDir = runDir[1:]
         runDir = runDir + "/"
     elif options.athenaTag != "":
-        athenaVer, cacheVer, nightVer = AthenaUtils.parse_athena_tag(options.athenaTag, options.verbose, tmpLog)
+        athenaVer, cacheVer, nightVer = AthenaUtils.parse_athena_tag(options.athenaTag, options.verbose, tmp_log)
 
     # set CMTCONFIG
     options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer, cacheVer, nightVer, options.cmtConfig, options.verbose)
@@ -350,7 +352,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             options.inDS = epOutput
         else:
             options.inDS = "dummy"
-        tmpLog.info("requested Event Picking service to stage input as %s" % options.inDS)
+        tmp_log.info("requested Event Picking service to stage input as %s" % options.inDS)
 
     # additional files
     if options.extFile == "":
@@ -381,7 +383,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # get job script
     if options.jobParams == "":
-        tmpLog.error("you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
+        tmp_log.error("you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
         sys.exit(MiscUtils.EC_Config)
 
     # replace : to = for backward compatibility
@@ -390,22 +392,22 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # check output dataset
     if options.outDS == "":
-        tmpLog.error("no outDS is given\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
+        tmp_log.error("no outDS is given\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
         sys.exit(MiscUtils.EC_Config)
 
     # avoid inDS+pfnList
     if options.pfnList != "":
         # don't use inDS
         if options.inDS != "":
-            tmpLog.error("--pfnList and --inDS cannot be used at the same time")
+            tmp_log.error("--pfnList and --inDS cannot be used at the same time")
             sys.exit(MiscUtils.EC_Config)
         # use site
         if options.site == "AUTO":
-            tmpLog.error("--site must be specified when --pfnList is used")
+            tmp_log.error("--site must be specified when --pfnList is used")
             sys.exit(MiscUtils.EC_Config)
 
     # secondary datasets
-    parse_secondary_datasets(options, tmpLog)
+    parse_secondary_datasets(options, tmp_log)
 
     # reusable secondary streams
     if options.reusableSecondary == "":
@@ -426,7 +428,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     PsubUtils.setRucioAccount(nickName, "prun", True)
 
     # check split options
-    check_split_options(options, tmpLog)
+    check_split_options(options, tmp_log)
 
     # translate --nJobs into nFiles / nFilesPerJob
     set_n_files_from_n_jobs(options)
@@ -444,7 +446,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 if "ROOTCOREDIR" not in os.environ:
                     tmpErrMsg = "$ROOTCOREDIR is not defined in your environment. "
                     tmpErrMsg += "Please setup RootCore runtime beforehand"
-                    tmpLog.error(tmpErrMsg)
+                    tmp_log.error(tmpErrMsg)
                     sys.exit(MiscUtils.EC_Config)
                 # check grid_submit.sh
                 rootCoreSubmitSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_submit.sh"
@@ -460,9 +462,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 for tmpShFile in rootCoreShList:
                     if not os.path.exists(tmpShFile):
                         tmpErrMsg = "%s doesn't exist. Please use a newer version of RootCore" % tmpShFile
-                        tmpLog.error(tmpErrMsg)
+                        tmp_log.error(tmpErrMsg)
                         sys.exit(MiscUtils.EC_Config)
-                tmpLog.info("copy RootCore packages to current dir")
+                tmp_log.info("copy RootCore packages to current dir")
                 # destination
                 pandaRootCoreWorkDirName = "__panda_rootCoreWorkDir"
                 rootCoreDestWorkDir = curDir + "/" + pandaRootCoreWorkDirName
@@ -477,7 +479,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 tmpStat %= 255
                 if tmpStat != 0:
                     tmpErrMsg = "{} failed with {}".format(rootCoreSubmitSh, tmpStat)
-                    tmpLog.error(tmpErrMsg)
+                    tmp_log.error(tmpErrMsg)
                     sys.exit(MiscUtils.EC_Config)
                 # copy build and run scripts
                 shutil.copy(rootCoreRunSh, rootCoreDestWorkDir)
@@ -530,14 +532,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     # go to workArea
                     os.chdir(workArea)
                     # gather files under work dir
-                    tmpLog.info("gathering files under {}/{}".format(workArea, runDir))
+                    tmp_log.info("gathering files under {}/{}".format(workArea, runDir))
                     archStartDir = runDir
                     archStartDir = re.sub("/+$", "", archStartDir)
                 else:
                     # go to work dir
                     os.chdir(options.workDir)
                     # gather files under work dir
-                    tmpLog.info("gathering files under %s" % options.workDir)
+                    tmp_log.info("gathering files under %s" % options.workDir)
                     archStartDir = "."
                 # get files in the working dir
                 if options.noCompile:
@@ -634,7 +636,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                         # append
                         workDirFiles.append(tmpPath)
                 if skippedFlag:
-                    tmpLog.info("please use --extFile if you need to send the skipped files to WNs")
+                    tmp_log.info("please use --extFile if you need to send the skipped files to WNs")
                 # set archive name
                 if not options.useAthenaPackages:
                     # create archive
@@ -678,63 +680,63 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if options.verbose:
                 print(out)
             if status != 0:
-                tmpLog.error("Failed to archive working area.\nIf you see 'Disk quota exceeded', try '--tmpDir /tmp'")
+                tmp_log.error("Failed to archive working area.\nIf you see 'Disk quota exceeded', try '--tmpDir /tmp'")
                 sys.exit(MiscUtils.EC_Archive)
 
             # check symlinks
             if options.useAthenaPackages:
-                PsubUtils.check_sandbox_symlinks(archiveName, tmpLog)
+                PsubUtils.check_sandbox_symlinks(archiveName, tmp_log)
         else:
             archiveName, archiveFullName = PsubUtils.use_existing_sandbox(options, tmpDir)
 
         # save for --outTarBall, and upload the sandbox and the good run list
-        archiveName = PsubUtils.upload_sandbox(options, archiveName, curDir, tmpLog, delFilesOnExit, use_cache_srv=options.vo is None)
+        archiveName = PsubUtils.upload_sandbox(options, archiveName, curDir, tmp_log, delFilesOnExit, use_cache_srv=options.vo is None)
 
     #####################################################################
     # make task
-    taskParamMap = {}
+    task_param_map = {}
     if options.containerImage != "" and not options.alrb:
         processing_type = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-cont"
     else:
         processing_type = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-run"
-    set_common_task_params(options, taskParamMap, processing_type, includedSite, fullExecString, archiveName)
+    set_common_task_params(options, task_param_map, processing_type, includedSite, fullExecString, archiveName)
     if options.vo is None:
-        taskParamMap["vo"] = "atlas"
+        task_param_map["vo"] = "atlas"
     else:
-        taskParamMap["vo"] = options.vo
+        task_param_map["vo"] = options.vo
     if options.containerImage != "" and options.alrb:
-        taskParamMap["architecture"] = options.architecture
+        task_param_map["architecture"] = options.architecture
     else:
-        taskParamMap["architecture"] = AthenaUtils.getCmtConfigImg(
+        task_param_map["architecture"] = AthenaUtils.getCmtConfigImg(
             athenaVer,
             cacheVer,
             nightVer,
             options.cmtConfig,
             architecture=options.architecture,
         )
-    taskParamMap["transUses"] = athenaVer
+    task_param_map["transUses"] = athenaVer
     if athenaVer != "":
-        taskParamMap["transHome"] = "AnalysisTransforms" + cacheVer + nightVer
+        task_param_map["transHome"] = "AnalysisTransforms" + cacheVer + nightVer
     else:
-        taskParamMap["transHome"] = None
+        task_param_map["transHome"] = None
     if options.msgDriven:
-        taskParamMap["messageDriven"] = True
+        task_param_map["messageDriven"] = True
     if options.workingGroup is not None:
         # remove role
-        taskParamMap["workingGroup"] = options.workingGroup.split(".")[0].split(":")[0]
-    taskParamMap["nMaxFilesPerJob"] = options.maxNFilesPerJob
+        task_param_map["workingGroup"] = options.workingGroup.split(".")[0].split(":")[0]
+    task_param_map["nMaxFilesPerJob"] = options.maxNFilesPerJob
     if options.useSecrets:
-        taskParamMap["useSecrets"] = True
+        task_param_map["useSecrets"] = True
     # source URL
     if options.vo is None:
-        set_source_url(taskParamMap, Client.baseURLCSRVSSL)
+        set_source_url(task_param_map, Client.baseURLCSRVSSL)
     else:
-        set_source_url(taskParamMap, Client.baseURLSSL)
+        set_source_url(task_param_map, Client.baseURLSSL)
 
     if options.containerImage != "" and options.alrb:
-        taskParamMap["container_name"] = options.containerImage
+        task_param_map["container_name"] = options.containerImage
         if options.directExecInContainer:
-            taskParamMap["multiStepExec"] = {
+            task_param_map["multiStepExec"] = {
                 "preprocess": {"command": "${TRF}", "args": "--preprocess ${TRF_ARGS}"},
                 "postprocess": {
                     "command": "${TRF}",
@@ -750,15 +752,15 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 },
             }
             if options.alrbArgs is not None:
-                taskParamMap["multiStepExec"]["containerOptions"]["execArgs"] = options.alrbArgs
+                task_param_map["multiStepExec"]["containerOptions"]["execArgs"] = options.alrbArgs
 
     outDatasetName = options.outDS
     # log
     if not options.noSeparateLog:
-        set_log_task_params(options, taskParamMap)
+        set_log_task_params(options, task_param_map)
 
     # job parameters
-    taskParamMap["jobParameters"] = [
+    task_param_map["jobParameters"] = [
         {
             "type": "constant",
             "value": '-j "" --sourceURL ${SURL}',
@@ -770,7 +772,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     ]
 
     # delimiter
-    taskParamMap["jobParameters"] += [
+    task_param_map["jobParameters"] += [
         {"type": "constant", "value": "__delimiter__", "hidden": True},
     ]
 
@@ -782,7 +784,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 tmp_str += " --noTarballDownload"
         else:
             tmp_str = "-l ${LIB}"
-        taskParamMap["jobParameters"] += [
+        task_param_map["jobParameters"] += [
             {
                 "type": "constant",
                 "value": tmp_str,
@@ -800,7 +802,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 if tmpDsSuffix in dsSuffix:
                     tmpErrMsg = "dataset name suffix '%s' is used for multiple files in --outputs. " % tmpDsSuffix
                     tmpErrMsg += "each output must have a unique suffix."
-                    tmpLog.error(tmpErrMsg)
+                    tmp_log.error(tmpErrMsg)
                     sys.exit(MiscUtils.EC_Config)
                 dsSuffix.append(tmpDsSuffix)
             if tmpLFN.startswith("regex|"):
@@ -818,13 +820,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 # disallowed character
                 if "/" in tmpNewLFN:
                     tmp_err_msg = "An output file name %s contains '/'." % tmpNewLFN
-                    tmpLog.error(tmp_err_msg)
+                    tmp_log.error(tmp_err_msg)
                     sys.exit(MiscUtils.EC_Config)
                 # check invalid characters
                 checked = PsubUtils.check_invalid_char(tmpNewLFN, is_file=True)
                 if checked is not None:
                     tmp_err_msg = 'An output file name {} contains an invalid character "{}".'.format(tmpNewLFN, checked)
-                    tmpLog.error(tmp_err_msg)
+                    tmp_log.error(tmp_err_msg)
                     sys.exit(MiscUtils.EC_Config)
                 if len(outDatasetName.split(".")) > 2:
                     lfn = "{}.{}".format(*outDatasetName.split(".")[:2])
@@ -836,7 +838,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 if tmpDsSuffix == "":
                     tmpDsSuffix = tmpNewLFN
             dataset = f"{outDatasetName[:-1]}_{tmpDsSuffix}/"
-            taskParamMap["jobParameters"] += MiscUtils.makeJediJobParam(
+            task_param_map["jobParameters"] += MiscUtils.makeJediJobParam(
                 lfn,
                 dataset,
                 "output",
@@ -847,18 +849,18 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             )
             outMap[tmpLFN] = lfn
 
-        taskParamMap["jobParameters"] += [
+        task_param_map["jobParameters"] += [
             {
                 "type": "constant",
                 "value": f'-o "{str(outMap)}"',
             },
         ]
         # output files allowed not to be produced
-        taskParamMap["jobParameters"] += get_allow_no_output_job_params(taskParamMap["jobParameters"])
-    for tmpPatt in get_unmatched_allow_no_output_patterns(options.allowNoOutput, taskParamMap["jobParameters"]):
-        tmpLog.warning(
+        task_param_map["jobParameters"] += get_allow_no_output_job_params(task_param_map["jobParameters"])
+    for tmpPatt in get_unmatched_allow_no_output_patterns(options.allowNoOutput, task_param_map["jobParameters"]):
+        tmp_log.warning(
             f"--allowNoOutput pattern '{tmpPatt}' matches none of output filename templates "
-            f"{[item['value'] for item in taskParamMap['jobParameters'] if item.get('param_type') == 'output']}"
+            f"{[item['value'] for item in task_param_map['jobParameters'] if item.get('param_type') == 'output']}"
         )
     # input
     if options.inDS != "":
@@ -886,26 +888,26 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 tmpDict["exclude"] = options.antiMatch
         if filesToBeUsed != []:
             tmpDict["files"] = filesToBeUsed
-        taskParamMap["jobParameters"].append(tmpDict)
-        taskParamMap["dsForIN"] = options.inDS
+        task_param_map["jobParameters"].append(tmpDict)
+        task_param_map["dsForIN"] = options.inDS
     elif options.pfnList != "":
-        set_pfn_list_input_params(options, taskParamMap)
+        set_pfn_list_input_params(options, task_param_map)
     elif options.goodRunListXML != "":
-        set_good_run_list_input_params(taskParamMap)
+        set_good_run_list_input_params(task_param_map)
     else:
         # no input
-        taskParamMap["noInput"] = True
+        task_param_map["noInput"] = True
 
     # exec string
-    taskParamMap["jobParameters"] += [
+    task_param_map["jobParameters"] += [
         {
             "type": "constant",
             "value": '-p "',
             "padding": False,
         },
     ]
-    taskParamMap["jobParameters"] += PsubUtils.convertParamStrToJediParam(options.jobParams, {}, "", True, False, includeIO=False)
-    taskParamMap["jobParameters"] += [
+    task_param_map["jobParameters"] += PsubUtils.convertParamStrToJediParam(options.jobParams, {}, "", True, False, includeIO=False)
+    task_param_map["jobParameters"] += [
         {
             "type": "constant",
             "value": '"',
@@ -913,7 +915,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     ]
 
     # param for DBR
-    taskParamMap["jobParameters"] += get_dbr_job_params(options.dbRelease, options.notExpandDBR)
+    task_param_map["jobParameters"] += get_dbr_job_params(options.dbRelease, options.notExpandDBR)
 
     # secondary
     if options.secondaryDSs != {}:
@@ -948,7 +950,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 outDS=options.outDS,
                 file_list=tmpMap["files"],
             )
-            taskParamMap["jobParameters"] += dictItem
+            task_param_map["jobParameters"] += dictItem
             inMap[streamName] = "tmp_" + streamName
             streamNames.append(streamName)
         # make constant item
@@ -960,8 +962,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             "type": "constant",
             "value": '--inMap "%s"' % strInMap,
         }
-        taskParamMap["jobParameters"] += [dictItem]
-        taskParamMap["reuseSecOnDemand"] = True
+        task_param_map["jobParameters"] += [dictItem]
+        task_param_map["reuseSecOnDemand"] = True
 
     # misc
     jobParameters = ""
@@ -1004,7 +1006,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         jobParameters += "--fileToSave={0} --fileToLoad={0} ".format(options.persistentFile)
     # set task param
     if jobParameters != "":
-        taskParamMap["jobParameters"] += [
+        task_param_map["jobParameters"] += [
             {
                 "type": "constant",
                 "value": jobParameters,
@@ -1013,9 +1015,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # force stage-in
     if options.forceStaged or options.transferType == "file":
-        taskParamMap["useLocalIO"] = 1
+        task_param_map["useLocalIO"] = 1
     elif options.useDirectIOSites or options.transferType == "direct":
-        taskParamMap["allowInputLAN"] = "only"
+        task_param_map["allowInputLAN"] = "only"
 
     # build step
     build_job_params = None
@@ -1048,10 +1050,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             build_job_params += "--overwriteQueuedata=%s " % options.queueData
         # container
         build_job_params += get_container_job_params(options)
-    set_build_task_params(options, taskParamMap, archiveName, build_job_params)
+    set_build_task_params(options, task_param_map, archiveName, build_job_params)
 
     # preprocessing step
-    set_prepro_task_params(options, taskParamMap)
+    set_prepro_task_params(options, task_param_map)
 
     # merging
     if options.mergeOutput:
@@ -1078,7 +1080,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             else:
                 merge_job_params += f"-a {archiveName} "
                 merge_job_params += "--sourceURL ${SURL} "
-        set_merge_task_params(options, taskParamMap, merge_job_params, tmpLog)
+        set_merge_task_params(options, task_param_map, merge_job_params, tmp_log)
 
     #####################################################################
     # submission
@@ -1102,12 +1104,12 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             print("exec       : %s" % options.jobParams)
 
         if len(ioList) == 1:
-            newTaskParamMap = taskParamMap
+            newTaskParamMap = task_param_map
         else:
             # replace input and output
             options.inDS = ioItem["inDS"]
             options.outDS = ioItem["outDS"]
-            newTaskParamMap = PsubUtils.replaceInputOutput(taskParamMap, ioItem["inDS"], ioItem["outDS"], iSubmission)
+            newTaskParamMap = PsubUtils.replaceInputOutput(task_param_map, ioItem["inDS"], ioItem["outDS"], iSubmission)
         exitCode = 0
         tmpStr = ""
         taskID = None
@@ -1120,7 +1122,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             options.verbose,
         ):
             tmpStr = "invalid output datasetname:%s" % options.outDS
-            tmpLog.error(tmpStr)
+            tmp_log.error(tmpStr)
             exitCode = MiscUtils.EC_Config
         # check task parameters
         if exitCode == 0:
@@ -1128,7 +1130,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         if exitCode != 0 and len(ioList) == 1:
             sys.exit(exitCode)
         if options.noSubmit and options.verbose:
-            PsubUtils.print_task_params(newTaskParamMap, tmpLog)
+            PsubUtils.print_task_params(newTaskParamMap, tmp_log)
         if options.dumpTaskParams is not None:
             with open(os.path.expanduser(options.dumpTaskParams), "w") as f:
                 json.dump(newTaskParamMap, f)
@@ -1140,7 +1142,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 pass
             return newTaskParamMap
         if not options.noSubmit and exitCode == 0:
-            exitCode, tmpStr, taskID = PsubUtils.submit_task(newTaskParamMap, options, tmpLog)
+            exitCode, tmpStr, taskID = PsubUtils.submit_task(newTaskParamMap, options, tmp_log)
         dumpList.append(PsubUtils.make_dump_item(options, exitCode, tmpStr, taskID, iSubmission, len(ioList)))
 
     # go back to current dir

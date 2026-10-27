@@ -66,7 +66,7 @@ fullExecString = PsubUtils.convSysArgv()
 fullExecString += jsonExecStr
 
 # get logger
-tmpLog = PLogger.getPandaLogger()
+tmp_log = PLogger.getPandaLogger()
 
 # check if unknown arg
 for tmp_arg in args:
@@ -74,7 +74,7 @@ for tmp_arg in args:
     if tmp_arg == "--":
         break
     if tmp_arg.startswith("-"):
-        tmpLog.error(f"unrecognized argument: {tmp_arg}")
+        tmp_log.error(f"unrecognized argument: {tmp_arg}")
         sys.exit(MiscUtils.EC_Config)
 
 # use dev server
@@ -87,7 +87,7 @@ if options.intrSrv:
 
 # Athena --CA
 if options.componentAccumulator:
-    tmpLog.info(
+    tmp_log.info(
         "Please use --trf if you want to run athena.py --CA. See "
         "https://panda-wms.readthedocs.io/en/latest/client/pathena.html#running-arbitrary-executables-in-the-athena-runtime-environment"
     )
@@ -96,7 +96,7 @@ if options.componentAccumulator:
 # noCompile uses noBuild stuff
 if options.noCompile:
     if options.noBuild:
-        tmpLog.error("--noBuild and --noCompile cannot be used simultaneously")
+        tmp_log.error("--noBuild and --noCompile cannot be used simultaneously")
         sys.exit(MiscUtils.EC_Config)
     options.noBuild = True
 
@@ -107,7 +107,7 @@ if options.containerImage != "":
 # validate --transferType
 invalid = get_invalid_transfer_types(options.transferType)
 if invalid:
-    tmpLog.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
+    tmp_log.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
     sys.exit(MiscUtils.EC_Config)
 
 # files to be deleted
@@ -117,7 +117,7 @@ delFilesOnExit = []
 currentDir = os.path.realpath(os.getcwd())
 
 # site, memory, and input options handled the same way as in the other tool
-includedSite = process_common_options(options, tmpLog)
+includedSite = process_common_options(options, tmp_log)
 
 # site specified
 siteSpecified = True
@@ -129,24 +129,24 @@ if not options.outDS.endswith("/"):
     options.outDS = options.outDS + "/"
 
 # bulk submission
-ioList = get_bulk_io_list(options, tmpLog)
+ioList = get_bulk_io_list(options, tmp_log)
 
 # error
 if options.outDS == "":
-    tmpLog.error("no outDS is given\n pathena [--inDS input] --outDS output myJobO.py")
+    tmp_log.error("no outDS is given\n pathena [--inDS input] --outDS output myJobO.py")
     sys.exit(MiscUtils.EC_Config)
 if options.nJobs < -1:
-    tmpLog.error("Number of jobs should be a positive integer")
+    tmp_log.error("Number of jobs should be a positive integer")
     sys.exit(MiscUtils.EC_Config)
 if options.pfnList != "":
     if options.inDS != "":
-        tmpLog.error("--pfnList and --inDS cannot be used at the same time")
+        tmp_log.error("--pfnList and --inDS cannot be used at the same time")
         sys.exit(MiscUtils.EC_Config)
     if options.shipinput:
-        tmpLog.error("--shipInput and --inDS cannot be used at the same time")
+        tmp_log.error("--shipInput and --inDS cannot be used at the same time")
         sys.exit(MiscUtils.EC_Config)
     if options.site == "AUTO":
-        tmpLog.error("--site must be specified when --pfnList is used")
+        tmp_log.error("--site must be specified when --pfnList is used")
         sys.exit(MiscUtils.EC_Config)
 
 # absolute path for PFN list
@@ -156,7 +156,7 @@ if options.pfnList != "":
     usePfnList = True
 
 # check split options
-check_split_options(options, tmpLog)
+check_split_options(options, tmp_log)
 
 # trf parameter
 if options.trf == False:
@@ -173,11 +173,11 @@ if options.useAMIEventLevelSplit is None:
         options.useAMIEventLevelSplit = False
 
 # check DBRelease, good run list, and event picking
-check_input_options(options, tmpLog)
+check_input_options(options, tmp_log)
 
 # event picking doesn't work with official transformations
 if options.eventPickEvtList != "" and options.trf != False:
-    tmpLog.error("--eventPickEvtList doesn't work with --trf until official transformations support event picking")
+    tmp_log.error("--eventPickEvtList doesn't work with --trf until official transformations support event picking")
     sys.exit(MiscUtils.EC_Config)
 
 
@@ -231,7 +231,7 @@ set_n_files_from_n_jobs(options)
 
 # check
 if options.inDS != "" and options.nJobs > 0 and options.nFilesPerJob < 0 and options.nFiles == 0 and options.nEventsPerJob < 0:
-    tmpLog.error("--split requires --nFilesPerJob or --nFiles or --nEventsPerJob when --inDS is specified")
+    tmp_log.error("--split requires --nFilesPerJob or --nFiles or --nEventsPerJob when --inDS is specified")
     sys.exit(MiscUtils.EC_Config)
 
 # remove whitespaces
@@ -240,7 +240,7 @@ if options.inDS != "":
 
 # warning
 if options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
-    tmpLog.warning(
+    tmp_log.warning(
         "Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
         "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
     )
@@ -271,7 +271,7 @@ if options.outRunConfig != "":
 
 # check maxCpuCount
 if options.maxCpuCount > Client.maxCpuCountLimit:
-    tmpLog.error(f"too large maxCpuCount. Must be less than {Client.maxCpuCountLimit}")
+    tmp_log.error(f"too large maxCpuCount. Must be less than {Client.maxCpuCountLimit}")
     sys.exit(MiscUtils.EC_Config)
 
 # create tmp dir
@@ -323,7 +323,7 @@ nightVer = retA["nightVer"]
 
 # overwrite with athenaTag
 if options.athenaTag != "":
-    athenaVer, cacheVer, nightVer = AthenaUtils.parse_athena_tag(options.athenaTag, options.verbose, tmpLog)
+    athenaVer, cacheVer, nightVer = AthenaUtils.parse_athena_tag(options.athenaTag, options.verbose, tmp_log)
 
 # set CMTCONFIG
 options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer, cacheVer, nightVer, options.cmtConfig, verbose=options.verbose)
@@ -332,16 +332,18 @@ options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer, cacheVer, nightVer, opti
 if not AthenaUtils.checkCmtConfig(retA["cmtConfig"], options.cmtConfig, options.noBuild):
     sys.exit(MiscUtils.EC_CMT)
 
-tmpLog.info(f"using CMTCONFIG={options.cmtConfig}")
+tmp_log.info(f"using CMTCONFIG={options.cmtConfig}")
 
 # get run directory
 # remove special characters
 sString = re.sub(r"[\+]", ".", workArea)
 runDir = re.sub(f"^{sString}", "", currentDir)
 if runDir == currentDir and not AthenaUtils.useCMake() and options.containerImage == "":
-    errMsg = f"You need to run pathena in a directory under {workArea}. "
-    errMsg += f"If '{workArea}' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup."
-    tmpLog.error(errMsg)
+    error_message = (
+        f"You need to run pathena in a directory under {workArea}. "
+        f"If '{workArea}' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup."
+    )
+    tmp_log.error(error_message)
     sys.exit(MiscUtils.EC_Config)
 elif runDir == "":
     runDir = "."
@@ -373,7 +375,7 @@ if options.eventPickEvtList != "":
         options.inDS = epOutput
     else:
         options.inDS = "dummy"
-    tmpLog.info(f"requested Event Picking service to stage input as {options.inDS}")
+    tmp_log.info(f"requested Event Picking service to stage input as {options.inDS}")
     # make run/event list file for event picking
     eventPickRunEvtDat = f"{currentDir}/ep_{MiscUtils.wrappedUuidGen()}.dat"
     evI = open(options.eventPickEvtList)
@@ -402,13 +404,13 @@ else:
     for arg in args:
         jobO += f" {arg}"
 if jobO == "":
-    tmpLog.error("no jobOptions is given\n   pathena [--inDS input] --outDS output myJobO.py")
+    tmp_log.error("no jobOptions is given\n   pathena [--inDS input] --outDS output myJobO.py")
     sys.exit(MiscUtils.EC_Config)
 
 
 if options.inRunConfig == "":
     # extract run configuration
-    tmpLog.info("extracting run configuration")
+    tmp_log.info("extracting run configuration")
     # run ConfigExtractor for normal jobO
     ret, runConfig = AthenaUtils.extractRunConfig(
         jobO,
@@ -446,7 +448,7 @@ if not options.trf:
                     fileName = f"{fileName}.root"
             # check ship files in the current dir
             if not os.path.exists(fileName):
-                tmpLog.error(f"{fileName} needs exist in the current directory when --shipInput is used")
+                tmp_log.error(f"{fileName} needs exist in the current directory when --shipInput is used")
                 sys.exit(MiscUtils.EC_Extractor)
             # append to extFile
             options.extFile.append(fileName)
@@ -473,7 +475,7 @@ if not options.trf:
     # check duplication in extOutFile
     if runConfig.output.alloutputs != False:
         if options.verbose:
-            tmpLog.debug(f"output files : {runConfig.output.alloutputs!s}")
+            tmp_log.debug(f"output files : {runConfig.output.alloutputs!s}")
         for tmpExtOutFile in tuple(options.extOutFile):
             if tmpExtOutFile in runConfig.output.alloutputs:
                 options.extOutFile.remove(tmpExtOutFile)
@@ -490,19 +492,19 @@ else:
             # use original command
             newJobO += tmpString + ";"
         else:
-            tmpLog.info("getting configuration from AMI")
+            tmp_log.info("getting configuration from AMI")
             # get configuration using GetCommand.py
             com = "GetCommand.py " + re.sub("^[^ ]+ ", "", tmpString.strip())
             if options.verbose:
-                tmpLog.debug(com)
+                tmp_log.debug(com)
             amiSt, amiOut = MiscUtils.commands_get_status_output_with_env(com)
             amiSt %= 255
             if amiSt != 0:
-                tmpLog.error(amiOut)
+                tmp_log.error(amiOut)
                 errSt = "Failed to get configuration from AMI. "
                 errSt += "Using AMI=tag in --trf is disallowed since it may overload the AMI server. "
                 errSt += "Please use explicit configuration parameters in --trf"
-                tmpLog.error(errSt)
+                tmp_log.error(errSt)
                 sys.exit(MiscUtils.EC_Config)
             # get full command string
             fullCommand = ""
@@ -511,9 +513,9 @@ else:
                     fullCommand = amiStr
             # failed to extract configuration
             if fullCommand == "":
-                tmpLog.error(amiOut)
+                tmp_log.error(amiOut)
                 errSt = "Failed to extract configuration from AMI's output"
-                tmpLog.error(errSt)
+                tmp_log.error(errSt)
                 sys.exit(MiscUtils.EC_Config)
             # replace
             newJobO += fullCommand + ";"
@@ -523,7 +525,7 @@ else:
     if newJobO != "":
         jobO = newJobO
         if options.verbose:
-            tmpLog.debug("new jobO : " + jobO)
+            tmp_log.debug("new jobO : " + jobO)
     # output
     oneOut = False
     # replace ; for job sequence
@@ -573,17 +575,17 @@ else:
         options.useArgJson = True
     # warning if no output
     if not oneOut:
-        tmpLog.warning("argument of --trf doesn't contain any %OUT")
+        tmp_log.warning("argument of --trf doesn't contain any %OUT")
     # check for maxEvents and skipEvents
     if options.nEventsPerJob > 0 and options.nEventsPerJob < options.nEventsPerFile:
         if "%SKIPEVENTS" not in jobO:
-            tmpLog.warning(
+            tmp_log.warning(
                 "Argument of --trf doesn't contain %SKIPEVENTS. All jobs with the same input file "
                 "may process the same events unless first events are skipped by using a trf parameter "
                 "like skipEvents or something"
             )
         if "maxEvents" not in jobO:
-            tmpLog.warning(
+            tmp_log.warning(
                 "Argument of --trf doesn't contain maxEvents or something equivalent. Each job may process all events "
                 "in the input file. Note that --nEventsPerJob doesn't automatically append maxEvents "
                 "to the argument. Please ignore this message if you limit the number of events "
@@ -598,7 +600,7 @@ else:
             else:
                 tmp_msg += f"--nThreads={options.nThreads} "
             tmp_msg += "which may cause inefficient CPU usage on MCORE resources"
-            tmpLog.warning(tmp_msg)
+            tmp_log.warning(tmp_msg)
 
 # no output jobs
 tmpOutKeys = list(runConfig.output)
@@ -617,7 +619,7 @@ if tmpOutKeys == [] and options.extOutFile == [] and not options.noOutput:
         errStr += "please report it to Savannah to update the automatic extractor. "
     errStr += "If you are sure that your job doesn't produce any output file "
     errStr += "(e.g., HelloWorldOptions.py) please use --noOutput. "
-    tmpLog.error(errStr)
+    tmp_log.error(errStr)
     sys.exit(MiscUtils.EC_Extractor)
 
 # set extOutFile to runConfig
@@ -629,7 +631,7 @@ if not runConfig.input.shipFiles:
     runConfig.input.shipFiles = []
 for file in runConfig.input.shipFiles:
     if not os.path.exists(file):
-        tmpLog.error(f"{file} needs exist in the current directory when using --shipInput")
+        tmp_log.error(f"{file} needs exist in the current directory when using --shipInput")
         sys.exit(MiscUtils.EC_Extractor)
 
 # get random number
@@ -741,7 +743,7 @@ if options.inDS != "" or options.shipinput or options.pfnList != "":
             options.beamGasODS, options.nBeamGasO = MiscUtils.getDatasetNameAndNumFiles(options.beamGasODS, options.nBeamGasO, "BeamGas Oxygen")
 
     # general secondaries
-    parse_secondary_datasets(options, tmpLog)
+    parse_secondary_datasets(options, tmp_log)
 
 
 #####################################################################
@@ -818,16 +820,16 @@ if True:
         status, out = MiscUtils.commands_get_status_output(f"ls -l {archiveName}")
         if status != 0:
             print(out)
-            tmpLog.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'")
+            tmp_log.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'")
             sys.exit(MiscUtils.EC_Archive)
 
         # check symlinks
-        PsubUtils.check_sandbox_symlinks(archiveName, tmpLog)
+        PsubUtils.check_sandbox_symlinks(archiveName, tmp_log)
     else:
         archiveName, archiveFullName = PsubUtils.use_existing_sandbox(options, tmpDir)
 
     # save for --outTarBall, and upload the sandbox and the good run list
-    archiveName = PsubUtils.upload_sandbox(options, archiveName, currentDir, tmpLog, delFilesOnExit)
+    archiveName = PsubUtils.upload_sandbox(options, archiveName, currentDir, tmp_log, delFilesOnExit)
 
 
 ####################################################################3
@@ -837,14 +839,14 @@ if True:
 sys.path = [tmpDir] + sys.path
 
 # make task
-taskParamMap = {}
+task_param_map = {}
 processing_type = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-athena"
 if options.trf:
     processing_type += "-trf"
-set_common_task_params(options, taskParamMap, processing_type, includedSite, fullExecString, archiveName)
-taskParamMap["vo"] = "atlas"
+set_common_task_params(options, task_param_map, processing_type, includedSite, fullExecString, archiveName)
+task_param_map["vo"] = "atlas"
 if options.containerImage == "":
-    taskParamMap["architecture"] = AthenaUtils.getCmtConfigImg(
+    task_param_map["architecture"] = AthenaUtils.getCmtConfigImg(
         athenaVer,
         cacheVer,
         nightVer,
@@ -852,23 +854,23 @@ if options.containerImage == "":
         architecture=options.architecture,
     )
 else:
-    taskParamMap["architecture"] = options.architecture
-    taskParamMap["container_name"] = options.containerImage
-taskParamMap["transUses"] = athenaVer
-taskParamMap["transHome"] = "AnalysisTransforms" + cacheVer + nightVer
+    task_param_map["architecture"] = options.architecture
+    task_param_map["container_name"] = options.containerImage
+task_param_map["transUses"] = athenaVer
+task_param_map["transHome"] = "AnalysisTransforms" + cacheVer + nightVer
 if options.workingGroup is not None:
-    taskParamMap["workingGroup"] = options.workingGroup
+    task_param_map["workingGroup"] = options.workingGroup
 if options.maxCpuCount > 0:
-    taskParamMap["walltime"] = -options.maxCpuCount
+    task_param_map["walltime"] = -options.maxCpuCount
 if options.nCore <= 1 < options.nThreads:
-    taskParamMap["coreCount"] = options.nThreads
+    task_param_map["coreCount"] = options.nThreads
 # source URL
-set_source_url(taskParamMap, Client.baseURLCSRVSSL)
+set_source_url(task_param_map, Client.baseURLCSRVSSL)
 # log
-set_log_task_params(options, taskParamMap)
+set_log_task_params(options, task_param_map)
 
 # make job parameters
-taskParamMap["jobParameters"] = []
+task_param_map["jobParameters"] = []
 
 # build
 if options.noBuild and not options.noCompile:
@@ -877,7 +879,7 @@ if options.noBuild and not options.noCompile:
         tmp_str += " --noTarballDownload"
 else:
     tmp_str = "-l ${LIB}"
-taskParamMap["jobParameters"] += [
+task_param_map["jobParameters"] += [
     {"type": "constant", "value": tmp_str},
 ]
 
@@ -896,7 +898,7 @@ if runConfig.other.rndmStream != []:
         "hidden": True,
         "offset": runConfig.other.rndmStream[0][0],
     }
-    taskParamMap["jobParameters"] += [dictItem]
+    task_param_map["jobParameters"] += [dictItem]
 # split by event option was invoked
 pStr2 = ""
 if options.nEventsPerJob > 0 and (not options.trf):
@@ -915,15 +917,15 @@ if pStr1 != "" or pStr2 != "":
         preStr = pStr1 + pStr2
     else:
         preStr = f"{pStr1};{pStr2}"
-    taskParamMap["jobParameters"] += [
+    task_param_map["jobParameters"] += [
         {
             "type": "constant",
             "value": '-f "',
             "padding": False,
         },
     ]
-    taskParamMap["jobParameters"] += PsubUtils.convertParamStrToJediParam(preStr, {}, "", False, False)
-    taskParamMap["jobParameters"] += [
+    task_param_map["jobParameters"] += PsubUtils.convertParamStrToJediParam(preStr, {}, "", False, False)
+    task_param_map["jobParameters"] += [
         {
             "type": "constant",
             "value": '"',
@@ -980,7 +982,7 @@ if options.eventPickEvtList != "":
     param += f"--eventPickTxt={eventPickRunEvtDat.split('/')[-1]} "
 # assign
 if param != "":
-    taskParamMap["jobParameters"] += [
+    task_param_map["jobParameters"] += [
         {
             "type": "constant",
             "value": param,
@@ -1003,20 +1005,20 @@ if options.inDS != "":
         tmpDict["consolidate"] = ".".join(options.outDS.split(".")[:2]) + "." + MiscUtils.wrappedUuidGen() + "/"
     if options.inputType != "":
         tmpDict["include"] = options.inputType
-    if options.filelist != []:
+    if options.filelist:
         tmpDict["files"] = options.filelist
-    taskParamMap["jobParameters"].append(tmpDict)
-    taskParamMap["dsForIN"] = options.inDS
+    task_param_map["jobParameters"].append(tmpDict)
+    task_param_map["dsForIN"] = options.inDS
     inputMap["IN"] = options.inDS
 elif options.pfnList != "":
-    set_pfn_list_input_params(options, taskParamMap)
+    set_pfn_list_input_params(options, task_param_map)
 elif options.goodRunListXML != "":
-    set_good_run_list_input_params(taskParamMap)
+    set_good_run_list_input_params(task_param_map)
     inputMap["IN"] = "%%INDS%%"
 else:
     # no input
-    taskParamMap["noInput"] = True
-    taskParamMap["jobParameters"] += [
+    task_param_map["noInput"] = True
+    task_param_map["jobParameters"] += [
         {
             "type": "constant",
             "value": '-i "[]"',
@@ -1031,7 +1033,7 @@ if options.trf:
         options.dbRelease = tmpMatch.group(1)
         dbrInTRF = True
 # param for DBR
-taskParamMap["jobParameters"] += get_dbr_job_params(options.dbRelease, dbrInTRF)
+task_param_map["jobParameters"] += get_dbr_job_params(options.dbRelease, dbrInTRF)
 
 # minimum bias
 minBiasStream = ""
@@ -1052,11 +1054,11 @@ if options.minDS != "":
         randomAtt=options.randomMin,
         outDS=options.outDS,
     )
-    taskParamMap["jobParameters"] += dictItem
+    task_param_map["jobParameters"] += dictItem
     inputMap["MININ"] = options.minDS
     minBiasStream += "MININ,"
     if options.sameSecRetry:
-        taskParamMap["reuseSecOnDemand"] = True
+        task_param_map["reuseSecOnDemand"] = True
 if options.lowMinDS != "":
     if options.notExpandLowMinDS:
         expand_flag = False
@@ -1074,11 +1076,11 @@ if options.lowMinDS != "":
         randomAtt=options.randomMin,
         outDS=options.outDS,
     )
-    taskParamMap["jobParameters"] += dictItem
+    task_param_map["jobParameters"] += dictItem
     inputMap["LOMBIN"] = options.lowMinDS
     minBiasStream += "LOMBIN,"
     if options.sameSecRetry:
-        taskParamMap["reuseSecOnDemand"] = True
+        task_param_map["reuseSecOnDemand"] = True
 if options.highMinDS != "":
     if options.notExpandHighMinDS:
         expand_flag = False
@@ -1096,18 +1098,18 @@ if options.highMinDS != "":
         randomAtt=options.randomMin,
         outDS=options.outDS,
     )
-    taskParamMap["jobParameters"] += dictItem
+    task_param_map["jobParameters"] += dictItem
     inputMap["HIMBIN"] = options.highMinDS
     minBiasStream += "HIMBIN,"
     if options.sameSecRetry:
-        taskParamMap["reuseSecOnDemand"] = True
+        task_param_map["reuseSecOnDemand"] = True
 minBiasStream = minBiasStream[:-1]
 if minBiasStream != "":
     dictItem = {
         "type": "constant",
         "value": f'-m "${{{minBiasStream}/T}}"',
     }
-    taskParamMap["jobParameters"] += [dictItem]
+    task_param_map["jobParameters"] += [dictItem]
 
 
 # cavern
@@ -1127,10 +1129,10 @@ if options.cavDS != "":
         randomAtt=options.randomCav,
         outDS=options.outDS,
     )
-    taskParamMap["jobParameters"] += dictItem
+    task_param_map["jobParameters"] += dictItem
     inputMap["CAVIN"] = options.cavDS
     if options.sameSecRetry:
-        taskParamMap["reuseSecOnDemand"] = True
+        task_param_map["reuseSecOnDemand"] = True
 
 # beam halo
 beamHaloStream = ""
@@ -1145,11 +1147,11 @@ if options.beamHaloDS != "":
         nFilesPerJob=options.nBeamHalo,
         useNumFilesAsRatio=True,
     )
-    taskParamMap["jobParameters"] += dictItem
+    task_param_map["jobParameters"] += dictItem
     inputMap["BHIN"] = options.beamHaloDS
     beamHaloStream += "BHIN,"
     if options.sameSecRetry:
-        taskParamMap["reuseSecOnDemand"] = True
+        task_param_map["reuseSecOnDemand"] = True
 if options.beamHaloADS != "":
     dictItem = MiscUtils.makeJediJobParam(
         "${BHAIN}",
@@ -1161,11 +1163,11 @@ if options.beamHaloADS != "":
         nFilesPerJob=options.nBeamHaloA,
         useNumFilesAsRatio=True,
     )
-    taskParamMap["jobParameters"] += dictItem
+    task_param_map["jobParameters"] += dictItem
     inputMap["BHAIN"] = options.beamHaloADS
     beamHaloStream += "BHAIN,"
     if options.sameSecRetry:
-        taskParamMap["reuseSecOnDemand"] = True
+        task_param_map["reuseSecOnDemand"] = True
 if options.beamHaloCDS != "":
     dictItem = MiscUtils.makeJediJobParam(
         "${BHCIN}",
@@ -1177,18 +1179,18 @@ if options.beamHaloCDS != "":
         nFilesPerJob=options.nBeamHaloC,
         useNumFilesAsRatio=True,
     )
-    taskParamMap["jobParameters"] += dictItem
+    task_param_map["jobParameters"] += dictItem
     inputMap["BHCIN"] = options.beamHaloCDS
     beamHaloStream += "BHCIN,"
     if options.sameSecRetry:
-        taskParamMap["reuseSecOnDemand"] = True
+        task_param_map["reuseSecOnDemand"] = True
 beamHaloStream = beamHaloStream[:-1]
 if beamHaloStream != "":
     dictItem = {
         "type": "constant",
         "value": f'--beamHalo "${{{beamHaloStream}/T}}"',
     }
-    taskParamMap["jobParameters"] += [dictItem]
+    task_param_map["jobParameters"] += [dictItem]
 
 
 # beam gas
@@ -1204,7 +1206,7 @@ if options.beamGasDS != "":
         nFilesPerJob=options.nBeamGas,
         useNumFilesAsRatio=True,
     )
-    taskParamMap["jobParameters"] += dictItem
+    task_param_map["jobParameters"] += dictItem
     inputMap["BGIN"] = options.beamGasDS
     beamGasStream += "BGIN,"
 if options.beamGasHDS != "":
@@ -1218,7 +1220,7 @@ if options.beamGasHDS != "":
         nFilesPerJob=options.nBeamGasH,
         useNumFilesAsRatio=True,
     )
-    taskParamMap["jobParameters"] += dictItem
+    task_param_map["jobParameters"] += dictItem
     inputMap["BGHIN"] = options.beamGasHDS
     beamGasStream += "BGHIN,"
 if options.beamGasCDS != "":
@@ -1232,7 +1234,7 @@ if options.beamGasCDS != "":
         nFilesPerJob=options.nBeamGasC,
         useNumFilesAsRatio=True,
     )
-    taskParamMap["jobParameters"] += dictItem
+    task_param_map["jobParameters"] += dictItem
     inputMap["BGCIN"] = options.beamGasHDS
     beamGasStream += "BGCIN,"
 if options.beamGasODS != "":
@@ -1246,7 +1248,7 @@ if options.beamGasODS != "":
         nFilesPerJob=options.nBeamGasO,
         useNumFilesAsRatio=True,
     )
-    taskParamMap["jobParameters"] += dictItem
+    task_param_map["jobParameters"] += dictItem
     inputMap["BGOIN"] = options.beamGasODS
     beamGasStream += "BGOIN,"
 beamGasStream = beamGasStream[:-1]
@@ -1255,7 +1257,7 @@ if beamGasStream != "":
         "type": "constant",
         "value": f'--beamGas "${{{beamGasStream}/T}}"',
     }
-    taskParamMap["jobParameters"] += [dictItem]
+    task_param_map["jobParameters"] += [dictItem]
 
 # general secondaries
 if options.secondaryDSs:
@@ -1279,14 +1281,14 @@ if options.secondaryDSs:
             outDS=options.outDS,
             file_list=tmpMap["files"],
         )
-        taskParamMap["jobParameters"] += dictItem
+        task_param_map["jobParameters"] += dictItem
         inputMap[streamName] = tmpDsName
     dictItem = {
         "type": "constant",
         "value": f"-m \"${{{','.join([tmpMap['streamName'] for tmpMap in options.secondaryDSs.values()])}/T}}\"",
     }
-    taskParamMap["jobParameters"] += [dictItem]
-    taskParamMap["reuseSecOnDemand"] = True
+    task_param_map["jobParameters"] += [dictItem]
+    task_param_map["reuseSecOnDemand"] = True
 
 # output
 if options.addNthFieldOfInDSToLFN != "" or options.addNthFieldOfInFileToLFN != "":
@@ -1305,14 +1307,14 @@ outMap, tmpParamList = AthenaUtils.convertConfToOutput(
     useEXTStreamName=not options.useFileFieldAsStream,
     extOutStreams=options.outputStreamNames,
 )
-taskParamMap["jobParameters"] += [
+task_param_map["jobParameters"] += [
     {"type": "constant", "value": f'-o "{outMap}" '},
 ]
-taskParamMap["jobParameters"] += tmpParamList
+task_param_map["jobParameters"] += tmpParamList
 # output files allowed not to be produced
-taskParamMap["jobParameters"] += get_allow_no_output_job_params(tmpParamList)
+task_param_map["jobParameters"] += get_allow_no_output_job_params(tmpParamList)
 for tmpPatt in get_unmatched_allow_no_output_patterns(options.allowNoOutput, tmpParamList):
-    tmpLog.warning(
+    tmp_log.warning(
         f"--allowNoOutput pattern '{tmpPatt}' matches none of output filename templates "
         f"{[item['value'] for item in tmpParamList if item.get('param_type') == 'output']}"
     )
@@ -1342,7 +1344,7 @@ if not options.trf:
             "hidden": True,
             "offset": runConfig.other.G4RandomSeeds,
         }
-        taskParamMap["jobParameters"] += [dictItem]
+        task_param_map["jobParameters"] += [dictItem]
 else:
     # replace parameters for TRF
     tmpJobO = jobO
@@ -1354,7 +1356,7 @@ else:
     # replace DBR
     tmpJobO = re.sub("%DB=[^ '\";]+", "${DBR}", tmpJobO)
 # set jobO parameter
-taskParamMap["jobParameters"] += [
+task_param_map["jobParameters"] += [
     {
         "type": "constant",
         "value": '-j "',
@@ -1365,7 +1367,7 @@ if options.secondaryDSs:
     extra_in_list = [tmpMap["streamName"] for tmpMap in options.secondaryDSs.values()]
 else:
     extra_in_list = []
-taskParamMap["jobParameters"] += PsubUtils.convertParamStrToJediParam(
+task_param_map["jobParameters"] += PsubUtils.convertParamStrToJediParam(
     tmpJobO,
     inputMap,
     options.outDS[:-1],
@@ -1374,7 +1376,7 @@ taskParamMap["jobParameters"] += PsubUtils.convertParamStrToJediParam(
     usePfnList,
     extra_in_list=extra_in_list,
 )
-taskParamMap["jobParameters"] += [
+task_param_map["jobParameters"] += [
     {
         "type": "constant",
         "value": '"',
@@ -1383,13 +1385,13 @@ taskParamMap["jobParameters"] += [
 
 # use local IO for trf or BS
 if options.forceStaged or ((options.trf or runConfig.input.inBS) and not options.forceDirectIO) or options.transferType == "file":
-    taskParamMap["useLocalIO"] = 1
+    task_param_map["useLocalIO"] = 1
 elif options.useDirectIOSites or options.transferType == "direct":
-    taskParamMap["allowInputLAN"] = "only"
+    task_param_map["allowInputLAN"] = "only"
 
 # use AMI to get the number of events per file
-if options.useAMIEventLevelSplit == True:
-    taskParamMap["getNumEventsInMetadata"] = True
+if options.useAMIEventLevelSplit:
+    task_param_map["getNumEventsInMetadata"] = True
 
 # build step
 build_job_params = None
@@ -1404,10 +1406,10 @@ if use_build_step(options):
     # debug parameters
     if options.queueData != "":
         build_job_params += f"--overwriteQueuedata={options.queueData} "
-set_build_task_params(options, taskParamMap, archiveName, build_job_params)
+set_build_task_params(options, task_param_map, archiveName, build_job_params)
 
 # preprocessing step
-set_prepro_task_params(options, taskParamMap)
+set_prepro_task_params(options, task_param_map)
 
 # merging
 if options.mergeOutput:
@@ -1424,7 +1426,7 @@ if options.mergeOutput:
     merge_job_params += "--useAthenaPackages "
     if AthenaUtils.useCMake() or options.containerImage != "":
         merge_job_params += "--useCMake "
-    set_merge_task_params(options, taskParamMap, merge_job_params, tmpLog)
+    set_merge_task_params(options, task_param_map, merge_job_params, tmp_log)
 
 
 #####################################################################
@@ -1450,25 +1452,25 @@ for iSubmission, ioItem in enumerate(ioList):
         print(f"jobO       : {jobO.lstrip()}")
 
     if len(ioList) == 1:
-        newTaskParamMap = taskParamMap
+        newTaskParamMap = task_param_map
     else:
         # replace input and output
         options.inDS = ioItem["inDS"]
         options.outDS = ioItem["outDS"]
-        newTaskParamMap = PsubUtils.replaceInputOutput(taskParamMap, ioItem["inDS"], ioItem["outDS"], iSubmission)
+        newTaskParamMap = PsubUtils.replaceInputOutput(task_param_map, ioItem["inDS"], ioItem["outDS"], iSubmission)
     taskID = None
     # check outDS format
     if not PsubUtils.checkOutDsName(options.outDS, options.official, nickName, options.mergeOutput, options.verbose):
-        tmpLog.error(f"invalid output datasetname:{options.outDS}")
+        tmp_log.error(f"invalid output datasetname:{options.outDS}")
         sys.exit(MiscUtils.EC_Config)
     # check task parameters
     exitCode, tmpStr = PsubUtils.checkTaskParam(newTaskParamMap, options.unlimitNumOutputs)
     if exitCode != 0 and len(ioList) == 1:
         sys.exit(exitCode)
     if options.noSubmit and options.verbose:
-        PsubUtils.print_task_params(newTaskParamMap, tmpLog)
+        PsubUtils.print_task_params(newTaskParamMap, tmp_log)
     if not options.noSubmit and exitCode == 0:
-        exitCode, tmpStr, taskID = PsubUtils.submit_task(newTaskParamMap, options, tmpLog)
+        exitCode, tmpStr, taskID = PsubUtils.submit_task(newTaskParamMap, options, tmp_log)
     dumpList.append(PsubUtils.make_dump_item(options, exitCode, tmpStr, taskID, iSubmission, len(ioList)))
 
 # go back to current dir
