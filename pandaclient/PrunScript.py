@@ -292,17 +292,17 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     cmtConfig = ""
     if options.useAthenaPackages:
         # get Athena versions
-        stA, retA = AthenaUtils.getAthenaVer()
+        has_athena_env, athena_env = AthenaUtils.getAthenaVer()
         # failed
-        if not stA:
+        if not has_athena_env:
             tmp_log.error("You need to setup Athena runtime to use --useAthenaPackages")
             sys.exit(MiscUtils.EC_Config)
-        workArea = retA["workArea"]
-        athenaVer = f"Atlas-{retA['athenaVer']}"
-        groupArea = retA["groupArea"]
-        cacheVer = retA["cacheVer"]
-        nightVer = retA["nightVer"]
-        cmtConfig = retA["cmtConfig"]
+        workArea = athena_env["workArea"]
+        athenaVer = f"Atlas-{athena_env['athenaVer']}"
+        groupArea = athena_env["groupArea"]
+        cacheVer = athena_env["cacheVer"]
+        nightVer = athena_env["nightVer"]
+        cmtConfig = athena_env["cmtConfig"]
         # override run directory
         sString = re.sub(r"[\+]", ".", workArea)
         runDir = re.sub(f"^{sString}", "", curDir)

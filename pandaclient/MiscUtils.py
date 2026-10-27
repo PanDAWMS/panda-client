@@ -263,9 +263,9 @@ def commands_get_status_output(com):
             stderr=subprocess.STDOUT,
         )
         data, unused_err = p.communicate()
-        retcode = p.poll()
-        if retcode:
-            ex = subprocess.CalledProcessError(retcode, com)
+        return_code = p.poll()
+        if return_code:
+            ex = subprocess.CalledProcessError(return_code, com)
             raise ex
         status = 0
     except subprocess.CalledProcessError as ex:
@@ -340,7 +340,7 @@ def run_with_original_env(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            print(str(e) + traceback.format_exc())
+            print(f"{e} {traceback.format_exc()}")
             raise e
         finally:
             if "LD_LIBRARY_PATH_RESERVE" in os.environ:

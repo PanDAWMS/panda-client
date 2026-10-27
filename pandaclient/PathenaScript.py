@@ -50,7 +50,7 @@ if options.verbose:
     print("")
 
 # load json. athena_args holds the job options and arguments given as positional arguments on the command line
-jsonExecStr, json_special_values = load_json_options(options, special_keys=("athena_args",))
+json_exec_string, json_special_values = load_json_options(options, special_keys=("athena_args",))
 if "athena_args" in json_special_values:
     args = json_special_values["athena_args"]
 
@@ -62,8 +62,8 @@ if options.version:
 from pandaclient import AthenaUtils, Client, PLogger, PsubUtils
 
 # full execution string
-fullExecString = PsubUtils.convSysArgv()
-fullExecString += jsonExecStr
+full_exec_string = PsubUtils.convSysArgv()
+full_exec_string += json_exec_string
 
 # get logger
 tmp_log = PLogger.getPandaLogger()
@@ -111,25 +111,20 @@ if invalid:
     sys.exit(MiscUtils.EC_Config)
 
 # files to be deleted
-delFilesOnExit = []
+files_to_delete_on_exit = []
 
 # save current dir
-currentDir = os.path.realpath(os.getcwd())
+current_dir = os.path.realpath(os.getcwd())
 
 # site, memory, and input options handled the same way as in the other tool
-includedSite = process_common_options(options, tmp_log)
-
-# site specified
-siteSpecified = True
-if options.site == "AUTO":
-    siteSpecified = False
+included_sites = process_common_options(options, tmp_log)
 
 # use outputPath as outDS
 if not options.outDS.endswith("/"):
     options.outDS = options.outDS + "/"
 
 # bulk submission
-ioList = get_bulk_io_list(options, tmp_log)
+io_list = get_bulk_io_list(options, tmp_log)
 
 # error
 if options.outDS == "":
@@ -150,19 +145,13 @@ if options.pfnList != "":
         sys.exit(MiscUtils.EC_Config)
 
 # absolute path for PFN list
-usePfnList = False
+use_pfn_list = False
 if options.pfnList != "":
     options.pfnList = os.path.realpath(options.pfnList)
-    usePfnList = True
+    use_pfn_list = True
 
 # check split options
 check_split_options(options, tmp_log)
-
-# trf parameter
-if not options.trf:
-    orig_trfStr = ""
-else:
-    orig_trfStr = options.trf
 
 # AMI event-level split
 if options.useAMIEventLevelSplit is None:
@@ -179,7 +168,6 @@ check_input_options(options, tmp_log)
 if options.eventPickEvtList != "" and options.trf != False:
     tmp_log.error("--eventPickEvtList doesn't work with --trf until official transformations support event picking")
     sys.exit(MiscUtils.EC_Config)
-
 
 # additional files
 options.extFile = options.extFile.split(",")
@@ -200,24 +188,24 @@ except Exception:
 process_sandbox_options(options)
 
 # file list
-tmpList = options.filelist.split(",")
+tmp_file_list = options.filelist.split(",")
 options.filelist = []
-for tmpItem in tmpList:
-    if tmpItem == "":
+for tmp_file in tmp_file_list:
+    if tmp_file == "":
         continue
     # wild card
-    tmpItem = tmpItem.replace("*", ".*")
+    tmp_file = tmp_file.replace("*", ".*")
     # append
-    options.filelist.append(tmpItem)
+    options.filelist.append(tmp_file)
+
 # read file list from file
 if options.inputFileList != "":
-    rFile = open(options.inputFileList)
-    for line in rFile:
-        line = line.replace("\n", "")
-        line = line.strip()
-        if line != "":
-            options.filelist.append(line)
-    rFile.close()
+    with open(options.inputFileList) as input_file_list:
+        for line in input_file_list:
+            line = line.replace("\n", "")
+            line = line.strip()
+            if line != "":
+                options.filelist.append(line)
 
 # suppressed streams
 options.supStream = options.supStream.upper().split(",")
@@ -230,7 +218,7 @@ except Exception:
 set_n_files_from_n_jobs(options)
 
 # check
-if options.inDS != "" and options.nJobs > 0 and options.nFilesPerJob < 0 and options.nFiles == 0 and options.nEventsPerJob < 0:
+if options.inDS != "" and options.nJobs > 0 > options.nFilesPerJob and options.nFiles == 0 and options.nEventsPerJob < 0:
     tmp_log.error("--split requires --nFilesPerJob or --nFiles or --nEventsPerJob when --inDS is specified")
     sys.exit(MiscUtils.EC_Config)
 
@@ -239,7 +227,7 @@ if options.inDS != "":
     options.inDS = options.inDS.replace(" ", "")
 
 # warning
-if options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
+if 0 < options.nFilesPerJob < 5:
     tmp_log.warning(
         "Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
         "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
@@ -249,13 +237,12 @@ if options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
 PsubUtils.check_proxy(options.verbose, options.vomsRoles)
 
 # get nickname
-nickName = PsubUtils.getNickname(options.verbose)
-
-if nickName == "":
+nickname = PsubUtils.getNickname(options.verbose)
+if nickname == "":
     sys.exit(MiscUtils.EC_Config)
 
 # set Rucio accounting
-PsubUtils.setRucioAccount(nickName, "pathena", True)
+PsubUtils.setRucioAccount(nickname, "pathena", True)
 
 # convert in/outTarBall to full path
 if options.inTarBall != "":
@@ -276,7 +263,7 @@ if options.maxCpuCount > Client.maxCpuCountLimit:
 
 # create tmp dir
 if options.tmpDir == "":
-    tmpDir = f"{currentDir}/{MiscUtils.wrappedUuidGen()}"
+    tmpDir = f"{current_dir}/{MiscUtils.wrappedUuidGen()}"
 else:
     tmpDir = f"{os.path.abspath(options.tmpDir)}/{MiscUtils.wrappedUuidGen()}"
 os.makedirs(tmpDir)
@@ -284,26 +271,23 @@ os.makedirs(tmpDir)
 
 # exit action
 def _onExit(dir, files, del_command):
-    for tmpFile in files:
-        del_command(f"rm -rf {tmpFile}")
+    for tmp_file in files:
+        del_command(f"rm -rf {tmp_file}")
     del_command(f"rm -rf {dir}")
 
 
-atexit.register(_onExit, tmpDir, delFilesOnExit, MiscUtils.commands_get_output)
+atexit.register(_onExit, tmpDir, files_to_delete_on_exit, MiscUtils.commands_get_output)
 
 
 # get Athena versions
-if options.verbose or options.containerImage == "":
-    cmt_verbose = True
-else:
-    cmt_verbose = False
-stA, retA = AthenaUtils.getAthenaVer(cmt_verbose)
+cmt_verbose = options.verbose or options.containerImage == ""
+has_athena_env, athena_env = AthenaUtils.getAthenaVer(cmt_verbose)
 # failed
-if not stA:
+if not has_athena_env:
     if options.containerImage == "":
         sys.exit(MiscUtils.EC_CMT)
     # disable Athena checks when using container image without Athena runtime env
-    retA = {
+    athena_env = {
         "workArea": os.getcwd(),
         "athenaVer": "",
         "groupArea": "",
@@ -312,14 +296,11 @@ if not stA:
         "cmtConfig": "",
     }
 
-workArea = retA["workArea"]
-if retA["athenaVer"]:
-    athenaVer = f"Atlas-{retA['athenaVer']}"
-else:
-    athenaVer = ""
-groupArea = retA["groupArea"]
-cacheVer = retA["cacheVer"]
-nightVer = retA["nightVer"]
+workArea = athena_env["workArea"]
+athenaVer = f"Atlas-{athena_env['athenaVer']}" if athena_env["athenaVer"] else ""
+groupArea = athena_env["groupArea"]
+cacheVer = athena_env["cacheVer"]
+nightVer = athena_env["nightVer"]
 
 # overwrite with athenaTag
 if options.athenaTag != "":
@@ -329,7 +310,7 @@ if options.athenaTag != "":
 options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer, cacheVer, nightVer, options.cmtConfig, verbose=options.verbose)
 
 # check CMTCONFIG
-if not AthenaUtils.checkCmtConfig(retA["cmtConfig"], options.cmtConfig, options.noBuild):
+if not AthenaUtils.checkCmtConfig(athena_env["cmtConfig"], options.cmtConfig, options.noBuild):
     sys.exit(MiscUtils.EC_CMT)
 
 tmp_log.info(f"using CMTCONFIG={options.cmtConfig}")
@@ -337,8 +318,8 @@ tmp_log.info(f"using CMTCONFIG={options.cmtConfig}")
 # get run directory
 # remove special characters
 sString = re.sub(r"[\+]", ".", workArea)
-runDir = re.sub(f"^{sString}", "", currentDir)
-if runDir == currentDir and not AthenaUtils.useCMake() and options.containerImage == "":
+runDir = re.sub(f"^{sString}", "", current_dir)
+if runDir == current_dir and not AthenaUtils.useCMake() and options.containerImage == "":
     error_message = (
         f"You need to run pathena in a directory under {workArea}. "
         f"If '{workArea}' is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup."
@@ -365,7 +346,7 @@ if options.eventPickEvtList != "":
             "",
             options.outDS,
             epLockedBy,
-            fullExecString,
+            full_exec_string,
             1,
             options.eventPickWithGUID,
             options.ei_api,
@@ -376,34 +357,31 @@ if options.eventPickEvtList != "":
     else:
         options.inDS = "dummy"
     tmp_log.info(f"requested Event Picking service to stage input as {options.inDS}")
+
     # make run/event list file for event picking
-    eventPickRunEvtDat = f"{currentDir}/ep_{MiscUtils.wrappedUuidGen()}.dat"
-    evI = open(options.eventPickEvtList)
-    evO = open(eventPickRunEvtDat, "w")
-    evO.write(evI.read())
-    # close
-    evI.close()
-    evO.close()
+    eventPickRunEvtDat = f"{current_dir}/ep_{MiscUtils.wrappedUuidGen()}.dat"
+    with open(options.eventPickEvtList) as ev_in, open(eventPickRunEvtDat, "w") as ev_out:
+        ev_out.write(ev_in.read())
     # add to be deleted on exit
-    delFilesOnExit.append(eventPickRunEvtDat)
+    files_to_delete_on_exit.append(eventPickRunEvtDat)
 
 # get job options
-jobO = ""
+job_options = ""
 if options.trf:
     # replace : to = for backward compatibility
     for placeholder in ["DB", "RNDM"]:
         options.trf = options.trf.replace(f"%{placeholder}:", f"%{placeholder}=")
     # use trf's parameters
-    jobO = options.trf
+    job_options = options.trf
 else:
     # get jobOs from command-line
     if options.preConfig != "":
-        jobO += f"-p {options.preConfig} "
+        job_options += f"-p {options.preConfig} "
     if options.singleLine != "":
         options.singleLine = options.singleLine.replace('"', "'")
     for arg in args:
-        jobO += f" {arg}"
-if jobO == "":
+        job_options += f" {arg}"
+if job_options == "":
     tmp_log.error("no jobOptions is given\n   pathena [--inDS input] --outDS output myJobO.py")
     sys.exit(MiscUtils.EC_Config)
 
@@ -411,9 +389,9 @@ if jobO == "":
 if options.inRunConfig == "":
     # extract run configuration
     tmp_log.info("extracting run configuration")
-    # run ConfigExtractor for normal jobO
+    # run ConfigExtractor for normal job_options
     ret, runConfig = AthenaUtils.extractRunConfig(
-        jobO,
+        job_options,
         options.supStream,
         options.shipinput,
         options.trf,
@@ -481,20 +459,20 @@ if not options.trf:
                 options.extOutFile.remove(tmpExtOutFile)
     # add -c
     if options.singleLine:
-        jobO = f'-c "{options.singleLine}" ' + jobO
+        job_options = f'-c "{options.singleLine}" ' + job_options
 else:
     # parse parameters for trf
     # AMI tag
-    newJobO = ""
-    for tmpString in jobO.split(";"):
-        match = re.search(" AMI=", tmpString)
+    new_job_options = ""
+    for trf_command in job_options.split(";"):
+        match = re.search(" AMI=", trf_command)
         if match is None:
             # use original command
-            newJobO += tmpString + ";"
+            new_job_options += trf_command + ";"
         else:
             tmp_log.info("getting configuration from AMI")
             # get configuration using GetCommand.py
-            com = "GetCommand.py " + re.sub("^[^ ]+ ", "", tmpString.strip())
+            com = "GetCommand.py " + re.sub("^[^ ]+ ", "", trf_command.strip())
             if options.verbose:
                 tmp_log.debug(com)
             amiSt, amiOut = MiscUtils.commands_get_status_output_with_env(com)
@@ -518,18 +496,18 @@ else:
                 tmp_log.error("Failed to extract configuration from AMI's output")
                 sys.exit(MiscUtils.EC_Config)
             # replace
-            newJobO += fullCommand + ";"
+            new_job_options += fullCommand + ";"
     # remove redundant ;
-    newJobO = newJobO[:-1]
+    new_job_options = new_job_options[:-1]
     # replace
-    if newJobO != "":
-        jobO = newJobO
+    if new_job_options != "":
+        job_options = new_job_options
         if options.verbose:
-            tmp_log.debug("new jobO : " + jobO)
+            tmp_log.debug("new job_options : " + job_options)
     # output
     oneOut = False
     # replace ; for job sequence
-    tmpString = re.sub(";", " ", jobO)
+    tmpString = re.sub(";", " ", job_options)
     # look for --outputDAODFile/--outputD2AODFile and --reductionConf/formats
     match = re.search(r"(--outputDAODFile|--outputD2AODFile)[ =\"']+([^ \"',]+)", tmpString)
     dxaod_output_filename = None
@@ -541,7 +519,7 @@ else:
         match = re.search(r"(--reductionConf|--formats)[ =\"\']+([^ \"\']+)", tmpString)
         if match is not None:
             # remove %OUT from outputDAODFile
-            jobO = jobO.replace("%OUT." + dxaod_output_filename, dxaod_output_filename)
+            job_options = job_options.replace("%OUT." + dxaod_output_filename, dxaod_output_filename)
             # loop over all configs
             reductionConf = match.group(2)
             for reductionItem in reductionConf.split(","):
@@ -578,13 +556,13 @@ else:
         tmp_log.warning("argument of --trf doesn't contain any %OUT")
     # check for maxEvents and skipEvents
     if options.nEventsPerJob > 0 and options.nEventsPerJob < options.nEventsPerFile:
-        if "%SKIPEVENTS" not in jobO:
+        if "%SKIPEVENTS" not in job_options:
             tmp_log.warning(
                 "Argument of --trf doesn't contain %SKIPEVENTS. All jobs with the same input file "
                 "may process the same events unless first events are skipped by using a trf parameter "
                 "like skipEvents or something"
             )
-        if "maxEvents" not in jobO:
+        if "maxEvents" not in job_options:
             tmp_log.warning(
                 "Argument of --trf doesn't contain maxEvents or something equivalent. Each job may process all events "
                 "in the input file. Note that --nEventsPerJob doesn't automatically append maxEvents "
@@ -593,7 +571,7 @@ else:
             )
     # warning for multicore/thread
     if options.nCore > 1 or options.nThreads > 1:
-        if "--multiprocess" not in jobO and "--multithreaded" not in jobO:
+        if "--multiprocess" not in job_options and "--multithreaded" not in job_options:
             tmp_msg = "Neither --multiprocess or --multithreaded is set in --trf despite "
             if options.nCore > 1:
                 tmp_msg += f"--nCore={options.nCore} "
@@ -603,13 +581,13 @@ else:
             tmp_log.warning(tmp_msg)
 
 # no output jobs
-tmpOutKeys = list(runConfig.output)
-for tmpIgnorKey in ["outUserData", "alloutputs"]:
+tmp_output_keys = list(runConfig.output)
+for tmp_ignore_key in ["outUserData", "alloutputs"]:
     try:
-        tmpOutKeys.remove(tmpIgnorKey)
+        tmp_output_keys.remove(tmp_ignore_key)
     except Exception:
         pass
-if tmpOutKeys == [] and options.extOutFile == [] and not options.noOutput:
+if tmp_output_keys == [] and options.extOutFile == [] and not options.noOutput:
     error_message = "No output stream was extracted from jobOs or --trf. "
     if not options.trf:
         error_message += (
@@ -622,7 +600,7 @@ if tmpOutKeys == [] and options.extOutFile == [] and not options.noOutput:
     sys.exit(MiscUtils.EC_Extractor)
 
 # set extOutFile to runConfig
-if options.extOutFile != []:
+if options.extOutFile:
     runConfig.output["extOutFile"] = options.extOutFile
 
 # check ship files in the current dir
@@ -689,27 +667,27 @@ else:
 
 if options.inDS != "" or options.shipinput or options.pfnList != "":
     # minimum bias dataset
-    if options.trf and jobO.find("%MININ") != -1:
+    if options.trf and job_options.find("%MININ") != -1:
         runConfig.input.inMinBias = True
     if runConfig.input.inMinBias:
         options.minDS, options.nMin = MiscUtils.getDatasetNameAndNumFiles(options.minDS, options.nMin, "Minimum-Bias")
     # low pT minimum bias dataset
-    if options.trf and jobO.find("%LOMBIN") != -1:
+    if options.trf and job_options.find("%LOMBIN") != -1:
         runConfig.input.inLoMinBias = True
     if runConfig.input.inLoMinBias:
         options.lowMinDS, options.nLowMin = MiscUtils.getDatasetNameAndNumFiles(options.lowMinDS, options.nLowMin, "Low pT Minimum-Bias")
     # high pT minimum bias dataset
-    if options.trf and jobO.find("%HIMBIN") != -1:
+    if options.trf and job_options.find("%HIMBIN") != -1:
         runConfig.input.inHiMinBias = True
     if runConfig.input.inHiMinBias:
         options.highMinDS, options.nHighMin = MiscUtils.getDatasetNameAndNumFiles(options.highMinDS, options.nHighMin, "High pT Minimum-Bias")
     # cavern dataset
-    if options.trf and jobO.find("%CAVIN") != -1:
+    if options.trf and job_options.find("%CAVIN") != -1:
         runConfig.input.inCavern = True
     if runConfig.input.inCavern:
         options.cavDS, options.nCav = MiscUtils.getDatasetNameAndNumFiles(options.cavDS, options.nCav, "Cavern")
     # beam halo dataset
-    if options.trf and jobO.find("%BHIN") != -1:
+    if options.trf and job_options.find("%BHIN") != -1:
         runConfig.input.inBeamHalo = True
     if runConfig.input.inBeamHalo:
         # use common DS
@@ -727,7 +705,7 @@ if options.inDS != "" or options.shipinput or options.pfnList != "":
                 options.nBeamHaloC,
             ) = MiscUtils.getDatasetNameAndNumFiles(options.beamHaloCDS, options.nBeamHaloC, "BeamHalo C-side")
     # beam gas dataset
-    if options.trf and jobO.find("%BGIN") != -1:
+    if options.trf and job_options.find("%BGIN") != -1:
         runConfig.input.inBeamGas = True
     if runConfig.input.inBeamGas:
         # use common DS
@@ -751,7 +729,7 @@ if options.inDS != "" or options.shipinput or options.pfnList != "":
 if True:
     if options.inTarBall == "" and options.tarBallViaDDM == "":
         # extract jobOs with full pathnames
-        for tmpItem in jobO.split():
+        for tmpItem in job_options.split():
             if re.search(r"^/.*\.py$", tmpItem) is not None:
                 # set random name to avoid overwriting
                 tmpName = tmpItem.split("/")[-1]
@@ -760,7 +738,7 @@ if True:
                 AthenaUtils.fullPathJobOs[tmpItem] = tmpName
 
         # copy some athena specific files
-        AthenaUtils.copyAthenaStuff(currentDir)
+        AthenaUtils.copyAthenaStuff(current_dir)
 
         # set extFile
         AthenaUtils.setExtFile(options.extFile)
@@ -774,7 +752,7 @@ if True:
             archiveName, archiveFullName = AthenaUtils.archiveSourceFiles(
                 workArea,
                 runDir,
-                currentDir,
+                current_dir,
                 tmpDir,
                 options.verbose,
                 options.gluePackages,
@@ -784,11 +762,11 @@ if True:
             # archive with cpack
             if AthenaUtils.useCMake():
                 archiveName, archiveFullName = AthenaUtils.archiveWithCpack(False, tmpDir, options.verbose)
-            # archive jobO
+            # archive job_options
             archiveName, archiveFullName = AthenaUtils.archiveJobOFiles(
                 workArea,
                 runDir,
-                currentDir,
+                current_dir,
                 tmpDir,
                 options.verbose,
                 archiveName=archiveName,
@@ -807,7 +785,7 @@ if True:
         # back to tmp dir
         os.chdir(tmpDir)
         # remove some athena specific files
-        AthenaUtils.deleteAthenaStuff(currentDir)
+        AthenaUtils.deleteAthenaStuff(current_dir)
         if not os.path.exists(archiveName):
             MiscUtils.commands_get_status_output(f"tar -cf {archiveName} -T /dev/null")
         # compress
@@ -828,7 +806,7 @@ if True:
         archiveName, archiveFullName = PsubUtils.use_existing_sandbox(options, tmpDir)
 
     # save for --outTarBall, and upload the sandbox and the good run list
-    archiveName = PsubUtils.upload_sandbox(options, archiveName, currentDir, tmp_log, delFilesOnExit)
+    archiveName = PsubUtils.upload_sandbox(options, archiveName, current_dir, tmp_log, files_to_delete_on_exit)
 
 
 ####################################################################3
@@ -842,7 +820,7 @@ task_param_map = {}
 processing_type = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-athena"
 if options.trf:
     processing_type += "-trf"
-set_common_task_params(options, task_param_map, processing_type, includedSite, fullExecString, archiveName)
+set_common_task_params(options, task_param_map, processing_type, included_sites, full_exec_string, archiveName)
 task_param_map["vo"] = "atlas"
 if options.containerImage == "":
     task_param_map["architecture"] = AthenaUtils.getCmtConfigImg(
@@ -1027,7 +1005,7 @@ else:
 # extract DBR for --trf
 dbrInTRF = False
 if options.trf:
-    tmpMatch = re.search("%DB=([^ '\";]+)", jobO)
+    tmpMatch = re.search("%DB=([^ '\";]+)", job_options)
     if tmpMatch is not None:
         options.dbRelease = tmpMatch.group(1)
         dbrInTRF = True
@@ -1319,9 +1297,9 @@ for tmpPatt in get_unmatched_allow_no_output_patterns(options.allowNoOutput, tmp
     )
 
 
-# jobO parameter
+# job_options parameter
 if not options.trf:
-    tmpJobO = jobO
+    tmpJobO = job_options
     # replace full-path jobOs
     for tmpFullName in AthenaUtils.fullPathJobOs:
         tmpLocalName = AthenaUtils.fullPathJobOs[tmpFullName]
@@ -1346,7 +1324,7 @@ if not options.trf:
         task_param_map["jobParameters"] += [dictItem]
 else:
     # replace parameters for TRF
-    tmpJobO = jobO
+    tmpJobO = job_options
     # output : basenames are in outMap['IROOT'] trough extOutFile
     tmpOutMap = []
     if "IROOT" in outMap:
@@ -1354,7 +1332,7 @@ else:
             tmpJobO = tmpJobO.replace("%OUT." + tmpName, tmpName)
     # replace DBR
     tmpJobO = re.sub("%DB=[^ '\";]+", "${DBR}", tmpJobO)
-# set jobO parameter
+# set job_options parameter
 task_param_map["jobParameters"] += [
     {
         "type": "constant",
@@ -1372,7 +1350,7 @@ task_param_map["jobParameters"] += PsubUtils.convertParamStrToJediParam(
     options.outDS[:-1],
     True,
     False,
-    usePfnList,
+    use_pfn_list,
     extra_in_list=extra_in_list,
 )
 task_param_map["jobParameters"] += [
@@ -1432,10 +1410,10 @@ if options.mergeOutput:
 # submission
 
 exitCode = 0
-dumpList = []
+dump_list = []
 
 # submit task
-for iSubmission, ioItem in enumerate(ioList):
+for iSubmission, ioItem in enumerate(io_list):
     if options.verbose:
         print("== parameters ==")
         print(f"Site       : {options.site}")
@@ -1448,9 +1426,9 @@ for iSubmission, ioItem in enumerate(ioList):
             print(f"Nightly    : {nightVer[1:]}")
         print(f"cmtConfig  : {AthenaUtils.getCmtConfigImg(athenaVer, cacheVer, nightVer, options.cmtConfig)}")
         print(f"RunDir     : {runDir}")
-        print(f"jobO       : {jobO.lstrip()}")
+        print(f"job_options       : {job_options.lstrip()}")
 
-    if len(ioList) == 1:
+    if len(io_list) == 1:
         newTaskParamMap = task_param_map
     else:
         # replace input and output
@@ -1459,24 +1437,24 @@ for iSubmission, ioItem in enumerate(ioList):
         newTaskParamMap = PsubUtils.replaceInputOutput(task_param_map, ioItem["inDS"], ioItem["outDS"], iSubmission)
     taskID = None
     # check outDS format
-    if not PsubUtils.checkOutDsName(options.outDS, options.official, nickName, options.mergeOutput, options.verbose):
+    if not PsubUtils.checkOutDsName(options.outDS, options.official, nickname, options.mergeOutput, options.verbose):
         tmp_log.error(f"invalid output datasetname:{options.outDS}")
         sys.exit(MiscUtils.EC_Config)
     # check task parameters
     exitCode, tmpStr = PsubUtils.checkTaskParam(newTaskParamMap, options.unlimitNumOutputs)
-    if exitCode != 0 and len(ioList) == 1:
+    if exitCode != 0 and len(io_list) == 1:
         sys.exit(exitCode)
     if options.noSubmit and options.verbose:
         PsubUtils.print_task_params(newTaskParamMap, tmp_log)
     if not options.noSubmit and exitCode == 0:
         exitCode, tmpStr, taskID = PsubUtils.submit_task(newTaskParamMap, options, tmp_log)
-    dumpList.append(PsubUtils.make_dump_item(options, exitCode, tmpStr, taskID, iSubmission, len(ioList)))
+    dump_list.append(PsubUtils.make_dump_item(options, exitCode, tmpStr, taskID, iSubmission, len(io_list)))
 
 # go back to current dir
-os.chdir(currentDir)
+os.chdir(current_dir)
 # dump
 if options.dumpJson is not None:
     with open(options.dumpJson, "w") as f:
-        json.dump(dumpList, f)
+        json.dump(dump_list, f)
 # succeeded
 sys.exit(0)
