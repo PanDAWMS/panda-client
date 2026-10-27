@@ -725,88 +725,86 @@ if options.inDS != "" or options.shipinput or options.pfnList != "":
 
 #####################################################################
 # archive sources and send it to HTTP-reachable location
+if options.inTarBall == "" and options.tarBallViaDDM == "":
+    # extract jobOs with full pathnames
+    for tmpItem in job_options.split():
+        if re.search(r"^/.*\.py$", tmpItem) is not None:
+            # set random name to avoid overwriting
+            tmpName = tmpItem.split("/")[-1]
+            tmpName = f"{MiscUtils.wrappedUuidGen()}_{tmpName}"
+            # set
+            AthenaUtils.fullPathJobOs[tmpItem] = tmpName
 
-if True:
-    if options.inTarBall == "" and options.tarBallViaDDM == "":
-        # extract jobOs with full pathnames
-        for tmpItem in job_options.split():
-            if re.search(r"^/.*\.py$", tmpItem) is not None:
-                # set random name to avoid overwriting
-                tmpName = tmpItem.split("/")[-1]
-                tmpName = f"{MiscUtils.wrappedUuidGen()}_{tmpName}"
-                # set
-                AthenaUtils.fullPathJobOs[tmpItem] = tmpName
+    # copy some athena specific files
+    AthenaUtils.copyAthenaStuff(current_dir)
 
-        # copy some athena specific files
-        AthenaUtils.copyAthenaStuff(current_dir)
+    # set extFile
+    AthenaUtils.setExtFile(options.extFile)
 
-        # set extFile
-        AthenaUtils.setExtFile(options.extFile)
-
-        archiveName = ""
-        if not (options.noBuild and not options.noCompile):
-            # archive with cpack
-            if AthenaUtils.useCMake():
-                archiveName, archiveFullName = AthenaUtils.archiveWithCpack(True, tmpDir, options.verbose)
-            # archive sources
-            archiveName, archiveFullName = AthenaUtils.archiveSourceFiles(
-                workArea,
-                runDir,
-                current_dir,
-                tmpDir,
-                options.verbose,
-                options.gluePackages,
-                archiveName=archiveName,
-            )
-        else:
-            # archive with cpack
-            if AthenaUtils.useCMake():
-                archiveName, archiveFullName = AthenaUtils.archiveWithCpack(False, tmpDir, options.verbose)
-            # archive job_options
-            archiveName, archiveFullName = AthenaUtils.archiveJobOFiles(
-                workArea,
-                runDir,
-                current_dir,
-                tmpDir,
-                options.verbose,
-                archiveName=archiveName,
-            )
-
-        # archive InstallArea
-        AthenaUtils.archiveInstallArea(
+    archiveName = ""
+    if not (options.noBuild and not options.noCompile):
+        # archive with cpack
+        if AthenaUtils.useCMake():
+            archiveName, archiveFullName = AthenaUtils.archiveWithCpack(True, tmpDir, options.verbose)
+        # archive sources
+        archiveName, archiveFullName = AthenaUtils.archiveSourceFiles(
             workArea,
-            groupArea,
-            archiveName,
-            archiveFullName,
+            runDir,
+            current_dir,
             tmpDir,
-            options.noBuild,
             options.verbose,
+            options.gluePackages,
+            archiveName=archiveName,
         )
-        # back to tmp dir
-        os.chdir(tmpDir)
-        # remove some athena specific files
-        AthenaUtils.deleteAthenaStuff(current_dir)
-        if not os.path.exists(archiveName):
-            MiscUtils.commands_get_status_output(f"tar -cf {archiveName} -T /dev/null")
-        # compress
-        status, out = MiscUtils.commands_get_status_output(f"gzip -f {archiveName}")
-        if status != 0 or options.verbose:
-            print(out)
-        archiveName += ".gz"
-        # check archive
-        status, out = MiscUtils.commands_get_status_output(f"ls -l {archiveName}")
-        if status != 0:
-            print(out)
-            tmp_log.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'")
-            sys.exit(MiscUtils.EC_Archive)
-
-        # check symlinks
-        PsubUtils.check_sandbox_symlinks(archiveName, tmp_log)
     else:
-        archiveName, archiveFullName = PsubUtils.use_existing_sandbox(options, tmpDir)
+        # archive with cpack
+        if AthenaUtils.useCMake():
+            archiveName, archiveFullName = AthenaUtils.archiveWithCpack(False, tmpDir, options.verbose)
+        # archive job_options
+        archiveName, archiveFullName = AthenaUtils.archiveJobOFiles(
+            workArea,
+            runDir,
+            current_dir,
+            tmpDir,
+            options.verbose,
+            archiveName=archiveName,
+        )
 
-    # save for --outTarBall, and upload the sandbox and the good run list
-    archiveName = PsubUtils.upload_sandbox(options, archiveName, current_dir, tmp_log, files_to_delete_on_exit)
+    # archive InstallArea
+    AthenaUtils.archiveInstallArea(
+        workArea,
+        groupArea,
+        archiveName,
+        archiveFullName,
+        tmpDir,
+        options.noBuild,
+        options.verbose,
+    )
+    # back to tmp dir
+    os.chdir(tmpDir)
+    # remove some athena specific files
+    AthenaUtils.deleteAthenaStuff(current_dir)
+    if not os.path.exists(archiveName):
+        MiscUtils.commands_get_status_output(f"tar -cf {archiveName} -T /dev/null")
+    # compress
+    status, out = MiscUtils.commands_get_status_output(f"gzip -f {archiveName}")
+    if status != 0 or options.verbose:
+        print(out)
+    archiveName += ".gz"
+    # check archive
+    status, out = MiscUtils.commands_get_status_output(f"ls -l {archiveName}")
+    if status != 0:
+        print(out)
+        tmp_log.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'")
+        sys.exit(MiscUtils.EC_Archive)
+
+    # check symlinks
+    PsubUtils.check_sandbox_symlinks(archiveName, tmp_log)
+else:
+    archiveName, archiveFullName = PsubUtils.use_existing_sandbox(options, tmpDir)
+
+# save for --outTarBall, and upload the sandbox and the good run list
+archiveName = PsubUtils.upload_sandbox(options, archiveName, current_dir, tmp_log, files_to_delete_on_exit)
 
 
 ####################################################################3
