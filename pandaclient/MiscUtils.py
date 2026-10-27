@@ -42,6 +42,7 @@ COMMON_OBSOLETE_OPTIONS = [
     "--disableRebrokerage",
     "--enableJEM",
     "--eventPickStagedDS",
+    "--express",
     "--individualOutDS",
     "--libDS",
     "--long",

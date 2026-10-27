@@ -4,7 +4,9 @@ import gzip
 import os
 import platform
 import re
+import shutil
 import sys
+import time
 from urllib.parse import quote
 
 from . import Client, MiscUtils, PLogger
@@ -781,3 +783,178 @@ def get_warning_for_memory(memory, is_confirmed, n_core, tmp_log):
         if not is_confirmed:
             return MiscUtils.query_yes_no("\nAre you sure with the memory requirement? ")
     return True
+
+
+def check_sandbox_symlinks(archive_name, tmp_log):
+    """Warn about symlinks in the sandbox which point to absolute paths, since they are not resolved on WNs
+
+    Exits with EC_Archive when the sandbox cannot be listed.
+
+    args:
+        archive_name: gzipped sandbox tarball
+        tmp_log: logger
+    """
+    tmp_log.info("checking sandbox")
+    # retry a few times in case listing fails
+    for _ in range(5):
+        status, out = MiscUtils.commands_get_status_output(f"tar tvfz {archive_name}")
+        if status == 0:
+            break
+        time.sleep(5)
+    if status != 0:
+        tmp_log.error(f"Failed to expand sandbox. {out}")
+        sys.exit(MiscUtils.EC_Archive)
+    symlinks = []
+    for line in out.split("\n"):
+        items = line.split()
+        if len(items) > 0 and items[0].startswith("l") and items[-1].startswith("/"):
+            symlinks.append(line)
+    if symlinks != []:
+        tmp_str = "Found some unresolved symlinks which may cause a problem\n"
+        tmp_str += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
+        tmp_str += "   Please ignore if you believe they are harmless"
+        tmp_log.warning(tmp_str)
+        for symlink in symlinks:
+            print(f"  {symlink}")
+
+
+def use_existing_sandbox(options, tmp_dir):
+    """Use a sandbox given with --tarBallViaDDM or --inTarBall instead of archiving the work area
+
+    Changes the working directory to tmp_dir.
+
+    args:
+        options: parsed options namespace
+        tmp_dir: temporary directory where the sandbox is copied
+    returns:
+        name of the sandbox, and its full path, which is None for a sandbox in DDM
+    """
+    # go to tmp dir
+    os.chdir(tmp_dir)
+    # use sandbox pre-uploaded to DDM. --tarBallViaDDM is datasetName:fileName
+    if options.tarBallViaDDM:
+        return options.tarBallViaDDM.split(":")[-1], None
+    # use a saved copy. Without a build step it contains only job options
+    if not (options.noBuild and not options.noCompile):
+        archive_name = f"sources.{MiscUtils.wrappedUuidGen()}.tar"
+    else:
+        archive_name = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
+    archive_full_name = f"{tmp_dir}/{archive_name}"
+    # make copy to avoid name duplication
+    shutil.copy(options.inTarBall, archive_full_name)
+    return archive_name, archive_full_name
+
+
+def upload_sandbox(options, archive_name, cur_dir, tmp_log, del_files_on_exit, use_cache_srv=True):
+    """Save the sandbox for --outTarBall, and upload it and the good run list to the PanDA cache server
+
+    Nothing is uploaded with --noSubmit or --tarBallViaDDM. Exits with EC_Post when the upload fails.
+
+    args:
+        options: parsed options namespace, goodRunListXML is replaced with the name of the uploaded file
+        archive_name: sandbox tarball in the working directory
+        cur_dir: directory where the command was run, to resolve the good run list path
+        tmp_log: logger
+        del_files_on_exit: list of files deleted on exit, extended with the gzipped good run list
+        use_cache_srv: upload to the cache server instead of the main server
+    returns:
+        name of the sandbox on the server, which differs when an identical sandbox is reused
+    """
+    # save
+    if options.outTarBall != "":
+        shutil.copy(archive_name, options.outTarBall)
+
+    if options.noSubmit or options.tarBallViaDDM:
+        return archive_name
+
+    # upload sources via HTTP POST
+    tmp_log.info("upload sandbox")
+    status, out = Client.putFile(archive_name, options.verbose, useCacheSrv=use_cache_srv, reuseSandbox=True)
+    if out.startswith("NewFileName:"):
+        # found the same input sandbox to reuse
+        archive_name = out.split(":")[-1]
+    elif out != "True":
+        print(out)
+        tmp_log.error(f"failed to upload sandbox with {status}")
+        sys.exit(MiscUtils.EC_Post)
+    # good run list
+    if options.goodRunListXML != "":
+        options.goodRunListXML = uploadGzippedFile(
+            options.goodRunListXML,
+            cur_dir,
+            tmp_log,
+            del_files_on_exit,
+            options.noSubmit,
+            options.verbose,
+        )
+    return archive_name
+
+
+def print_task_params(task_param_map, tmp_log):
+    """Print the task parameters sorted by key
+
+    args:
+        task_param_map: task parameter dict
+        tmp_log: logger
+    """
+    tmp_log.debug("==== taskParams ====")
+    for tmp_key in sorted(task_param_map):
+        print(f"{tmp_key} : {task_param_map[tmp_key]}")
+
+
+def submit_task(task_param_map, options, tmp_log):
+    """Submit the task parameters to the PanDA server
+
+    args:
+        task_param_map: task parameter dict
+        options: parsed options namespace
+        tmp_log: logger
+    returns:
+        exit code (0 or EC_Submit), message from the server or the error, and jediTaskID or None
+    """
+    tmp_log.info(f"submit {options.outDS}")
+    status, tmp_out = Client.insertTaskParams(
+        task_param_map,
+        options.verbose,
+        properErrorCode=True,
+        parent_tid=options.parentTaskID,
+    )
+    # communication error
+    if status != 0:
+        tmp_str = f"task submission failed with {status}"
+        tmp_log.error(tmp_str)
+        return MiscUtils.EC_Submit, tmp_str, None
+    # return codes 0 and 3 from the server mean that the task was accepted
+    if tmp_out[0] not in [0, 3]:
+        tmp_str = f"task submission failed. {tmp_out[1]}"
+        tmp_log.error(tmp_str)
+        return MiscUtils.EC_Submit, tmp_str, None
+    tmp_str = tmp_out[1]
+    tmp_log.info(tmp_str)
+    task_id = None
+    match = re.search(r"jediTaskID=(\d+)", tmp_str)
+    if match is not None:
+        task_id = int(match.group(1))
+    return 0, tmp_str, task_id
+
+
+def make_dump_item(options, exit_code, tmp_str, task_id, i_submission, n_submissions):
+    """Make the record of one submission for --dumpJson
+
+    args:
+        options: parsed options namespace
+        exit_code: exit code of the submission
+        tmp_str: message from the server or the error
+        task_id: jediTaskID or None
+        i_submission: index of the submission
+        n_submissions: number of submissions, more than one with --inOutDsJson
+    returns:
+        dict with the options and the result of the submission
+    """
+    dump_item = copy.deepcopy(vars(options))
+    dump_item["returnCode"] = exit_code
+    dump_item["returnOut"] = tmp_str
+    dump_item["jediTaskID"] = task_id
+    if n_submissions > 1:
+        dump_item["bulkSeqNumber"] = i_submission
+    return dump_item

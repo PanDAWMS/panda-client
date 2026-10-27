@@ -1,22 +1,37 @@
 import atexit
-import copy
 import json
 import os
 import pickle
 import random
 import re
-import shutil
 import sys
-import time
 
-from pandaclient import MiscUtils, PathenaArgs
+from pandaclient import MiscUtils, PandaToolsPkgInfo, PathenaArgs
 from pandaclient.CommonArgs import (
     VALID_TRANSFER_TYPES,
-    get_allow_no_output_job_params,
+    check_input_options,
+    check_split_options,
+    get_bulk_io_list,
     get_invalid_transfer_types,
-    get_unmatched_allow_no_output_patterns,
-    set_events_task_params,
+    load_json_options,
+    parse_secondary_datasets,
+    process_common_options,
+    process_sandbox_options,
     set_n_files_from_n_jobs,
+)
+from pandaclient.task_param_utils import (
+    get_allow_no_output_job_params,
+    get_dbr_job_params,
+    get_unmatched_allow_no_output_patterns,
+    set_build_task_params,
+    set_common_task_params,
+    set_good_run_list_input_params,
+    set_log_task_params,
+    set_merge_task_params,
+    set_pfn_list_input_params,
+    set_prepro_task_params,
+    set_source_url,
+    use_build_step,
 )
 
 # tweak sys.argv
@@ -34,41 +49,12 @@ if options.verbose:
     print(f"args={args}")
     print("")
 
-# load json
-jsonExecStr = ""
-if options.loadJson is not None:
-    loadOpts = MiscUtils.decodeJSON(options.loadJson)
-    for k in loadOpts:
-        v = loadOpts[k]
-        if isinstance(v, str):
-            try:
-                v = int(v)
-            except Exception:
-                pass
-        origK = k
-        if k == "athena_args":
-            args = v
-            continue
-        if not hasattr(options, k):
-            print(f"ERROR: unknown parameter {k} in {options.loadJson}")
-            sys.exit(1)
-        else:
-            setattr(options, k, v)
-        if v is True:
-            jsonExecStr += f" --{origK}"
-        else:
-            if isinstance(v, str):
-                jsonExecStr += f" --{origK}='{v}'"
-            else:
-                jsonExecStr += f" --{origK}={v}"
-    if options.verbose:
-        print("options after loading json")
-        print(options)
-        print("")
+# load json. athena_args holds the job options and arguments given as positional arguments on the command line
+jsonExecStr, json_special_values = load_json_options(options, special_keys=("athena_args",))
+if "athena_args" in json_special_values:
+    args = json_special_values["athena_args"]
 
 # display version
-from pandaclient import PandaToolsPkgInfo
-
 if options.version:
     print(f"Version: {PandaToolsPkgInfo.release_version}")
     sys.exit(0)
@@ -130,63 +116,20 @@ delFilesOnExit = []
 # save current dir
 currentDir = os.path.realpath(os.getcwd())
 
-# warning for PQ
-PsubUtils.get_warning_for_pq(options.site, options.excludedSite, tmpLog)
-
-# warning for memory
-is_confirmed = PsubUtils.get_warning_for_memory(options.memory, options.is_confirmed, options.nCore, tmpLog)
-if not is_confirmed:
-    sys.exit(0)
-
-# exclude sites
-if options.excludedSite != []:
-    options.excludedSite = PsubUtils.splitCommaConcatenatedItems(options.excludedSite)
-
-# use certain sites
-includedSite = None
-if re.search(",", options.site) is not None:
-    includedSite = PsubUtils.splitCommaConcatenatedItems([options.site])
-    options.site = "AUTO"
+# site, memory, and input options handled the same way as in the other tool
+includedSite = process_common_options(options, tmpLog)
 
 # site specified
 siteSpecified = True
 if options.site == "AUTO":
     siteSpecified = False
 
-# list of output files which can be skipped
-options.allowNoOutput = options.allowNoOutput.split(",")
-
 # use outputPath as outDS
 if not options.outDS.endswith("/"):
     options.outDS = options.outDS + "/"
 
-# read datasets from file
-if options.inDsTxt != "":
-    options.inDS = PsubUtils.readDsFromFile(options.inDsTxt)
-
-# not expand inDS when setting parent
-if options.parentTaskID:
-    options.notExpandInDS = True
-
 # bulk submission
-ioList = []
-if options.inOutDsJson != "":
-    options.bulkSubmission = True
-if options.bulkSubmission:
-    if options.inOutDsJson == "":
-        tmpLog.error("--inOutDsJson is missing")
-        sys.exit(MiscUtils.EC_Config)
-    if options.eventPickEvtList != "":
-        tmpLog.error("cannot use --eventPickEvtList and --inOutDsJson at the same time")
-        sys.exit(MiscUtils.EC_Config)
-    ioList = MiscUtils.decodeJSON(options.inOutDsJson)
-    for ioItem in ioList:
-        if not ioItem["outDS"].endswith("/"):
-            ioItem["outDS"] += "/"
-    options.inDS = ioList[0]["inDS"]
-    options.outDS = ioList[0]["outDS"]
-else:
-    ioList = [{"inDS": options.inDS, "outDS": options.outDS}]
+ioList = get_bulk_io_list(options, tmpLog)
 
 # error
 if options.outDS == "":
@@ -212,33 +155,8 @@ if options.pfnList != "":
     options.pfnList = os.path.realpath(options.pfnList)
     usePfnList = True
 
-# split options are mutually exclusive
-if options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob != -1:
-    tmpLog.error("split by files, split by events and split by file size can not be used simultaneously")
-    sys.exit(MiscUtils.EC_Config)
-
-# split options are mutually exclusive
-if options.nEventsPerJob > 0 and options.nGBPerJob != -1:
-    tmpLog.error("split by events and split by file size can not be used simultaneously")
-    sys.exit(MiscUtils.EC_Config)
-
-# check nGBPerJob
-if not options.nGBPerJob in [-1, "MAX"]:
-    # convert to int
-    try:
-        if options.nGBPerJob != "MAX":
-            options.nGBPerJob = int(options.nGBPerJob)
-    except Exception:
-        tmpLog.error("--nGBPerJob must be an integer or MAX")
-        sys.exit(MiscUtils.EC_Config)
-    # check negative
-    if options.nGBPerJob <= 0:
-        tmpLog.error("--nGBPerJob must be positive")
-        sys.exit(MiscUtils.EC_Config)
-    # incompatible parameters
-    if options.nFilesPerJob > 0:
-        tmpLog.error("--nFilesPerJob and --nGBPerJob must be used exclusively")
-        sys.exit(MiscUtils.EC_Config)
+# check split options
+check_split_options(options, tmpLog)
 
 # trf parameter
 if options.trf == False:
@@ -254,29 +172,13 @@ if options.useAMIEventLevelSplit is None:
     else:
         options.useAMIEventLevelSplit = False
 
-# check DBRelease
-if options.dbRelease != "" and (options.dbRelease.find(":") == -1 and options.dbRelease != "LATEST"):
-    tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")
-    sys.exit(MiscUtils.EC_Config)
+# check DBRelease, good run list, and event picking
+check_input_options(options, tmpLog)
 
-# Good Run List
-if options.goodRunListXML != "" and options.inDS != "":
-    tmpLog.error("cannot use --goodRunListXML and --inDS at the same time")
+# event picking doesn't work with official transformations
+if options.eventPickEvtList != "" and options.trf != False:
+    tmpLog.error("--eventPickEvtList doesn't work with --trf until official transformations support event picking")
     sys.exit(MiscUtils.EC_Config)
-
-# event picking
-if options.eventPickEvtList != "" and options.inDS != "":
-    tmpLog.error("cannot use --eventPickEvtList and --inDS at the same time")
-    sys.exit(MiscUtils.EC_Config)
-
-# param check for event picking
-if options.eventPickEvtList != "":
-    if options.eventPickDataType == "":
-        tmpLog.error("--eventPickDataType must be specified")
-        sys.exit(MiscUtils.EC_Config)
-    if options.trf != False:
-        tmpLog.error("--eventPickEvtList doesn't work with --trf until official transformations support event picking")
-        sys.exit(MiscUtils.EC_Config)
 
 
 # additional files
@@ -294,23 +196,8 @@ try:
 except Exception:
     pass
 
-# user-specified merging script
-if options.mergeScript != "":
-    # enable merging
-    options.mergeOutput = True
-    # add it to extFile
-    if not options.mergeScript in options.extFile:
-        options.extFile.append(options.mergeScript)
-
-# glue packages
-options.gluePackages = options.gluePackages.split(",")
-try:
-    options.gluePackages.remove("")
-except Exception:
-    pass
-
-# set excludeFile
-AthenaUtils.setExcludeFile(options.excludeFile)
+# merge script, glue packages, and excluded files
+process_sandbox_options(options)
 
 # file list
 tmpList = options.filelist.split(",")
@@ -854,12 +741,7 @@ if options.inDS != "" or options.shipinput or options.pfnList != "":
             options.beamGasODS, options.nBeamGasO = MiscUtils.getDatasetNameAndNumFiles(options.beamGasODS, options.nBeamGasO, "BeamGas Oxygen")
 
     # general secondaries
-    tmpStat, tmpOut = MiscUtils.parse_secondary_datasets_opt(options.secondaryDSs)
-    if not tmpStat:
-        tmpLog.error(tmpOut)
-        sys.exit(MiscUtils.EC_Config)
-    else:
-        options.secondaryDSs = tmpOut
+    parse_secondary_datasets(options, tmpLog)
 
 
 #####################################################################
@@ -940,80 +822,12 @@ if True:
             sys.exit(MiscUtils.EC_Archive)
 
         # check symlinks
-        tmpLog.info("checking sandbox")
-        for _ in range(5):
-            status, out = MiscUtils.commands_get_status_output(f"tar tvfz {archiveName}")
-            if status == 0:
-                break
-            time.sleep(5)
-        if status != 0:
-            tmpLog.error(f"Failed to expand sandbox. {out}")
-            sys.exit(MiscUtils.EC_Archive)
-        symlinks = []
-        for line in out.split("\n"):
-            items = line.split()
-            if len(items) > 0 and items[0].startswith("l") and items[-1].startswith("/"):
-                symlinks.append(line)
-        if symlinks != []:
-            tmpStr = "Found some unresolved symlinks which may cause a problem\n"
-            tmpStr += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
-            tmpStr += "   Please ignore if you believe they are harmless"
-            tmpLog.warning(tmpStr)
-            for symlink in symlinks:
-                print(f"  {symlink}")
-    elif options.tarBallViaDDM:
-        # go to tmp dir
-        os.chdir(tmpDir)
-        # use sandbox pre-uploaded to DDM
-        archiveName = options.tarBallViaDDM.split(":")[-1]
+        PsubUtils.check_sandbox_symlinks(archiveName, tmpLog)
     else:
-        # go to tmp dir
-        os.chdir(tmpDir)
-        # use a saved copy
-        if not (options.noBuild and not options.noCompile):
-            archiveName = f"sources.{MiscUtils.wrappedUuidGen()}.tar"
-            archiveFullName = f"{tmpDir}/{archiveName}"
-        else:
-            archiveName = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
-            archiveFullName = f"{tmpDir}/{archiveName}"
-        # make copy to avoid name duplication
-        shutil.copy(options.inTarBall, archiveFullName)
+        archiveName, archiveFullName = PsubUtils.use_existing_sandbox(options, tmpDir)
 
-    # save
-    if options.outTarBall != "":
-        shutil.copy(archiveName, options.outTarBall)
-
-    # put sources/jobO via HTTP POST
-    if not options.noSubmit and not options.tarBallViaDDM:
-        tmpLog.info("uploading sandbox")
-        status, out = Client.putFile(archiveName, options.verbose, useCacheSrv=True, reuseSandbox=True)
-        if out.startswith("NewFileName:"):
-            # found the same input sandbox to reuse
-            archiveName = out.split(":")[-1]
-        elif out != "True":
-            # failed
-            print(out)
-            tmpLog.error(f"Failed with {status}")
-            sys.exit(MiscUtils.EC_Post)
-        # good run list
-        if options.goodRunListXML != "":
-            options.goodRunListXML = PsubUtils.uploadGzippedFile(
-                options.goodRunListXML,
-                currentDir,
-                tmpLog,
-                delFilesOnExit,
-                options.noSubmit,
-                options.verbose,
-            )
-
-
-# special handling
-specialHandling = ""
-if options.express:
-    specialHandling += "express,"
-if options.debugMode:
-    specialHandling += "debug,"
-specialHandling = specialHandling[:-1]
+    # save for --outTarBall, and upload the sandbox and the good run list
+    archiveName = PsubUtils.upload_sandbox(options, archiveName, currentDir, tmpLog, delFilesOnExit)
 
 
 ####################################################################3
@@ -1024,9 +838,10 @@ sys.path = [tmpDir] + sys.path
 
 # make task
 taskParamMap = {}
-taskParamMap["taskName"] = options.outDS
-if not options.allowTaskDuplication:
-    taskParamMap["uniqueTaskName"] = True
+processing_type = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-athena"
+if options.trf:
+    processing_type += "-trf"
+set_common_task_params(options, taskParamMap, processing_type, includedSite, fullExecString, archiveName)
 taskParamMap["vo"] = "atlas"
 if options.containerImage == "":
     taskParamMap["architecture"] = AthenaUtils.getCmtConfigImg(
@@ -1041,135 +856,16 @@ else:
     taskParamMap["container_name"] = options.containerImage
 taskParamMap["transUses"] = athenaVer
 taskParamMap["transHome"] = "AnalysisTransforms" + cacheVer + nightVer
-if options.transPath != "":
-    taskParamMap["transPath"] = options.transPath
-taskParamMap["processingType"] = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-athena"
-if options.trf:
-    taskParamMap["processingType"] += "-trf"
-if options.eventPickEvtList != "":
-    taskParamMap["processingType"] += "-evp"
-    taskParamMap["waitInput"] = 1
-if options.goodRunListXML != "":
-    taskParamMap["processingType"] += "-grl"
-if options.framework != "":
-    taskParamMap["framework"] = options.framework
-if options.prodSourceLabel == "":
-    taskParamMap["prodSourceLabel"] = "user"
-else:
-    taskParamMap["prodSourceLabel"] = options.prodSourceLabel
-if options.site != "AUTO":
-    taskParamMap["site"] = options.site
-else:
-    taskParamMap["site"] = None
-taskParamMap["excludedSite"] = options.excludedSite
-if includedSite is not None and includedSite != []:
-    taskParamMap["includedSite"] = includedSite
-else:
-    taskParamMap["includedSite"] = None
-if options.priority is not None:
-    taskParamMap["currentPriority"] = options.priority
-if not options.nGBPerJob in [-1, "MAX"]:
-    # don't set MAX since it is the default on the server side
-    taskParamMap["nGBPerJob"] = options.nGBPerJob
-no_input = options.inDS == "" and options.pfnList == "" and options.goodRunListXML == ""
-set_events_task_params(options, taskParamMap, no_input)
-taskParamMap["cliParams"] = fullExecString
-if options.noEmail:
-    taskParamMap["noEmail"] = True
-if options.skipScout:
-    taskParamMap["skipScout"] = True
-if options.respectSplitRule:
-    taskParamMap["respectSplitRule"] = True
-if options.disableAutoRetry:
-    taskParamMap["disableAutoRetry"] = 1
 if options.workingGroup is not None:
     taskParamMap["workingGroup"] = options.workingGroup
-if options.official:
-    taskParamMap["official"] = True
-if options.useNewCode:
-    taskParamMap["fixedSandbox"] = archiveName
 if options.maxCpuCount > 0:
     taskParamMap["walltime"] = -options.maxCpuCount
-if options.noLoopingCheck:
-    taskParamMap["noLoopingCheck"] = True
-if options.maxWalltime > 0:
-    taskParamMap["maxWalltime"] = options.maxWalltime
-if options.cpuTimePerEvent > 0:
-    taskParamMap["cpuTime"] = options.cpuTimePerEvent
-    taskParamMap["cpuTimeUnit"] = "HS06sPerEvent"
-if options.fixedCpuTime:
-    taskParamMap["cpuTimeUnit"] = "HS06sPerEventFixed"
-if options.memory > 0:
-    taskParamMap["ramCount"] = options.memory
-    if options.fixedRamCount:
-        taskParamMap["ramCountUnit"] = "MBPerCoreFixed"
-    else:
-        taskParamMap["ramCountUnit"] = "MBPerCore"
-if options.outDiskCount is not None:
-    taskParamMap["outDiskCount"] = options.outDiskCount
-    taskParamMap["outDiskUnit"] = "kBFixed"
-if options.nCore > 1:
-    taskParamMap["coreCount"] = options.nCore
-elif options.nThreads > 1:
+if options.nCore <= 1 < options.nThreads:
     taskParamMap["coreCount"] = options.nThreads
-if options.maxCore and options.maxCore > 0:
-    taskParamMap["maxCoreCount"] = options.maxCore
-if options.skipFilesUsedBy != "":
-    taskParamMap["skipFilesUsedBy"] = options.skipFilesUsedBy
-taskParamMap["respectSplitRule"] = True
-if options.respectLB:
-    taskParamMap["respectLB"] = True
-if options.maxAttempt > 0 and options.maxAttempt <= 50:
-    taskParamMap["maxAttempt"] = options.maxAttempt
-if options.debugMode:
-    taskParamMap["debugMode"] = True
-if options.osMatching:
-    taskParamMap["osMatching"] = True
-taskParamMap["osInfo"] = PsubUtils.get_os_information()
-if options.parentTaskID:
-    taskParamMap["noWaitParent"] = True
 # source URL
-matchURL = re.search("(http.*://[^/]+)/", Client.baseURLCSRVSSL)
-if matchURL is not None:
-    taskParamMap["sourceURL"] = matchURL.group(1)
-# middle name
-if options.addNthFieldOfInFileToLFN != "":
-    taskParamMap["addNthFieldToLFN"] = options.addNthFieldOfInFileToLFN
-    taskParamMap["useFileAsSourceLFN"] = True
-elif options.addNthFieldOfInDSToLFN != "":
-    taskParamMap["addNthFieldToLFN"] = options.addNthFieldOfInDSToLFN
-# dataset name
-logDatasetName = re.sub("/$", ".log/", options.outDS)
+set_source_url(taskParamMap, Client.baseURLCSRVSSL)
 # log
-taskParamMap["log"] = {
-    "dataset": logDatasetName,
-    "container": logDatasetName,
-    "type": "template",
-    "param_type": "log",
-    "value": f"{logDatasetName[:-1]}.$JEDITASKID.${{SN}}.log.tgz",
-}
-
-if options.addNthFieldOfInFileToLFN != "":
-    loglfn = "{}.{}".format(*logDatasetName.split(".")[:2])
-    loglfn += "${MIDDLENAME}.$JEDITASKID._${SN}.log.tgz"
-    taskParamMap["log"]["value"] = loglfn
-if options.spaceToken != "":
-    taskParamMap["log"]["token"] = options.spaceToken
-if options.mergeOutput and options.mergeLog:
-    # log merge
-    mLogDatasetName = re.sub(r"\.log/", r".merge_log/", logDatasetName)
-    mLFN = re.sub(r"\.log\.tgz", r".merge_log.tgz", taskParamMap["log"]["value"])
-    data = copy.deepcopy(taskParamMap["log"])
-    data.update(
-        {
-            "dataset": mLogDatasetName,
-            "container": mLogDatasetName,
-            "param_type": "output",
-            "mergeOnly": True,
-            "value": mLFN,
-        }
-    )
-    taskParamMap["log_merge"] = data
+set_log_task_params(options, taskParamMap)
 
 # make job parameters
 taskParamMap["jobParameters"] = []
@@ -1313,29 +1009,9 @@ if options.inDS != "":
     taskParamMap["dsForIN"] = options.inDS
     inputMap["IN"] = options.inDS
 elif options.pfnList != "":
-    taskParamMap["pfnList"] = PsubUtils.getListPFN(options.pfnList)
-    # use noInput mechanism
-    taskParamMap["noInput"] = True
-    if options.nFiles == 0:
-        taskParamMap["nFiles"] = len(taskParamMap["pfnList"])
-    taskParamMap["jobParameters"] += [
-        {
-            "type": "constant",
-            "value": '-i "${IN/T}"',
-        },
-    ]
+    set_pfn_list_input_params(options, taskParamMap)
 elif options.goodRunListXML != "":
-    tmpDict = {
-        "type": "template",
-        "param_type": "input",
-        "value": '-i "${IN/T}"',
-        "dataset": "%%INDS%%",
-        "expand": True,
-        "exclude": r"\.log\.tgz(\.\d+)*$",
-        "files": "%%INLFNLIST%%",
-    }
-    taskParamMap["jobParameters"].append(tmpDict)
-    taskParamMap["dsForIN"] = "%%INDS%%"
+    set_good_run_list_input_params(taskParamMap)
     inputMap["IN"] = "%%INDS%%"
 else:
     # no input
@@ -1355,25 +1031,7 @@ if options.trf:
         options.dbRelease = tmpMatch.group(1)
         dbrInTRF = True
 # param for DBR
-if options.dbRelease != "":
-    dbrDS = options.dbRelease.split(":")[0]
-    # change LATEST to DBR_LATEST
-    if dbrDS == "LATEST":
-        dbrDS = "DBR_LATEST"
-    dictItem = {
-        "type": "template",
-        "param_type": "input",
-        "value": "--dbrFile=${DBR}",
-        "dataset": dbrDS,
-    }
-    taskParamMap["jobParameters"] += [dictItem]
-    # no expansion
-    if dbrInTRF:
-        dictItem = {
-            "type": "constant",
-            "value": "--noExpandDBR",
-        }
-        taskParamMap["jobParameters"] += [dictItem]
+taskParamMap["jobParameters"] += get_dbr_job_params(options.dbRelease, dbrInTRF)
 
 # minimum bias
 minBiasStream = ""
@@ -1729,103 +1387,44 @@ if options.forceStaged or ((options.trf or runConfig.input.inBS) and not options
 elif options.useDirectIOSites or options.transferType == "direct":
     taskParamMap["allowInputLAN"] = "only"
 
-# transfer type
-if options.transferType is not None:
-    taskParamMap["transferType"] = options.transferType
-
 # use AMI to get the number of events per file
 if options.useAMIEventLevelSplit == True:
     taskParamMap["getNumEventsInMetadata"] = True
 
-# avoid VP
-if options.avoidVP:
-    taskParamMap["avoidVP"] = True
-
 # build step
-if options.noBuild and not options.noCompile:
-    if options.tarBallViaDDM:
-        taskParamMap["tarBallViaDDM"] = options.tarBallViaDDM
-else:
-    jobParameters = "-i ${IN} -o ${OUT} --sourceURL ${SURL} "
+build_job_params = None
+if use_build_step(options):
+    build_job_params = "-i ${IN} -o ${OUT} --sourceURL ${SURL} "
     # no compile
     if options.noCompile:
-        jobParameters += "--noCompile "
+        build_job_params += "--noCompile "
     # use CMake
     if AthenaUtils.useCMake() or options.containerImage != "":
-        jobParameters += "--useCMake "
+        build_job_params += "--useCMake "
     # debug parameters
     if options.queueData != "":
-        jobParameters += f"--overwriteQueuedata={options.queueData} "
-    # set task param
-    taskParamMap["buildSpec"] = {
-        "prodSourceLabel": "panda",
-        "archiveName": archiveName,
-        "jobParameters": jobParameters,
-    }
-    if options.tarBallViaDDM:
-        taskParamMap["buildSpec"]["tarBallViaDDM"] = options.tarBallViaDDM
-        taskParamMap["buildSpec"]["jobParameters"] += "--noTarballDownload "
-    if options.prodSourceLabel != "":
-        taskParamMap["buildSpec"]["prodSourceLabel"] = options.prodSourceLabel
+        build_job_params += f"--overwriteQueuedata={options.queueData} "
+set_build_task_params(options, taskParamMap, archiveName, build_job_params)
 
 # preprocessing step
-
-# good run list
-if options.goodRunListXML != "":
-    jobParameters = f"--goodRunListXML {options.goodRunListXML} "
-    if options.goodRunDataType != "":
-        jobParameters += f"--goodRunListDataType {options.goodRunDataType} "
-    if options.goodRunProdStep != "":
-        jobParameters += f"--goodRunListProdStep {options.goodRunProdStep} "
-    if options.goodRunListDS != "":
-        jobParameters += f"--goodRunListDS {options.goodRunListDS} "
-    jobParameters += "--sourceURL ${SURL} "
-    # set task param
-    taskParamMap["preproSpec"] = {
-        "prodSourceLabel": "panda",
-        "jobParameters": jobParameters,
-    }
-    if options.prodSourceLabel != "":
-        taskParamMap["preproSpec"]["prodSourceLabel"] = options.prodSourceLabel
+set_prepro_task_params(options, taskParamMap)
 
 # merging
 if options.mergeOutput:
-    jobParameters = f"-r {runDir} "
+    merge_job_params = f"-r {runDir} "
     if options.mergeScript != "":
-        jobParameters += f'-j "{options.mergeScript}" '
+        merge_job_params += f'-j "{options.mergeScript}" '
     if options.mergeSingleFile:
-        jobParameters += "--mergeSingleFile "
+        merge_job_params += "--mergeSingleFile "
     if not options.noBuild:
-        jobParameters += "-l ${LIB} "
+        merge_job_params += "-l ${LIB} "
     else:
-        jobParameters += f"-a {archiveName} "
-        jobParameters += "--sourceURL ${SURL} "
-    jobParameters += "--useAthenaPackages "
+        merge_job_params += f"-a {archiveName} "
+        merge_job_params += "--sourceURL ${SURL} "
+    merge_job_params += "--useAthenaPackages "
     if AthenaUtils.useCMake() or options.containerImage != "":
-        jobParameters += "--useCMake "
-    jobParameters += "${TRN_OUTPUT:OUTPUT} "
-    if options.mergeLog:
-        jobParameters += "${TRN_LOG_MERGE:LOG_MERGE}"
-    else:
-        jobParameters += "${TRN_LOG:LOG}"
-    taskParamMap["mergeSpec"] = {}
-    taskParamMap["mergeSpec"]["useLocalIO"] = 1
-    taskParamMap["mergeSpec"]["jobParameters"] = jobParameters
-    if options.mergeTransPath != "":
-        taskParamMap["mergeSpec"]["transPath"] = options.mergeTransPath
-    taskParamMap["mergeOutput"] = True
-    if options.nGBPerMergeJob != "MAX":
-        # convert to int
-        try:
-            options.nGBPerMergeJob = int(options.nGBPerMergeJob)
-        except Exception:
-            tmpLog.error("--nGBPerMergeJob must be an integer")
-            sys.exit(MiscUtils.EC_Config)
-        # check negative
-        if options.nGBPerMergeJob <= 0:
-            tmpLog.error("--nGBPerMergeJob must be positive")
-            sys.exit(MiscUtils.EC_Config)
-        taskParamMap["nGBPerMergeJob"] = options.nGBPerMergeJob
+        merge_job_params += "--useCMake "
+    set_merge_task_params(options, taskParamMap, merge_job_params, tmpLog)
 
 
 #####################################################################
@@ -1866,46 +1465,11 @@ for iSubmission, ioItem in enumerate(ioList):
     exitCode, tmpStr = PsubUtils.checkTaskParam(newTaskParamMap, options.unlimitNumOutputs)
     if exitCode != 0 and len(ioList) == 1:
         sys.exit(exitCode)
-    if options.noSubmit:
-        if options.verbose:
-            tmpLog.debug("==== taskParams ====")
-            tmpKeys = list(newTaskParamMap)
-            tmpKeys.sort()
-            for tmpKey in tmpKeys:
-                print(f"{tmpKey} : {newTaskParamMap[tmpKey]}")
+    if options.noSubmit and options.verbose:
+        PsubUtils.print_task_params(newTaskParamMap, tmpLog)
     if not options.noSubmit and exitCode == 0:
-        tmpLog.info(f"submit {options.outDS}")
-        status, tmpOut = Client.insertTaskParams(
-            newTaskParamMap,
-            options.verbose,
-            properErrorCode=True,
-            parent_tid=options.parentTaskID,
-        )
-        # result
-        if status != 0:
-            tmpStr = f"task submission failed with {status}"
-            tmpLog.error(tmpStr)
-            exitCode = MiscUtils.EC_Submit
-        else:
-            if tmpOut[0] in [0, 3]:
-                tmpStr = tmpOut[1]
-                tmpLog.info(tmpStr)
-                try:
-                    m = re.search(r"jediTaskID=(\d+)", tmpStr)
-                    taskID = int(m.group(1))
-                except Exception:
-                    pass
-            else:
-                tmpStr = f"task submission failed. {tmpOut[1]}"
-                tmpLog.error(tmpStr)
-                exitCode = MiscUtils.EC_Submit
-    dumpItem = copy.deepcopy(vars(options))
-    dumpItem["returnCode"] = exitCode
-    dumpItem["returnOut"] = tmpStr
-    dumpItem["jediTaskID"] = taskID
-    if len(ioList) > 1:
-        dumpItem["bulkSeqNumber"] = iSubmission
-    dumpList.append(dumpItem)
+        exitCode, tmpStr, taskID = PsubUtils.submit_task(newTaskParamMap, options, tmpLog)
+    dumpList.append(PsubUtils.make_dump_item(options, exitCode, tmpStr, taskID, iSubmission, len(ioList)))
 
 # go back to current dir
 os.chdir(currentDir)
