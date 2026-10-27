@@ -73,7 +73,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # display version
     if options.version:
-        print("Version: %s" % PandaToolsPkgInfo.release_version)
+        print(f"Version: {PandaToolsPkgInfo.release_version}")
         sys.exit(0)
 
     from pandaclient import AthenaUtils, Client, PLogger, PsubUtils
@@ -123,7 +123,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # validate --transferType
     invalid = get_invalid_transfer_types(options.transferType)
     if invalid:
-        optP.error("--transferType: invalid value(s) {}. Allowed: {}".format(", ".join(sorted(invalid)), ", ".join(sorted(VALID_TRANSFER_TYPES))))
+        optP.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
 
     # files to be deleted
     delFilesOnExit = []
@@ -180,7 +180,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         for tmpItem in options.writeInputToTxt.split(","):
             tmpItems = tmpItem.split(":")
             if len(tmpItems) != 2:
-                tmp_log.error("invalid StreamName:FileName in --writeInputToTxt : %s" % tmpItem)
+                tmp_log.error(f"invalid StreamName:FileName in --writeInputToTxt : {tmpItem}")
                 sys.exit(MiscUtils.EC_Config)
 
     # read list of files to be used
@@ -233,7 +233,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # check working dir
     options.workDir = os.path.realpath(options.workDir)
     if options.workDir != curDir and (not curDir.startswith(options.workDir + "/")):
-        tmp_log.error("you need to run prun in a directory under %s" % options.workDir)
+        tmp_log.error(f"you need to run prun in a directory under {options.workDir}")
         sys.exit(MiscUtils.EC_Config)
 
     # avoid gathering the home dir
@@ -265,21 +265,21 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # check maxCpuCount
     if options.maxCpuCount > Client.maxCpuCountLimit:
-        tmp_log.error("too large maxCpuCount. Must be less than %s" % Client.maxCpuCountLimit)
+        tmp_log.error(f"too large maxCpuCount. Must be less than {Client.maxCpuCountLimit}")
         sys.exit(MiscUtils.EC_Config)
 
     # create tmp dir
     if options.tmpDir == "":
-        tmpDir = "{}/{}".format(curDir, MiscUtils.wrappedUuidGen())
+        tmpDir = f"{curDir}/{MiscUtils.wrappedUuidGen()}"
     else:
-        tmpDir = "{}/{}".format(os.path.abspath(options.tmpDir), MiscUtils.wrappedUuidGen())
+        tmpDir = f"{os.path.abspath(options.tmpDir)}/{MiscUtils.wrappedUuidGen()}"
     os.makedirs(tmpDir)
 
     # exit action
     def _onExit(dir, files, del_command):
         for tmpFile in files:
-            del_command("rm -rf %s" % tmpFile)
-        del_command("rm -rf %s" % dir)
+            del_command(f"rm -rf {tmpFile}")
+        del_command(f"rm -rf {dir}")
 
     atexit.register(_onExit, tmpDir, delFilesOnExit, MiscUtils.commands_get_output)
 
@@ -297,14 +297,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             tmp_log.error("You need to setup Athena runtime to use --useAthenaPackages")
             sys.exit(MiscUtils.EC_Config)
         workArea = retA["workArea"]
-        athenaVer = "Atlas-%s" % retA["athenaVer"]
+        athenaVer = f"Atlas-{retA['athenaVer']}"
         groupArea = retA["groupArea"]
         cacheVer = retA["cacheVer"]
         nightVer = retA["nightVer"]
         cmtConfig = retA["cmtConfig"]
         # override run directory
         sString = re.sub(r"[\+]", ".", workArea)
-        runDir = re.sub("^%s" % sString, "", curDir)
+        runDir = re.sub(f"^{sString}", "", curDir)
         if runDir == curDir:
             error_message = (
                 f"You need to run prun in a directory under {workArea}. "
@@ -352,7 +352,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             options.inDS = epOutput
         else:
             options.inDS = "dummy"
-        tmp_log.info("requested Event Picking service to stage input as %s" % options.inDS)
+        tmp_log.info(f"requested Event Picking service to stage input as {options.inDS}")
 
     # additional files
     if options.extFile == "":
@@ -461,7 +461,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                         rootCoreShList.append(rootCoreCompileNbSh)
                 for tmpShFile in rootCoreShList:
                     if not os.path.exists(tmpShFile):
-                        tmpErrMsg = "%s doesn't exist. Please use a newer version of RootCore" % tmpShFile
+                        tmpErrMsg = f"{tmpShFile} doesn't exist. Please use a newer version of RootCore"
                         tmp_log.error(tmpErrMsg)
                         sys.exit(MiscUtils.EC_Config)
                 tmp_log.info("copy RootCore packages to current dir")
@@ -473,12 +473,12 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 # add to be deleted on exit
                 delFilesOnExit.append(rootCoreDestWorkDir)
                 if not options.noBuild:
-                    tmpStat = os.system("{} {}".format(rootCoreSubmitSh, rootCoreDestWorkDir))
+                    tmpStat = os.system(f"{rootCoreSubmitSh} {rootCoreDestWorkDir}")
                 else:
-                    tmpStat = os.system("{} {}".format(rootCoreSubmitNbSh, rootCoreDestWorkDir))
+                    tmpStat = os.system(f"{rootCoreSubmitNbSh} {rootCoreDestWorkDir}")
                 tmpStat %= 255
                 if tmpStat != 0:
-                    tmpErrMsg = "{} failed with {}".format(rootCoreSubmitSh, tmpStat)
+                    tmpErrMsg = f"{rootCoreSubmitSh} failed with {tmpStat}"
                     tmp_log.error(tmpErrMsg)
                     sys.exit(MiscUtils.EC_Config)
                 # copy build and run scripts
@@ -532,14 +532,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     # go to workArea
                     os.chdir(workArea)
                     # gather files under work dir
-                    tmp_log.info("gathering files under {}/{}".format(workArea, runDir))
+                    tmp_log.info(f"gathering files under {workArea}/{runDir}")
                     archStartDir = runDir
                     archStartDir = re.sub("/+$", "", archStartDir)
                 else:
                     # go to work dir
                     os.chdir(options.workDir)
                     # gather files under work dir
-                    tmp_log.info("gathering files under %s" % options.workDir)
+                    tmp_log.info(f"gathering files under {options.workDir}")
                     archStartDir = "."
                 # get files in the working dir
                 if options.noCompile:
@@ -558,9 +558,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                         if options.useAthenaPackages:
                             if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
                                 if options.verbose:
-                                    print("skip Athena archive %s" % tmpFile)
+                                    print(f"skip Athena archive {tmpFile}")
                                 continue
-                        tmpPath = "{}/{}".format(tmpRoot, tmpFile)
+                        tmpPath = f"{tmpRoot}/{tmpFile}"
                         # get size
                         try:
                             size = os.path.getsize(tmpPath)
@@ -568,7 +568,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                             # skip dead symlink
                             if options.verbose:
                                 type, value, traceBack = sys.exc_info()
-                                print("  Ignore : {}:{}".format(type, value))
+                                print(f"  Ignore : {type}:{value}")
                             continue
                         # check exclude files
                         excludeFileFlag = False
@@ -600,17 +600,17 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                             emptyFlag = False
                             # skipped extensions
                             if isSkippedExt:
-                                print("  skip {} {}".format(str(skippedExt), tmpPath))
+                                print(f"  skip {str(skippedExt)} {tmpPath}")
                                 skippedFlag = True
                                 continue
                             # skip root
                             if isRoot:
-                                print("  skip root file %s" % tmpPath)
+                                print(f"  skip root file {tmpPath}")
                                 skippedFlag = True
                                 continue
                             # check size
                             if size > options.maxFileSize:
-                                print("  skip large file {}:{}B>{}B".format(tmpPath, size, options.maxFileSize))
+                                print(f"  skip large file {tmpPath}:{size}B>{options.maxFileSize}B")
                                 skippedFlag = True
                                 continue
                         # remove ./
@@ -642,22 +642,22 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     # create archive
                     if options.noBuild and not options.noCompile:
                         # use 'jobO' for noBuild
-                        archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
+                        archiveName = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
                     else:
                         # use 'sources' for normal build
-                        archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
-                    archiveFullName = "{}/{}".format(tmpDir, archiveName)
+                        archiveName = f"sources.{MiscUtils.wrappedUuidGen()}.tar"
+                    archiveFullName = f"{tmpDir}/{archiveName}"
                 # collect files
                 for tmpFile in workDirFiles:
                     # avoid self-archiving
                     if os.path.basename(tmpFile) == os.path.basename(archiveFullName):
                         if options.verbose:
-                            print("skip self-archiving for %s" % tmpFile)
+                            print(f"skip self-archiving for {tmpFile}")
                         continue
                     if os.path.islink(tmpFile):
-                        status, out = MiscUtils.commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rh '{}' -f '{}'".format(tmpFile, archiveFullName))
+                        status, out = MiscUtils.commands_get_status_output(f"tar --exclude '.[a-zA-Z]*' -rh '{tmpFile}' -f '{archiveFullName}'")
                     else:
-                        status, out = MiscUtils.commands_get_status_output("tar --exclude '.[a-zA-Z]*' -rf '{}' '{}'".format(archiveFullName, tmpFile))
+                        status, out = MiscUtils.commands_get_status_output(f"tar --exclude '.[a-zA-Z]*' -rf '{archiveFullName}' '{tmpFile}'")
                     if options.verbose:
                         print(tmpFile)
                     if status != 0 or out != "":
@@ -667,10 +667,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
             # make empty if archive doesn't exist
             if not os.path.exists(archiveFullName):
-                MiscUtils.commands_get_status_output("tar cvf %s --files-from /dev/null " % archiveName)
+                MiscUtils.commands_get_status_output(f"tar cvf {archiveName} --files-from /dev/null ")
 
             # compress
-            status, out = MiscUtils.commands_get_status_output("gzip %s" % archiveName)
+            status, out = MiscUtils.commands_get_status_output(f"gzip {archiveName}")
             archiveName += ".gz"
             if status != 0 or options.verbose:
                 print(out)
@@ -800,7 +800,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if ":" in tmpLFN:
                 tmpDsSuffix, tmpLFN = tmpLFN.split(":")
                 if tmpDsSuffix in dsSuffix:
-                    tmpErrMsg = "dataset name suffix '%s' is used for multiple files in --outputs. " % tmpDsSuffix
+                    tmpErrMsg = f"dataset name suffix '{tmpDsSuffix}' is used for multiple files in --outputs. "
                     tmpErrMsg += "each output must have a unique suffix."
                     tmp_log.error(tmpErrMsg)
                     sys.exit(MiscUtils.EC_Config)
@@ -819,13 +819,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     tmpNewLFN += ".tgz"
                 # disallowed character
                 if "/" in tmpNewLFN:
-                    tmp_err_msg = "An output file name %s contains '/'." % tmpNewLFN
+                    tmp_err_msg = f"An output file name {tmpNewLFN} contains '/'."
                     tmp_log.error(tmp_err_msg)
                     sys.exit(MiscUtils.EC_Config)
                 # check invalid characters
                 checked = PsubUtils.check_invalid_char(tmpNewLFN, is_file=True)
                 if checked is not None:
-                    tmp_err_msg = 'An output file name {} contains an invalid character "{}".'.format(tmpNewLFN, checked)
+                    tmp_err_msg = f'An output file name {tmpNewLFN} contains an invalid character "{checked}".'
                     tmp_log.error(tmp_err_msg)
                     sys.exit(MiscUtils.EC_Config)
                 if len(outDatasetName.split(".")) > 2:
@@ -960,7 +960,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             strInMap = strInMap.replace("'tmp_" + streamName + "'", "${" + streamName + "/T}")
         dictItem = {
             "type": "constant",
-            "value": '--inMap "%s"' % strInMap,
+            "value": f'--inMap "{strInMap}"',
         }
         task_param_map["jobParameters"] += [dictItem]
         task_param_map["reuseSecOnDemand"] = True
@@ -981,16 +981,16 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         jobParameters += "--useRootCore "
     # root
     if options.rootVer != "":
-        jobParameters += "--rootVer %s " % options.rootVer
+        jobParameters += f"--rootVer {options.rootVer} "
     # cmt config
     if options.cmtConfig not in ["", "NULL", None]:
-        jobParameters += "--cmtConfig %s " % options.cmtConfig
+        jobParameters += f"--cmtConfig {options.cmtConfig} "
     # write input to txt
     if options.writeInputToTxt != "":
-        jobParameters += "--writeInputToTxt %s " % options.writeInputToTxt
+        jobParameters += f"--writeInputToTxt {options.writeInputToTxt} "
     # debug parameters
     if options.queueData != "":
-        jobParameters += "--overwriteQueuedata=%s " % options.queueData
+        jobParameters += f"--overwriteQueuedata={options.queueData} "
     # exec string with real output filenames
     if options.execWithRealFileNames:
         jobParameters += "--execWithRealFileNames "
@@ -1041,13 +1041,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             build_job_params += "--useCMake "
         # root
         if options.rootVer != "":
-            build_job_params += "--rootVer %s " % options.rootVer
+            build_job_params += f"--rootVer {options.rootVer} "
         # cmt config
         if not options.cmtConfig in ["", "NULL", None]:
-            build_job_params += "--cmtConfig %s " % options.cmtConfig
+            build_job_params += f"--cmtConfig {options.cmtConfig} "
         # debug parameters
         if options.queueData != "":
-            build_job_params += "--overwriteQueuedata=%s " % options.queueData
+            build_job_params += f"--overwriteQueuedata={options.queueData} "
         # container
         build_job_params += get_container_job_params(options)
     set_build_task_params(options, task_param_map, archiveName, build_job_params)
@@ -1063,9 +1063,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         if options.mergeSingleFile:
             merge_job_params += "--mergeSingleFile "
         if options.rootVer != "":
-            merge_job_params += "--rootVer %s " % options.rootVer
+            merge_job_params += f"--rootVer {options.rootVer} "
         if options.cmtConfig not in ["", "NULL", None]:
-            merge_job_params += "--cmtConfig %s " % options.cmtConfig
+            merge_job_params += f"--cmtConfig {options.cmtConfig} "
         if options.useAthenaPackages:
             merge_job_params += "--useAthenaPackages "
         if AthenaUtils.useCMake():
@@ -1092,16 +1092,16 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     for iSubmission, ioItem in enumerate(ioList):
         if options.verbose:
             print("== parameters ==")
-            print("Site       : %s" % options.site)
-            print("Athena     : %s" % athenaVer)
+            print(f"Site       : {options.site}")
+            print(f"Athena     : {athenaVer}")
             if groupArea != "":
-                print("Group Area : %s" % groupArea)
+                print(f"Group Area : {groupArea}")
             if cacheVer != "":
-                print("Cache      : %s" % cacheVer[1:])
+                print(f"Cache      : {cacheVer[1:]}")
             if nightVer != "":
-                print("Nightly    : %s" % nightVer[1:])
-            print("RunDir     : %s" % runDir)
-            print("exec       : %s" % options.jobParams)
+                print(f"Nightly    : {nightVer[1:]}")
+            print(f"RunDir     : {runDir}")
+            print(f"exec       : {options.jobParams}")
 
         if len(ioList) == 1:
             newTaskParamMap = task_param_map
@@ -1121,7 +1121,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             options.mergeOutput,
             options.verbose,
         ):
-            tmpStr = "invalid output datasetname:%s" % options.outDS
+            tmpStr = f"invalid output datasetname:{options.outDS}"
             tmp_log.error(tmpStr)
             exitCode = MiscUtils.EC_Config
         # check task parameters

@@ -311,7 +311,7 @@ class JobSpec:
             if attr in self._limitLength:
                 if val is not None:
                     val = val[: self._limitLength[attr]]
-            ret[":%s" % attr] = val
+            ret[f":{attr}"] = val
         return ret
 
     # return state values to be pickled
@@ -377,9 +377,9 @@ class JobSpec:
                     ret += "NULL,"
                 else:
                     # oracle
-                    ret += "%s," % cls._seqAttrMap[attr]
+                    ret += f"{cls._seqAttrMap[attr]},"
             else:
-                ret += ":%s," % attr
+                ret += f":{attr},"
         ret = ret[:-1]
         ret += ")"
         return ret
@@ -401,7 +401,7 @@ class JobSpec:
     def bindUpdateExpression(cls):
         ret = ""
         for attr in cls._attributes:
-            ret += "{}=:{},".format(attr, attr)
+            ret += f"{attr}=:{attr},"
         ret = ret[:-1]
         ret += " "
         return ret
@@ -431,7 +431,7 @@ class JobSpec:
         ret = ""
         for attr in self._attributes:
             if attr in self._changedAttrs:
-                ret += "{}=:{},".format(attr, attr)
+                ret += f"{attr}=:{attr},"
         ret = ret[:-1]
         ret += " "
         return ret
@@ -545,7 +545,7 @@ class JobSpec:
     def getAltStgOut(self):
         if self.specialHandling is not None:
             for tmpItem in self.specialHandling.split(","):
-                if tmpItem.startswith("{}:".format(self._tagForSH["altStgOut"])):
+                if tmpItem.startswith(f"{self._tagForSH['altStgOut']}:"):
                     return tmpItem.split(":")[-1]
         return None
 
@@ -558,10 +558,10 @@ class JobSpec:
         # remove old value
         newItems = []
         for tmpItem in items:
-            if tmpItem.startswith("{}:".format(self._tagForSH["altStgOut"])):
+            if tmpItem.startswith(f"{self._tagForSH['altStgOut']}:"):
                 continue
             newItems.append(tmpItem)
-        newItems.append("{}:{}".format(self._tagForSH["altStgOut"], mode))
+        newItems.append(f"{self._tagForSH['altStgOut']}:{mode}")
         self.specialHandling = ",".join(newItems)
 
     # put log files to OS
@@ -590,7 +590,7 @@ class JobSpec:
         for item in items:
             if not item.startswith(self._tagForSH["requestType"]):
                 newItems.append(item)
-        newItems.append("{}={}".format(self._tagForSH["requestType"], reqType))
+        newItems.append(f"{self._tagForSH['requestType']}={reqType}")
         self.specialHandling = ",".join(newItems)
 
     # sort files
@@ -853,7 +853,7 @@ class JobSpec:
     def get_ram_for_retry(self):
         if self.specialHandling is not None:
             for tmpItem in self.specialHandling.split(","):
-                if tmpItem.startswith("{}:".format(self._tagForSH["retryRam"])):
+                if tmpItem.startswith(f"{self._tagForSH['retryRam']}:"):
                     return int(tmpItem.split(":")[-1])
         return None
 
@@ -866,10 +866,10 @@ class JobSpec:
         # remove old value
         newItems = []
         for tmpItem in items:
-            if tmpItem.startswith("{}:".format(self._tagForSH["retryRam"])):
+            if tmpItem.startswith(f"{self._tagForSH['retryRam']}:"):
                 continue
             newItems.append(tmpItem)
-        newItems.append("{}:{}".format(self._tagForSH["retryRam"], val))
+        newItems.append(f"{self._tagForSH['retryRam']}:{val}")
         self.specialHandling = ",".join(newItems)
 
     # dump to json-serializable
@@ -958,7 +958,7 @@ class JobSpec:
             items = []
         else:
             items = self.specialHandling.split(",")
-        items.append("{}={}".format(self._tagForSH["taskQueuedTime"], queued_time))
+        items.append(f"{self._tagForSH['taskQueuedTime']}={queued_time}")
         self.specialHandling = ",".join(items)
 
 
@@ -984,7 +984,7 @@ def get_task_queued_time(special_handling):
     try:
         if special_handling is not None:
             for item in special_handling.split(","):
-                if item.startswith("{}=".format(JobSpec._tagForSH["taskQueuedTime"])):
+                if item.startswith(f"{JobSpec._tagForSH['taskQueuedTime']}="):
                     return datetime.datetime.fromtimestamp(float(item.split("=")[-1]), datetime.timezone.utc)
     except Exception:
         pass

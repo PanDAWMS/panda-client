@@ -206,7 +206,7 @@ def makeJediJobParam(
 def getDatasetNameAndNumFiles(streamDS, nFilesPerJob, streamName):
     if streamDS == "":
         # read from stdin
-        print("\nThis job uses %s stream" % streamName)
+        print(f"\nThis job uses {streamName} stream")
         while True:
             streamDS = input(f"Enter dataset name for {streamName}: ")
             streamDS = streamDS.strip()
@@ -215,7 +215,7 @@ def getDatasetNameAndNumFiles(streamDS, nFilesPerJob, streamName):
     # number of files per one signal
     if nFilesPerJob < 0:
         while True:
-            tmpStr = input("Enter the number of %s files per job : " % streamName)
+            tmpStr = input(f"Enter the number of {streamName} files per job : ")
             try:
                 nFilesPerJob = int(tmpStr)
                 break
@@ -400,7 +400,7 @@ def parse_secondary_datasets_opt(secondaryDSs):
                             if l:
                                 tmpMap[tmpItems[2]]["files"].append(l)
             else:
-                errStr = "Wrong format %s in --secondaryDSs. Must be " "StreamName:nFiles:DatasetName[:Pattern[:nSkipFiles[:FileNameList]]]" % tmpItem
+                errStr = f"Wrong format {tmpItem} in --secondaryDSs. Must be StreamName:nFiles:DatasetName[:Pattern[:nSkipFiles[:FileNameList]]]"
                 return False, errStr
         # set
         secondaryDSs = tmpMap

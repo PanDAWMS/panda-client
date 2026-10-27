@@ -96,7 +96,7 @@ class GroupArgParser(argparse.ArgumentParser):
                 if group.usage:
                     print(group.usage)
             else:
-                raise Exception("!!!ERROR!!! Unknown group name=%s" % values)
+                raise Exception(f"!!!ERROR!!! Unknown group name={values}")
             sys.exit(0)
 
 
