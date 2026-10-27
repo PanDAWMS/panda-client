@@ -987,7 +987,7 @@ def check_split_options(options, tmp_log):
         tmp_log: logger
     """
     # check nGBPerJob. -1 means not set, and MAX leaves the size to the server
-    if not options.nGBPerJob in [-1, "MAX"]:
+    if options.nGBPerJob not in [-1, "MAX"]:
         # convert to int
         try:
             options.nGBPerJob = int(options.nGBPerJob)
@@ -1093,7 +1093,7 @@ def process_sandbox_options(options):
         # enable merging
         options.mergeOutput = True
         # add it to extFile so that it is shipped in the sandbox
-        if not options.mergeScript in options.extFile:
+        if options.mergeScript not in options.extFile:
             options.extFile.append(options.mergeScript)
 
     # glue packages

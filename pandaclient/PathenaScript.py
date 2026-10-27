@@ -159,7 +159,7 @@ if options.pfnList != "":
 check_split_options(options, tmp_log)
 
 # trf parameter
-if options.trf == False:
+if not options.trf:
     orig_trfStr = ""
 else:
     orig_trfStr = options.trf
@@ -659,7 +659,7 @@ if len(runConfig.other.rndmStream) != 0:
             runConfig.other.rndmNumbers.append([random.randint(1, 5000000), random.randint(1, 5000000)])
     if options.norandom:
         print("")
-if runConfig.other.G4RandomSeeds == True:
+if runConfig.other.G4RandomSeeds:
     if options.norandom:
         print("")
         print("Initial G4 random seeds need to be defined.")

@@ -38,7 +38,7 @@ def getCmtProjects(dir="."):
         tmpStr = f"(in {os.getcwd()})"
         lines.append(tmpStr)
         # AtlasProject
-        if not "AtlasProject" in os.environ:
+        if "AtlasProject" not in os.environ:
             return [], "AtlasProject is not defined in runtime environment"
         tmpStr = "{0} (in {0}/{1})".format(os.environ["AtlasProject"], os.environ["AtlasVersion"])
         lines.append(tmpStr)
@@ -338,7 +338,7 @@ def extractRunConfig(jobO, supStream, shipinput, trf, verbose=False, useAMI=Fals
                     if "outTHIST" not in outputConfig:
                         outputConfig["outTHIST"] = []
                     tmpItems = match[0].split()
-                    if not tmpItems[1] in outputConfig["outTHIST"]:
+                    if tmpItems[1] not in outputConfig["outTHIST"]:
                         outputConfig["outTHIST"].append(tmpItems[1])
                 # IROOT
                 if match[0].startswith("Output=IROOT"):

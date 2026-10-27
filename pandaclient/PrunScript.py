@@ -1042,7 +1042,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         if options.rootVer != "":
             build_job_params += f"--rootVer {options.rootVer} "
         # cmt config
-        if not options.cmtConfig in ["", "NULL", None]:
+        if options.cmtConfig not in ["", "NULL", None]:
             build_job_params += f"--cmtConfig {options.cmtConfig} "
         # debug parameters
         if options.queueData != "":

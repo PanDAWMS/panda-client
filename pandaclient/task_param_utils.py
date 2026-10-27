@@ -62,7 +62,7 @@ def set_common_task_params(options, task_param_map, processing_type, included_si
     if options.priority is not None:
         task_param_map["currentPriority"] = options.priority
     # one job per N GB of input files
-    if not options.nGBPerJob in [-1, "MAX"]:
+    if options.nGBPerJob not in [-1, "MAX"]:
         # don't set MAX since it is the default on the server side
         task_param_map["nGBPerJob"] = options.nGBPerJob
     # splitting by files or events. Tasks without input (no inDS, PFN list or good run list) are split by events only

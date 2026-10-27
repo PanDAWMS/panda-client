@@ -237,10 +237,10 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
                 match = re.search("/([^/]+)/Role=production", tmpLine)
                 if match is not None:
                     # ignore atlas production role
-                    if not match.group(1) in ["atlas"]:
+                    if match.group(1) not in ["atlas"]:
                         prodGroups.append(match.group(1))
         # no production role
-        if prodGroups == []:
+        if not prodGroups:
             error_message = f"The --official option requires {role_name} role. "
             if not Client.use_oidc():
                 error_message += (

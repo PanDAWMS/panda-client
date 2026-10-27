@@ -306,7 +306,7 @@ def commands_fail_on_non_zero_exit_status(
         if logger and error_log_msg:
             logger.error(error_log_msg)
 
-        if type(error_status_on_failure) == int:
+        if isinstance(error_status_on_failure, int):
             # use error status provided to the function
             sys.exit(error_status_on_failure)
         elif error_status_on_failure == "sameAsStatus":
@@ -395,10 +395,10 @@ def parse_secondary_datasets_opt(secondaryDSs):
                 # files
                 if len(tmpItems) >= 6 and tmpItems[5]:
                     with open(tmpItems[5]) as f:
-                        for l in f:
-                            l = l.strip()
-                            if l:
-                                tmpMap[tmpItems[2]]["files"].append(l)
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                tmpMap[tmpItems[2]]["files"].append()
             else:
                 errStr = f"Wrong format {tmpItem} in --secondaryDSs. Must be StreamName:nFiles:DatasetName[:Pattern[:nSkipFiles[:FileNameList]]]"
                 return False, errStr

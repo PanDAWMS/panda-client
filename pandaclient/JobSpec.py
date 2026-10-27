@@ -926,8 +926,8 @@ class JobSpec:
             tmp_items = tmp_file.dataset.split(".")
             if (
                 len(tmp_items) > 4
-                and (not tmp_items[0] in ["", "NULL", "user", "group", "hc_test"])
-                and (not tmp_items[0].startswith("group"))
+                and tmp_items[0] not in ["", "NULL", "user", "group", "hc_test"]
+                and not tmp_items[0].startswith("group")
                 and not tmp_file.dataset.startswith("panda.um.")
             ):
                 tmp_type = tmp_items[4]
