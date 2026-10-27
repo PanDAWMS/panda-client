@@ -200,10 +200,10 @@ def getAthenaVer(verbose=True):
     }
     # check error
     if athenaVer == "" and not isAthRelease(cacheVer):
-        tmpStr = ""
+        tmp_string = ""
         for line in lines:
-            tmpStr += line + "\n"
-        tmpLog.info("cmt showed\n" + tmpStr)
+            tmp_string += line + "\n"
+        tmpLog.info(f"cmt showed\n{tmp_string}")
         tmpLog.error("could not get Athena version. perhaps your requirements file doesn't have ATLAS_TEST_AREA")
         return False, retVal
     # return
@@ -805,24 +805,24 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                                 sString = re.sub(r"[\+]", ".", workArea)
                                 relPath = re.sub(sString + "/", "", iFile)
                             if os.path.islink(iFile):
-                                comStr = f"tar -rh '{relPath}' -f '{_archiveFullName}' --exclude '{excludePattern}'"
+                                command_string = f"tar -rh '{relPath}' -f '{_archiveFullName}' --exclude '{excludePattern}'"
                             else:
-                                comStr = f"tar rf '{_archiveFullName}' '{relPath}' --exclude '{excludePattern}'"
+                                command_string = f"tar rf '{_archiveFullName}' '{relPath}' --exclude '{excludePattern}'"
                             if verbose:
                                 print(relPath)
 
-                            commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+                            commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
                     continue
                 # else
                 if dereferenceSymLinks:
-                    comStr = f"tar rfh '{_archiveFullName}' '{pack}/{item}' --exclude '{excludePattern}'"
+                    command_string = f"tar rfh '{_archiveFullName}' '{pack}/{item}' --exclude '{excludePattern}'"
                 else:
-                    comStr = f"tar rf '{_archiveFullName}' '{pack}/{item}' --exclude '{excludePattern}'"
+                    command_string = f"tar rf '{_archiveFullName}' '{pack}/{item}' --exclude '{excludePattern}'"
 
                 if verbose:
                     print(f"{pack}/{item}")
 
-                commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+                commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
         # back to previous dir
         os.chdir(_curdir)
 
@@ -872,9 +872,11 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
         if re.search("/", spBaseName) is not None:
             spBaseName = spBaseName.split("/")[-1]
         if spBaseName in specialFilesForAthena:
-            warStr = f"{spBaseName} in the current dir is sent to remote WNs, which might cause a database problem. "
-            warStr += "If this is intentional please ignore this WARNING"
-            tmpLog.warning(warStr)
+            warning_message = (
+                f"{spBaseName} in the current dir is sent to remote WNs, which might cause a database problem. "
+                "If this is intentional please ignore this WARNING"
+            )
+            tmpLog.warning(warning_message)
         # check if already archived
         alreadyFlag = False
         for pack in packages:
@@ -884,13 +886,13 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
         # archive
         if not alreadyFlag:
             if os.path.islink(file):
-                comStr = f"tar -rh '{relPath}' -f '{archiveFullName}'"
+                command_string = f"tar -rh '{relPath}' -f '{archiveFullName}'"
             else:
-                comStr = f"tar rf '{archiveFullName}' '{relPath}'"
+                command_string = f"tar rf '{archiveFullName}' '{relPath}'"
             if verbose:
                 print(relPath)
 
-            commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+            commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
             files_in_run_dir.append(os.path.abspath(file))
     # check if extFile is includedor tmp_file_path in files_in_run_dir):
     for tmp_ext_file in user_set_ext_files:
@@ -947,11 +949,11 @@ def archiveJobOFiles(workArea, runDir, currentDir, tmpDir, verbose, archiveName=
         sString = re.sub(r"[\+]", ".", workArea)
         relPath = re.sub(sString + "/", "", file)
         # append
-        comStr = f"tar -rh '{relPath}' -f '{archiveFullName}'"
+        command_string = f"tar -rh '{relPath}' -f '{archiveFullName}'"
         if verbose:
             print(relPath)
 
-        commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+        commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
     # return
     return archiveName, archiveFullName
@@ -1049,22 +1051,22 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
                 if file not in allFiles:
                     # append
                     if file in files:
-                        comStr = f"tar -rh '{file}' -f '{archiveFullName}'"
+                        command_string = f"tar -rh '{file}' -f '{archiveFullName}'"
                     else:
                         # requirements files
-                        comStr = f"tar -rh '{file}' -f '{groupFullName}'"
+                        command_string = f"tar -rh '{file}' -f '{groupFullName}'"
                     allFiles.append(file)
                     if verbose:
                         print(file)
 
-                    commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+                    commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
     # append groupArea to sources
     if groupArea != "" and (not nobuild):
         os.chdir(tmpDir)
         if os.path.exists(groupFileName):
-            comStr = f"tar -rh '{groupFileName}' -f '{archiveFullName}'"
-            commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+            command_string = f"tar -rh '{groupFileName}' -f '{archiveFullName}'"
+            commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
             commands_get_output(f"rm -rf {groupFullName}")
 
@@ -1089,13 +1091,15 @@ def archiveWithCpack(withSource, tmpDir, verbose):
     check_file = "CPackConfig.cmake"
     if os.path.exists(os.path.join(buildDir, check_file)):
         use_cpack = True
-        comStr = f"cpack -B {tmpDir} -D CPACK_PACKAGE_FILE_NAME={archiveName} -G TGZ "
-        comStr += '-D CPACK_PACKAGE_NAME="" -D CPACK_PACKAGE_VERSION="" -D CPACK_PACKAGE_VERSION_MAJOR="" '
-        comStr += '-D CPACK_PACKAGE_VERSION_MINOR="" -D CPACK_PACKAGE_VERSION_PATCH="" '
-        comStr += '-D CPACK_PACKAGE_DESCRIPTION="" '
+        command_string = (
+            f"cpack -B {tmpDir} -D CPACK_PACKAGE_FILE_NAME={archiveName} -G TGZ "
+            '-D CPACK_PACKAGE_NAME="" -D CPACK_PACKAGE_VERSION="" -D CPACK_PACKAGE_VERSION_MAJOR="" '
+            '-D CPACK_PACKAGE_VERSION_MINOR="" -D CPACK_PACKAGE_VERSION_PATCH="" '
+            '-D CPACK_PACKAGE_DESCRIPTION="" '
+        )
 
         commands_fail_on_non_zero_exit_status(
-            comStr, MiscUtils.EC_Config, verbose_cmd=verbose, verbose_output=verbose, logger=tmpLog, error_log_msg="cpack failed"
+            command_string, MiscUtils.EC_Config, verbose_cmd=verbose, verbose_output=verbose, logger=tmpLog, error_log_msg="cpack failed"
         )
 
     else:
@@ -1107,11 +1111,11 @@ def archiveWithCpack(withSource, tmpDir, verbose):
     os.chdir(tmpDir)
     if use_cpack:
         # recreate tar to allow appending other files in the subsequent steps, as gzip decompress is not enough
-        comStr = "tar xfz {0}.gz; tar cf {0} usr > /dev/null 2>&1; rm -rf usr _CPack_Packages {0}.gz".format(archiveName)
+        command_string = "tar xfz {0}.gz; tar cf {0} usr > /dev/null 2>&1; rm -rf usr _CPack_Packages {0}.gz".format(archiveName)
     else:
-        comStr = f"tar cf {archiveName} -T /dev/null > /dev/null 2>&1"
+        command_string = f"tar cf {archiveName} -T /dev/null > /dev/null 2>&1"
 
-    commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+    commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
     os.chdir(_curdir)
     return archiveName, archiveFullName
@@ -1467,9 +1471,11 @@ def checkCmtConfig(localCmtConfig, userCmtConfig, noBuild):
         return True
     # user-specified CMTCONFIG is inconsistent with local CMTCONFIG
     if userCmtConfig != localCmtConfig and noBuild:
-        errStr = f"You cannot use --noBuild when --cmtConfig={userCmtConfig} is inconsistent with local CMTCONFIG={localCmtConfig} "
-        errStr += "since you need re-compile source files on remote worker-node. Please remove --noBuild"
-        tmpLog.error(errStr)
+        error_message = (
+            f"You cannot use --noBuild when --cmtConfig={userCmtConfig} is inconsistent with local CMTCONFIG={localCmtConfig} "
+            "since you need re-compile source files on remote worker-node. Please remove --noBuild"
+        )
+        tmpLog.error(error_message)
         return False
     # return OK
     return True

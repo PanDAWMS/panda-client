@@ -208,8 +208,8 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
     # check NG chars for SE
     checked = check_invalid_char(outDS)
     if checked is not None:
-        errStr = f'invalid character "{checked}" is used in --outDS'
-        tmpLog.error(errStr)
+        error_message = f'invalid character "{checked}" is used in --outDS'
+        tmpLog.error(error_message)
         return False
     # official dataset
     if official:
@@ -241,14 +241,16 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
                         prodGroups.append(match.group(1))
         # no production role
         if prodGroups == []:
-            errStr = f"The --official option requires {role_name} role. "
+            error_message = f"The --official option requires {role_name} role. "
             if not Client.use_oidc():
-                errStr += "Please use the --voms option to set production role;\n"
-                errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
-                errStr += "If you don't have production role for the group please request it in ATLAS VO first"
+                error_message += (
+                    "Please use the --voms option to set production role;\n"
+                    "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
+                    "If you don't have production role for the group please request it in ATLAS VO first"
+                )
             else:
-                errStr += f"Please request to add you in the {role_name} group in IAM"
-            tmpLog.error(errStr)
+                error_message += f"Please request to add you in the {role_name} group in IAM"
+            tmpLog.error(error_message)
             return False
         # loop over all prefixes
         allowedPrefix = ["group"]
@@ -259,26 +261,27 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
                 if re.search(tmpPattO, outDS) is not None or re.search(tmpPattN, outDS) is not None:
                     return True
         # didn't match
-        errStr = "You are allowed to produce official datasets with the following prefix\n"
+        error_message = "You are allowed to produce official datasets with the following prefix\n"
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
                 tmpPattN = f"{tmpPrefix}.{tmpGroup}"
-                errStr += f"          {tmpPattN}\n"
+                error_message += f"          {tmpPattN}\n"
         if not Client.use_oidc():
-            errStr += "If you have production role for another group please use the --voms option to set the role\n"
-            errStr += "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
-        tmpLog.error(errStr)
+            error_message += (
+                "If you have production role for another group please use the --voms option to set the role\n"
+                "  e.g.,  --voms atlas:/atlas/phys-higgs/Role=production\n"
+            )
+        tmpLog.error(error_message)
         return False
     # check output dataset format
     matStrN = r"^user\." + nickName + r"\."
     if nickName == "" or re.match(matStrN, outDS) is None:
         if nickName == "":
-            errStr = "Could not get nickname from voms proxy\n"
+            error_message = "Could not get nickname from voms proxy\n"
         else:
             outDsPrefixN = f"user.{nickName}"
-            errStr = f"outDS must be '{outDsPrefixN}.<user-controlled string...>'\n"
-            errStr += f"        e.g., {outDsPrefixN}.test1234"
-        tmpLog.error(errStr)
+            error_message = f"outDS must be '{outDsPrefixN}.<user-controlled string...>'\n        e.g., {outDsPrefixN}.test1234"
+        tmpLog.error(error_message)
         return False
     # check length. 200=255-55. 55 is reserved for Panda-internal (_subXYZ etc)
     maxLength = 200
@@ -289,8 +292,7 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
     if outDS.endswith("/"):
         # container
         if len(outDS) > maxLengthCont:
-            tmpErrStr = f"The name of the output dataset container is too long ({len(outDS)}). "
-            tmpErrStr += f"The length must be less than {maxLengthCont} "
+            tmpErrStr = f"The name of the output dataset container is too long ({len(outDS)}). The length must be less than {maxLengthCont} "
             if mergeOutput:
                 tmpErrStr += "when --mergeOutput is used. "
             else:
@@ -479,7 +481,8 @@ def convertParamStrToJediParam(
     # replace %XYZ with ${XYZ}
     if includeIO:
         for tmpH in inList:
-            encStr = re.sub("%" + tmpH + r"\b", "${" + tmpH + "}", encStr)
+            # \b so that e.g. %IN doesn't match the beginning of %INPUT
+            encStr = re.sub(rf"%{tmpH}\b", f"${{{tmpH}}}", encStr)
     # replace %XYZ with ${newXYZ}
     extensionMap = {}
     for newH in holders:
@@ -537,25 +540,17 @@ def convertParamStrToJediParam(
                     tmpDict["param_type"] = "input"
                     tmpDict["dataset"] = inputMap[tmpHolder]
             elif tmpHolder == seqHolder:
-                tmpDict = {"type": "template"}
-                tmpDict["value"] = tmpItem
-                tmpDict["param_type"] = "pseudo_input"
-                tmpDict["dataset"] = "seq_number"
+                tmpDict = {"type": "template", "value": tmpItem, "param_type": "pseudo_input", "dataset": "seq_number"}
                 if tmpHolder in extensionMap:
                     try:
                         tmpDict["offset"] = int(extensionMap[tmpHolder])
                     except Exception:
                         pass
             elif tmpHolder == outHolder:
-                tmpDict = {"type": "template"}
-                tmpDict["value"] = tmpItem
-                tmpDict["param_type"] = "output"
-                tmpDict["dataset"] = outNamePrefix + tmpItem.split("}")[-1] + "/"
+                tmpDict = {"type": "template", "value": tmpItem, "param_type": "output", "dataset": outNamePrefix + tmpItem.split("}")[-1] + "/"}
                 tmpDict["container"] = tmpDict["dataset"]
             else:
-                tmpDict = {"type": "template"}
-                tmpDict["value"] = tmpItem
-                tmpDict["param_type"] = "number"
+                tmpDict = {"type": "template", "value": tmpItem, "param_type": "number"}
                 if tmpHolder in extensionMap:
                     try:
                         tmpDict["offset"] = int(extensionMap[tmpHolder])
@@ -660,10 +655,12 @@ def checkTaskParam(taskParamMap, unlimitNumOutputs):
             tmpErrStr = None
             # check length of dataset name
             if len(tmpDict["dataset"]) > maxLengthCont:
-                tmpErrStr = f"The name of an output or log dataset container ({tmpDict['dataset']}) is too long ({len(tmpDict['dataset'])}). "
-                tmpErrStr += f"The length must be less than {maxLengthCont} following DDM definition. "
-                tmpErrStr += "Please note that one dataset container is created per output/log type and "
-                tmpErrStr += "each name is <outDS>_<extension made from the output filename>/ or <outDS>.log/. "
+                tmpErrStr = (
+                    f"The name of an output or log dataset container ({tmpDict['dataset']}) is too long ({len(tmpDict['dataset'])}). "
+                    f"The length must be less than {maxLengthCont} following DDM definition. "
+                    "Please note that one dataset container is created per output/log type and "
+                    "each name is <outDS>_<extension made from the output filename>/ or <outDS>.log/. "
+                )
             # check non-ascii characters
             if not tmpErrStr:
                 try:
@@ -678,17 +675,17 @@ def checkTaskParam(taskParamMap, unlimitNumOutputs):
             if tmpErrStr:
                 tmpLog = PLogger.getPandaLogger()
                 tmpLog.error(tmpErrStr)
-                return (MiscUtils.EC_Config, tmpErrStr)
+                return MiscUtils.EC_Config, tmpErrStr
     if not unlimitNumOutputs and nOutputs > maxNumOutputs:
-        errStr = (
+        error_message = (
             f"Too many output files (={nOutputs}) per job. The default limit is {maxNumOutputs}. "
             "You can remove the constraint by using the --unlimitNumOutputs option. "
             "But please note that having too many outputs per job causes a severe load on the system. "
             "You may be banned if you carelessly use the option"
         )
         tmpLog = PLogger.getPandaLogger()
-        tmpLog.error(errStr)
-        return (MiscUtils.EC_Config, errStr)
+        tmpLog.error(error_message)
+        return (MiscUtils.EC_Config, error_message)
     return (0, None)
 
 

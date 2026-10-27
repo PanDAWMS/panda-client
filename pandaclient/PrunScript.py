@@ -244,9 +244,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         and os.path.realpath(os.path.expanduser(os.environ["HOME"])) == options.workDir
         and not dry_mode
     ):
-        tmpStr = "prun is executed just under the HOME directory "
-        tmpStr += "and is going to send all files under the dir including ~/Mail/* and ~/private/*. "
-        tmpStr += "Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)"
+        tmpStr = (
+            "prun is executed just under the HOME directory "
+            "and is going to send all files under the dir including ~/Mail/* and ~/private/*. "
+            "Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)"
+        )
         tmp_log.warning(tmpStr)
         while True:
             tmpAnswer = input("y/N: ")
@@ -444,8 +446,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if options.useRootCore:
                 # check $ROOTCOREDIR
                 if "ROOTCOREDIR" not in os.environ:
-                    tmpErrMsg = "$ROOTCOREDIR is not defined in your environment. "
-                    tmpErrMsg += "Please setup RootCore runtime beforehand"
+                    tmpErrMsg = "$ROOTCOREDIR is not defined in your environment. Please setup RootCore runtime beforehand"
                     tmp_log.error(tmpErrMsg)
                     sys.exit(MiscUtils.EC_Config)
                 # check grid_submit.sh
@@ -800,8 +801,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if ":" in tmpLFN:
                 tmpDsSuffix, tmpLFN = tmpLFN.split(":")
                 if tmpDsSuffix in dsSuffix:
-                    tmpErrMsg = f"dataset name suffix '{tmpDsSuffix}' is used for multiple files in --outputs. "
-                    tmpErrMsg += "each output must have a unique suffix."
+                    tmpErrMsg = f"dataset name suffix '{tmpDsSuffix}' is used for multiple files in --outputs. each output must have a unique suffix."
                     tmp_log.error(tmpErrMsg)
                     sys.exit(MiscUtils.EC_Config)
                 dsSuffix.append(tmpDsSuffix)
