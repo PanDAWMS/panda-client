@@ -391,8 +391,8 @@ if options.eventPickEvtList != "":
 jobO = ""
 if options.trf:
     # replace : to = for backward compatibility
-    for optArg in ["DB", "RNDM"]:
-        options.trf = re.sub("%" + optArg + ":", "%" + optArg + "=", options.trf)
+    for placeholder in ["DB", "RNDM"]:
+        options.trf = options.trf.replace(f"%{placeholder}:", f"%{placeholder}=")
     # use trf's parameters
     jobO = options.trf
 else:
@@ -501,10 +501,11 @@ else:
             amiSt %= 255
             if amiSt != 0:
                 tmp_log.error(amiOut)
-                errSt = "Failed to get configuration from AMI. "
-                errSt += "Using AMI=tag in --trf is disallowed since it may overload the AMI server. "
-                errSt += "Please use explicit configuration parameters in --trf"
-                tmp_log.error(errSt)
+                tmp_log.error(
+                    "Failed to get configuration from AMI. "
+                    "Using AMI=tag in --trf is disallowed since it may overload the AMI server. "
+                    "Please use explicit configuration parameters in --trf"
+                )
                 sys.exit(MiscUtils.EC_Config)
             # get full command string
             fullCommand = ""
@@ -514,8 +515,7 @@ else:
             # failed to extract configuration
             if fullCommand == "":
                 tmp_log.error(amiOut)
-                errSt = "Failed to extract configuration from AMI's output"
-                tmp_log.error(errSt)
+                tmp_log.error("Failed to extract configuration from AMI's output")
                 sys.exit(MiscUtils.EC_Config)
             # replace
             newJobO += fullCommand + ";"
@@ -610,16 +610,15 @@ for tmpIgnorKey in ["outUserData", "alloutputs"]:
     except Exception:
         pass
 if tmpOutKeys == [] and options.extOutFile == [] and not options.noOutput:
-    errStr = "No output stream was extracted from jobOs or --trf. "
+    error_message = "No output stream was extracted from jobOs or --trf. "
     if not options.trf:
-        errStr += "If your job defines an output without Athena framework "
-        errStr += "(e.g., using ROOT.TFile.Open instead of THistSvc) "
-        errStr += "please specify the output filename by using --extOutFile. "
-        errStr += "Or if you define the output with a relatively new mechanism "
-        errStr += "please report it to Savannah to update the automatic extractor. "
-    errStr += "If you are sure that your job doesn't produce any output file "
-    errStr += "(e.g., HelloWorldOptions.py) please use --noOutput. "
-    tmp_log.error(errStr)
+        error_message += (
+            "If your job defines an output without Athena framework (e.g., using ROOT.TFile.Open instead of THistSvc) "
+            "please specify the output filename by using --extOutFile. Or if you define the output with a relatively new mechanism "
+            "please report it to update the automatic extractor. "
+        )
+    error_message += "If you are sure that your job doesn't produce any output file (e.g., HelloWorldOptions.py) please use --noOutput. "
+    tmp_log.error(error_message)
     sys.exit(MiscUtils.EC_Extractor)
 
 # set extOutFile to runConfig

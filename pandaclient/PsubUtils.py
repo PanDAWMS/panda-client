@@ -809,11 +809,8 @@ def check_sandbox_symlinks(archive_name, tmp_log):
         items = line.split()
         if len(items) > 0 and items[0].startswith("l") and items[-1].startswith("/"):
             symlinks.append(line)
-    if symlinks != []:
-        tmp_str = "Found some unresolved symlinks which may cause a problem\n"
-        tmp_str += "     See, e.g., http://savannah.cern.ch/bugs/?43885\n"
-        tmp_str += "   Please ignore if you believe they are harmless"
-        tmp_log.warning(tmp_str)
+    if symlinks:
+        tmp_log.warning("Found some unresolved symlinks which may cause a problem\n   Please ignore if you believe they are harmless")
         for symlink in symlinks:
             print(f"  {symlink}")
 

@@ -387,8 +387,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         sys.exit(MiscUtils.EC_Config)
 
     # replace : to = for backward compatibility
-    for optArg in ["RNDM"]:
-        options.jobParams = re.sub("%" + optArg + ":", "%" + optArg + "=", options.jobParams)
+    for optional_arg in ["RNDM"]:
+        options.jobParams = re.sub(f"%{optional_arg}:", f"%{optional_arg}=", options.jobParams)
 
     # check output dataset
     if options.outDS == "":
