@@ -208,8 +208,7 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
     # check NG chars for SE
     checked = check_invalid_char(outDS)
     if checked is not None:
-        error_message = f'invalid character "{checked}" is used in --outDS'
-        tmpLog.error(error_message)
+        tmpLog.error(f'invalid character "{checked}" is used in --outDS')
         return False
     # official dataset
     if official:
