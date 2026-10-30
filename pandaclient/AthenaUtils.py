@@ -1471,11 +1471,10 @@ def checkCmtConfig(localCmtConfig, userCmtConfig, noBuild):
         return True
     # user-specified CMTCONFIG is inconsistent with local CMTCONFIG
     if userCmtConfig != localCmtConfig and noBuild:
-        error_message = (
+        tmpLog.error(
             f"You cannot use --noBuild when --cmtConfig={userCmtConfig} is inconsistent with local CMTCONFIG={localCmtConfig} "
             "since you need re-compile source files on remote worker-node. Please remove --noBuild"
         )
-        tmpLog.error(error_message)
         return False
     # return OK
     return True
