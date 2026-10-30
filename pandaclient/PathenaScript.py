@@ -138,7 +138,7 @@ if options.pfnList != "":
         tmp_log.error("--pfnList and --inDS cannot be used at the same time")
         sys.exit(MiscUtils.EC_Config)
     if options.shipinput:
-        tmp_log.error("--shipInput and --inDS cannot be used at the same time")
+        tmp_log.error("--pfnList and --shipInput cannot be used at the same time")
         sys.exit(MiscUtils.EC_Config)
     if options.site == "AUTO":
         tmp_log.error("--site must be specified when --pfnList is used")
