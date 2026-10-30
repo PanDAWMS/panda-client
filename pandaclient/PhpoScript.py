@@ -289,7 +289,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                     tmpLog.warning(f"ignore unknown option {k} in {options.loadJson}")
 
     if options.version:
-        print("Version: %s" % PandaToolsPkgInfo.release_version)
+        print(f"Version: {PandaToolsPkgInfo.release_version}")
         sys.exit(0)
 
     # check grid-proxy
@@ -315,7 +315,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     if not dry_mode:
         nickName = PsubUtils.getNickname()
         if not PsubUtils.checkOutDsName(options.outDS, options.official, nickName, verbose=options.verbose):
-            tmpStr = "invalid output dataset name: %s" % options.outDS
+            tmpStr = f"invalid output dataset name: {options.outDS}"
             tmpLog.error(tmpStr)
             sys.exit(1)
 
@@ -334,14 +334,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
 
     # exit action
     def _onExit(dir, del_command):
-        del_command("rm -rf %s" % dir)
+        del_command(f"rm -rf {dir}")
 
     atexit.register(_onExit, tmpDir, MiscUtils.commands_get_output)
 
     # sandbox
     if options.verbose:
         tmpLog.debug("=== making sandbox ===")
-    archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
+    archiveName = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
     archiveFullName = os.path.join(tmpDir, archiveName)
     if not dry_mode:
         extensions = ["json", "py", "sh", "yaml"]
@@ -366,7 +366,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             elif out != "True":
                 # failed
                 print(out)
-                tmpLog.error("Failed with %s" % status)
+                tmpLog.error(f"Failed with {status}")
                 sys.exit(1)
 
     matchURL = re.search("(http.*://[^/]+)/", Client.baseURLCSRVSSL)
@@ -453,7 +453,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
             taskParamMap["hpoRequestData"]["opt_space"] = json.load(json_file)
 
     taskParamMap["jobParameters"] = [
-        {"type": "constant", "value": '-o {} -j "" --inSampleFile {}'.format(options.evaluationOutput, options.evaluationInput)},
+        {"type": "constant", "value": f'-o {options.evaluationOutput} -j "" --inSampleFile {options.evaluationInput}'},
         {"type": "constant", "value": f"-a {archiveName} --sourceURL {sourceURL}"},
     ]
 
@@ -576,7 +576,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                 tmpKeys = list(taskParamMap)
                 tmpKeys.sort()
                 for tmpKey in tmpKeys:
-                    print("{} : {}".format(tmpKey, taskParamMap[tmpKey]))
+                    print(f"{tmpKey} : {taskParamMap[tmpKey]}")
         sys.exit(0)
 
     if get_taskparams:

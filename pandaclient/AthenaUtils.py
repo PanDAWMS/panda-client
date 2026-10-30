@@ -38,14 +38,14 @@ def getCmtProjects(dir="."):
         tmpStr = f"(in {os.getcwd()})"
         lines.append(tmpStr)
         # AtlasProject
-        if not "AtlasProject" in os.environ:
+        if "AtlasProject" not in os.environ:
             return [], "AtlasProject is not defined in runtime environment"
         tmpStr = "{0} (in {0}/{1})".format(os.environ["AtlasProject"], os.environ["AtlasVersion"])
         lines.append(tmpStr)
         if "AtlasOffline_VERSION" in os.environ:
             tmpStr = "{0} (in {0}/{1})".format("AtlasOffline", os.environ["AtlasOffline_VERSION"])
             lines.append(tmpStr)
-        prodVerStr = "{}_VERSION".format(os.environ["AtlasProject"])
+        prodVerStr = f"{os.environ['AtlasProject']}_VERSION"
         if prodVerStr in os.environ:
             tmpStr = "{0} (in {0}/{1})".format(os.environ["AtlasProject"], os.environ[prodVerStr])
             lines.append(tmpStr)
@@ -70,12 +70,12 @@ def getAthenaVer(verbose=True):
     lines, out = getCmtProjects()
     if len(lines) < 2:
         # make a tmp dir to execute cmt
-        tmpDir = "cmttmp.%s" % MiscUtils.wrappedUuidGen()
+        tmpDir = f"cmttmp.{MiscUtils.wrappedUuidGen()}"
         os.mkdir(tmpDir)
         # try cmt under a subdir since it doesn't work in top dir
         lines, tmpOut = getCmtProjects(tmpDir)
         # delete the tmp dir
-        commands_get_output("rm -rf %s" % tmpDir)
+        commands_get_output(f"rm -rf {tmpDir}")
         if len(lines) < 2:
             if verbose:
                 print(out)
@@ -121,10 +121,10 @@ def getAthenaVer(verbose=True):
                     if not useCMake():
                         tmpMatch = re.search(r"/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+", line)
                         if tmpMatch is None:
-                            tmpLog.error("unsupported nightly %s" % line)
+                            tmpLog.error(f"unsupported nightly {line}")
                             return False, {}
                         # set athenaVer and cacheVer
-                        cacheVer = "-AtlasOffline_%s" % athenaVer
+                        cacheVer = f"-AtlasOffline_{athenaVer}"
                         athenaVer = tmpMatch.group(1)
                     else:
                         if athenaVer.startswith("rel"):
@@ -133,7 +133,7 @@ def getAthenaVer(verbose=True):
                         if isGitBase:
                             cacheVer = f"-{items[0]}_{athenaVer}"
                         else:
-                            cacheVer = "-AtlasOffline_%s" % athenaVer
+                            cacheVer = f"-AtlasOffline_{athenaVer}"
                         if useBuildStamp:
                             athenaVer = os.environ["AtlasBuildBranch"]
                 break
@@ -152,26 +152,26 @@ def getAthenaVer(verbose=True):
                     # nightlies for cache
                     tmpMatch = re.search(r"/([^/]+)(/rel_\d+)*/Atlas[^/]+/rel_\d+", line)
                     if tmpMatch is None:
-                        tmpLog.error("unsupported nightly %s" % line)
+                        tmpLog.error(f"unsupported nightly {line}")
                         return False, {}
-                    cacheVer = "-AtlasOffline_%s" % cacheTag
+                    cacheVer = f"-AtlasOffline_{cacheTag}"
                     athenaVer = tmpMatch.group(1)
                     break
                 elif items[0] == "TrigMC" and cacheTag.startswith("rel"):
                     # nightlies for cache
                     tmpMatch = re.search(r"/([^/]+)(/rel_\d+)*/[^/]+/rel_\d+", line)
                     if tmpMatch is None:
-                        tmpLog.error("unsupported nightly %s" % line)
+                        tmpLog.error(f"unsupported nightly {line}")
                         return False, {}
-                    cacheVer = "-{}_{}".format(items[0], cacheTag)
+                    cacheVer = f"-{items[0]}_{cacheTag}"
                     athenaVer = tmpMatch.group(1)
                     break
                 elif isAthRelease(items[0]):
-                    cacheVer = "-{}_{}".format(items[0], cacheTag)
+                    cacheVer = f"-{items[0]}_{cacheTag}"
                 else:
                     # doesn't use when it is a base release since it is not installed in EGEE
                     if re.search(r"^\d+\.\d+\.\d+$", cacheTag) is None:
-                        cacheVer = "-{}_{}".format(items[0], cacheTag)
+                        cacheVer = f"-{items[0]}_{cacheTag}"
                 # no more check for AthAnalysis
                 if isAthRelease(items[0]):
                     break
@@ -184,10 +184,10 @@ def getAthenaVer(verbose=True):
     # last resort
     if athenaVer == "":
         if "AtlasProject" in os.environ and "AtlasBuildBranch" in os.environ:
-            prodVerStr = "{}_VERSION".format(os.environ["AtlasProject"])
+            prodVerStr = f"{os.environ['AtlasProject']}_VERSION"
             if prodVerStr in os.environ:
                 athenaVer = os.environ["AtlasBuildBranch"]
-                cacheVer = "-{}_{}".format(os.environ["AtlasProject"], os.environ[prodVerStr])
+                cacheVer = f"-{os.environ['AtlasProject']}_{os.environ[prodVerStr]}"
                 groupArea = ""
     # pack return values
     retVal = {
@@ -200,10 +200,10 @@ def getAthenaVer(verbose=True):
     }
     # check error
     if athenaVer == "" and not isAthRelease(cacheVer):
-        tmpStr = ""
+        tmp_string = ""
         for line in lines:
-            tmpStr += line + "\n"
-        tmpLog.info("cmt showed\n" + tmpStr)
+            tmp_string += line + "\n"
+        tmpLog.info(f"cmt showed\n{tmp_string}")
         tmpLog.error("could not get Athena version. perhaps your requirements file doesn't have ATLAS_TEST_AREA")
         return False, retVal
     # return
@@ -246,13 +246,13 @@ def extractRunConfig(jobO, supStream, shipinput, trf, verbose=False, useAMI=Fals
             amiJobO = getJobOtoUseAmiForAutoConf(inDS, tmpDir)
         baseName = os.environ["PANDA_SYS"] + "/etc/panda/share"
         if " - " in jobO:
-            jobO = re.sub(" - ", " %s/ConfigExtractor.py - " % baseName, jobO)
+            jobO = re.sub(" - ", f" {baseName}/ConfigExtractor.py - ", jobO)
         else:
-            jobO = jobO + " %s/ConfigExtractor.py " % baseName
+            jobO = jobO + f" {baseName}/ConfigExtractor.py "
         com = "athena.py "
         if one_liner:
-            com += '-c "%s" ' % one_liner
-        com += "{} {}/FakeAppMgr.py {}".format(amiJobO, baseName, jobO)
+            com += f'-c "{one_liner}" '
+        com += f"{amiJobO} {baseName}/FakeAppMgr.py {jobO}"
         if verbose:
             tmpLog.debug(com)
         # run ConfigExtractor for normal jobO
@@ -295,7 +295,7 @@ def extractRunConfig(jobO, supStream, shipinput, trf, verbose=False, useAMI=Fals
                                     break
                     # suppressed
                     if toBeSuppressed:
-                        tmpLog.info("%s is suppressed" % line)
+                        tmpLog.info(f"{line} is suppressed")
                         # set skipOutName to ignore output filename in the next loop
                         skipOutName = True
                         continue
@@ -338,7 +338,7 @@ def extractRunConfig(jobO, supStream, shipinput, trf, verbose=False, useAMI=Fals
                     if "outTHIST" not in outputConfig:
                         outputConfig["outTHIST"] = []
                     tmpItems = match[0].split()
-                    if not tmpItems[1] in outputConfig["outTHIST"]:
+                    if tmpItems[1] not in outputConfig["outTHIST"]:
                         outputConfig["outTHIST"].append(tmpItems[1])
                 # IROOT
                 if match[0].startswith("Output=IROOT"):
@@ -485,7 +485,7 @@ def convFullPathJobOsToStr():
     tmpStr = ""
     for fullJobO in fullPathJobOs:
         localName = fullPathJobOs[fullJobO]
-        tmpStr += "{}:{},".format(fullJobO, localName)
+        tmpStr += f"{fullJobO}:{localName},"
     tmpStr = tmpStr[:-1]
     return tmpStr
 
@@ -503,21 +503,21 @@ def convStrToFullPathJobOs(tmpStr):
 def copyAthenaStuff(currentDir):
     baseName = os.environ["PANDA_SYS"] + "/etc/panda/share"
     for tmpFile in athenaStuff:
-        com = "cp -p {}/{} {}".format(baseName, tmpFile, currentDir)
+        com = f"cp -p {baseName}/{tmpFile} {currentDir}"
         commands_get_output(com)
     for fullJobO in fullPathJobOs:
         localName = fullPathJobOs[fullJobO]
-        com = "cp -p {} {}/{}".format(fullJobO, currentDir, localName)
+        com = f"cp -p {fullJobO} {currentDir}/{localName}"
         commands_get_output(com)
 
 
 # delete some athena specific files and copied jobOs
 def deleteAthenaStuff(currentDir):
     for tmpFile in athenaStuff:
-        com = "rm -f {}/{}".format(currentDir, tmpFile)
+        com = f"rm -f {currentDir}/{tmpFile}"
         commands_get_output(com)
     for tmpFile in fullPathJobOs.values():
-        com = "rm -f {}/{}".format(currentDir, tmpFile)
+        com = f"rm -f {currentDir}/{tmpFile}"
         commands_get_output(com)
 
 
@@ -594,7 +594,7 @@ def matchExtFile(fileName):
 
 # get extended extra stream name
 def getExtendedExtStreamName(sIndex, sName, enableExtension=False, addEXTNPrefix=True):
-    tmpBaseExtName = "EXT%s" % sIndex if addEXTNPrefix else ""
+    tmpBaseExtName = f"EXT{sIndex}" if addEXTNPrefix else ""
 
     if enableExtension:
         if addEXTNPrefix:
@@ -603,7 +603,7 @@ def getExtendedExtStreamName(sIndex, sName, enableExtension=False, addEXTNPrefix
         # change * to X and add .tgz
         if sName.find("*") != -1:
             sName = sName.replace("*", "XYZ")
-            sName = "%s.tgz" % sName
+            sName = f"{sName}.tgz"
 
         # use extended extra stream name
         tmpItems = sName.split(".")
@@ -744,7 +744,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                     if not useSS:
                         _packages.append(pName)
                 else:
-                    tmpLog.warning("glue package {} not found under {}".format(pName, _workArea))
+                    tmpLog.warning(f"glue package {pName} not found under {_workArea}")
         # return
         return _packages
 
@@ -755,7 +755,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
             # reverse regexp change
             tmpPatt = tmpPatt.replace(".*", "*")
             tmpPatt = tmpPatt.replace(r"\.", ".")
-            excludePattern += " --exclude '%s'" % tmpPatt
+            excludePattern += f" --exclude '{tmpPatt}'"
         _curdir = os.getcwd()
         # change dir
         os.chdir(_workArea)
@@ -777,7 +777,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                 # check exclude files
                 excludeFileFlag = False
                 for tmpPatt in excludeFile:
-                    if re.search(tmpPatt, "{}/{}".format(pack, item)) is not None:
+                    if re.search(tmpPatt, f"{pack}/{item}") is not None:
                         excludeFileFlag = True
                         break
                 if excludeFileFlag:
@@ -785,10 +785,10 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                 # run dir
                 if item == "run":
                     files = []
-                    getFileList("{}/{}/run".format(_workArea, pack), files, False)
+                    getFileList(f"{_workArea}/{pack}/run", files, False)
                     # not resolve symlink (appending instead of replacing for backward compatibility)
                     tmpFiles = []
-                    getFileList("{}/{}/run".format(_workArea, pack), tmpFiles, False, False)
+                    getFileList(f"{_workArea}/{pack}/run", tmpFiles, False, False)
                     for tmpFile in tmpFiles:
                         if tmpFile not in files:
                             files.append(tmpFile)
@@ -799,30 +799,30 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                         if matchExtFile(file):
                             # remove special characters
                             sString = re.sub(r"[\+]", ".", os.path.realpath(_workArea))
-                            relPath = re.sub("^%s/" % sString, "", file)
+                            relPath = re.sub(f"^{sString}/", "", file)
                             # if replace is failed or the file is symlink, try non-converted path names
                             if relPath.startswith("/") or os.path.islink(iFile):
                                 sString = re.sub(r"[\+]", ".", workArea)
                                 relPath = re.sub(sString + "/", "", iFile)
                             if os.path.islink(iFile):
-                                comStr = "tar -rh '{}' -f '{}' --exclude '{}'".format(relPath, _archiveFullName, excludePattern)
+                                command_string = f"tar -rh '{relPath}' -f '{_archiveFullName}' --exclude '{excludePattern}'"
                             else:
-                                comStr = "tar rf '{}' '{}' --exclude '{}'".format(_archiveFullName, relPath, excludePattern)
+                                command_string = f"tar rf '{_archiveFullName}' '{relPath}' --exclude '{excludePattern}'"
                             if verbose:
                                 print(relPath)
 
-                            commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+                            commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
                     continue
                 # else
                 if dereferenceSymLinks:
-                    comStr = "tar rfh '{}' '{}/{}' --exclude '{}'".format(_archiveFullName, pack, item, excludePattern)
+                    command_string = f"tar rfh '{_archiveFullName}' '{pack}/{item}' --exclude '{excludePattern}'"
                 else:
-                    comStr = "tar rf '{}' '{}/{}' --exclude '{}'".format(_archiveFullName, pack, item, excludePattern)
+                    command_string = f"tar rf '{_archiveFullName}' '{pack}/{item}' --exclude '{excludePattern}'"
 
                 if verbose:
-                    print("{}/{}".format(pack, item))
+                    print(f"{pack}/{item}")
 
-                commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+                commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
         # back to previous dir
         os.chdir(_curdir)
 
@@ -832,7 +832,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
     # get packages in private area
     packages = getPackages(workArea, gluePackages)
     # check TestRelease since it doesn't create any links in InstallArea
-    if os.path.exists("%s/TestRelease" % workArea):
+    if os.path.exists(f"{workArea}/TestRelease"):
         # the TestRelease could be created by hand
         packages.append("TestRelease")
 
@@ -844,14 +844,14 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
 
     # create archive
     if archiveName == "":
-        archiveName = "sources.%s.tar" % MiscUtils.wrappedUuidGen()
-    archiveFullName = "{}/{}".format(tmpDir, archiveName)
+        archiveName = f"sources.{MiscUtils.wrappedUuidGen()}.tar"
+    archiveFullName = f"{tmpDir}/{archiveName}"
     # archive private area
     archiveFiles(workArea, packages, archiveFullName)
     # archive current (run) dir
     files = []
     os.chdir(workArea)
-    getFileList("{}/{}".format(workArea, runDir), files, False, False)
+    getFileList(f"{workArea}/{runDir}", files, False, False)
     files_in_run_dir = []
     for file in files:
         # remove special characters
@@ -872,9 +872,11 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
         if re.search("/", spBaseName) is not None:
             spBaseName = spBaseName.split("/")[-1]
         if spBaseName in specialFilesForAthena:
-            warStr = "%s in the current dir is sent to remote WNs, which might cause a database problem. " % spBaseName
-            warStr += "If this is intentional please ignore this WARNING"
-            tmpLog.warning(warStr)
+            warning_message = (
+                f"{spBaseName} in the current dir is sent to remote WNs, which might cause a database problem. "
+                "If this is intentional please ignore this WARNING"
+            )
+            tmpLog.warning(warning_message)
         # check if already archived
         alreadyFlag = False
         for pack in packages:
@@ -884,13 +886,13 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
         # archive
         if not alreadyFlag:
             if os.path.islink(file):
-                comStr = "tar -rh '{}' -f '{}'".format(relPath, archiveFullName)
+                command_string = f"tar -rh '{relPath}' -f '{archiveFullName}'"
             else:
-                comStr = "tar rf '{}' '{}'".format(archiveFullName, relPath)
+                command_string = f"tar rf '{archiveFullName}' '{relPath}'"
             if verbose:
                 print(relPath)
 
-            commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+            commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
             files_in_run_dir.append(os.path.abspath(file))
     # check if extFile is includedor tmp_file_path in files_in_run_dir):
     for tmp_ext_file in user_set_ext_files:
@@ -900,7 +902,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                 is_included = True
                 break
         if not is_included:
-            tmpLog.warning("%s is specified as extFile but not found in the current dir" % tmp_ext_file)
+            tmpLog.warning(f"{tmp_ext_file} is specified as extFile but not found in the current dir")
     # back to current dir
     os.chdir(currentDir)
     # return
@@ -934,11 +936,11 @@ def archiveJobOFiles(workArea, runDir, currentDir, tmpDir, verbose, archiveName=
     # get jobOs
     files = []
     os.chdir(workArea)
-    getJobOs("%s" % workArea, files)
+    getJobOs(f"{workArea}", files)
     # create archive
     if archiveName == "":
-        archiveName = "jobO.%s.tar" % MiscUtils.wrappedUuidGen()
-    archiveFullName = "{}/{}".format(tmpDir, archiveName)
+        archiveName = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
+    archiveFullName = f"{tmpDir}/{archiveName}"
     # archive
     if verbose:
         tmpLog.debug("== py files ==")
@@ -947,11 +949,11 @@ def archiveJobOFiles(workArea, runDir, currentDir, tmpDir, verbose, archiveName=
         sString = re.sub(r"[\+]", ".", workArea)
         relPath = re.sub(sString + "/", "", file)
         # append
-        comStr = "tar -rh '{}' -f '{}'".format(relPath, archiveFullName)
+        command_string = f"tar -rh '{relPath}' -f '{archiveFullName}'"
         if verbose:
             print(relPath)
 
-        commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+        commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
     # return
     return archiveName, archiveFullName
@@ -966,7 +968,7 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
     # get file list
     def getFiles(dir, files, ignoreLib, ignoreSymLink):
         if verbose:
-            tmpLog.debug("  getFiles(%s)" % dir)
+            tmpLog.debug(f"  getFiles({dir})")
         try:
             list = os.listdir(dir)
         except Exception:
@@ -1004,12 +1006,12 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
         areaList.append(groupArea)
     # groupArea archive
     groupFileName = re.sub("^sources", "groupArea", archiveName)
-    groupFullName = "{}/{}".format(tmpDir, groupFileName)
+    groupFullName = f"{tmpDir}/{groupFileName}"
     allFiles = []
     for areaName in areaList:
         # archive
         if verbose:
-            tmpLog.debug("== InstallArea under %s ==" % areaName)
+            tmpLog.debug(f"== InstallArea under {areaName} ==")
         files = []
         cmtFiles = []
         os.chdir(areaName)
@@ -1049,24 +1051,24 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
                 if file not in allFiles:
                     # append
                     if file in files:
-                        comStr = "tar -rh '{}' -f '{}'".format(file, archiveFullName)
+                        command_string = f"tar -rh '{file}' -f '{archiveFullName}'"
                     else:
                         # requirements files
-                        comStr = "tar -rh '{}' -f '{}'".format(file, groupFullName)
+                        command_string = f"tar -rh '{file}' -f '{groupFullName}'"
                     allFiles.append(file)
                     if verbose:
                         print(file)
 
-                    commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+                    commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
     # append groupArea to sources
     if groupArea != "" and (not nobuild):
         os.chdir(tmpDir)
         if os.path.exists(groupFileName):
-            comStr = "tar -rh '{}' -f '{}'".format(groupFileName, archiveFullName)
-            commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+            command_string = f"tar -rh '{groupFileName}' -f '{archiveFullName}'"
+            commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
-            commands_get_output("rm -rf %s" % groupFullName)
+            commands_get_output(f"rm -rf {groupFullName}")
 
 
 # archive with cpack
@@ -1075,11 +1077,11 @@ def archiveWithCpack(withSource, tmpDir, verbose):
     # define archive name
     if withSource:
         tmpLog.info("archiving source files with cpack")
-        archiveName = "sources.%s" % MiscUtils.wrappedUuidGen()
+        archiveName = f"sources.{MiscUtils.wrappedUuidGen()}"
     else:
         tmpLog.info("archiving jobOs and modules with cpack")
-        archiveName = "jobO.%s" % MiscUtils.wrappedUuidGen()
-    archiveFullName = "{}/{}".format(tmpDir, archiveName)
+        archiveName = f"jobO.{MiscUtils.wrappedUuidGen()}"
+    archiveFullName = f"{tmpDir}/{archiveName}"
     # extract build dir
     buildDir = os.environ["CMAKE_PREFIX_PATH"]
     buildDir = os.path.dirname(buildDir.split(":")[0])
@@ -1089,13 +1091,15 @@ def archiveWithCpack(withSource, tmpDir, verbose):
     check_file = "CPackConfig.cmake"
     if os.path.exists(os.path.join(buildDir, check_file)):
         use_cpack = True
-        comStr = f"cpack -B {tmpDir} -D CPACK_PACKAGE_FILE_NAME={archiveName} -G TGZ "
-        comStr += '-D CPACK_PACKAGE_NAME="" -D CPACK_PACKAGE_VERSION="" -D CPACK_PACKAGE_VERSION_MAJOR="" '
-        comStr += '-D CPACK_PACKAGE_VERSION_MINOR="" -D CPACK_PACKAGE_VERSION_PATCH="" '
-        comStr += '-D CPACK_PACKAGE_DESCRIPTION="" '
+        command_string = (
+            f"cpack -B {tmpDir} -D CPACK_PACKAGE_FILE_NAME={archiveName} -G TGZ "
+            '-D CPACK_PACKAGE_NAME="" -D CPACK_PACKAGE_VERSION="" -D CPACK_PACKAGE_VERSION_MAJOR="" '
+            '-D CPACK_PACKAGE_VERSION_MINOR="" -D CPACK_PACKAGE_VERSION_PATCH="" '
+            '-D CPACK_PACKAGE_DESCRIPTION="" '
+        )
 
         commands_fail_on_non_zero_exit_status(
-            comStr, MiscUtils.EC_Config, verbose_cmd=verbose, verbose_output=verbose, logger=tmpLog, error_log_msg="cpack failed"
+            command_string, MiscUtils.EC_Config, verbose_cmd=verbose, verbose_output=verbose, logger=tmpLog, error_log_msg="cpack failed"
         )
 
     else:
@@ -1107,11 +1111,11 @@ def archiveWithCpack(withSource, tmpDir, verbose):
     os.chdir(tmpDir)
     if use_cpack:
         # recreate tar to allow appending other files in the subsequent steps, as gzip decompress is not enough
-        comStr = "tar xfz {0}.gz; tar cf {0} usr > /dev/null 2>&1; rm -rf usr _CPack_Packages {0}.gz".format(archiveName)
+        command_string = "tar xfz {0}.gz; tar cf {0} usr > /dev/null 2>&1; rm -rf usr _CPack_Packages {0}.gz".format(archiveName)
     else:
-        comStr = f"tar cf {archiveName} -T /dev/null > /dev/null 2>&1"
+        command_string = f"tar cf {archiveName} -T /dev/null > /dev/null 2>&1"
 
-    commands_fail_on_non_zero_exit_status(comStr, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
+    commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
     os.chdir(_curdir)
     return archiveName, archiveFullName
@@ -1141,15 +1145,15 @@ def convertConfToOutput(
     outDsNameBase = outDSwoSlash
     tmpMatch = re.search(r"^([^\.]+)\.([^\.]+)\.", original_outDS)
     if tmpMatch is not None and original_outDS.endswith("/"):
-        outDSwoSlash = "{}.{}".format(tmpMatch.group(1), tmpMatch.group(2))
+        outDSwoSlash = f"{tmpMatch.group(1)}.{tmpMatch.group(2)}"
         if descriptionInLFN != "":
             outDSwoSlash += descriptionInLFN
         outDSwoSlash += ".$JEDITASKID"
     # start conversion
     if runConfig.output.outNtuple:
         for sName in runConfig.output.outNtuple:
-            lfn = "{}.{}._${{SN/P}}.root".format(outDSwoSlash, sName)
-            tmpSuffix = "_%s" % sName
+            lfn = f"{outDSwoSlash}.{sName}._${{SN/P}}.root"
+            tmpSuffix = f"_{sName}"
             dataset = outDsNameBase + tmpSuffix + "/"
             if "ntuple" not in outMap:
                 outMap["ntuple"] = []
@@ -1195,8 +1199,8 @@ def convertConfToOutput(
                 sName = fsNameMap[fName]
             else:
                 fsNameMap[fName] = sName
-            lfn = "{}.{}._${{SN/P}}.root".format(outDSwoSlash, sName)
-            tmpSuffix = "_%s" % sName
+            lfn = f"{outDSwoSlash}.{sName}._${{SN/P}}.root"
+            tmpSuffix = f"_{sName}"
             dataset = outDsNameBase + tmpSuffix + "/"
             if sName not in sNameList:
                 sNameList.append(sName)
@@ -1206,8 +1210,8 @@ def convertConfToOutput(
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outTHIST:
         for sName in runConfig.output.outTHIST:
-            lfn = "{}.{}._${{SN/P}}.root".format(outDSwoSlash, sName)
-            tmpSuffix = "_%s" % sName
+            lfn = f"{outDSwoSlash}.{sName}._${{SN/P}}.root"
+            tmpSuffix = f"_{sName}"
             dataset = outDsNameBase + tmpSuffix + "/"
             if "THIST" not in outMap:
                 outMap["THIST"] = []
@@ -1215,8 +1219,8 @@ def convertConfToOutput(
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outIROOT:
         for sIndex, sName in enumerate(runConfig.output.outIROOT):
-            lfn = "{}.iROOT{}._${{SN/P}}.{}".format(outDSwoSlash, sIndex, sName)
-            tmpSuffix = "_iROOT%s" % sIndex
+            lfn = f"{outDSwoSlash}.iROOT{sIndex}._${{SN/P}}.{sName}"
+            tmpSuffix = f"_iROOT{sIndex}"
             dataset = outDsNameBase + tmpSuffix + "/"
             outMap["IROOT"].append((sName, lfn))
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
@@ -1226,7 +1230,7 @@ def convertConfToOutput(
                 tmpLog.error("Missmatched --outputStreamNames (%s) to ext output files (%s)" % extOutStreams, extOutFile)
                 sys.exit(MiscUtils.EC_Config)
             if len(extOutStreams) != len(set(extOutStreams)):
-                tmpLog.error("All output stream names indicated with --outputStreamNames (%s) must be different" % extOutStreams)
+                tmpLog.error(f"All output stream names indicated with --outputStreamNames ({extOutStreams}) must be different")
                 sys.exit(MiscUtils.EC_Config)
         streams = []
         for sIndex, sName in enumerate(extOutFile):
@@ -1234,13 +1238,13 @@ def convertConfToOutput(
             origSName = sName
             if sName.find("*") != -1:
                 sName = sName.replace("*", "XYZ")
-                sName = "%s.tgz" % sName
+                sName = f"{sName}.tgz"
             tmpStreamName = (
                 getExtendedExtStreamName(sIndex, sName, appendFileFieldToStreamName, useEXTStreamName) if extOutStreams is None else extOutStreams[sIndex]
             )
             streams.append(tmpStreamName)
-            lfn = "{}.{}._${{SN/P}}.{}".format(outDSwoSlash, tmpStreamName, sName)
-            tmpSuffix = "_%s" % tmpStreamName
+            lfn = f"{outDSwoSlash}.{tmpStreamName}._${{SN/P}}.{sName}"
+            tmpSuffix = f"_{tmpStreamName}"
             dataset = outDsNameBase + tmpSuffix + "/"
             outMap["IROOT"].append((origSName, lfn))
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
@@ -1249,8 +1253,8 @@ def convertConfToOutput(
             sys.exit(MiscUtils.EC_Config)
     if runConfig.output.outTAGX:
         for sName, oName in runConfig.output.outTAGX:
-            lfn = "{}.{}._${{SN/P}}.{}".format(outDSwoSlash, sName, oName)
-            tmpSuffix = "_%s" % sName
+            lfn = f"{outDSwoSlash}.{sName}._${{SN/P}}.{oName}"
+            tmpSuffix = f"_{sName}"
             dataset = outDsNameBase + tmpSuffix + "/"
             if "IROOT" not in outMap:
                 outMap["IROOT"] = []
@@ -1275,17 +1279,17 @@ def convertConfToOutput(
         outMap["BS"] = lfn
         paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outSelBS:
-        lfn = "{}.{}._${{SN/P}}.data".format(outDSwoSlash, runConfig.output.outSelBS)
+        lfn = f"{outDSwoSlash}.{runConfig.output.outSelBS}._${{SN/P}}.data"
         tmpSuffix = "_SelBS"
         dataset = outDsNameBase + tmpSuffix + "/"
         if "IROOT" not in outMap:
             outMap["IROOT"] = []
-        outMap["IROOT"].append(("%s.*.data" % runConfig.output.outSelBS, lfn))
+        outMap["IROOT"].append((f"{runConfig.output.outSelBS}.*.data", lfn))
         paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outStreamG:
         for sName, sOrigFileName in runConfig.output.outStreamG:
-            lfn = "{}.{}._${{SN/P}}.pool.root".format(outDSwoSlash, sName)
-            tmpSuffix = "_%s" % sName
+            lfn = f"{outDSwoSlash}.{sName}._${{SN/P}}.pool.root"
+            tmpSuffix = f"_{sName}"
             dataset = outDsNameBase + tmpSuffix + "/"
             outMap["IROOT"].append((sOrigFileName, lfn))
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
@@ -1295,8 +1299,8 @@ def convertConfToOutput(
             foundLFN = ""
             if sAsso == "None":
                 # non-associated metadata
-                lfn = "{}.META{}._${{SN/P}}.root".format(outDSwoSlash, iMeta)
-                tmpSuffix = "_META%s" % iMeta
+                lfn = f"{outDSwoSlash}.META{iMeta}._${{SN/P}}.root"
+                tmpSuffix = f"_META{iMeta}"
                 dataset = outDsNameBase + tmpSuffix + "/"
                 paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
                 iMeta += 1
@@ -1332,8 +1336,8 @@ def convertConfToOutput(
                 outMap["Meta"].append((sName, foundLFN))
     if runConfig.output.outMS:
         for sName, sAsso in runConfig.output.outMS:
-            lfn = "{}.{}._${{SN/P}}.pool.root".format(outDSwoSlash, sName)
-            tmpSuffix = "_%s" % sName
+            lfn = f"{outDSwoSlash}.{sName}._${{SN/P}}.pool.root"
+            tmpSuffix = f"_{sName}"
             dataset = outDsNameBase + tmpSuffix + "/"
             if "IROOT" not in outMap:
                 outMap["IROOT"] = []
@@ -1371,7 +1375,7 @@ def convertConfToOutput(
                 checked = check_invalid_char(stream, is_file=True)
                 if checked is not None:
                     tmp_log = PLogger.getPandaLogger()
-                    tmp_log.error('Invalid character "{}" used in output filename {}'.format(checked, stream))
+                    tmp_log.error(f'Invalid character "{checked}" used in output filename {stream}')
                     sys.exit(MiscUtils.EC_Config)
 
     # set destination
@@ -1396,7 +1400,7 @@ def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None
             is_json = True
         except Exception as e:
             tmp_log = PLogger.getPandaLogger()
-            tmp_log.error("failed to parse architecture {} : {}".format(architecture, e))
+            tmp_log.error(f"failed to parse architecture {architecture} : {e}")
             sys.exit(MiscUtils.EC_Config)
     # get CMTCONFIG
     cmt_config = ""
@@ -1467,9 +1471,10 @@ def checkCmtConfig(localCmtConfig, userCmtConfig, noBuild):
         return True
     # user-specified CMTCONFIG is inconsistent with local CMTCONFIG
     if userCmtConfig != localCmtConfig and noBuild:
-        errStr = "You cannot use --noBuild when --cmtConfig={} is inconsistent with local CMTCONFIG={} ".format(userCmtConfig, localCmtConfig)
-        errStr += "since you need re-compile source files on remote worker-node. Please remove --noBuild"
-        tmpLog.error(errStr)
+        tmpLog.error(
+            f"You cannot use --noBuild when --cmtConfig={userCmtConfig} is inconsistent with local CMTCONFIG={localCmtConfig} "
+            "since you need re-compile source files on remote worker-node. Please remove --noBuild"
+        )
         return False
     # return OK
     return True
@@ -1481,7 +1486,7 @@ def getJobOtoUseAmiForAutoConf(inDS, tmpDir):
     if inDS == "":
         return ""
     # use first one
-    amiURL = "ami://%s" % inDS.split(",")[0]
+    amiURL = f"ami://{inDS.split(',')[0]}"
     # remove /
     if amiURL.endswith("/"):
         amiURL = amiURL[:-1]
@@ -1489,12 +1494,12 @@ def getJobOtoUseAmiForAutoConf(inDS, tmpDir):
     # create jobO fragment
     optFileName = tmpDir + "/" + MiscUtils.wrappedUuidGen() + ".py"
     oFile = open(optFileName, "w")
-    oFile.write("""
+    oFile.write(f"""
 try:
     import AthenaCommon.AthenaCommonFlags
     
     def _dummyFilesInput(*argv):
-        return %s
+        return {inputFiles}
 
     AthenaCommon.AthenaCommonFlags.FilesInput.__call__ = _dummyFilesInput
 except Exception:
@@ -1504,7 +1509,7 @@ try:
     import AthenaCommon.AthenaCommonFlags
     
     def _dummyGet_Value(*argv):
-        return %s
+        return {inputFiles}
 
     for tmpAttr in dir (AthenaCommon.AthenaCommonFlags):
         import re
@@ -1515,7 +1520,7 @@ try:
                 pass
 except Exception:
     pass
-""" % (inputFiles, inputFiles))
+""")
     oFile.close()
     # return file name
     return optFileName
@@ -1538,23 +1543,23 @@ def parse_athena_tag(athena_tag, verbose, tmp_log):
         # releases
         match = re.search(r"^(\d+\.\d+\.\d+)", item)
         if match:
-            athenaVer = "Atlas-%s" % match.group(1)
+            athenaVer = f"Atlas-{match.group(1)}"
             # cache
             cmatch = re.search(r"^(\d+\.\d+\.\d+\.\d+\.*\d*)$", item)
             if cmatch is not None:
-                cacheVer += "_%s" % cmatch.group(1)
+                cacheVer += f"_{cmatch.group(1)}"
             else:
-                cacheVer += "_%s" % match.group(1)
+                cacheVer += f"_{match.group(1)}"
             continue
         # nightlies
         match = re.search(r"^(\d+\.\d+\.X|\d+\.X\.\d+)$", item)
         if match:
-            athenaVer = "Atlas-%s" % match.group(1)
+            athenaVer = f"Atlas-{match.group(1)}"
             continue
         # master or XX.YY
         match = re.search(r"^\d+\.\d+$", item)
         if item.startswith("master") or match or item == "main":
-            athenaVer = "Atlas-%s" % item
+            athenaVer = f"Atlas-{item}"
             continue
         # old nightlies
         if item.startswith("rel_"):
@@ -1563,15 +1568,15 @@ def parse_athena_tag(athena_tag, verbose, tmp_log):
                 athenaVer = "Atlas-dev"
             elif "devval" in items:
                 athenaVer = "Atlas-devval"
-            cacheVer = "-AtlasOffline_%s" % item
+            cacheVer = f"-AtlasOffline_{item}"
             continue
         # nightlies
         if item in ["latest", "r27"] or re.search(r"^\d{4}-\d{2}-\d{2}T\d{4}$", item):
-            cacheVer += "_%s" % item
+            cacheVer += f"_{item}"
             continue
         # CMTCONFIG
         if item in ["32", "64"]:
-            tmp_log.error("%s in --athenaTag is unsupported. Please use --cmtConfig instead" % item)
+            tmp_log.error(f"{item} in --athenaTag is unsupported. Please use --cmtConfig instead")
             sys.exit(MiscUtils.EC_Config)
         # ignoring AtlasOffline
         if item in ["AtlasOffline"]:
@@ -1585,7 +1590,7 @@ def parse_athena_tag(athena_tag, verbose, tmp_log):
             cacheVer = "-AtlasProduction" + cacheVer
         elif "AthAnalysisBase" in cacheVer or "AthAnalysis" in cacheVer:
             # AthAnalysis
-            cacheVer = cacheVer + "_%s" % athenaVer
+            cacheVer = cacheVer + f"_{athenaVer}"
             athenaVer = ""
         else:
             # unknown

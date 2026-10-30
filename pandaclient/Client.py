@@ -1237,7 +1237,7 @@ def requestEventPicking(
             strInput += f"{tmpInput},"
     if fileListName != "":
         for tmpLine in open(fileListName):
-            tmpInput = re.sub("\n", "", tmpLine)
+            tmpInput = tmpLine.replace("\n", "")
             if tmpInput != "":
                 strInput += f"{tmpInput},"
     strInput = strInput[:-1]

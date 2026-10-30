@@ -1,8 +1,10 @@
 """Common CLI arguments and helper functions shared by pathena and prun"""
 
 import argparse
+import re
+import sys
 
-from pandaclient.MiscUtils import match_allow_no_output
+from pandaclient import MiscUtils
 
 VALID_TRANSFER_TYPES = {"root", "direct", "davs", "file"}
 
@@ -331,17 +333,6 @@ _COMMON_ARGS = [
             dest="eventPickWithGUID",
             default=False,
             help="Using GUIDs together with run and event numbers in eventPickEvtList to skip event lookup",
-        ),
-    ),
-    (
-        "submit",
-        ["--express"],
-        dict(
-            action="store_const",
-            const=True,
-            dest="express",
-            default=False,
-            help="Send the job using express quota to have higher priority. The number of express subjobs in the queue and the total execution time used by express subjobs are limited (a few subjobs and several hours per day, respectively). This option is intended to be used for quick tests before bulk submission. Note that buildXYZ is not included in quota calculation. If this option is used when quota has already exceeded, the panda server will ignore the option so that subjobs have normal priorities. Also, if you submit 1 buildXYZ and N runXYZ subjobs when you only have quota of M (M < N), only the first M runXYZ subjobs will have higher priorities",
         ),
     ),
     (
@@ -858,42 +849,6 @@ def add_common_arguments(parser):
             groups[shared_group_key.upper()].shareWithMe(action)
 
 
-def get_allow_no_output_job_params(param_list):
-    """Make job parameters to tell runGen/runAthena output files allowed not to be produced
-
-    Collects filename templates of outputs flagged with allowNoOutput by
-    MiscUtils.makeJediJobParam. The templates are resolved to real LFNs by JEDI.
-
-    args:
-        param_list: list of job parameter dicts including output templates
-    returns:
-        list with a constant job parameter for --allowNoOutput,
-        or an empty list when no output matches --allowNoOutput
-    """
-    file_names = []
-    for item in param_list:
-        # skip regex outputs since they are not checked on WN
-        if item.get("param_type") == "output" and item.get("allowNoOutput") and not item["value"].startswith("regex|"):
-            if item["value"] not in file_names:
-                file_names.append(item["value"])
-    if not file_names:
-        return []
-    return [{"type": "constant", "value": f"--allowNoOutput={','.join(file_names)}"}]
-
-
-def get_unmatched_allow_no_output_patterns(patterns, param_list):
-    """Return --allowNoOutput patterns which match no output filename template
-
-    args:
-        patterns: list of --allowNoOutput patterns
-        param_list: list of job parameter dicts including output templates
-    returns:
-        list of non-empty patterns which do not match any output filename template
-    """
-    templates = [item["value"] for item in param_list if item.get("param_type") == "output"]
-    return [pattern for pattern in patterns if pattern != "" and not any(match_allow_no_output(pattern, template) for template in templates)]
-
-
 def set_n_files_from_n_jobs(options):
     """Translate --nJobs into nFiles / nFilesPerJob for file-based splitting
 
@@ -923,51 +878,246 @@ def set_n_files_from_n_jobs(options):
                 options.nFilesPerJob = 1
 
 
-def set_events_task_params(options, task_param_map, no_input=False):
-    """Populate task parameters for event/file-based splitting
+def load_json_options(options, key_aliases=None, special_keys=(), unknown_key_exit_code=1):
+    """Overwrite options with the values in the --loadJson file
 
-    Fills task_param_map with nEvents, nEventsPerJob, nFiles, nFilesPerJob,
-    nEventsPerFile, useRealNumEvents, and skipEmptyInput as derived from options.
+    Keys are option destinations, e.g. {"outDS": "user.hoge.test/", "noEmail": true}.
+    Exits with unknown_key_exit_code when a key is not a known option.
+
+    args:
+        options: parsed options namespace, modified in place
+        key_aliases: dict mapping JSON keys to option destinations when they differ,
+            e.g. {"exec": "jobParams"} for prun
+        special_keys: JSON keys which are not options and are returned to the caller as they are,
+            e.g. "athena_args" for pathena
+        unknown_key_exit_code: exit code when a key is not a known option
+    returns:
+        the loaded options as a command-line string to be appended to cliParams,
+        and a dict with the values of special_keys found in the file
+    """
+    if key_aliases is None:
+        key_aliases = {}
+    json_exec_str = ""
+    special_values = {}
+    if options.loadJson is None:
+        return json_exec_str, special_values
+    load_opts = MiscUtils.decodeJSON(options.loadJson)
+    for orig_key, value in load_opts.items():
+        # numbers may be given as strings
+        if isinstance(value, str):
+            try:
+                value = int(value)
+            except ValueError:
+                pass
+        if orig_key in special_keys:
+            special_values[orig_key] = value
+            continue
+        key = key_aliases.get(orig_key, orig_key)
+        if not hasattr(options, key):
+            print(f"ERROR: unknown parameter {key} in {options.loadJson}")
+            sys.exit(unknown_key_exit_code)
+        setattr(options, key, value)
+        # keep the JSON key in the command line, since it is the name the user wrote
+        if value is True:
+            json_exec_str += f" --{orig_key}"
+        elif isinstance(value, str):
+            json_exec_str += f" --{orig_key}='{value}'"
+        else:
+            json_exec_str += f" --{orig_key}={value}"
+    if options.verbose:
+        print("options after loading json")
+        print(options)
+        print("")
+    return json_exec_str, special_values
+
+
+def process_common_options(options, tmp_log):
+    """Check and normalize the site, memory, and input options which pathena and prun handle the same way
+
+    Exits with 0 when the user declines the warning about a large memory request.
+
+    args:
+        options: parsed options namespace, modified in place
+        tmp_log: logger
+    returns:
+        list of sites when --site is a comma-separated list, otherwise None
+    """
+    # PsubUtils is imported lazily since it imports Client, which resolves the cache server via DNS
+    from pandaclient import PsubUtils
+
+    # warning for PQ
+    PsubUtils.get_warning_for_pq(options.site, options.excludedSite, tmp_log)
+
+    # warning for memory, which the user has to confirm unless --is_confirmed is used
+    is_confirmed = PsubUtils.get_warning_for_memory(options.memory, options.is_confirmed, options.nCore, tmp_log)
+    if not is_confirmed:
+        sys.exit(0)
+
+    # exclude sites
+    if options.excludedSite != []:
+        options.excludedSite = PsubUtils.splitCommaConcatenatedItems(options.excludedSite)
+
+    # use certain sites. A list of sites is passed as included sites and the brokerage chooses among them
+    included_site = None
+    if re.search(",", options.site) is not None:
+        included_site = PsubUtils.splitCommaConcatenatedItems([options.site])
+        options.site = "AUTO"
+
+    # list of output files which can be skipped
+    options.allowNoOutput = options.allowNoOutput.split(",")
+
+    # read datasets from file
+    if options.inDsTxt != "":
+        options.inDS = PsubUtils.readDsFromFile(options.inDsTxt)
+
+    # not expand inDS when setting parent
+    if options.parentTaskID:
+        options.notExpandInDS = True
+
+    return included_site
+
+
+def check_split_options(options, tmp_log):
+    """Check --nGBPerJob and that splitting by files, events, and file size are not combined
+
+    Exits with EC_Config when the options are invalid.
+
+    args:
+        options: parsed options namespace, nGBPerJob is converted to int unless it is -1 or MAX
+        tmp_log: logger
+    """
+    # check nGBPerJob. -1 means not set, and MAX leaves the size to the server
+    if options.nGBPerJob not in [-1, "MAX"]:
+        # convert to int
+        try:
+            options.nGBPerJob = int(options.nGBPerJob)
+        except (TypeError, ValueError):
+            tmp_log.error("--nGBPerJob must be an integer or MAX")
+            sys.exit(MiscUtils.EC_Config)
+        # check negative
+        if options.nGBPerJob <= 0:
+            tmp_log.error("--nGBPerJob must be positive")
+            sys.exit(MiscUtils.EC_Config)
+        # incompatible parameters
+        if options.nFilesPerJob > 0:
+            tmp_log.error("--nFilesPerJob and --nGBPerJob must be used exclusively")
+            sys.exit(MiscUtils.EC_Config)
+
+    # split options are mutually exclusive
+    if options.nFilesPerJob > 0 and options.nEventsPerJob > 0 and options.nGBPerJob != -1:
+        tmp_log.error("split by files, split by events and split by file size can not be used simultaneously")
+        sys.exit(MiscUtils.EC_Config)
+    if options.nEventsPerJob > 0 and options.nGBPerJob != -1:
+        tmp_log.error("split by events and split by file size can not be used simultaneously")
+        sys.exit(MiscUtils.EC_Config)
+
+
+def get_bulk_io_list(options, tmp_log):
+    """Make the list of input and output datasets, one item per task to submit
+
+    --inOutDsJson enables bulk submission, i.e. one task per item in the JSON file,
+    e.g. [{"inDS": "data.A", "outDS": "user.hoge.A/"}, {"inDS": "data.B", "outDS": "user.hoge.B/"}].
+    Otherwise the list has only --inDS and --outDS. Exits with EC_Config when the options are inconsistent.
+
+    args:
+        options: parsed options namespace. With bulk submission, inDS and outDS are set to the first item
+        tmp_log: logger
+    returns:
+        list of dicts with inDS and outDS
+    """
+    if options.inOutDsJson != "":
+        options.bulkSubmission = True
+    if not options.bulkSubmission:
+        return [{"inDS": options.inDS, "outDS": options.outDS}]
+    if options.inOutDsJson == "":
+        tmp_log.error("--inOutDsJson is missing")
+        sys.exit(MiscUtils.EC_Config)
+    if options.eventPickEvtList != "":
+        tmp_log.error("cannot use --eventPickEvtList and --inOutDsJson at the same time")
+        sys.exit(MiscUtils.EC_Config)
+    io_list = MiscUtils.decodeJSON(options.inOutDsJson)
+    # use output dataset containers
+    for io_item in io_list:
+        if not io_item["outDS"].endswith("/"):
+            io_item["outDS"] += "/"
+    # the first task is used to check the options and to build the task parameters,
+    # which are copied to the other tasks with their own datasets at submission
+    options.inDS = io_list[0]["inDS"]
+    options.outDS = io_list[0]["outDS"]
+    return io_list
+
+
+def check_input_options(options, tmp_log):
+    """Check --dbRelease and the options which replace --inDS: good run lists and event picking
+
+    Exits with EC_Config when the options are invalid.
 
     args:
         options: parsed options namespace
-        task_param_map: task parameter dict, modified in place
-        no_input: True for jobs without input datasets, in which case the
-            number of events is derived from --nEvents, --nJobs, and
-            --nEventsPerJob rather than from input files
+        tmp_log: logger
     """
-    if no_input:
-        # no input: derive nEventsPerJob / nEvents from --nEvents, --nJobs, --nEventsPerJob
-        if options.nEvents > 0:
-            task_param_map["nEvents"] = options.nEvents
-            if options.nJobs > 0:
-                task_param_map["nEventsPerJob"] = max(1, options.nEvents // options.nJobs)
-            elif options.nEventsPerJob > 0:
-                task_param_map["nEventsPerJob"] = options.nEventsPerJob
-        elif options.nEventsPerJob > 0:
-            task_param_map["nEvents"] = options.nEventsPerJob * max(1, options.nJobs)
-            task_param_map["nEventsPerJob"] = options.nEventsPerJob
-        else:
-            task_param_map["nEvents"] = options.nJobs if options.nJobs > 0 else 1
-            task_param_map["nEventsPerJob"] = 1
-    else:
-        # skip input files with zero events. The real number of events per file has to be
-        # taken from rucio unless the user fixed it with --nEventsPerFile
-        if options.skipEmptyInput:
-            task_param_map["skipEmptyInput"] = True
-            if options.nEventsPerFile <= 0:
-                task_param_map["useRealNumEvents"] = True
-        if options.nFiles > 0:
-            task_param_map["nFiles"] = options.nFiles
-        if options.nFilesPerJob > 0:
-            task_param_map["nFilesPerJob"] = options.nFilesPerJob
-        if options.nEventsPerJob > 0:
-            task_param_map["nEventsPerJob"] = options.nEventsPerJob
-            if options.nEventsPerFile <= 0:
-                task_param_map["useRealNumEvents"] = True
-        if options.nEventsPerFile > 0:
-            task_param_map["nEventsPerFile"] = options.nEventsPerFile
-        if options.nEvents > 0:
-            task_param_map["nEvents"] = options.nEvents
-        elif options.nJobs > 0 and options.nEventsPerJob > 0:
-            task_param_map["nEvents"] = options.nJobs * options.nEventsPerJob
+    # check DBRelease
+    if options.dbRelease != "" and (options.dbRelease.find(":") == -1 and options.dbRelease != "LATEST"):
+        tmp_log.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")
+        sys.exit(MiscUtils.EC_Config)
+
+    # Good Run List, which is converted to input datasets
+    if options.goodRunListXML != "" and options.inDS != "":
+        tmp_log.error("cannot use --goodRunListXML and --inDS at the same time")
+        sys.exit(MiscUtils.EC_Config)
+
+    # event picking, which makes the input dataset from a list of runs/events
+    if options.eventPickEvtList != "" and options.inDS != "":
+        tmp_log.error("cannot use --eventPickEvtList and --inDS at the same time")
+        sys.exit(MiscUtils.EC_Config)
+
+    # param check for event picking
+    if options.eventPickEvtList != "" and options.eventPickDataType == "":
+        tmp_log.error("--eventPickDataType must be specified")
+        sys.exit(MiscUtils.EC_Config)
+
+
+def process_sandbox_options(options):
+    """Process the options about files in the sandbox: the merge script, glue packages, and excluded files
+
+    Call it after options.extFile has been converted to a list.
+
+    args:
+        options: parsed options namespace, modified in place
+    """
+    # AthenaUtils is imported lazily since it imports Client, which resolves the cache server via DNS
+    from pandaclient import AthenaUtils
+
+    # user-specified merging script
+    if options.mergeScript != "":
+        # enable merging
+        options.mergeOutput = True
+        # add it to extFile so that it is shipped in the sandbox
+        if options.mergeScript not in options.extFile:
+            options.extFile.append(options.mergeScript)
+
+    # glue packages
+    options.gluePackages = options.gluePackages.split(",")
+    try:
+        options.gluePackages.remove("")
+    except ValueError:
+        pass
+
+    # files which are not put in the sandbox
+    AthenaUtils.setExcludeFile(options.excludeFile)
+
+
+def parse_secondary_datasets(options, tmp_log):
+    """Convert --secondaryDSs to a dict keyed by dataset name
+
+    Exits with EC_Config when the option is malformed.
+
+    args:
+        options: parsed options namespace, secondaryDSs is replaced with the dict
+        tmp_log: logger
+    """
+    tmp_stat, tmp_out = MiscUtils.parse_secondary_datasets_opt(options.secondaryDSs)
+    if not tmp_stat:
+        tmp_log.error(tmp_out)
+        sys.exit(MiscUtils.EC_Config)
+    options.secondaryDSs = tmp_out

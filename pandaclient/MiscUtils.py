@@ -42,6 +42,7 @@ COMMON_OBSOLETE_OPTIONS = [
     "--disableRebrokerage",
     "--enableJEM",
     "--eventPickStagedDS",
+    "--express",
     "--individualOutDS",
     "--libDS",
     "--long",
@@ -205,7 +206,7 @@ def makeJediJobParam(
 def getDatasetNameAndNumFiles(streamDS, nFilesPerJob, streamName):
     if streamDS == "":
         # read from stdin
-        print("\nThis job uses %s stream" % streamName)
+        print(f"\nThis job uses {streamName} stream")
         while True:
             streamDS = input(f"Enter dataset name for {streamName}: ")
             streamDS = streamDS.strip()
@@ -214,7 +215,7 @@ def getDatasetNameAndNumFiles(streamDS, nFilesPerJob, streamName):
     # number of files per one signal
     if nFilesPerJob < 0:
         while True:
-            tmpStr = input("Enter the number of %s files per job : " % streamName)
+            tmpStr = input(f"Enter the number of {streamName} files per job : ")
             try:
                 nFilesPerJob = int(tmpStr)
                 break
@@ -262,9 +263,9 @@ def commands_get_status_output(com):
             stderr=subprocess.STDOUT,
         )
         data, unused_err = p.communicate()
-        retcode = p.poll()
-        if retcode:
-            ex = subprocess.CalledProcessError(retcode, com)
+        return_code = p.poll()
+        if return_code:
+            ex = subprocess.CalledProcessError(return_code, com)
             raise ex
         status = 0
     except subprocess.CalledProcessError as ex:
@@ -305,7 +306,7 @@ def commands_fail_on_non_zero_exit_status(
         if logger and error_log_msg:
             logger.error(error_log_msg)
 
-        if type(error_status_on_failure) == int:
+        if isinstance(error_status_on_failure, int):
             # use error status provided to the function
             sys.exit(error_status_on_failure)
         elif error_status_on_failure == "sameAsStatus":
@@ -339,7 +340,7 @@ def run_with_original_env(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            print(str(e) + traceback.format_exc())
+            print(f"{e} {traceback.format_exc()}")
             raise e
         finally:
             if "LD_LIBRARY_PATH_RESERVE" in os.environ:
@@ -394,12 +395,12 @@ def parse_secondary_datasets_opt(secondaryDSs):
                 # files
                 if len(tmpItems) >= 6 and tmpItems[5]:
                     with open(tmpItems[5]) as f:
-                        for l in f:
-                            l = l.strip()
-                            if l:
-                                tmpMap[tmpItems[2]]["files"].append(l)
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                tmpMap[tmpItems[2]]["files"].append()
             else:
-                errStr = "Wrong format %s in --secondaryDSs. Must be " "StreamName:nFiles:DatasetName[:Pattern[:nSkipFiles[:FileNameList]]]" % tmpItem
+                errStr = f"Wrong format {tmpItem} in --secondaryDSs. Must be StreamName:nFiles:DatasetName[:Pattern[:nSkipFiles[:FileNameList]]]"
                 return False, errStr
         # set
         secondaryDSs = tmpMap
