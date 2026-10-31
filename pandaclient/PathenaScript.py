@@ -195,6 +195,9 @@ if options.outDS == "":
 if options.nJobs < -1:
     tmpLog.error("Number of jobs should be a positive integer")
     sys.exit(MiscUtils.EC_Config)
+if options.respectSplitRule and options.shortScout:
+    tmpLog.error("--respectSplitRule and --shortScout cannot be used at the same time")
+    sys.exit(MiscUtils.EC_Config)
 if options.pfnList != "":
     if options.inDS != "":
         tmpLog.error("--pfnList and --inDS cannot be used at the same time")
@@ -1078,8 +1081,6 @@ if options.noEmail:
     taskParamMap["noEmail"] = True
 if options.skipScout:
     taskParamMap["skipScout"] = True
-if options.respectSplitRule:
-    taskParamMap["respectSplitRule"] = True
 if options.disableAutoRetry:
     taskParamMap["disableAutoRetry"] = 1
 if options.workingGroup is not None:
@@ -1116,7 +1117,8 @@ if options.maxCore and options.maxCore > 0:
     taskParamMap["maxCoreCount"] = options.maxCore
 if options.skipFilesUsedBy != "":
     taskParamMap["skipFilesUsedBy"] = options.skipFilesUsedBy
-taskParamMap["respectSplitRule"] = True
+if not options.shortScout:
+    taskParamMap["respectSplitRule"] = True
 if options.respectLB:
     taskParamMap["respectLB"] = True
 if options.maxAttempt > 0 and options.maxAttempt <= 50:
