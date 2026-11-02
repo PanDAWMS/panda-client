@@ -10,6 +10,7 @@ from pandaclient import MiscUtils, PandaToolsPkgInfo, PathenaArgs
 from pandaclient.CommonArgs import (
     VALID_TRANSFER_TYPES,
     check_input_options,
+    check_scouting_options,
     check_split_options,
     get_bulk_io_list,
     get_invalid_transfer_types,
@@ -133,9 +134,7 @@ if options.outDS == "":
 if options.nJobs < -1:
     tmp_log.error("Number of jobs should be a positive integer")
     sys.exit(MiscUtils.EC_Config)
-if options.respectSplitRule and options.shortScout:
-    tmpLog.error("--respectSplitRule and --shortScout cannot be used at the same time")
-    sys.exit(MiscUtils.EC_Config)
+
 if options.pfnList != "":
     if options.inDS != "":
         tmp_log.error("--pfnList and --inDS cannot be used at the same time")
@@ -155,6 +154,9 @@ if options.pfnList != "":
 
 # check split options
 check_split_options(options, tmp_log)
+
+# check scouting options
+check_scouting_options(options, tmp_log)
 
 # AMI event-level split
 if options.useAMIEventLevelSplit is None:

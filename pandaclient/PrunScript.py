@@ -10,6 +10,7 @@ from pandaclient import MiscUtils, PandaToolsPkgInfo, PrunArgs
 from pandaclient.CommonArgs import (
     VALID_TRANSFER_TYPES,
     check_input_options,
+    check_scouting_options,
     check_split_options,
     get_bulk_io_list,
     get_invalid_transfer_types,
@@ -430,6 +431,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # check split options
     check_split_options(options, tmp_log)
+
+    # check scouting options
+    check_scouting_options(options, tmp_log)
 
     # translate --nJobs into nFiles / nFilesPerJob
     set_n_files_from_n_jobs(options)

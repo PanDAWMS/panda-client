@@ -1025,6 +1025,21 @@ def check_split_options(options, tmp_log):
         sys.exit(MiscUtils.EC_Config)
 
 
+def check_scouting_options(options, tmp_log):
+    """Check incompatible scouting options are not used together
+
+    Exits with EC_Config when the options are invalid.
+
+    args:
+        options: parsed options namespace
+        tmp_log: logger
+    """
+    # respectSplitRule and shortScout are mutually exclusive, since respectSplitRule forces scouts to follow rules like nGBPerJob
+    if options.respectSplitRule and options.shortScout:
+        tmp_log.error("--respectSplitRule and --shortScout cannot be used at the same time")
+        sys.exit(MiscUtils.EC_Config)
+
+
 def get_bulk_io_list(options, tmp_log):
     """Make the list of input and output datasets, one item per task to submit
 

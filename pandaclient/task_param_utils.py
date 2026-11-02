@@ -127,7 +127,8 @@ def set_common_task_params(options, task_param_map, processing_type, included_si
     if options.skipFilesUsedBy != "":
         task_param_map["skipFilesUsedBy"] = options.skipFilesUsedBy
     # always set, so --respectSplitRule is effectively the default
-    task_param_map["respectSplitRule"] = True
+    if not options.shortScout:
+        task_param_map["respectSplitRule"] = True
     # attempts per job, 3 by default on the server side and capped at 50
     if 0 < options.maxAttempt <= 50:
         task_param_map["maxAttempt"] = options.maxAttempt
