@@ -27,7 +27,7 @@ def getPandaLogger(use_stdout=True):
         formatter = logging.Formatter("%(levelname)s : %(message)s")
         console.setFormatter(formatter)
         rootLog.addHandler(console)
-    # return
+
     return rootLog
 
 

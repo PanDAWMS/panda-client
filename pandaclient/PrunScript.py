@@ -83,7 +83,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     fullExecString = PsubUtils.convSysArgv()
     fullExecString += jsonExecStr
 
-    # get logger
     tmp_log = PLogger.getPandaLogger()
 
     # use dev server

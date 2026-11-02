@@ -1021,7 +1021,6 @@ def getDN(dn):
     # use short name
     if name == "":
         name = short_name
-    # return
     return name
 
 
@@ -1283,7 +1282,6 @@ def requestEventPicking(
         tmpLog.error(errStr)
         sys.exit(EC_Failed)
 
-    # return user dataset name
     return True, userDatasetName
 
 

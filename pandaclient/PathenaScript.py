@@ -66,7 +66,6 @@ from pandaclient import AthenaUtils, Client, PLogger, PsubUtils
 full_exec_string = PsubUtils.convSysArgv()
 full_exec_string += json_exec_string
 
-# get logger
 tmp_log = PLogger.getPandaLogger()
 
 # check if unknown arg

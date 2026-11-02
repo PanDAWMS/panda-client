@@ -45,7 +45,6 @@ def resetCacheValues():
 def get_proxy_info(force, verbose):
     global cacheVomsInfo
     if force or cacheVomsInfo is None:
-        # get logger
         tmpLog = PLogger.getPandaLogger()
         if Client.use_x509_no_grid():
             if "PANDA_NICKNAME" not in os.environ:
@@ -143,7 +142,6 @@ def getNickname(verbose=False):
                 break
     # check
     if nickName == "":
-        # get logger
         tmpLog = PLogger.getPandaLogger()
         wMessage = "Could not get nickname by using voms-proxy-info which gave\n\n"
         wMessage += output
@@ -203,7 +201,6 @@ def check_invalid_char(s, is_file=False):
 
 # check name of output dataset
 def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=False):
-    # get logger
     tmpLog = PLogger.getPandaLogger()
     # check NG chars for SE
     checked = check_invalid_char(outDS)
@@ -333,7 +330,7 @@ def convSysArgv(argv=None):
         else:
             # quote string
             paramStr += f'"{item}"'
-    # return
+
     return paramStr
 
 
@@ -403,7 +400,7 @@ def completePathFunc(text, status):
             results.append(tmpItem)
         # sort
         results.sort()
-    # return
+
     return results[status]
 
 
@@ -566,7 +563,7 @@ def convertParamStrToJediParam(
             tmpDict["padding"] = False
         # append
         jobParams.append(tmpDict)
-    # return
+
     return jobParams
 
 
@@ -616,7 +613,6 @@ def uploadGzippedFile(origFileName, currentDir, tmpLog, delFilesOnExit, nosubmit
             sys.exit(MiscUtils.EC_Post)
     # delete
     os.remove(gzipFullPath)
-    # return new filename
     return newFileName
 
 
@@ -632,7 +628,6 @@ def getListPFN(pfnFile):
     rFile.close()
     inputFileList.sort()
     if len(inputFileList) == 0:
-        # get logger
         tmpLog = PLogger.getPandaLogger()
         tmpLog.error(f"{pfnFile} doesn't contain any PFNs")
         sys.exit(MiscUtils.EC_Config)

@@ -221,7 +221,7 @@ def getDatasetNameAndNumFiles(streamDS, nFilesPerJob, streamName):
                 break
             except Exception:
                 pass
-    # return
+
     return streamDS, nFilesPerJob
 
 

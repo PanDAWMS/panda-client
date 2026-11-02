@@ -142,7 +142,7 @@ class PBookCore:
     # kill
     @check_task_owner
     def kill(self, taskID):
-        # get logger
+
         tmpLog = PLogger.getPandaLogger()
         # kill JEDI task
         tmpLog.info("Sending killTask command ...")
@@ -158,14 +158,14 @@ class PBookCore:
             tmpLog.error(f"Failed to kill jediTaskID={taskID}")
             return False
         tmpLog.info(tmpDiag)
-        # done
+
         tmpLog.info(f"Done, jediTaskID={taskID} will be killed within the next 30 min")
         return True
 
     # finish
     @check_task_owner
     def finish(self, taskID, soft=False):
-        # get logger
+
         tmpLog = PLogger.getPandaLogger()
         # finish JEDI task
         tmpLog.info("Sending finishTask command ...")
@@ -181,13 +181,13 @@ class PBookCore:
             tmpLog.error(f"Failed to finish jediTaskID={taskID}")
             return False
         tmpLog.info(tmpDiag)
-        # done
+
         tmpLog.info(f"Done, jediTaskID={taskID} will be finished soon")
         return True
 
     # set debug mode
     def debug(self, pandaID, modeOn):
-        # get logger
+
         tmpLog = PLogger.getPandaLogger()
         # set
         status, output = Client.setDebugMode(pandaID, modeOn, self.verbose)
@@ -195,14 +195,14 @@ class PBookCore:
             tmpLog.error(output)
             tmpLog.error(f"Failed to set debug mode for {pandaID}")
             return
-        # done
+
         tmpLog.info(output)
         return
 
     # retry
     @check_task_owner
     def retry(self, taskID, newOpts=None):
-        # get logger
+
         tmpLog = PLogger.getPandaLogger()
         # set an empty map since mutable default value is used
         if newOpts is None:
@@ -231,7 +231,7 @@ class PBookCore:
     # recover lost files
     @check_task_owner
     def recover_lost_files(self, taskID, test_mode=False):
-        # get logger
+
         tmpLog = PLogger.getPandaLogger()
         # kill JEDI task
         tmpLog.info("Sending recovery request ...")
@@ -246,13 +246,13 @@ class PBookCore:
             tmpLog.error(tmpDiag)
             tmpLog.error("request was not received")
             return False
-        # done
+
         tmpLog.info(tmpDiag)
         return True
 
     # get job metadata
     def getUserJobMetadata(self, taskID, output_filename):
-        # get logger
+
         tmpLog = PLogger.getPandaLogger()
         # get metadata
         tmpLog.info("getting metadata")
@@ -264,7 +264,7 @@ class PBookCore:
         with open(output_filename, "w") as f:
             json.dump(metadata, f)
         tmpLog.info(f"dumped to {output_filename}")
-        # return
+
         return True
 
     # get task specs of active tasks
@@ -420,7 +420,7 @@ class PBookCore:
 
     # set secret
     def set_secret(self, key, value, is_file=False):
-        # get logger
+
         tmpLog = PLogger.getPandaLogger()
         if is_file:
             with open(value, "rb") as f:
@@ -441,12 +441,12 @@ class PBookCore:
             tmpLog.info(msg or "Secret set successfully")
         else:
             tmpLog.error(msg or "Failed to set secret")
-        # return
+
         return status
 
     # list secrets
     def list_secrets(self, full=False):
-        # get logger
+
         tmpLog = PLogger.getPandaLogger()
         status, output = Client.get_user_secrets(verbose=self.verbose)
         if status != 0:
@@ -472,12 +472,12 @@ class PBookCore:
                 localSpecs._console.print("No secrets")
         else:
             tmpLog.error(data)
-        # return
+
         return status
 
     # pause
     def pause(self, task_id):
-        # get logger
+
         tmpLog = PLogger.getPandaLogger()
         # pause JEDI task
         tmpLog.info("Sending pause command ...")
@@ -494,13 +494,13 @@ class PBookCore:
             tmpLog.error(f"Failed to pause jediTaskID={task_id}")
             return False
         tmpLog.info(tmpDiag)
-        # done
+
         tmpLog.info("Done")
         return True
 
     # resume
     def resume(self, task_id):
-        # get logger
+
         tmpLog = PLogger.getPandaLogger()
         # pause JEDI task
         tmpLog.info("Sending resume command ...")
@@ -516,7 +516,7 @@ class PBookCore:
             tmpLog.error(f"Failed to resume jediTaskID={task_id}")
             return False
         tmpLog.info(tmpDiag)
-        # done
+
         tmpLog.info("Done")
         return True
 
@@ -526,7 +526,7 @@ class PBookCore:
 
     # reload input and then retry the task
     def reload_input(self, task_id):
-        # get logger
+
         tmp_log = PLogger.getPandaLogger()
         # set
         status, output = Client.reload_input(task_id, self.verbose)
@@ -538,6 +538,6 @@ class PBookCore:
             tmp_log.error(output[-1])
             tmp_log.error(f"Failed to reload input {task_id}")
             return False
-        # done
+
         tmp_log.info(f"command is registered for task {task_id} and will be executed in a few minutes")
         return True

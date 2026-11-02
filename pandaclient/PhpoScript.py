@@ -259,7 +259,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         help="Please don't use this option. Only for developers to use the intr panda server",
     )
 
-    # get logger
     tmpLog = PLogger.getPandaLogger()
 
     options = optP.parse_args(ext_args)

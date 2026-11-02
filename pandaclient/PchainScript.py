@@ -106,7 +106,6 @@ def main():
         "--relayHost", action="store", dest="relayHost", default=None, help="Please don't use this option. Only for developers to use the relay host"
     )
 
-    # get logger
     tmpLog = PLogger.getPandaLogger()
 
     # show version

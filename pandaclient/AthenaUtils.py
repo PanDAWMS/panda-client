@@ -30,7 +30,7 @@ def getCmtProjects(dir="."):
                 lines.append(line)
         # back to the current dir
         os.chdir(curdir)
-        # return
+
         return lines, out
     else:
         lines = []
@@ -64,7 +64,6 @@ def isAthRelease(cacheVer):
 
 # get Athena version
 def getAthenaVer(verbose=True):
-    # get logger
     tmpLog = PLogger.getPandaLogger()
     # get project parameters
     lines, out = getCmtProjects()
@@ -206,7 +205,7 @@ def getAthenaVer(verbose=True):
         tmpLog.info(f"cmt showed\n{tmp_string}")
         tmpLog.error("could not get Athena version. perhaps your requirements file doesn't have ATLAS_TEST_AREA")
         return False, retVal
-    # return
+
     return True, retVal
 
 
@@ -231,7 +230,7 @@ class ConfigAttr(dict):
 
 # extract run configuration
 def extractRunConfig(jobO, supStream, shipinput, trf, verbose=False, useAMI=False, inDS="", tmpDir=".", one_liner=""):
-    # get logger
+
     tmpLog = PLogger.getPandaLogger()
     outputConfig = ConfigAttr()
     inputConfig = ConfigAttr()
@@ -465,7 +464,7 @@ def extractRunConfig(jobO, supStream, shipinput, trf, verbose=False, useAMI=Fals
             print(out)
             tmpLog.error("Could not parse jobOptions")
             statsCode = False
-    # return
+
     retConfig = ConfigAttr()
     retConfig["input"] = inputConfig
     retConfig["other"] = otherConfig
@@ -674,7 +673,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
 
     # get package list
     def getPackages(_workArea, gluePackages=[]):
-        # get logger
+
         tmpLog = PLogger.getPandaLogger()
         # special packages
         specialPackages = {"External/Lhapdf": "external/MCGenerators/lhapdf"}
@@ -745,7 +744,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                         _packages.append(pName)
                 else:
                     tmpLog.warning(f"glue package {pName} not found under {_workArea}")
-        # return
+
         return _packages
 
     # archive files
@@ -905,7 +904,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
             tmpLog.warning(f"{tmp_ext_file} is specified as extFile but not found in the current dir")
     # back to current dir
     os.chdir(currentDir)
-    # return
+
     return archiveName, archiveFullName
 
 
@@ -955,7 +954,6 @@ def archiveJobOFiles(workArea, runDir, currentDir, tmpDir, verbose, archiveName=
 
         commands_fail_on_non_zero_exit_status(command_string, MiscUtils.EC_Archive, logger=tmpLog, error_log_msg="tarball creation failed")
 
-    # return
     return archiveName, archiveFullName
 
 
@@ -1386,7 +1384,7 @@ def convertConfToOutput(
     if spaceToken != "":
         for tmpParam in paramList:
             tmpParam["token"] = spaceToken
-    # return
+
     return outMap, paramList
 
 
@@ -1449,7 +1447,7 @@ def getCmtConfig(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None, v
         return os.environ["CMTCONFIG"]
     # undefined in Athena
     if athenaVer or cacheVer:
-        # get logger
+
         tmpLog = PLogger.getPandaLogger()
         tmpLog.error("environment variable CMTCONFIG is undefined. Please set --cmtConfig")
         sys.exit(MiscUtils.EC_Config)
@@ -1464,7 +1462,7 @@ def checkCmtConfig(localCmtConfig, userCmtConfig, noBuild):
     # CVMFS version format
     if re.search(r"-gcc\d+\.\d+$", userCmtConfig) is not None:
         return True
-    # get logger
+
     tmpLog = PLogger.getPandaLogger()
     # CMTCONFIG is undefined locally
     if localCmtConfig in ["", None]:
@@ -1476,7 +1474,6 @@ def checkCmtConfig(localCmtConfig, userCmtConfig, noBuild):
             "since you need re-compile source files on remote worker-node. Please remove --noBuild"
         )
         return False
-    # return OK
     return True
 
 
@@ -1522,7 +1519,6 @@ except Exception:
     pass
 """)
     oFile.close()
-    # return file name
     return optFileName
 
 
