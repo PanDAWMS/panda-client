@@ -1093,17 +1093,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # submit task
     for iSubmission, ioItem in enumerate(ioList):
         if options.verbose:
-            print("== parameters ==")
-            print(f"Site       : {options.site}")
-            print(f"Athena     : {athenaVer}")
-            if groupArea != "":
-                print(f"Group Area : {groupArea}")
-            if cacheVer != "":
-                print(f"Cache      : {cacheVer[1:]}")
-            if nightVer != "":
-                print(f"Nightly    : {nightVer[1:]}")
-            print(f"RunDir     : {runDir}")
-            print(f"exec       : {options.jobParams}")
+            PsubUtils.print_submission_parameters(options.site, athenaVer, groupArea, cacheVer, nightVer, runDir, [("exec", options.jobParams)])
 
         if len(ioList) == 1:
             newTaskParamMap = task_param_map

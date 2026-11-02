@@ -1417,18 +1417,9 @@ dump_list = []
 # submit task
 for iSubmission, ioItem in enumerate(io_list):
     if options.verbose:
-        print("== parameters ==")
-        print(f"Site       : {options.site}")
-        print(f"Athena     : {athenaVer}")
-        if groupArea != "":
-            print(f"Group Area : {groupArea}")
-        if cacheVer != "":
-            print(f"ProdCache  : {cacheVer[1:]}")
-        if nightVer != "":
-            print(f"Nightly    : {nightVer[1:]}")
-        print(f"cmtConfig  : {AthenaUtils.getCmtConfigImg(athenaVer, cacheVer, nightVer, options.cmtConfig)}")
-        print(f"RunDir     : {runDir}")
-        print(f"job_options       : {job_options.lstrip()}")
+        cmt_config = AthenaUtils.getCmtConfigImg(athenaVer, cacheVer, nightVer, options.cmtConfig)
+        extra_lines = [("cmtConfig", cmt_config), ("jobO", job_options.lstrip())]
+        PsubUtils.print_submission_parameters(options.site, athenaVer, groupArea, cacheVer, nightVer, runDir, extra_lines)
 
     if len(io_list) == 1:
         newTaskParamMap = task_param_map

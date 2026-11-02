@@ -877,6 +877,32 @@ def upload_sandbox(options, archive_name, cur_dir, tmp_log, del_files_on_exit, u
     return archive_name
 
 
+def print_submission_parameters(site, athena_ver, group_area, cache_ver, night_ver, run_dir, extra_lines=()):
+    """Print the parameters of a submission, with --verbose
+
+    args:
+        site: site name or AUTO
+        athena_ver: Athena version
+        group_area: group area, or an empty string
+        cache_ver: cache version with a leading separator, or an empty string
+        night_ver: nightly version with a leading separator, or an empty string
+        run_dir: run directory relative to the work area
+        extra_lines: (label, value) pairs to print after the common ones
+    """
+    print("== parameters ==")
+    print(f"Site       : {site}")
+    print(f"Athena     : {athena_ver}")
+    if group_area != "":
+        print(f"Group Area : {group_area}")
+    if cache_ver != "":
+        print(f"Cache      : {cache_ver[1:]}")
+    if night_ver != "":
+        print(f"Nightly    : {night_ver[1:]}")
+    print(f"RunDir     : {run_dir}")
+    for label, value in extra_lines:
+        print(f"{label:<11}: {value}")
+
+
 def print_task_params(task_param_map, tmp_log):
     """Print the task parameters sorted by key
 
