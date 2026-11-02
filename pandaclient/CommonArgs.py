@@ -614,6 +614,19 @@ _COMMON_ARGS = [
         dict(action="store_const", const=True, dest="respectSplitRule", default=False, help="force scout jobs to follow split rules like nGBPerJob"),
     ),
     (
+        "job",
+        ["--shortScout"],
+        dict(
+            action="store_const",
+            const=True,
+            dest="shortScout",
+            default=False,
+            help="let scout jobs ignore split rules like nGBPerJob to make them shorter. "
+            "Scout jobs effectively process 1 file per job unless --nFilesPerJob or --nEventsPerJob is set. "
+            "Cannot be used with --respectSplitRule",
+        ),
+    ),
+    (
         "expert",
         ["--devSrv"],
         dict(

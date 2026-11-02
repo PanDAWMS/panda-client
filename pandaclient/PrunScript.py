@@ -216,6 +216,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         tmpLog.error("invalid argument for --dbRelease. Must be DatasetName:FileName or LATEST")
         sys.exit(MiscUtils.EC_Config)
 
+    # split rule for scout jobs
+    if options.respectSplitRule and options.shortScout:
+        tmpLog.error("--respectSplitRule and --shortScout cannot be used at the same time")
+        sys.exit(MiscUtils.EC_Config)
+
     # Good Run List
     if options.goodRunListXML != "" and options.inDS != "":
         tmpLog.error("cannot use --goodRunListXML and --inDS at the same time")
@@ -947,8 +952,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         taskParamMap["skipScout"] = True
     if options.msgDriven:
         taskParamMap["messageDriven"] = True
-    if options.respectSplitRule:
-        taskParamMap["respectSplitRule"] = True
     if options.respectLB:
         taskParamMap["respectLB"] = True
     if options.osMatching:
@@ -990,7 +993,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         taskParamMap["maxCoreCount"] = options.maxCore
     if options.skipFilesUsedBy != "":
         taskParamMap["skipFilesUsedBy"] = options.skipFilesUsedBy
-    taskParamMap["respectSplitRule"] = True
+    if not options.shortScout:
+        taskParamMap["respectSplitRule"] = True
     if options.maxAttempt > 0 and options.maxAttempt <= 50:
         taskParamMap["maxAttempt"] = options.maxAttempt
     if options.useSecrets:
