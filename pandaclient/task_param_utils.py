@@ -73,11 +73,8 @@ def set_common_task_params(options, task_param_map, processing_type, included_si
     if options.noEmail:
         task_param_map["noEmail"] = True
     # skipScout: expert option to skip the scout jobs that measure memory, walltime, and output size.
-    # respectSplitRule: force scout jobs to follow split rules like nGBPerJob
     if options.skipScout:
         task_param_map["skipScout"] = True
-    if options.respectSplitRule:
-        task_param_map["respectSplitRule"] = True
     # generate jobs respecting lumiblock boundaries
     if options.respectLB:
         task_param_map["respectLB"] = True
@@ -126,7 +123,7 @@ def set_common_task_params(options, task_param_map, processing_type, included_si
     # skip input files already used by the given task IDs
     if options.skipFilesUsedBy != "":
         task_param_map["skipFilesUsedBy"] = options.skipFilesUsedBy
-    # always set, so --respectSplitRule is effectively the default
+    # set unless --shortScout, so --respectSplitRule is effectively the default. --shortScout lets scouts ignore split rules like nGBPerJob
     if not options.shortScout:
         task_param_map["respectSplitRule"] = True
     # attempts per job, 3 by default on the server side and capped at 50
