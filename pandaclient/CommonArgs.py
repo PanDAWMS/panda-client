@@ -1025,6 +1025,32 @@ def check_split_options(options, tmp_log):
         sys.exit(MiscUtils.EC_Config)
 
 
+def check_pfn_list_options(options, tmp_log):
+    """Check the options used with --pfnList
+
+    Exits with EC_Config when the options are invalid.
+
+    args:
+        options: parsed options namespace
+        tmp_log: logger
+    """
+    if options.pfnList == "":
+        return
+
+    if options.inDS != "":
+        tmp_log.error("--pfnList and --inDS cannot be used at the same time")
+        sys.exit(MiscUtils.EC_Config)
+
+    # --shipInput only exists in pathena
+    if getattr(options, "shipinput", False):
+        tmp_log.error("--pfnList and --shipInput cannot be used at the same time")
+        sys.exit(MiscUtils.EC_Config)
+
+    if options.site == "AUTO":
+        tmp_log.error("--site must be specified when --pfnList is used")
+        sys.exit(MiscUtils.EC_Config)
+
+
 def check_scouting_options(options, tmp_log):
     """Check incompatible scouting options are not used together
 

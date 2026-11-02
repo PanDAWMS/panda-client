@@ -10,6 +10,7 @@ from pandaclient import MiscUtils, PandaToolsPkgInfo, PathenaArgs
 from pandaclient.CommonArgs import (
     VALID_TRANSFER_TYPES,
     check_input_options,
+    check_pfn_list_options,
     check_scouting_options,
     check_split_options,
     get_bulk_io_list,
@@ -134,16 +135,8 @@ if options.nJobs < -1:
     tmp_log.error("Number of jobs should be a positive integer")
     sys.exit(MiscUtils.EC_Config)
 
-if options.pfnList != "":
-    if options.inDS != "":
-        tmp_log.error("--pfnList and --inDS cannot be used at the same time")
-        sys.exit(MiscUtils.EC_Config)
-    if options.shipinput:
-        tmp_log.error("--pfnList and --shipInput cannot be used at the same time")
-        sys.exit(MiscUtils.EC_Config)
-    if options.site == "AUTO":
-        tmp_log.error("--site must be specified when --pfnList is used")
-        sys.exit(MiscUtils.EC_Config)
+# check PFN list options
+check_pfn_list_options(options, tmp_log)
 
 # absolute path for PFN list
 use_pfn_list = False

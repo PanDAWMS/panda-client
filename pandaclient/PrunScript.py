@@ -10,6 +10,7 @@ from pandaclient import MiscUtils, PandaToolsPkgInfo, PrunArgs
 from pandaclient.CommonArgs import (
     VALID_TRANSFER_TYPES,
     check_input_options,
+    check_pfn_list_options,
     check_scouting_options,
     check_split_options,
     get_bulk_io_list,
@@ -396,16 +397,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         tmp_log.error("no outDS is given\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
         sys.exit(MiscUtils.EC_Config)
 
-    # avoid inDS+pfnList
-    if options.pfnList != "":
-        # don't use inDS
-        if options.inDS != "":
-            tmp_log.error("--pfnList and --inDS cannot be used at the same time")
-            sys.exit(MiscUtils.EC_Config)
-        # use site
-        if options.site == "AUTO":
-            tmp_log.error("--site must be specified when --pfnList is used")
-            sys.exit(MiscUtils.EC_Config)
+    # check PFN list options
+    check_pfn_list_options(options, tmp_log)
 
     # secondary datasets
     parse_secondary_datasets(options, tmp_log)
