@@ -133,6 +133,9 @@ if options.outDS == "":
 if options.nJobs < -1:
     tmp_log.error("Number of jobs should be a positive integer")
     sys.exit(MiscUtils.EC_Config)
+if options.respectSplitRule and options.shortScout:
+    tmpLog.error("--respectSplitRule and --shortScout cannot be used at the same time")
+    sys.exit(MiscUtils.EC_Config)
 if options.pfnList != "":
     if options.inDS != "":
         tmp_log.error("--pfnList and --inDS cannot be used at the same time")
