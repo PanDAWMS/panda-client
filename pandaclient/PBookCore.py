@@ -55,8 +55,7 @@ def _get_one_task(self, taskID, verbose=False):
     data = _query_task_dicts(self, filters={"jediTaskID": taskID})
     if data:
         return localSpecs.LocalTaskSpec(data[0])
-    else:
-        return None
+    return None
 
 
 def _get_tasks_from_reqid(self, reqID, verbose=False):
@@ -66,8 +65,7 @@ def _get_tasks_from_reqid(self, reqID, verbose=False):
     data = _query_task_dicts(self, filters={"reqID": reqID})
     if data:
         return [localSpecs.LocalTaskSpec(task) for task in data]
-    else:
-        return None
+    return None
 
 
 func_return_value = True
@@ -136,7 +134,7 @@ class PBookCore:
             self.username = username_from_proxy
             sys.stdout.write(f"PBook user: {self.username} \n")
         else:
-            sys.stderr.write("ERROR : Cannot get user name from proxy or token. " 'Please generate a new one using "generate_credential"\n')
+            sys.stderr.write('ERROR : Cannot get user name from proxy or token. Please generate a new one using "generate_credential"\n')
             sys.exit(1)
 
     # kill
@@ -277,8 +275,7 @@ class PBookCore:
         if data:
             taskspec_list = [localSpecs.LocalTaskSpec(task) for task in data]
             return taskspec_list
-        else:
-            return None
+        return None
 
     # show status
     def show(
@@ -322,9 +319,7 @@ class PBookCore:
         # print
         if format != "json":
             sys.stderr.write(
-                "Showing only max {limit} tasks in last {days} days. One can set days=N to see tasks in last N days, and limit=M to see at most M latest tasks \n".format(
-                    days=days, limit=limit
-                )
+                f"Showing only max {limit} tasks in last {days} days. One can set days=N to see tasks in last N days, and limit=M to see at most M latest tasks \n"
             )
         # build server-side filters (keys are JediTaskSpec attribute names)
         filters = {}
@@ -352,7 +347,7 @@ class PBookCore:
         _tmpts = localSpecs.LocalTaskSpec
         if format == "json":
             return data
-        elif format == "plain":
+        if format == "plain":
             for task in data:
                 localSpecs.LocalTaskSpec(task).print_plain()
         elif format == "long":
@@ -534,7 +529,7 @@ class PBookCore:
             tmp_log.error(output)
             tmp_log.error(f"Failed to reload input {task_id}")
             return False
-        elif not output[0]:
+        if not output[0]:
             tmp_log.error(output[-1])
             tmp_log.error(f"Failed to reload input {task_id}")
             return False

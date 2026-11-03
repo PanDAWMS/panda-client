@@ -49,7 +49,7 @@ options, args = optP.parse_known_args()
 if options.verbose:
     print(options)
     print(f"args={args}")
-    print("")
+    print()
 
 # load json. athena_args holds the job options and arguments given as positional arguments on the command line
 json_exec_string, json_special_values = load_json_options(options, special_keys=("athena_args",))
@@ -618,7 +618,7 @@ if len(runConfig.other.rndmStream) != 0:
         print("Initial random seeds need to be defined.")
         print("Enter two numbers for each random stream.")
         print("  e.g., PYTHIA : 4789899 989240512")
-        print("")
+        print()
     for stream in runConfig.other.rndmStream:
         if options.norandom:
             # enter manually
@@ -633,13 +633,13 @@ if len(runConfig.other.rndmStream) != 0:
             # automatic
             runConfig.other.rndmNumbers.append([random.randint(1, 5000000), random.randint(1, 5000000)])
     if options.norandom:
-        print("")
+        print()
 if runConfig.other.G4RandomSeeds:
     if options.norandom:
-        print("")
+        print()
         print("Initial G4 random seeds need to be defined.")
         print("Enter one positive number.")
-        print("")
+        print()
         # enter manually
         while True:
             num = input("SimFlags.SeedsG4=")
@@ -650,7 +650,7 @@ if runConfig.other.G4RandomSeeds:
                     break
             except Exception:
                 pass
-        print("")
+        print()
     else:
         # automatic
         runConfig.other.G4RandomSeeds = random.randint(1, 10000)

@@ -233,12 +233,12 @@ def unicodeConvert(input):
             tmpVal = input[tmpKey]
             retMap[unicodeConvert(tmpKey)] = unicodeConvert(tmpVal)
         return retMap
-    elif isinstance(input, list):
+    if isinstance(input, list):
         retList = []
         for tmpItem in input:
             retList.append(unicodeConvert(tmpItem))
         return retList
-    elif isinstance(input, str):
+    if isinstance(input, str):
         return input.encode("ascii", "ignore").decode()
     return input
 
@@ -466,8 +466,7 @@ def query_yes_no(question):
         choice = input().lower()
         if choice in valid:
             return valid[choice]
-        else:
-            sys.stdout.write("Please respond with 'y' or 'n'")
+        sys.stdout.write("Please respond with 'y' or 'n'")
 
 
 # remove obsolete options from the argument list, warning the user about each one

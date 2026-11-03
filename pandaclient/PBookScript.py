@@ -425,7 +425,7 @@ def _main(
         pid, status = os.wait()
         if os.WIFSIGNALED(status):
             raise typer.Exit(-os.WTERMSIG(status))
-        elif os.WIFEXITED(status):
+        if os.WIFEXITED(status):
             raise typer.Exit(os.WEXITSTATUS(status))
         raise typer.Exit(0)
 
@@ -713,7 +713,7 @@ def kill(
     ids = _parse_ids(task_ids)
     if ids == "all":
         return _parallel(lambda t: core.kill(t.jeditaskid), core.get_active_tasks())
-    elif isinstance(ids, list):
+    if isinstance(ids, list):
         return _parallel(core.kill, ids)
     return core.kill(ids)
 
@@ -745,7 +745,7 @@ def finish(
     ids = _parse_ids(task_ids)
     if ids == "all":
         return _parallel(lambda t: core.finish.original_func(core, t.jeditaskid, soft=soft), core.get_active_tasks())
-    elif isinstance(ids, list):
+    if isinstance(ids, list):
         return _parallel(lambda tid: core.finish(tid, soft=soft), ids)
     return core.finish(ids, soft=soft)
 
@@ -786,7 +786,7 @@ def _translate_retry_new_opts(new_opts):
     invalid = [key for key in new_opts if key not in _RETRY_NEW_OPTS]
     if invalid:
         typer.echo(
-            f"Error: invalid option(s) in newOpts: {', '.join(map(str, invalid))}. Nothing was retried. " f"Valid options: {', '.join(_RETRY_NEW_OPTS)}.",
+            f"Error: invalid option(s) in newOpts: {', '.join(map(str, invalid))}. Nothing was retried. Valid options: {', '.join(_RETRY_NEW_OPTS)}.",
             err=True,
         )
         return None
@@ -934,7 +934,7 @@ def retry(
         opts = new_opts or None
     if isinstance(ids, list):
         return _parallel(lambda tid: core.retry(tid, newOpts=opts), ids)
-    elif ids == "all":
+    if ids == "all":
         data = core.show(status="finished", days=days, limit=limit, format="json")
         return _parallel(lambda d: core.retry.original_func(core, d["jediTaskID"], newOpts=opts), data)
     return core.retry(ids, newOpts=opts)

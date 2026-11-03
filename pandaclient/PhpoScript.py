@@ -35,14 +35,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         action="store",
         dest="loadJson",
         default=None,
-        help="Read task parameters from a json file. Some parameters can be overridden " "by using command-line arguments",
+        help="Read task parameters from a json file. Some parameters can be overridden by using command-line arguments",
     )
     group_config.add_argument(
         "--dumpJson",
         action="store",
         dest="dumpJson",
         default=None,
-        help="Dump all command-line parameters and submission result " "such as returnCode, returnOut, and jediTaskID to a json file",
+        help="Dump all command-line parameters and submission result such as returnCode, returnOut, and jediTaskID to a json file",
     )
     group_config.add_argument(
         "--nParallelEvaluation",
@@ -58,7 +58,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         dest="maxPoints",
         default=10,
         type=int,
-        help="The max number of hyperparameter points to be evaluated in the entire search " "(for each segment in segmented HPO). " "10 by default",
+        help="The max number of hyperparameter points to be evaluated in the entire search (for each segment in segmented HPO). 10 by default",
     )
     group_config.add_argument(
         "--maxEvaluationJobs",
@@ -130,7 +130,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         action="store",
         dest="evaluationInput",
         default="input.json",
-        help="Input filename for evaluation where a json-formatted hyperparameter point is placed. " "input.json by default",
+        help="Input filename for evaluation where a json-formatted hyperparameter point is placed. input.json by default",
     )
     group_config.add_argument(
         "--evaluationTrainingData",
@@ -172,7 +172,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         dest="checkPointInterval",
         default=None,
         type=int,
-        help="Frequency to check files for checkpointing in minute. " "5 by default",
+        help="Frequency to check files for checkpointing in minute. 5 by default",
     )
     group_config.add_argument(
         "--alrbArgs",
@@ -246,7 +246,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         dest="vomsRoles",
         default=None,
         type=str,
-        help="generate proxy with particular roles. " "e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
+        help="generate proxy with particular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
     )
     group_submit.add_argument("--noEmail", action="store_const", const=True, dest="noEmail", default=False, help="Suppress email notification")
 
@@ -279,11 +279,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                     setattr(options, k, v)
                     if v is True:
                         jsonExecStr += f" --{k}"
+                    elif isinstance(v, str):
+                        jsonExecStr += f" --{k}='{v}'"
                     else:
-                        if isinstance(v, str):
-                            jsonExecStr += f" --{k}='{v}'"
-                        else:
-                            jsonExecStr += f" --{k}={v}"
+                        jsonExecStr += f" --{k}={v}"
                 else:
                     tmpLog.warning(f"ignore unknown option {k} in {options.loadJson}")
 
@@ -590,19 +589,18 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         tmpStr = f"task submission failed with {tmpStat}"
         tmpLog.error(tmpStr)
         exitCode = 1
+    elif tmpOut[0] in [0, 3]:
+        tmpStr = tmpOut[1]
+        tmpLog.info(tmpStr)
+        try:
+            m = re.search(r"jediTaskID=(\d+)", tmpStr)
+            taskID = int(m.group(1))
+        except Exception:
+            pass
     else:
-        if tmpOut[0] in [0, 3]:
-            tmpStr = tmpOut[1]
-            tmpLog.info(tmpStr)
-            try:
-                m = re.search(r"jediTaskID=(\d+)", tmpStr)
-                taskID = int(m.group(1))
-            except Exception:
-                pass
-        else:
-            tmpStr = f"task submission failed. {tmpOut[1]}"
-            tmpLog.error(tmpStr)
-            exitCode = 1
+        tmpStr = f"task submission failed. {tmpOut[1]}"
+        tmpLog.error(tmpStr)
+        exitCode = 1
 
     dumpItem = copy.deepcopy(vars(options))
     dumpItem["returnCode"] = exitCode

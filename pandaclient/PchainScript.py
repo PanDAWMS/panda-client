@@ -87,7 +87,7 @@ def main():
         dest="vomsRoles",
         default=None,
         type=str,
-        help="generate proxy with particular roles. " "e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
+        help="generate proxy with particular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
     )
     group_submit.add_argument("--noEmail", action="store_const", const=True, dest="noEmail", default=False, help="Suppress email notification")
     group_submit.add_argument("--prodSourceLabel", action="store", dest="prodSourceLabel", default="", help="set prodSourceLabel")
@@ -197,7 +197,7 @@ def main():
     # check if the workflow uses athena packages
     if not options.useAthenaPackages:
         with open(workflow_file) as f:
-            for line in f.readlines():
+            for line in f:
                 if re.search(r"^\s*[^#]\s*opt_useAthenaPackages", line):
                     options.useAthenaPackages = True
                     break
@@ -285,30 +285,28 @@ def main():
         tmp_str = f"workflow {action_type} failed with {tmpStat}"
         tmpLog.error(tmp_str)
         exit_code = 1
-    else:
-        if tmpOut[0]:
-            stat_code = tmpOut[1]["status"]
-            check_log = f"messages from the server\n\n{tmpOut[1]['log']}"
-            if options.checkOnly:
-                tmpLog.info(check_log)
-                if stat_code:
-                    tmpLog.info("successfully verified workflow description")
-                else:
-                    tmpLog.error("workflow description is corrupted")
+    elif tmpOut[0]:
+        stat_code = tmpOut[1]["status"]
+        check_log = f"messages from the server\n\n{tmpOut[1]['log']}"
+        if options.checkOnly:
+            tmpLog.info(check_log)
+            if stat_code:
+                tmpLog.info("successfully verified workflow description")
             else:
-                if stat_code:
-                    request_id = tmpOut[1]["request_id"]
-                    tmp_str = f"successfully submitted with request_id={request_id}"
-                    tmpLog.info(tmp_str)
-                else:
-                    tmpLog.info(check_log)
-                    tmp_str = f"workflow submission failed with {stat_code}"
-                    tmpLog.error(tmp_str)
-                    exit_code = stat_code
+                tmpLog.error("workflow description is corrupted")
+        elif stat_code:
+            request_id = tmpOut[1]["request_id"]
+            tmp_str = f"successfully submitted with request_id={request_id}"
+            tmpLog.info(tmp_str)
         else:
-            tmp_str = f"workflow {action_type} failed. {tmpOut[1]}"
+            tmpLog.info(check_log)
+            tmp_str = f"workflow submission failed with {stat_code}"
             tmpLog.error(tmp_str)
-            exit_code = 1
+            exit_code = stat_code
+    else:
+        tmp_str = f"workflow {action_type} failed. {tmpOut[1]}"
+        tmpLog.error(tmp_str)
+        exit_code = 1
 
     # dump json
     if options.dumpJson:

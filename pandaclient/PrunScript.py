@@ -59,7 +59,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     if options.verbose:
         print(options)
-        print("")
+        print()
 
     # load json
     jsonExecStr, _ = load_json_options(
@@ -165,7 +165,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     if options.rootVer != "":
         if options.useAthenaPackages or options.athenaTag:
             tmp_log.warning(
-                "--rootVer is ignored when --athenaTag or --useAthenaPackages is used, " "not to break the runtime environment by superseding the root version"
+                "--rootVer is ignored when --athenaTag or --useAthenaPackages is used, not to break the runtime environment by superseding the root version"
             )
             options.rootVer = ""
         else:
@@ -847,7 +847,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         task_param_map["jobParameters"] += [
             {
                 "type": "constant",
-                "value": f'-o "{str(outMap)}"',
+                "value": f'-o "{outMap!s}"',
             },
         ]
         # output files allowed not to be produced
@@ -998,7 +998,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             jobParameters += "--useCentralRegistry=False "
     # persistent file
     if options.persistentFile:
-        jobParameters += "--fileToSave={0} --fileToLoad={0} ".format(options.persistentFile)
+        jobParameters += f"--fileToSave={options.persistentFile} --fileToLoad={options.persistentFile} "
     # set task param
     if jobParameters != "":
         task_param_map["jobParameters"] += [
@@ -1069,12 +1069,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             merge_job_params += "--useRootCore "
         if options.containerImage != "" and not options.alrb:
             merge_job_params += get_container_job_params(options)
+        elif use_build_step(options):
+            merge_job_params += "-l ${LIB} "
         else:
-            if use_build_step(options):
-                merge_job_params += "-l ${LIB} "
-            else:
-                merge_job_params += f"-a {archiveName} "
-                merge_job_params += "--sourceURL ${SURL} "
+            merge_job_params += f"-a {archiveName} "
+            merge_job_params += "--sourceURL ${SURL} "
         set_merge_task_params(options, task_param_map, merge_job_params, tmp_log)
 
     #####################################################################

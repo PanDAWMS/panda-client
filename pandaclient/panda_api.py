@@ -168,13 +168,13 @@ class PandaAPI:
             # run
             if command_name in self.command_body:
                 if hasattr(self.command_body[command_name], "main"):
-                    getattr(self.command_body[command_name], "main")()
+                    self.command_body[command_name].main()
                 else:
                     self.command_body[command_name].reload()
             else:
                 self.command_body[command_name] = importlib.import_module(module_name)
                 if hasattr(self.command_body[command_name], "main"):
-                    getattr(self.command_body[command_name], "main")()
+                    self.command_body[command_name].main()
             stat = True
         except SystemExit as e:
             if e.code == 0:
@@ -182,7 +182,7 @@ class PandaAPI:
             else:
                 err_str = f"failed with code={e.code}"
         except Exception as e:
-            err_str = f"failed with {str(e)}"
+            err_str = f"failed with {e!s}"
         finally:
             # enable logging
             if not console_log:

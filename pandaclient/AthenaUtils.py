@@ -32,24 +32,23 @@ def getCmtProjects(dir="."):
         os.chdir(curdir)
 
         return lines, out
-    else:
-        lines = []
-        # use current dir as test area
-        tmpStr = f"(in {os.getcwd()})"
+    lines = []
+    # use current dir as test area
+    tmpStr = f"(in {os.getcwd()})"
+    lines.append(tmpStr)
+    # AtlasProject
+    if "AtlasProject" not in os.environ:
+        return [], "AtlasProject is not defined in runtime environment"
+    tmpStr = "{0} (in {0}/{1})".format(os.environ["AtlasProject"], os.environ["AtlasVersion"])
+    lines.append(tmpStr)
+    if "AtlasOffline_VERSION" in os.environ:
+        tmpStr = "{0} (in {0}/{1})".format("AtlasOffline", os.environ["AtlasOffline_VERSION"])
         lines.append(tmpStr)
-        # AtlasProject
-        if "AtlasProject" not in os.environ:
-            return [], "AtlasProject is not defined in runtime environment"
-        tmpStr = "{0} (in {0}/{1})".format(os.environ["AtlasProject"], os.environ["AtlasVersion"])
+    prodVerStr = f"{os.environ['AtlasProject']}_VERSION"
+    if prodVerStr in os.environ:
+        tmpStr = "{0} (in {0}/{1})".format(os.environ["AtlasProject"], os.environ[prodVerStr])
         lines.append(tmpStr)
-        if "AtlasOffline_VERSION" in os.environ:
-            tmpStr = "{0} (in {0}/{1})".format("AtlasOffline", os.environ["AtlasOffline_VERSION"])
-            lines.append(tmpStr)
-        prodVerStr = f"{os.environ['AtlasProject']}_VERSION"
-        if prodVerStr in os.environ:
-            tmpStr = "{0} (in {0}/{1})".format(os.environ["AtlasProject"], os.environ[prodVerStr])
-            lines.append(tmpStr)
-        return lines, ""
+    return lines, ""
 
 
 # check if ath release
@@ -137,7 +136,7 @@ def getAthenaVer(verbose=True):
                             athenaVer = os.environ["AtlasBuildBranch"]
                 break
             # cache or analysis projects
-            elif (
+            if (
                 items[0] in ["AtlasProduction", "AtlasPoint1", "AtlasTier0", "AtlasP1HLT", "AtlasDerivation", "TrigMC"]
                 or isAthRelease(items[0])
                 or items[1].count(".") >= 4
@@ -156,7 +155,7 @@ def getAthenaVer(verbose=True):
                     cacheVer = f"-AtlasOffline_{cacheTag}"
                     athenaVer = tmpMatch.group(1)
                     break
-                elif items[0] == "TrigMC" and cacheTag.startswith("rel"):
+                if items[0] == "TrigMC" and cacheTag.startswith("rel"):
                     # nightlies for cache
                     tmpMatch = re.search(r"/([^/]+)(/rel_\d+)*/[^/]+/rel_\d+", line)
                     if tmpMatch is None:
@@ -165,12 +164,11 @@ def getAthenaVer(verbose=True):
                     cacheVer = f"-{items[0]}_{cacheTag}"
                     athenaVer = tmpMatch.group(1)
                     break
-                elif isAthRelease(items[0]):
+                if isAthRelease(items[0]):
                     cacheVer = f"-{items[0]}_{cacheTag}"
-                else:
-                    # doesn't use when it is a base release since it is not installed in EGEE
-                    if re.search(r"^\d+\.\d+\.\d+$", cacheTag) is None:
-                        cacheVer = f"-{items[0]}_{cacheTag}"
+                # doesn't use when it is a base release since it is not installed in EGEE
+                elif re.search(r"^\d+\.\d+\.\d+$", cacheTag) is None:
+                    cacheVer = f"-{items[0]}_{cacheTag}"
                 # no more check for AthAnalysis
                 if isAthRelease(items[0]):
                     break
@@ -927,10 +925,9 @@ def archiveJobOFiles(workArea, runDir, currentDir, tmpDir, verbose, archiveName=
                     continue
                 # dir
                 getJobOs(fullName, files)
-            else:
-                # python and other extFiles
-                if matchExtFile(fullName):
-                    files.append(fullName)
+            # python and other extFiles
+            elif matchExtFile(fullName):
+                files.append(fullName)
 
     # get jobOs
     files = []
@@ -992,9 +989,8 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
             if os.path.isdir(fullName):
                 # dir
                 getCMTFiles(fullName, files)
-            else:
-                if re.search("cmt/requirements$", fullName) is not None:
-                    files.append(fullName)
+            elif re.search("cmt/requirements$", fullName) is not None:
+                files.append(fullName)
 
     # get files
     areaList = []
@@ -1109,7 +1105,7 @@ def archiveWithCpack(withSource, tmpDir, verbose):
     os.chdir(tmpDir)
     if use_cpack:
         # recreate tar to allow appending other files in the subsequent steps, as gzip decompress is not enough
-        command_string = "tar xfz {0}.gz; tar cf {0} usr > /dev/null 2>&1; rm -rf usr _CPack_Packages {0}.gz".format(archiveName)
+        command_string = f"tar xfz {archiveName}.gz; tar cf {archiveName} usr > /dev/null 2>&1; rm -rf usr _CPack_Packages {archiveName}.gz"
     else:
         command_string = f"tar cf {archiveName} -T /dev/null > /dev/null 2>&1"
 
@@ -1311,23 +1307,21 @@ def convertConfToOutput(
                 stKey = re.sub("^Stream", "", sAsso)
                 if stKey in outMap:
                     foundLFN = outMap[stKey]
-                else:
-                    # check StreamG when ESD/AOD are not defined as algorithms
-                    if "StreamG" in outMap:
-                        for tmpStName, tmpLFN in outMap["StreamG"]:
-                            if tmpStName == sAsso:
-                                foundLFN = tmpLFN
+                # check StreamG when ESD/AOD are not defined as algorithms
+                elif "StreamG" in outMap:
+                    for tmpStName, tmpLFN in outMap["StreamG"]:
+                        if tmpStName == sAsso:
+                            foundLFN = tmpLFN
             elif sAsso == "StreamRDO" and "StreamRDO" in outMap:
                 # RDO
                 stKey = re.sub("^Stream", "", sAsso)
                 if stKey in outMap:
                     foundLFN = outMap[stKey]
-            else:
-                # general stream
-                if "StreamG" in outMap:
-                    for tmpStName, tmpLFN in outMap["StreamG"]:
-                        if tmpStName == sAsso:
-                            foundLFN = tmpLFN
+            # general stream
+            elif "StreamG" in outMap:
+                for tmpStName, tmpLFN in outMap["StreamG"]:
+                    if tmpStName == sAsso:
+                        foundLFN = tmpLFN
             if foundLFN != "":
                 if "Meta" not in outMap:
                     outMap["Meta"] = []
@@ -1353,12 +1347,11 @@ def convertConfToOutput(
                 stKey = re.sub("^Stream", "", sAsso)
                 if stKey in outMap:
                     foundLFN = outMap[stKey]
-            else:
-                # general stream
-                if "StreamG" in outMap:
-                    for tmpStName, tmpLFN in outMap["StreamG"]:
-                        if tmpStName == sAsso:
-                            foundLFN = tmpLFN
+            # general stream
+            elif "StreamG" in outMap:
+                for tmpStName, tmpLFN in outMap["StreamG"]:
+                    if tmpStName == sAsso:
+                        foundLFN = tmpLFN
             if foundLFN != "":
                 if "UserData" not in outMap:
                     outMap["UserData"] = []
@@ -1485,8 +1478,7 @@ def getJobOtoUseAmiForAutoConf(inDS, tmpDir):
     # use first one
     amiURL = f"ami://{inDS.split(',')[0]}"
     # remove /
-    if amiURL.endswith("/"):
-        amiURL = amiURL[:-1]
+    amiURL = amiURL.removesuffix("/")
     inputFiles = [amiURL]
     # create jobO fragment
     optFileName = f"{tmpDir}/{MiscUtils.wrappedUuidGen()}.py"

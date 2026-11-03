@@ -33,5 +33,5 @@ def build_workflow_from_template(template_name, **kwargs):
     WorkflowDescription
     """
     if template_name not in _TEMPLATE_REGISTRY:
-        raise ValueError(f"Unknown template '{template_name}'. " f"Available templates: {', '.join(AVAILABLE_TEMPLATES)}")
+        raise ValueError(f"Unknown template '{template_name}'. Available templates: {', '.join(AVAILABLE_TEMPLATES)}")
     return _TEMPLATE_REGISTRY[template_name].build(**kwargs)

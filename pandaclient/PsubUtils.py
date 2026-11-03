@@ -146,9 +146,9 @@ def getNickname(verbose=False):
         wMessage = "Could not get nickname by using voms-proxy-info which gave\n\n"
         wMessage += output
         wMessage += "\nPlease contact VO Admins using project-lcg-vo-atlas-admin@cern.ch mailing list to register nickname in IAM"
-        print("")
+        print()
         tmpLog.warning(wMessage)
-        print("")
+        print()
     return nickName
 
 
@@ -296,11 +296,10 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
             tmpErrStr += "Please note that the limit on the name length is tighter for containers than datasets"
             tmpLog.error(tmpErrStr)
             return False
-    else:
-        # dataset
-        if len(outDS) > maxLength:
-            tmpLog.error(f"output datasetname is too long ({len(outDS)}). The length must be less than {maxLength}")
-            return False
+    # dataset
+    elif len(outDS) > maxLength:
+        tmpLog.error(f"output datasetname is too long ({len(outDS)}). The length must be less than {maxLength}")
+        return False
     return True
 
 
