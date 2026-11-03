@@ -203,7 +203,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         options.persistentFile = f"{options.persistentFile}:sources.{MiscUtils.wrappedUuidGen()}.__ow__"
 
     # warning
-    if options.nFilesPerJob > 0 and options.nFilesPerJob < 5:
+    if 0 < options.nFilesPerJob < 5:
         tmp_log.warning(
             "Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
             "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
