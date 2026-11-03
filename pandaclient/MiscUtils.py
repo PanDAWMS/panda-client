@@ -398,7 +398,7 @@ def parse_secondary_datasets_opt(secondaryDSs):
                         for line in f:
                             line = line.strip()
                             if line:
-                                tmpMap[tmpItems[2]]["files"].append()
+                                tmpMap[tmpItems[2]]["files"].append(line)
             else:
                 errStr = f"Wrong format {tmpItem} in --secondaryDSs. Must be StreamName:nFiles:DatasetName[:Pattern[:nSkipFiles[:FileNameList]]]"
                 return False, errStr
