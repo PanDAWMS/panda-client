@@ -144,12 +144,11 @@ def main():
         "--relayHost", action="store", dest="relayHost", default=None, help="Please don't use this option. Only for developers to use the relay host"
     )
 
-    # get logger
     tmpLog = PLogger.getPandaLogger()
 
     # show version
     if "--version" in sys.argv:
-        print("Version: %s" % PandaToolsPkgInfo.release_version)
+        print(f"Version: {PandaToolsPkgInfo.release_version}")
         sys.exit(0)
 
     # parse args
@@ -191,7 +190,7 @@ def main():
     # check output name
     nickName = PsubUtils.getNickname()
     if not PsubUtils.checkOutDsName(options.outDS, options.official, nickName, verbose=options.verbose):
-        tmpStr = "invalid output dataset name: %s" % options.outDS
+        tmpStr = f"invalid output dataset name: {options.outDS}"
         tmpLog.error(tmpStr)
         sys.exit(1)
 
@@ -202,7 +201,7 @@ def main():
 
     # exit action
     def _onExit(dir, del_command):
-        del_command("rm -rf %s" % dir)
+        del_command(f"rm -rf {dir}")
 
     atexit.register(_onExit, tmpDir, MiscUtils.commands_get_output)
 
@@ -250,7 +249,7 @@ def main():
     # sandbox
     if options.verbose:
         tmpLog.debug("making sandbox")
-    archiveName = "jobO.%s.tar.gz" % MiscUtils.wrappedUuidGen()
+    archiveName = f"jobO.{MiscUtils.wrappedUuidGen()}.tar.gz"
     archiveFullName = os.path.join(tmpDir, archiveName)
     find_opt = f" -type f -size -{options.maxSizeInSandbox * 1024}k"
     tmpOut = MiscUtils.commands_get_output(f"find . {find_opt} | tar cvfz {archiveFullName} --files-from - ")
@@ -276,7 +275,7 @@ def main():
         elif out != "True":
             # failed
             print(out)
-            tmpLog.error("Failed with %s" % status)
+            tmpLog.error(f"Failed with {status}")
             sys.exit(1)
     os.chdir(curDir)
     try:
@@ -349,7 +348,7 @@ def main():
                 for tmpKey in tmpKeys:
                     if tmpKey in ["taskParams"]:
                         continue
-                    print("{} : {}".format(tmpKey, taskParamMap[tmpKey]))
+                    print(f"{tmpKey} : {taskParamMap[tmpKey]}")
         sys.exit(0)
 
     data = {"relay_host": options.relayHost, "verbose": options.verbose}

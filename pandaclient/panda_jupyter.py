@@ -28,7 +28,7 @@ def setup():
 
     # PATH
     paths = os.environ["PATH"].split(":")
-    if not panda_install_scripts in paths:
+    if panda_install_scripts not in paths:
         paths.insert(0, panda_install_scripts)
         os.environ["PATH"] = ":".join(paths)
 
