@@ -781,22 +781,8 @@ if options.inTarBall == "" and options.tarBallViaDDM == "":
     os.chdir(tmpDir)
     # remove some athena specific files
     AthenaUtils.deleteAthenaStuff(current_dir)
-    if not os.path.exists(archiveName):
-        MiscUtils.commands_get_status_output(f"tar -cf {archiveName} -T /dev/null")
-    # compress
-    status, out = MiscUtils.commands_get_status_output(f"gzip -f {archiveName}")
-    if status != 0 or options.verbose:
-        print(out)
-    archiveName += ".gz"
-    # check archive
-    status, out = MiscUtils.commands_get_status_output(f"ls -l {archiveName}")
-    if status != 0:
-        print(out)
-        tmp_log.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'")
-        sys.exit(MiscUtils.EC_Archive)
-
-    # check symlinks
-    PsubUtils.check_sandbox_symlinks(archiveName, tmp_log)
+    # compress and check the sandbox
+    archiveName = PsubUtils.finalize_sandbox(archiveName, options.verbose, tmp_log)
 else:
     archiveName, archiveFullName = PsubUtils.use_existing_sandbox(options, tmpDir)
 

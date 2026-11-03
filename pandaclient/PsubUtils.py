@@ -804,6 +804,40 @@ def check_sandbox_symlinks(archive_name, tmp_log):
             print(f"  {symlink}")
 
 
+def finalize_sandbox(archive_name, verbose, tmp_log, check_symlinks=True):
+    """Compress the sandbox tarball and check it, creating an empty one if no file was archived
+
+    Must be called from the directory holding the tarball (tmpDir).
+    Exits with EC_Archive when the compressed sandbox is missing or cannot be listed.
+
+    args:
+        archive_name: name of the uncompressed tarball in the current directory
+        verbose: print the output of gzip and ls
+        tmp_log: logger
+        check_symlinks: warn about symlinks pointing to absolute paths
+    returns:
+        name of the gzipped tarball
+    """
+    # make an empty tarball if nothing was archived
+    if not os.path.exists(archive_name):
+        commands_get_status_output(f"tar -cf {archive_name} -T /dev/null")
+    # compress
+    status, out = commands_get_status_output(f"gzip -f {archive_name}")
+    if status != 0 or verbose:
+        print(out)
+    archive_name += ".gz"
+    # check the compressed tarball
+    status, out = commands_get_status_output(f"ls -l {archive_name}")
+    if status != 0 or verbose:
+        print(out)
+    if status != 0:
+        tmp_log.error("Failed to archive working area.\nIf you see 'Disk quota exceeded', try '--tmpDir /tmp'")
+        sys.exit(MiscUtils.EC_Archive)
+    if check_symlinks:
+        check_sandbox_symlinks(archive_name, tmp_log)
+    return archive_name
+
+
 def use_existing_sandbox(options, tmp_dir):
     """Use a sandbox given with --tarBallViaDDM or --inTarBall instead of archiving the work area
 
