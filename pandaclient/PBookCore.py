@@ -426,7 +426,7 @@ class PBookCore:
             with open(value, "rb") as f:
                 value = base64.b64encode(f.read()).decode()
             # add prefix
-            key = "___file___:" + format(key)
+            key = f"___file___:{format(key)}"
         size_limit = 1000
         if value and len(value) > size_limit * 1024:
             tmpLog.error(f"The value length exceeds the limit ({size_limit} kB)")
@@ -465,7 +465,7 @@ class PBookCore:
                     value = data[k]
                     clean_key = re.sub(prefix, "", k)
                     if not full and len(value) > max_len:
-                        value = value[:max_len] + "..."
+                        value = f"{value[:max_len]}..."
                     t.add_row(clean_key, value)
                 localSpecs._console.print(t)
             else:

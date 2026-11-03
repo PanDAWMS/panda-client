@@ -201,7 +201,7 @@ def getAthenaVer(verbose=True):
     if athenaVer == "" and not isAthRelease(cacheVer):
         tmp_string = ""
         for line in lines:
-            tmp_string += line + "\n"
+            tmp_string += f"{line}\n"
         tmpLog.info(f"cmt showed\n{tmp_string}")
         tmpLog.error("could not get Athena version. perhaps your requirements file doesn't have ATLAS_TEST_AREA")
         return False, retVal
@@ -243,11 +243,11 @@ def extractRunConfig(jobO, supStream, shipinput, trf, verbose=False, useAMI=Fals
         amiJobO = ""
         if useAMI:
             amiJobO = getJobOtoUseAmiForAutoConf(inDS, tmpDir)
-        baseName = os.environ["PANDA_SYS"] + "/etc/panda/share"
+        baseName = f"{os.environ['PANDA_SYS']}/etc/panda/share"
         if " - " in jobO:
             jobO = re.sub(" - ", f" {baseName}/ConfigExtractor.py - ", jobO)
         else:
-            jobO = jobO + f" {baseName}/ConfigExtractor.py "
+            jobO = f"{jobO} {baseName}/ConfigExtractor.py "
         com = "athena.py "
         if one_liner:
             com += f'-c "{one_liner}" '
@@ -287,7 +287,7 @@ def extractRunConfig(jobO, supStream, shipinput, trf, verbose=False, useAMI=Fals
                     if not toBeSuppressed:
                         for tmpPatt in supStream:
                             if "*" in tmpPatt:
-                                tmpPatt = "^" + tmpPatt.replace("*", ".*")
+                                tmpPatt = f"^{tmpPatt.replace('*', '.*')}"
                                 tmpPatt = tmpPatt.upper()
                                 if re.search(tmpPatt, tmpSt0) is not None or re.search(tmpPatt, tmpSt1) is not None or re.search(tmpPatt, tmpSt2) is not None:
                                     toBeSuppressed = True
@@ -500,7 +500,7 @@ def convStrToFullPathJobOs(tmpStr):
 
 # copy some athena specific files and full-path jobOs
 def copyAthenaStuff(currentDir):
-    baseName = os.environ["PANDA_SYS"] + "/etc/panda/share"
+    baseName = f"{os.environ['PANDA_SYS']}/etc/panda/share"
     for tmpFile in athenaStuff:
         com = f"cp -p {baseName}/{tmpFile} {currentDir}"
         commands_get_output(com)
@@ -642,7 +642,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
             # skip if doc or .svn
             if item in ["doc", ".svn", "_CPack_Packages"]:
                 continue
-            fullName = dir + "/" + item
+            fullName = f"{dir}/{item}"
             if os.path.isdir(fullName):
                 # ignore symlinked dir just under InstallArea/include
                 # they are created for g77
@@ -659,7 +659,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                         tmpLink = os.readlink(fullName)
                         # put base dir when relative path
                         if not tmpLink.startswith("/"):
-                            tmpLink = dir + "/" + tmpLink
+                            tmpLink = f"{dir}/{tmpLink}"
                             tmpLink = os.path.abspath(tmpLink)
                         appFileName = tmpLink
                     else:
@@ -679,7 +679,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
         specialPackages = {"External/Lhapdf": "external/MCGenerators/lhapdf"}
         # get file list
         installFiles = []
-        getFileList(_workArea + "/InstallArea", installFiles, True)
+        getFileList(f"{_workArea}/InstallArea", installFiles, True)
         # get list of packages
         cmt_config = os.environ["CMTCONFIG"]
         _packages = []
@@ -692,8 +692,8 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
             # remove special characters
             sString = re.sub(r"[\+]", ".", os.path.realpath(_workArea))
             # look for /share/ , /python/, /i686-slc3-gcc323-opt/, .h
-            for target in ("share/", "python/", cmt_config + "/", r"[^/]+\.h"):
-                res = re.search(sString + "/(.+)/" + target, file)
+            for target in ("share/", "python/", f"{cmt_config}/", r"[^/]+\.h"):
+                res = re.search(f"{sString}/(.+)/{target}", file)
                 if res:
                     # append
                     pName = res.group(1)
@@ -701,7 +701,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                         # convert PackageDir/PackageName/PackageName to PackageDir/PackageName
                         pName = re.sub("/[^/]+$", "", pName)
                     if pName not in _packages:
-                        if os.path.isdir(_workArea + "/" + pName):
+                        if os.path.isdir(f"{_workArea}/{pName}"):
                             _packages.append(pName)
                     break
             # check special packages just in case
@@ -710,13 +710,13 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                 if pName not in _packages:
                     # look for path pattern
                     if re.search(pPath, file) is not None:
-                        if os.path.isdir(_workArea + "/" + pName):
+                        if os.path.isdir(f"{_workArea}/{pName}"):
                             # check structured style
-                            tmpDirList = os.listdir(_workArea + "/" + pName)
+                            tmpDirList = os.listdir(f"{_workArea}/{pName}")
                             useSS = False
                             for tmpDir in tmpDirList:
                                 if re.search(r"-\d+-\d+-\d+$", tmpDir) is not None:
-                                    _packages.append(pName + "/" + tmpDir)
+                                    _packages.append(f"{pName}/{tmpDir}")
                                     useSS = True
                                     break
                             # normal structure
@@ -728,13 +728,13 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
         # check glue packages
         for pName in gluePackages:
             if pName not in _packages:
-                if os.path.isdir(_workArea + "/" + pName):
+                if os.path.isdir(f"{_workArea}/{pName}"):
                     # check structured style
-                    tmpDirList = os.listdir(_workArea + "/" + pName)
+                    tmpDirList = os.listdir(f"{_workArea}/{pName}")
                     useSS = False
                     for tmpDir in tmpDirList:
                         if re.search(r"-\d+-\d+-\d+$", tmpDir) is not None:
-                            fullPName = pName + "/" + tmpDir
+                            fullPName = f"{pName}/{tmpDir}"
                             if fullPName not in _packages:
                                 _packages.append(fullPName)
                             useSS = True
@@ -802,7 +802,7 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                             # if replace is failed or the file is symlink, try non-converted path names
                             if relPath.startswith("/") or os.path.islink(iFile):
                                 sString = re.sub(r"[\+]", ".", workArea)
-                                relPath = re.sub(sString + "/", "", iFile)
+                                relPath = re.sub(f"{sString}/", "", iFile)
                             if os.path.islink(iFile):
                                 command_string = f"tar -rh '{relPath}' -f '{_archiveFullName}' --exclude '{excludePattern}'"
                             else:
@@ -855,11 +855,11 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
     for file in files:
         # remove special characters
         sString = re.sub(r"[\+]", ".", os.path.realpath(workArea))
-        relPath = re.sub(sString + "/", "", os.path.realpath(file))
+        relPath = re.sub(f"{sString}/", "", os.path.realpath(file))
         # if replace is failed or the file is symlink, try non-converted path names
         if relPath.startswith("/") or os.path.islink(file):
             sString = re.sub(r"[\+]", ".", workArea)
-            relPath = re.sub(sString + "/", "", file)
+            relPath = re.sub(f"{sString}/", "", file)
         # archive .py/.dat/.C/.xml files only
         if not matchExtFile(relPath):
             continue
@@ -920,7 +920,7 @@ def archiveJobOFiles(workArea, runDir, currentDir, tmpDir, verbose, archiveName=
         for item in list:
             if item in ["_CPack_Packages"]:
                 continue
-            fullName = dir + "/" + item
+            fullName = f"{dir}/{item}"
             if os.path.isdir(fullName):
                 # skip symlinks in include since they cause full scan on releases
                 if os.path.islink(fullName) and re.search("InstallArea/include$", dir) is not None:
@@ -946,7 +946,7 @@ def archiveJobOFiles(workArea, runDir, currentDir, tmpDir, verbose, archiveName=
     for file in files:
         # remove special characters
         sString = re.sub(r"[\+]", ".", workArea)
-        relPath = re.sub(sString + "/", "", file)
+        relPath = re.sub(f"{sString}/", "", file)
         # append
         command_string = f"tar -rh '{relPath}' -f '{archiveFullName}'"
         if verbose:
@@ -974,7 +974,7 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
         for item in list:
             if ignoreLib and (item.startswith("i686") or item.startswith("i386") or item.startswith("x86_64")):
                 continue
-            fullName = dir + "/" + item
+            fullName = f"{dir}/{item}"
             if os.path.isdir(fullName):
                 # ignore symlinked dir just under InstallArea/include
                 if ignoreSymLink and os.path.islink(fullName) and re.search("InstallArea/include$", dir) is not None:
@@ -988,7 +988,7 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
     def getCMTFiles(dir, files):
         list = os.listdir(dir)
         for item in list:
-            fullName = dir + "/" + item
+            fullName = f"{dir}/{item}"
             if os.path.isdir(fullName):
                 # dir
                 getCMTFiles(fullName, files)
@@ -1035,7 +1035,7 @@ def archiveInstallArea(workArea, groupArea, archiveName, archiveFullName, tmpDir
         sString = re.sub(r"[\+]", ".", os.path.realpath(areaName))
         # archive files if they are under the area
         for file in files + cmtFiles:
-            relPath = re.sub(sString + "/", "", os.path.realpath(file))
+            relPath = re.sub(f"{sString}/", "", os.path.realpath(file))
             # check exclude files
             excludeFileFlag = False
             for tmpPatt in excludeFile:
@@ -1152,7 +1152,7 @@ def convertConfToOutput(
         for sName in runConfig.output.outNtuple:
             lfn = f"{outDSwoSlash}.{sName}._${{SN/P}}.root"
             tmpSuffix = f"_{sName}"
-            dataset = outDsNameBase + tmpSuffix + "/"
+            dataset = f"{outDsNameBase + tmpSuffix}/"
             if "ntuple" not in outMap:
                 outMap["ntuple"] = []
             outMap["ntuple"].append((sName, lfn))
@@ -1160,31 +1160,31 @@ def convertConfToOutput(
     if runConfig.output.outHist:
         lfn = "%s.hist._${SN/P}.root" % outDSwoSlash
         tmpSuffix = "_HIST"
-        dataset = outDsNameBase + tmpSuffix + "/"
+        dataset = f"{outDsNameBase + tmpSuffix}/"
         outMap["hist"] = lfn
         paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outRDO:
         lfn = "%s.RDO._${SN/P}.pool.root" % outDSwoSlash
         tmpSuffix = "_RDO"
-        dataset = outDsNameBase + tmpSuffix + "/"
+        dataset = f"{outDsNameBase + tmpSuffix}/"
         outMap["IROOT"].append((runConfig.output.outRDO, lfn))
         paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outESD:
         lfn = "%s.ESD._${SN/P}.pool.root" % outDSwoSlash
         tmpSuffix = "_ESD"
-        dataset = outDsNameBase + tmpSuffix + "/"
+        dataset = f"{outDsNameBase + tmpSuffix}/"
         outMap["IROOT"].append((runConfig.output.outESD, lfn))
         paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outAOD:
         lfn = "%s.AOD._${SN/P}.pool.root" % outDSwoSlash
         tmpSuffix = "_AOD"
-        dataset = outDsNameBase + tmpSuffix + "/"
+        dataset = f"{outDsNameBase + tmpSuffix}/"
         outMap["IROOT"].append((runConfig.output.outAOD, lfn))
         paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outTAG:
         lfn = "%s.TAG._${SN/P}.coll.root" % outDSwoSlash
         tmpSuffix = "_TAG"
-        dataset = outDsNameBase + tmpSuffix + "/"
+        dataset = f"{outDsNameBase + tmpSuffix}/"
         outMap["TAG"] = lfn
         paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outAANT:
@@ -1199,7 +1199,7 @@ def convertConfToOutput(
                 fsNameMap[fName] = sName
             lfn = f"{outDSwoSlash}.{sName}._${{SN/P}}.root"
             tmpSuffix = f"_{sName}"
-            dataset = outDsNameBase + tmpSuffix + "/"
+            dataset = f"{outDsNameBase + tmpSuffix}/"
             if sName not in sNameList:
                 sNameList.append(sName)
             if "AANT" not in outMap:
@@ -1210,7 +1210,7 @@ def convertConfToOutput(
         for sName in runConfig.output.outTHIST:
             lfn = f"{outDSwoSlash}.{sName}._${{SN/P}}.root"
             tmpSuffix = f"_{sName}"
-            dataset = outDsNameBase + tmpSuffix + "/"
+            dataset = f"{outDsNameBase + tmpSuffix}/"
             if "THIST" not in outMap:
                 outMap["THIST"] = []
             outMap["THIST"].append((sName, lfn))
@@ -1219,7 +1219,7 @@ def convertConfToOutput(
         for sIndex, sName in enumerate(runConfig.output.outIROOT):
             lfn = f"{outDSwoSlash}.iROOT{sIndex}._${{SN/P}}.{sName}"
             tmpSuffix = f"_iROOT{sIndex}"
-            dataset = outDsNameBase + tmpSuffix + "/"
+            dataset = f"{outDsNameBase + tmpSuffix}/"
             outMap["IROOT"].append((sName, lfn))
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if extOutFile:
@@ -1243,7 +1243,7 @@ def convertConfToOutput(
             streams.append(tmpStreamName)
             lfn = f"{outDSwoSlash}.{tmpStreamName}._${{SN/P}}.{sName}"
             tmpSuffix = f"_{tmpStreamName}"
-            dataset = outDsNameBase + tmpSuffix + "/"
+            dataset = f"{outDsNameBase + tmpSuffix}/"
             outMap["IROOT"].append((origSName, lfn))
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
         if len(streams) != len(set(streams)):
@@ -1253,7 +1253,7 @@ def convertConfToOutput(
         for sName, oName in runConfig.output.outTAGX:
             lfn = f"{outDSwoSlash}.{sName}._${{SN/P}}.{oName}"
             tmpSuffix = f"_{sName}"
-            dataset = outDsNameBase + tmpSuffix + "/"
+            dataset = f"{outDsNameBase + tmpSuffix}/"
             if "IROOT" not in outMap:
                 outMap["IROOT"] = []
             outMap["IROOT"].append((oName, lfn))
@@ -1261,25 +1261,25 @@ def convertConfToOutput(
     if runConfig.output.outStream1:
         lfn = "%s.Stream1._${SN/P}.pool.root" % outDSwoSlash
         tmpSuffix = "_Stream1"
-        dataset = outDsNameBase + tmpSuffix + "/"
+        dataset = f"{outDsNameBase + tmpSuffix}/"
         outMap["IROOT"].append((runConfig.output.outStream1, lfn))
         paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outStream2:
         lfn = "%s.Stream2._${SN/P}.pool.root" % outDSwoSlash
         tmpSuffix = "_Stream2"
-        dataset = outDsNameBase + tmpSuffix + "/"
+        dataset = f"{outDsNameBase + tmpSuffix}/"
         outMap["IROOT"].append((runConfig.output.outStream2, lfn))
         paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outBS:
         lfn = "%s.BS._${SN/P}.data" % outDSwoSlash
         tmpSuffix = "_BS"
-        dataset = outDsNameBase + tmpSuffix + "/"
+        dataset = f"{outDsNameBase + tmpSuffix}/"
         outMap["BS"] = lfn
         paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outSelBS:
         lfn = f"{outDSwoSlash}.{runConfig.output.outSelBS}._${{SN/P}}.data"
         tmpSuffix = "_SelBS"
-        dataset = outDsNameBase + tmpSuffix + "/"
+        dataset = f"{outDsNameBase + tmpSuffix}/"
         if "IROOT" not in outMap:
             outMap["IROOT"] = []
         outMap["IROOT"].append((f"{runConfig.output.outSelBS}.*.data", lfn))
@@ -1288,7 +1288,7 @@ def convertConfToOutput(
         for sName, sOrigFileName in runConfig.output.outStreamG:
             lfn = f"{outDSwoSlash}.{sName}._${{SN/P}}.pool.root"
             tmpSuffix = f"_{sName}"
-            dataset = outDsNameBase + tmpSuffix + "/"
+            dataset = f"{outDsNameBase + tmpSuffix}/"
             outMap["IROOT"].append((sOrigFileName, lfn))
             paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
     if runConfig.output.outMeta:
@@ -1299,7 +1299,7 @@ def convertConfToOutput(
                 # non-associated metadata
                 lfn = f"{outDSwoSlash}.META{iMeta}._${{SN/P}}.root"
                 tmpSuffix = f"_META{iMeta}"
-                dataset = outDsNameBase + tmpSuffix + "/"
+                dataset = f"{outDsNameBase + tmpSuffix}/"
                 paramList += MiscUtils.makeJediJobParam(lfn, dataset, "output", hidden=True, allowNoOutput=allowNoOutput)
                 iMeta += 1
                 foundLFN = lfn
@@ -1336,7 +1336,7 @@ def convertConfToOutput(
         for sName, sAsso in runConfig.output.outMS:
             lfn = f"{outDSwoSlash}.{sName}._${{SN/P}}.pool.root"
             tmpSuffix = f"_{sName}"
-            dataset = outDsNameBase + tmpSuffix + "/"
+            dataset = f"{outDsNameBase + tmpSuffix}/"
             if "IROOT" not in outMap:
                 outMap["IROOT"] = []
             outMap["IROOT"].append((sAsso, lfn))
@@ -1421,7 +1421,7 @@ def getCmtConfigImg(athenaVer=None, cacheVer=None, nightVer=None, cmtConfig=None
         pass
     elif "ALRB_USER_PLATFORM" in os.environ:
         # base platform + HW specs from ALRB
-        spec_str = "@" + os.environ["ALRB_USER_PLATFORM"]
+        spec_str = f"@{os.environ['ALRB_USER_PLATFORM']}"
         if is_json and "cpu_specs" not in architecture and "gpu_spec" not in architecture:
             architecture["encoded_platform"] = os.environ["ALRB_USER_PLATFORM"]
     else:
@@ -1489,7 +1489,7 @@ def getJobOtoUseAmiForAutoConf(inDS, tmpDir):
         amiURL = amiURL[:-1]
     inputFiles = [amiURL]
     # create jobO fragment
-    optFileName = tmpDir + "/" + MiscUtils.wrappedUuidGen() + ".py"
+    optFileName = f"{tmpDir}/{MiscUtils.wrappedUuidGen()}.py"
     oFile = open(optFileName, "w")
     oFile.write(f"""
 try:
@@ -1578,15 +1578,15 @@ def parse_athena_tag(athena_tag, verbose, tmp_log):
         if item in ["AtlasOffline"]:
             continue
         # regarded as project
-        cacheVer = "-" + item + cacheVer
+        cacheVer = f"-{item}{cacheVer}"
     # check cache
     if re.search(r"^-.+_.+$", cacheVer) is None:
         if re.search(r"^_\d+\.\d+\.\d+\.\d+$", cacheVer) is not None:
             # use AtlasProduction
-            cacheVer = "-AtlasProduction" + cacheVer
+            cacheVer = f"-AtlasProduction{cacheVer}"
         elif "AthAnalysisBase" in cacheVer or "AthAnalysis" in cacheVer:
             # AthAnalysis
-            cacheVer = cacheVer + f"_{athenaVer}"
+            cacheVer = f"{cacheVer}_{athenaVer}"
             athenaVer = ""
         else:
             # unknown

@@ -99,10 +99,10 @@ def _execute(command):
                 p.stdin.write(st)
                 p.stdin.flush()
             elif is_raw_input:
-                st = input("\n" + one_str.strip())
+                st = input(f"\n{one_str.strip()}")
             # feed stdin
             if st is not None:
-                p.stdin.write(st + "\n")
+                p.stdin.write(f"{st}\n")
                 p.stdin.flush()
 
         output = p.communicate()[0]
@@ -115,25 +115,25 @@ def _execute(command):
 
 @register_line_magic
 def pathena(line):
-    _execute("pathena " + line + " -3")
+    _execute(f"pathena {line} -3")
     return
 
 
 @register_line_magic
 def prun(line):
-    _execute("prun " + line + " -3")
+    _execute(f"prun {line} -3")
     return
 
 
 @register_line_magic
 def phpo(line):
-    _execute("phpo " + line + " -3")
+    _execute(f"phpo {line} -3")
     return
 
 
 @register_line_magic
 def pbook(line):
-    _execute("pbook " + line + " --prompt_with_newline")
+    _execute(f"pbook {line} --prompt_with_newline")
     return
 
 

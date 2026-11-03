@@ -252,8 +252,8 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
         allowedPrefix = ["group"]
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
-                tmpPattO = "^" + tmpPrefix + r"\d{2}" + r"\." + tmpGroup + r"\."
-                tmpPattN = "^" + tmpPrefix + r"\." + tmpGroup + r"\."
+                tmpPattO = f"^{tmpPrefix}\\d{{2}}\\.{tmpGroup}\\."
+                tmpPattN = f"^{tmpPrefix}\\.{tmpGroup}\\."
                 if re.search(tmpPattO, outDS) is not None or re.search(tmpPattN, outDS) is not None:
                     return True
         # didn't match
@@ -485,7 +485,7 @@ def convertParamStrToJediParam(
         # JEDI-only placeholders
         if oldH is None:
             oldH = newH
-        oldH = "%" + oldH
+        oldH = f"%{oldH}"
         # with extension
         if newH in allExList:
             if newH in digExList:
@@ -496,13 +496,13 @@ def convertParamStrToJediParam(
             tmpM = re.search(oldH, encStr)
             if tmpM is not None:
                 extensionMap[newH] = tmpM.group(2)
-            newH = "${" + newH + "}"
+            newH = f"${{{newH}}}"
         else:
-            newH = "${" + newH + "}"
+            newH = f"${{{newH}}}"
         encStr = re.sub(oldH, newH, encStr)
     # replace %OUT to outDS${SN}
     if includeIO:
-        encStr = re.sub("%OUT", outNamePrefix + ".${" + outHolder + "}", encStr)
+        encStr = re.sub("%OUT", f"{outNamePrefix}.${{{outHolder}}}", encStr)
     # make pattern for split
     patS = "("
     allKeys = list(holders)
@@ -510,7 +510,7 @@ def convertParamStrToJediParam(
         allKeys += inList
         allKeys += [outHolder]
     for tmpH in allKeys:
-        patS += "[^=,\"' \\(\\{;]*\\$\\{" + tmpH + "[^\\}]*\\}[^,\"' \\)\\};]*|"
+        patS += f"[^=,\"' \\(\\{{;]*\\$\\{{{tmpH}[^\\}}]*\\}}[^,\"' \\)\\}};]*|"
     patS = patS[:-1]
     patS += ")"
     # split
@@ -527,7 +527,7 @@ def convertParamStrToJediParam(
                 # use constant since it is templated in another option e.g., -i
                 tmpDict = {"type": "constant"}
                 if encode:
-                    tmpDict["value"] = "${" + tmpHolder + "/E}"
+                    tmpDict["value"] = f"${{{tmpHolder}/E}}"
                 else:
                     tmpDict["value"] = tmpItem
                 # set dataset if PFN list is not used or the stream is not primary
@@ -542,7 +542,7 @@ def convertParamStrToJediParam(
                     except Exception:
                         pass
             elif tmpHolder == outHolder:
-                tmpDict = {"type": "template", "value": tmpItem, "param_type": "output", "dataset": outNamePrefix + tmpItem.split("}")[-1] + "/"}
+                tmpDict = {"type": "template", "value": tmpItem, "param_type": "output", "dataset": f"{outNamePrefix + tmpItem.split('}')[-1]}/"}
                 tmpDict["container"] = tmpDict["dataset"]
             else:
                 tmpDict = {"type": "template", "value": tmpItem, "param_type": "number"}

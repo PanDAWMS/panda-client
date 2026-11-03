@@ -131,7 +131,7 @@ def wrappedUuidGen():
 def match_allow_no_output(pattern, lfn):
     if pattern == "":
         return False
-    return re.search("^.*" + pattern + "$", lfn) is not None
+    return re.search(f"^.*{pattern}$", lfn) is not None
 
 
 # make JEDI job parameter
@@ -185,7 +185,7 @@ def makeJediJobParam(
         if expand:
             dictItem["expand"] = expand
         elif outDS:
-            dictItem["consolidate"] = ".".join(outDS.split(".")[:2]) + "." + wrappedUuidGen() + "/"
+            dictItem["consolidate"] = f"{'.'.join(outDS.split('.')[:2])}.{wrappedUuidGen()}/"
         if nFilesPerJob not in [None, 0]:
             if useNumFilesAsRatio:
                 dictItem["ratio"] = nFilesPerJob

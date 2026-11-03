@@ -256,5 +256,5 @@ class OpenIdConnect_Utils:
     # cleanup
     def cleanup(self):
         for patt in [TOKEN_BASENAME, CACHE_PREFIX]:
-            for f in glob.glob(os.path.join(self.token_dir, patt + "*")):
+            for f in glob.glob(os.path.join(self.token_dir, f"{patt}*")):
                 os.remove(f)

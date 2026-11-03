@@ -348,10 +348,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
         tmpOut = MiscUtils.commands_get_output(f"find . {find_opt} | tar cvfz {archiveFullName} --files-from - ")
 
         if options.verbose:
-            print(tmpOut + "\n")
+            print(f"{tmpOut}\n")
             tmpLog.debug("=== checking sandbox ===")
             tmpOut = MiscUtils.commands_get_output(f"tar tvfz {archiveFullName}")
-            print(tmpOut + "\n")
+            print(f"{tmpOut}\n")
 
         if not options.noSubmit:
             if options.verbose:
@@ -544,7 +544,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     if options.evaluationMetrics is not None:
         lfn = "$JEDITASKID.metrics.${SN}.tgz"
         if options.segmentSpecFile is not None:
-            lfn = "${MIDDLENAME}." + lfn
+            lfn = f"${{MIDDLENAME}}.{lfn}"
         taskParamMap["jobParameters"] += [
             {
                 "type": "template",

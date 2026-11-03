@@ -962,7 +962,7 @@ def getFile(filename, output_path=None, verbose=False, n_try=1):
     url = f"{netloc.scheme}://{netloc.hostname}"
     if netloc.port:
         url += f":{netloc.port}"
-    url = url + "/cache/" + filename
+    url = f"{url}/cache/{filename}"
     s, o = client.get(url, {}, output_name=output_path, n_try=n_try)
     return s, o
 
@@ -1255,7 +1255,7 @@ def requestEventPicking(
     client.verbose = verbose
 
     # execute
-    url = baseURLSSL + "/putEventPickingRequest"
+    url = f"{baseURLSSL}/putEventPickingRequest"
     data = {
         "runEventList": evpFile.read(),
         "eventPickDataType": eventPickDataType,
@@ -1494,7 +1494,7 @@ def hello(verbose=False):
     client.ssl_key = _x509_proxy_path()
     client.verbose = verbose
     # execute
-    url = server_base_path_ssl + "/system/is_alive"
+    url = f"{server_base_path_ssl}/system/is_alive"
     try:
         status, response = client.get(url, {}, json_out=True)
 
@@ -1619,7 +1619,7 @@ def call_idds_command(
     client.verbose = verbose
 
     # execute
-    url = baseURLSSL + "/relay_idds_command"
+    url = f"{baseURLSSL}/relay_idds_command"
     try:
         data = dict()
         data["command_name"] = command_name
@@ -1675,7 +1675,7 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
     client.verbose = verbose
 
     # execute
-    url = baseURLSSL + "/execute_idds_workflow_command"
+    url = f"{baseURLSSL}/execute_idds_workflow_command"
     try:
         data = dict()
         data["command_name"] = command_name

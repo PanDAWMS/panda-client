@@ -255,10 +255,10 @@ def main():
     tmpOut = MiscUtils.commands_get_output(f"find . {find_opt} | tar cvfz {archiveFullName} --files-from - ")
 
     if options.verbose:
-        print(tmpOut + "\n")
+        print(f"{tmpOut}\n")
         tmpLog.debug("checking sandbox")
         tmpOut = MiscUtils.commands_get_output(f"tar tvfz {archiveFullName}")
-        print(tmpOut + "\n")
+        print(f"{tmpOut}\n")
 
     if not options.noSubmit:
         tmpLog.info("uploading workflow sandbox")

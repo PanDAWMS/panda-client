@@ -487,7 +487,7 @@ def _type_name(ann) -> str:
             return f"Optional[{_type_name(non_none[0])}]"
         return " | ".join(_type_name(a) for a in args)
     if origin is Literal:
-        return "Literal[" + ", ".join(repr(v) for v in get_args(ann)) + "]"
+        return f"Literal[{', '.join(repr(v) for v in get_args(ann))}]"
     if origin is not None:
         args = get_args(ann)
         origin_name = getattr(origin, "__name__", str(origin))

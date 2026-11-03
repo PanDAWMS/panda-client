@@ -456,12 +456,12 @@ class JobSpec:
     # set DDM backend
     def setDdmBackEnd(self, backEnd):
         if self.specialHandling in [None, ""]:
-            self.specialHandling = "ddm:" + backEnd
+            self.specialHandling = f"ddm:{backEnd}"
         else:
             if "ddm:" in self.specialHandling:
-                self.specialHandling = re.sub("ddm:[,]+", "ddm:" + backEnd, self.specialHandling)
+                self.specialHandling = re.sub("ddm:[,]+", f"ddm:{backEnd}", self.specialHandling)
             else:
-                self.specialHandling = self.specialHandling + "," + "ddm:" + backEnd
+                self.specialHandling = f"{self.specialHandling},ddm:{backEnd}"
 
     # set LB number
     def setLumiBlockNr(self, lumiBlockNr):
@@ -629,7 +629,7 @@ class JobSpec:
     def addMultiStepExec(self, steps):
         if not self.jobParameters:
             self.jobParameters = ""
-        self.jobParameters += "<MULTI_STEP_EXEC>" + json.dumps(steps) + "</MULTI_STEP_EXEC>"
+        self.jobParameters += f"<MULTI_STEP_EXEC>{json.dumps(steps)}</MULTI_STEP_EXEC>"
 
     # extract multi step exec
     def extractMultiStepExec(self):

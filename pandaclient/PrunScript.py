@@ -146,7 +146,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # enforce to use output dataset container
     if not options.outDS.endswith("/"):
-        options.outDS = options.outDS + "/"
+        options.outDS = f"{options.outDS}/"
 
     # absolute path for PFN list
     if options.pfnList != "":
@@ -232,7 +232,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # check working dir
     options.workDir = os.path.realpath(options.workDir)
-    if options.workDir != curDir and (not curDir.startswith(options.workDir + "/")):
+    if options.workDir != curDir and (not curDir.startswith(f"{options.workDir}/")):
         tmp_log.error(f"you need to run prun in a directory under {options.workDir}")
         sys.exit(MiscUtils.EC_Config)
 
@@ -263,7 +263,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     if curDir != options.workDir:
         # remove special characters
         wDirString = re.sub(r"[\+]", ".", options.workDir)
-        runDir = re.sub("^" + wDirString + "/", "", curDir)
+        runDir = re.sub(f"^{wDirString}/", "", curDir)
 
     # check maxCpuCount
     if options.maxCpuCount > Client.maxCpuCountLimit:
@@ -445,11 +445,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     tmp_log.error(tmpErrMsg)
                     sys.exit(MiscUtils.EC_Config)
                 # check grid_submit.sh
-                rootCoreSubmitSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_submit.sh"
-                rootCoreCompileSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_compile.sh"
-                rootCoreRunSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_run.sh"
-                rootCoreSubmitNbSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_submit_nobuild.sh"
-                rootCoreCompileNbSh = os.environ["ROOTCOREDIR"] + "/scripts/grid_compile_nobuild.sh"
+                rootCoreSubmitSh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_submit.sh"
+                rootCoreCompileSh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_compile.sh"
+                rootCoreRunSh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_run.sh"
+                rootCoreSubmitNbSh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_submit_nobuild.sh"
+                rootCoreCompileNbSh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_compile_nobuild.sh"
                 rootCoreShList = [rootCoreSubmitSh, rootCoreCompileSh, rootCoreRunSh]
                 if options.noBuild:
                     rootCoreShList.append(rootCoreSubmitNbSh)
@@ -463,9 +463,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 tmp_log.info("copy RootCore packages to current dir")
                 # destination
                 pandaRootCoreWorkDirName = "__panda_rootCoreWorkDir"
-                rootCoreDestWorkDir = curDir + "/" + pandaRootCoreWorkDirName
+                rootCoreDestWorkDir = f"{curDir}/{pandaRootCoreWorkDirName}"
                 # add all files to extFile
-                options.extFile.append(pandaRootCoreWorkDirName + "/.*")
+                options.extFile.append(f"{pandaRootCoreWorkDirName}/.*")
                 # add to be deleted on exit
                 delFilesOnExit.append(rootCoreDestWorkDir)
                 if not options.noBuild:
@@ -587,7 +587,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                     # extra files
                     isExtra = False
                     for tmpExt in options.extFile:
-                        if re.search(tmpExt + "$", tmpPath) is not None:
+                        if re.search(f"{tmpExt}$", tmpPath) is not None:
                             isExtra = True
                             break
                     # regular files
@@ -596,7 +596,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                         emptyFlag = False
                         # skipped extensions
                         if isSkippedExt:
-                            print(f"  skip {str(skippedExt)} {tmpPath}")
+                            print(f"  skip {skippedExt} {tmpPath}")
                             skippedFlag = True
                             continue
                         # skip root
@@ -712,7 +712,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         )
     task_param_map["transUses"] = athenaVer
     if athenaVer != "":
-        task_param_map["transHome"] = "AnalysisTransforms" + cacheVer + nightVer
+        task_param_map["transHome"] = f"AnalysisTransforms{cacheVer}{nightVer}"
     else:
         task_param_map["transHome"] = None
     if options.msgDriven:
@@ -871,14 +871,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         if not options.notExpandInDS:
             tmpDict["expand"] = True
         if options.notExpandInDS:
-            tmpDict["consolidate"] = ".".join(options.outDS.split(".")[:2]) + "." + MiscUtils.wrappedUuidGen() + "/"
+            tmpDict["consolidate"] = f"{'.'.join(options.outDS.split('.')[:2])}.{MiscUtils.wrappedUuidGen()}/"
         if options.nSkipFiles != 0:
             tmpDict["offset"] = options.nSkipFiles
         if options.match != "":
             tmpDict["include"] = options.match
         if options.antiMatch != "":
             if "exclude" in tmpDict:
-                tmpDict["exclude"] += "," + options.antiMatch
+                tmpDict["exclude"] += f",{options.antiMatch}"
             else:
                 tmpDict["exclude"] = options.antiMatch
         if filesToBeUsed != []:
@@ -932,7 +932,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             if streamName in options.reusableSecondary:
                 reusableAtt = True
             dictItem = MiscUtils.makeJediJobParam(
-                "${" + streamName + "}",
+                f"${{{streamName}}}",
                 tmpDsName,
                 "input",
                 hidden=True,
@@ -946,13 +946,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 file_list=tmpMap["files"],
             )
             task_param_map["jobParameters"] += dictItem
-            inMap[streamName] = "tmp_" + streamName
+            inMap[streamName] = f"tmp_{streamName}"
             streamNames.append(streamName)
         # make constant item
         strInMap = str(inMap)
         # set placeholders
         for streamName in streamNames:
-            strInMap = strInMap.replace("'tmp_" + streamName + "'", "${" + streamName + "/T}")
+            strInMap = strInMap.replace(f"'tmp_{streamName}'", f"${{{streamName}/T}}")
         dictItem = {
             "type": "constant",
             "value": f'--inMap "{strInMap}"',
