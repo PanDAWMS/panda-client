@@ -44,6 +44,7 @@ IN = ["--inDS", "data18_13TeV.periodA.DAOD_PHYS"]
 #   cwd: "work" to run prun in the work dir itself instead of its "sub" directory
 #   work_area: Athena work area of the mocked Athena setup, the work dir by default
 #   no_athena_env: True to mock a missing Athena setup
+#   home_is_work_dir: True to set $HOME to the work dir
 CASES = {
     "no_input": [],
     "basic": IN + ["--outputs", "out.root"],
@@ -119,6 +120,7 @@ CASES = {
     "athena_cwd_is_work_area": {"args": IN + ["--outputs", "o.root", "--useAthenaPackages", "--mergeOutput"] + CMT_CONFIG, "cwd": "work"},
     "athena_cwd_outside_work_area": {"args": IN + ["--outputs", "o.root", "--useAthenaPackages"] + CMT_CONFIG, "work_area": "/somewhere/else"},
     "athena_no_env": {"args": IN + ["--outputs", "o.root", "--useAthenaPackages"] + CMT_CONFIG, "no_athena_env": True},
+    "event_picking_no_submit": ["--eventPickEvtList", "events.txt", "--eventPickDataType", "AOD", "--outputs", "o.root"],
     "cmake_athena_packages": {
         "args": IN + ["--outputs", "o.root", "--useAthenaPackages", "--mergeOutput", "--noCompile"] + CMT_CONFIG,
         "env": {"CMAKE_PREFIX_PATH": "/opt/cmake"},
@@ -142,8 +144,17 @@ def _athena_env(work_area):
     }
 
 
-def run_case(case):
-    """Run prun for one case in a fresh work dir and return the result as JSON-compatible data"""
+def run_case(case, dry_mode=True, extra_patches=()):
+    """
+    Run prun for one case in a fresh work dir and return the result as JSON-compatible data
+
+    args:
+        case: prun arguments, or a dict as described for CASES
+        dry_mode: run prun in dry mode, which skips the proxy, nickname, home dir check, and sandbox
+        extra_patches: more mock patchers to apply while prun runs
+    returns:
+        dict with task_params, or exit for a SystemExit, and output
+    """
     if not isinstance(case, dict):
         case = {"args": case}
     # realpath since prun resolves the work dir, e.g. /var -> /private/var on macOS
@@ -154,10 +165,14 @@ def run_case(case):
         f.write("f1.root\n\n  f2.root  \n")
     with open(os.path.join(sub_dir, "pfns.txt"), "w") as f:
         f.write("root://a/f1.root\nroot://a/f2.root\n")
+    with open(os.path.join(sub_dir, "events.txt"), "w") as f:
+        f.write("358031 123456\n358031 123457\n")
     args = BASE_ARGS + case["args"] + ["--workDir", work]
 
     environ = {key: value for key, value in os.environ.items() if not key.startswith(ENV_TO_UNSET_PREFIXES)}
     environ.update(case.get("env", {}))
+    if case.get("home_is_work_dir"):
+        environ["HOME"] = work
     if case.get("no_athena_env"):
         athena_ver = (False, {})
     else:
@@ -187,10 +202,12 @@ def run_case(case):
             stack.enter_context(mock.patch.object(AthenaUtils, "fullPathJobOs", {}))
             # set by main
             stack.enter_context(mock.patch.object(PsubUtils, "limit_maxNumInputs", None, create=True))
+            for patcher in extra_patches:
+                stack.enter_context(patcher)
             stack.enter_context(contextlib.redirect_stdout(output))
             stack.enter_context(contextlib.redirect_stderr(output))
             try:
-                result = {"task_params": PrunScript.main(get_taskparams=True, dry_mode=True, ext_args=args)}
+                result = {"task_params": PrunScript.main(get_taskparams=True, dry_mode=dry_mode, ext_args=args)}
             except SystemExit as exc:
                 result = {"exit": exc.code}
     finally:

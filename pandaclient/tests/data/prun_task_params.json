@@ -3529,6 +3529,94 @@
   "exit": 10,
   "output": "You need to setup Athena runtime to use --useAthenaPackages\n"
  },
+ "event_picking_no_submit": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run-evp",
+   "waitInput": 1,
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --eventPickEvtList events.txt --eventPickDataType AOD --outputs o.root --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "dummy",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "dummy",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
  "cmake_athena_packages": {
   "task_params": {
    "taskName": "user.someone.test.v1/",

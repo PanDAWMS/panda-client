@@ -112,7 +112,7 @@ def _archive_athena_packages(options, cur_dir, tmp_dir, run_dir, work_area, grou
     """Archive the packages of the Athena work area into the sandbox tarball, for --useAthenaPackages
 
     Creates <tmp_dir>/sources.<uuid>.tar, or jobO.<uuid>.tar with --noBuild when CMake isn't used.
-    The files under the work directory are appended to the same tarball afterwards.
+    The files under the work directory are appended to the same tarball afterward.
     Changes the working directory, and exits on errors.
 
     args:
@@ -820,6 +820,87 @@ def _resolve_work_env(options, cur_dir, tmp_log):
     return work_env
 
 
+def _read_file_list(path):
+    """Return the non-empty lines of a file, without surrounding whitespace"""
+    with open(path) as f:
+        return [line.strip() for line in f if line.strip()]
+
+
+def _confirm_home_dir_upload(options, dry_mode, tmp_log):
+    """
+    Ask before sending all the files under $HOME, when prun runs with the home directory as work dir
+
+    Not asked with --useHomeDir or --useAthenaPackages, or in dry mode. Exits with EC_Config when the answer is N
+    """
+    in_home_dir = "HOME" in os.environ and os.path.realpath(os.path.expanduser(os.environ["HOME"])) == options.workDir
+    if not in_home_dir or options.useHomeDir or options.useAthenaPackages or dry_mode:
+        return
+    tmp_log.warning(
+        "prun is executed just under the HOME directory "
+        "and is going to send all files under the dir including ~/Mail/* and ~/private/*. "
+        "Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)"
+    )
+    answer = None
+    while answer not in ("y", "N"):
+        answer = input("y/N: ").strip()
+    if answer == "N":
+        sys.exit(MiscUtils.EC_Config)
+
+
+def _remove_on_exit(tmp_dir, files, del_command):
+    """atexit action removing the temporary files and directory"""
+    for tmp_file in files:
+        del_command(f"rm -rf {tmp_file}")
+    del_command(f"rm -rf {tmp_dir}")
+
+
+def _make_tmp_dir(options, cur_dir, files_to_delete):
+    """
+    Make a uniquely named temporary directory under --tmpDir, or under cur_dir by default
+
+    The directory is removed at exit, together with files_to_delete, including the files added to the list later
+    """
+    parent_dir = cur_dir if options.tmpDir == "" else os.path.abspath(options.tmpDir)
+    tmp_dir = f"{parent_dir}/{MiscUtils.wrappedUuidGen()}"
+    os.makedirs(tmp_dir)
+    atexit.register(_remove_on_exit, tmp_dir, files_to_delete, MiscUtils.commands_get_output)
+    return tmp_dir
+
+
+def _request_event_picking(options, full_exec_string, tmp_log):
+    """
+    Ask the event picking service to stage the events of --eventPickEvtList as a dataset
+
+    returns:
+        name of the dataset with the picked events, or "dummy" with --noSubmit
+    """
+    # imported here as in main: importing Client resolves the panda cache host
+    from pandaclient import Client
+
+    if options.noSubmit:
+        dataset = "dummy"
+    else:
+        # the returned status is not checked
+        _, dataset = Client.requestEventPicking(
+            options.eventPickEvtList,
+            options.eventPickDataType,
+            options.eventPickStreamName,
+            options.eventPickDS,
+            options.eventPickAmiTag,
+            [],
+            options.inputFileList,
+            options.outDS,
+            "prun",
+            full_exec_string,
+            1,
+            options.eventPickWithGUID,
+            options.ei_api,
+            options.verbose,
+        )
+    tmp_log.info(f"requested Event Picking service to stage input as {dataset}")
+    return dataset
+
+
 def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False):
     """
     Execute prun command
@@ -966,15 +1047,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 sys.exit(MiscUtils.EC_Config)
 
     # read list of files to be used
-    filesToBeUsed = []
-    if options.inputFileList != "":
-        rFile = open(options.inputFileList)
-        for line in rFile:
-            line = line.replace("\n", "")
-            line = line.strip()
-            if line != "":
-                filesToBeUsed.append(line)
-        rFile.close()
+    filesToBeUsed = _read_file_list(options.inputFileList) if options.inputFileList != "" else []
 
     # remove whitespaces
     if options.inDS != "":
@@ -1019,75 +1092,22 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         sys.exit(MiscUtils.EC_Config)
 
     # avoid gathering the home dir
-    if (
-        "HOME" in os.environ
-        and not options.useHomeDir
-        and not options.useAthenaPackages
-        and os.path.realpath(os.path.expanduser(os.environ["HOME"])) == options.workDir
-        and not dry_mode
-    ):
-        tmp_log.warning(
-            "prun is executed just under the HOME directory "
-            "and is going to send all files under the dir including ~/Mail/* and ~/private/*. "
-            "Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)"
-        )
-        while True:
-            tmpAnswer = input("y/N: ")
-            tmpAnswer = tmpAnswer.strip()
-            if tmpAnswer in ["y", "N"]:
-                break
-        if tmpAnswer == "N":
-            sys.exit(MiscUtils.EC_Config)
+    _confirm_home_dir_upload(options, dry_mode, tmp_log)
 
     # check maxCpuCount
     if options.maxCpuCount > Client.maxCpuCountLimit:
         tmp_log.error(f"too large maxCpuCount. Must be less than {Client.maxCpuCountLimit}")
         sys.exit(MiscUtils.EC_Config)
 
-    # create tmp dir
-    if options.tmpDir == "":
-        tmpDir = f"{curDir}/{MiscUtils.wrappedUuidGen()}"
-    else:
-        tmpDir = f"{os.path.abspath(options.tmpDir)}/{MiscUtils.wrappedUuidGen()}"
-    os.makedirs(tmpDir)
-
-    # exit action
-    def _onExit(dir, files, del_command):
-        for tmpFile in files:
-            del_command(f"rm -rf {tmpFile}")
-        del_command(f"rm -rf {dir}")
-
-    atexit.register(_onExit, tmpDir, files_to_delete, MiscUtils.commands_get_output)
+    # create tmp dir, removed at exit
+    tmp_dir = _make_tmp_dir(options, curDir, files_to_delete)
 
     # run directory, Athena setup, and CMTCONFIG
     work_env = _resolve_work_env(options, curDir, tmp_log)
 
-    # event picking
+    # event picking: the picked events are the input dataset
     if options.eventPickEvtList != "":
-        epLockedBy = "prun"
-        if not options.noSubmit:
-            # request event picking
-            epStat, epOutput = Client.requestEventPicking(
-                options.eventPickEvtList,
-                options.eventPickDataType,
-                options.eventPickStreamName,
-                options.eventPickDS,
-                options.eventPickAmiTag,
-                [],
-                options.inputFileList,
-                options.outDS,
-                epLockedBy,
-                fullExecString,
-                1,
-                options.eventPickWithGUID,
-                options.ei_api,
-                options.verbose,
-            )
-            # set input dataset
-            options.inDS = epOutput
-        else:
-            options.inDS = "dummy"
-        tmp_log.info(f"requested Event Picking service to stage input as {options.inDS}")
+        options.inDS = _request_event_picking(options, fullExecString, tmp_log)
 
     # additional files
     if options.extFile == "":
@@ -1168,9 +1188,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     archiveName = None
     if (options.containerImage == "" or options.useSandbox) and not dry_mode:
         if options.inTarBall == "" and options.tarBallViaDDM == "":
-            archiveName = create_sandbox_archive(options, curDir, tmpDir, work_env.run_dir, work_env.work_area, work_env.group_area, files_to_delete, tmp_log)
+            archiveName = create_sandbox_archive(options, curDir, tmp_dir, work_env.run_dir, work_env.work_area, work_env.group_area, files_to_delete, tmp_log)
         else:
-            archiveName, _ = PsubUtils.use_existing_sandbox(options, tmpDir)
+            archiveName, _ = PsubUtils.use_existing_sandbox(options, tmp_dir)
 
         # save for --outTarBall, and upload the sandbox and the good run list
         archiveName = PsubUtils.upload_sandbox(options, archiveName, curDir, tmp_log, files_to_delete, use_cache_srv=options.vo is None)
@@ -1190,7 +1210,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     #####################################################################
     # submission
 
-    exitCode = 0
+    exit_code = 0
     dumpList = []
 
     # submit task
@@ -1240,7 +1260,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         if get_taskparams:
             os.chdir(curDir)
             try:
-                shutil.rmtree(tmpDir)
+                shutil.rmtree(tmp_dir)
             except Exception:
                 pass
             return new_task_param_map
