@@ -915,16 +915,16 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     sys.argv.insert(0, "prun")
 
     # parse options and check against the obsolete options first
-    optP = PrunArgs.build_parser()
+    parser = PrunArgs.build_parser()
     MiscUtils.remove_obsolete_options(sys.argv, MiscUtils.PRUN_OBSOLETE_OPTIONS)
-    options = optP.parse_args(ext_args)
+    options = parser.parse_args(ext_args)
 
     if options.verbose:
         print(options)
         print()
 
     # load json
-    jsonExecStr, _ = load_json_options(
+    json_exec_str, _ = load_json_options(
         options,
         # "exec" is the option name, and inputFileListName the old destination of --inputFileList
         key_aliases={"exec": "jobParams", "inputFileListName": "inputFileList"},
@@ -944,8 +944,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     from pandaclient import Client, PLogger, PsubUtils
 
     # full execution string
-    fullExecString = PsubUtils.convSysArgv()
-    fullExecString += jsonExecStr
+    full_exec_string = PsubUtils.convSysArgv()
+    full_exec_string += json_exec_str
 
     tmp_log = PLogger.getPandaLogger()
 
@@ -987,25 +987,25 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # validate --transferType
     invalid = get_invalid_transfer_types(options.transferType)
     if invalid:
-        optP.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
+        parser.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
 
     # files to be deleted
     files_to_delete = []
 
     # save current dir
-    curDir = os.path.realpath(os.getcwd())
+    cur_dir = os.path.realpath(os.getcwd())
 
     # remove spaces
     options.outputs = options.outputs.replace(" ", "")
 
     # site, memory, and input options handled the same way as in the other tool
-    includedSite = process_common_options(options, tmp_log)
+    included_site = process_common_options(options, tmp_log)
 
     # set maxNFilesPerJob
     PsubUtils.limit_maxNumInputs = options.maxNFilesPerJob
 
     # bulk submission
-    ioList = get_bulk_io_list(options, tmp_log)
+    io_list = get_bulk_io_list(options, tmp_log)
 
     # enforce to use output dataset container
     if not options.outDS.endswith("/"):
@@ -1016,9 +1016,9 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         options.pfnList = os.path.realpath(options.pfnList)
 
     # extract DBR from exec
-    tmpMatch = re.search("%DB:([^ '\";]+)", options.jobParams)
-    if tmpMatch is not None:
-        options.dbRelease = tmpMatch.group(1)
+    tmp_match = re.search("%DB:([^ '\";]+)", options.jobParams)
+    if tmp_match is not None:
+        options.dbRelease = tmp_match.group(1)
         options.notExpandDBR = True
 
     # check DBRelease, good run list, and event picking
@@ -1040,14 +1040,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         # remove %
         options.writeInputToTxt = options.writeInputToTxt.replace("%", "")
         # loop over all StreamName:FileName
-        for tmpItem in options.writeInputToTxt.split(","):
-            tmpItems = tmpItem.split(":")
-            if len(tmpItems) != 2:
-                tmp_log.error(f"invalid StreamName:FileName in --writeInputToTxt : {tmpItem}")
+        for tmp_item in options.writeInputToTxt.split(","):
+            tmp_items = tmp_item.split(":")
+            if len(tmp_items) != 2:
+                tmp_log.error(f"invalid StreamName:FileName in --writeInputToTxt : {tmp_item}")
                 sys.exit(MiscUtils.EC_Config)
 
     # read list of files to be used
-    filesToBeUsed = _read_file_list(options.inputFileList) if options.inputFileList != "" else []
+    files_to_be_used = _read_file_list(options.inputFileList) if options.inputFileList != "" else []
 
     # remove whitespaces
     if options.inDS != "":
@@ -1087,7 +1087,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # check working dir
     options.workDir = os.path.realpath(options.workDir)
-    if options.workDir != curDir and (not curDir.startswith(f"{options.workDir}/")):
+    if options.workDir != cur_dir and (not cur_dir.startswith(f"{options.workDir}/")):
         tmp_log.error(f"you need to run prun in a directory under {options.workDir}")
         sys.exit(MiscUtils.EC_Config)
 
@@ -1100,24 +1100,24 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         sys.exit(MiscUtils.EC_Config)
 
     # create tmp dir, removed at exit
-    tmp_dir = _make_tmp_dir(options, curDir, files_to_delete)
+    tmp_dir = _make_tmp_dir(options, cur_dir, files_to_delete)
 
     # run directory, Athena setup, and CMTCONFIG
-    work_env = _resolve_work_env(options, curDir, tmp_log)
+    work_env = _resolve_work_env(options, cur_dir, tmp_log)
 
     # event picking: the picked events are the input dataset
     if options.eventPickEvtList != "":
-        options.inDS = _request_event_picking(options, fullExecString, tmp_log)
+        options.inDS = _request_event_picking(options, full_exec_string, tmp_log)
 
     # additional files
     if options.extFile == "":
         options.extFile = []
     else:
-        tmpItems = options.extFile.split(",")
+        tmp_items = options.extFile.split(",")
         options.extFile = []
         # convert * to .*
-        for tmpItem in tmpItems:
-            options.extFile.append(tmpItem.replace("*", ".*"))
+        for tmp_item in tmp_items:
+            options.extFile.append(tmp_item.replace("*", ".*"))
 
     # merge script, glue packages, and excluded files
     process_sandbox_options(options)
@@ -1183,25 +1183,27 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     #####################################################################
     # archive sources and send it to HTTP-reachable location
-    archiveName = None
+    archive_name = None
     if (options.containerImage == "" or options.useSandbox) and not dry_mode:
         if options.inTarBall == "" and options.tarBallViaDDM == "":
-            archiveName = create_sandbox_archive(options, curDir, tmp_dir, work_env.run_dir, work_env.work_area, work_env.group_area, files_to_delete, tmp_log)
+            archive_name = create_sandbox_archive(
+                options, cur_dir, tmp_dir, work_env.run_dir, work_env.work_area, work_env.group_area, files_to_delete, tmp_log
+            )
         else:
-            archiveName, _ = PsubUtils.use_existing_sandbox(options, tmp_dir)
+            archive_name, _ = PsubUtils.use_existing_sandbox(options, tmp_dir)
 
         # save for --outTarBall, and upload the sandbox and the good run list
-        archiveName = PsubUtils.upload_sandbox(options, archiveName, curDir, tmp_log, files_to_delete, use_cache_srv=options.vo is None)
+        archive_name = PsubUtils.upload_sandbox(options, archive_name, cur_dir, tmp_log, files_to_delete, use_cache_srv=options.vo is None)
 
     #####################################################################
     # make task
     task_param_map = _build_task_params(
         options,
         work_env=work_env,
-        archive_name=archiveName,
-        included_site=includedSite,
-        full_exec_string=fullExecString,
-        files_to_be_used=filesToBeUsed,
+        archive_name=archive_name,
+        included_site=included_site,
+        full_exec_string=full_exec_string,
+        files_to_be_used=files_to_be_used,
         tmp_log=tmp_log,
     )
 
@@ -1209,10 +1211,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # submission
 
     exit_code = 0
-    dumpList = []
+    dump_list = []
 
     # submit task
-    for iSubmission, ioItem in enumerate(ioList):
+    for i_submission, io_item in enumerate(io_list):
         if options.verbose:
             PsubUtils.print_submission_parameters(
                 options.site,
@@ -1224,16 +1226,16 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 [("exec", options.jobParams)],
             )
 
-        if len(ioList) == 1:
+        if len(io_list) == 1:
             new_task_param_map = task_param_map
         else:
             # replace input and output
-            options.inDS = ioItem["inDS"]
-            options.outDS = ioItem["outDS"]
-            new_task_param_map = PsubUtils.replaceInputOutput(task_param_map, ioItem["inDS"], ioItem["outDS"], iSubmission)
+            options.inDS = io_item["inDS"]
+            options.outDS = io_item["outDS"]
+            new_task_param_map = PsubUtils.replaceInputOutput(task_param_map, io_item["inDS"], io_item["outDS"], i_submission)
         exit_code = 0
         tmp_output = ""
-        taskID = None
+        task_id = None
         # check outDS format
         if not dry_mode and not PsubUtils.checkOutDsName(
             options.outDS,
@@ -1248,7 +1250,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         # check task parameters
         if exit_code == 0:
             exit_code, tmp_output = PsubUtils.checkTaskParam(new_task_param_map, options.unlimitNumOutputs)
-        if exit_code != 0 and len(ioList) == 1:
+        if exit_code != 0 and len(io_list) == 1:
             sys.exit(exit_code)
         if options.noSubmit and options.verbose:
             PsubUtils.print_task_params(new_task_param_map, tmp_log)
@@ -1256,21 +1258,21 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             with open(os.path.expanduser(options.dumpTaskParams), "w") as f:
                 json.dump(new_task_param_map, f)
         if get_taskparams:
-            os.chdir(curDir)
+            os.chdir(cur_dir)
             try:
                 shutil.rmtree(tmp_dir)
             except Exception:
                 pass
             return new_task_param_map
         if not options.noSubmit and exit_code == 0:
-            exit_code, tmp_output, taskID = PsubUtils.submit_task(new_task_param_map, options, tmp_log)
-        dumpList.append(PsubUtils.make_dump_item(options, exit_code, tmp_output, taskID, iSubmission, len(ioList)))
+            exit_code, tmp_output, task_id = PsubUtils.submit_task(new_task_param_map, options, tmp_log)
+        dump_list.append(PsubUtils.make_dump_item(options, exit_code, tmp_output, task_id, i_submission, len(io_list)))
 
     # go back to current dir
-    os.chdir(curDir)
+    os.chdir(cur_dir)
     # dump
     if options.dumpJson is not None:
         with open(os.path.expanduser(options.dumpJson), "w") as f:
-            json.dump(dumpList, f)
+            json.dump(dump_list, f)
     # succeeded
     sys.exit(exit_code)
