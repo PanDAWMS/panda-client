@@ -1163,16 +1163,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         options.reusableSecondary = options.reusableSecondary.split(",")
 
     # get nickname
+    nickname = "dummy"
     if not dry_mode:
-        nickName = PsubUtils.getNickname()
-    else:
-        nickName = "dummy"
-
-    if nickName == "":
+        nickname = PsubUtils.getNickname()
+    if nickname == "":
         sys.exit(MiscUtils.EC_Config)
 
     # set Rucio accounting
-    PsubUtils.setRucioAccount(nickName, "prun", True)
+    PsubUtils.setRucioAccount(nickname, "prun", True)
 
     # check split options
     check_split_options(options, tmp_log)
@@ -1240,7 +1238,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         if not dry_mode and not PsubUtils.checkOutDsName(
             options.outDS,
             options.official,
-            nickName,
+            nickname,
             options.mergeOutput,
             options.verbose,
         ):
