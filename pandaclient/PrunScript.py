@@ -3,6 +3,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 from urllib.parse import quote
 
@@ -38,6 +39,141 @@ from pandaclient.task_param_utils import (
 )
 
 
+def _copy_root_core_packages(options, cur_dir, files_to_delete_on_exit, tmp_log):
+    """Copy the user's RootCore packages and the RootCore grid scripts into the sandbox, for --useRootCore
+
+    RootCore was the build system of the Run 2 ROOT-based analysis releases, before the CMake-based ones.
+    The packages are copied into <cur_dir>/__panda_rootCoreWorkDir, which is shipped in the sandbox.
+    On the worker node, buildGen sources grid_compile.sh (or grid_compile_nobuild.sh) to compile them,
+    and runGen and runMerge source grid_run.sh to set up the environment before running --exec.
+
+    Appends to options.extFile and to files_to_delete_on_exit, and exits with EC_Config on errors.
+
+    args:
+        options: parsed prun options
+        cur_dir: directory where prun was started, which is under the work directory
+        files_to_delete_on_exit: files and directories deleted when prun exits
+        tmp_log: logger
+    """
+    # $ROOTCOREDIR is set by the RootCore setup, the scripts come from that installation
+    if "ROOTCOREDIR" not in os.environ:
+        tmp_err_msg = "$ROOTCOREDIR is not defined in your environment. Please setup RootCore runtime beforehand"
+        tmp_log.error(tmp_err_msg)
+        sys.exit(MiscUtils.EC_Config)
+
+    # grid_submit*.sh copy the packages on the client, grid_compile*.sh build them on the worker node
+    # and grid_run.sh sets up the environment of the jobs. The nobuild variants are for --noBuild
+    root_core_submit_sh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_submit.sh"
+    root_core_compile_sh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_compile.sh"
+    root_core_run_sh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_run.sh"
+    root_core_submit_nb_sh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_submit_nobuild.sh"
+    root_core_compile_nb_sh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_compile_nobuild.sh"
+
+    # old RootCore versions don't have all the scripts
+    root_core_sh_list = [root_core_submit_sh, root_core_compile_sh, root_core_run_sh]
+    if options.noBuild:
+        root_core_sh_list.append(root_core_submit_nb_sh)
+    # copied below whenever --noCompile is used, with or without --noBuild
+    if options.noCompile:
+        root_core_sh_list.append(root_core_compile_nb_sh)
+    for tmp_sh_file in root_core_sh_list:
+        if not os.path.exists(tmp_sh_file):
+            tmp_log.error(f"{tmp_sh_file} doesn't exist. Please use a newer version of RootCore")
+            sys.exit(MiscUtils.EC_Config)
+    tmp_log.info("copy RootCore packages to current dir")
+
+    # the worker-node scripts expect this directory name under the run directory
+    panda_root_core_work_dir_name = "__panda_rootCoreWorkDir"
+    root_core_dest_work_dir = f"{cur_dir}/{panda_root_core_work_dir_name}"
+    # ship everything in it, including the files skipped by default (.o, .a, .so, .root, large files)
+    options.extFile.append(f"{panda_root_core_work_dir_name}/.*")
+    # the copy is only needed for the sandbox
+    files_to_delete_on_exit.append(root_core_dest_work_dir)
+
+    # copy the packages, without building them for --noBuild
+    if options.noBuild:
+        submit_sh = root_core_submit_nb_sh
+    else:
+        submit_sh = root_core_submit_sh
+    # the output of the script goes to the terminal, as before with os.system
+    tmp_stat = subprocess.run([submit_sh, root_core_dest_work_dir]).returncode
+    if tmp_stat != 0:
+        tmp_err_msg = f"{submit_sh} failed with {tmp_stat}"
+        tmp_log.error(tmp_err_msg)
+        sys.exit(MiscUtils.EC_Config)
+
+    # ship the scripts used on the worker node
+    shutil.copy(root_core_run_sh, root_core_dest_work_dir)
+    shutil.copy(root_core_compile_sh, root_core_dest_work_dir)
+    if options.noCompile:
+        shutil.copy(root_core_compile_nb_sh, root_core_dest_work_dir)
+
+
+def _archive_athena_packages(options, cur_dir, tmp_dir, run_dir, work_area, group_area):
+    """Archive the packages of the Athena work area into the sandbox tarball, for --useAthenaPackages
+
+    Creates <tmp_dir>/sources.<uuid>.tar, or jobO.<uuid>.tar with --noBuild when CMake isn't used.
+    The files under the work directory are appended to the same tarball afterwards.
+    Changes the working directory, and exits on errors.
+
+    args:
+        options: parsed prun options
+        cur_dir: directory where prun was started
+        tmp_dir: temporary directory where the tarball is made
+        run_dir: run directory relative to the work area
+        work_area: Athena work area
+        group_area: Athena group area, or "" when not set
+    returns:
+        (name of the uncompressed tarball, its full path)
+    """
+    # imported here as in main: importing Client resolves the panda cache host
+    from pandaclient import AthenaUtils
+
+    archive_name = ""
+    # CMake setup ($CMAKE_PREFIX_PATH): cpack packs the build directory (the compiled packages under usr/)
+    # into a plain tarball, empty if the build has no CPackConfig.cmake. prun always asks for the "sources"
+    # name here, so the next steps append to sources.<uuid>.tar also with --noBuild
+    if AthenaUtils.useCMake():
+        archive_name, archive_full_name = AthenaUtils.archiveWithCpack(True, tmp_dir, options.verbose)
+    # make AthenaUtils.matchExtFile use the --extFile patterns. The list is shared, not copied,
+    # so it includes the RootCore directory added by _copy_root_core_packages
+    AthenaUtils.setExtFile(options.extFile)
+    if not options.noBuild:
+        # the package sources, compiled by the build job on the grid. --gluePackages adds CMT glue packages
+        archive_name, archive_full_name = AthenaUtils.archiveSourceFiles(
+            work_area,
+            run_dir,
+            cur_dir,
+            tmp_dir,
+            options.verbose,
+            options.gluePackages,
+            dereferenceSymLinks=options.followLinks,
+            archiveName=archive_name,
+        )
+    else:
+        # --noBuild: no build job, only the job options and python modules (the files matching matchExtFile)
+        archive_name, archive_full_name = AthenaUtils.archiveJobOFiles(
+            work_area,
+            run_dir,
+            cur_dir,
+            tmp_dir,
+            options.verbose,
+            archiveName=archive_name,
+        )
+    # add the InstallArea of the work area. The one of the group area is packed into groupArea.<uuid>.tar,
+    # which is added to the tarball unless --noBuild is used
+    AthenaUtils.archiveInstallArea(
+        work_area,
+        group_area,
+        archive_name,
+        archive_full_name,
+        tmp_dir,
+        options.noBuild,
+        options.verbose,
+    )
+    return archive_name, archive_full_name
+
+
 def create_sandbox_archive(options, cur_dir, tmp_dir, run_dir, work_area, group_area, files_to_delete_on_exit, tmp_log):
     """Archive the user files into the sandbox tarball
 
@@ -61,91 +197,13 @@ def create_sandbox_archive(options, cur_dir, tmp_dir, run_dir, work_area, group_
     # imported here as in main: importing Client resolves the panda cache host
     from pandaclient import AthenaUtils, PsubUtils
 
-    # copy RootCore packages
     if options.useRootCore:
-        # check $ROOTCOREDIR
-        if "ROOTCOREDIR" not in os.environ:
-            tmp_err_msg = "$ROOTCOREDIR is not defined in your environment. Please setup RootCore runtime beforehand"
-            tmp_log.error(tmp_err_msg)
-            sys.exit(MiscUtils.EC_Config)
-        # check grid_submit.sh
-        root_core_submit_sh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_submit.sh"
-        root_core_compile_sh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_compile.sh"
-        root_core_run_sh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_run.sh"
-        root_core_submit_nb_sh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_submit_nobuild.sh"
-        root_core_compile_nb_sh = f"{os.environ['ROOTCOREDIR']}/scripts/grid_compile_nobuild.sh"
-        root_core_sh_list = [root_core_submit_sh, root_core_compile_sh, root_core_run_sh]
-        if options.noBuild:
-            root_core_sh_list.append(root_core_submit_nb_sh)
-            if options.noCompile:
-                root_core_sh_list.append(root_core_compile_nb_sh)
-        for tmp_sh_file in root_core_sh_list:
-            if not os.path.exists(tmp_sh_file):
-                tmp_err_msg = f"{tmp_sh_file} doesn't exist. Please use a newer version of RootCore"
-                tmp_log.error(tmp_err_msg)
-                sys.exit(MiscUtils.EC_Config)
-        tmp_log.info("copy RootCore packages to current dir")
-        # destination
-        panda_root_core_work_dir_name = "__panda_rootCoreWorkDir"
-        root_core_dest_work_dir = f"{cur_dir}/{panda_root_core_work_dir_name}"
-        # add all files to extFile
-        options.extFile.append(f"{panda_root_core_work_dir_name}/.*")
-        # add to be deleted on exit
-        files_to_delete_on_exit.append(root_core_dest_work_dir)
-        if not options.noBuild:
-            tmp_stat = os.system(f"{root_core_submit_sh} {root_core_dest_work_dir}")
-        else:
-            tmp_stat = os.system(f"{root_core_submit_nb_sh} {root_core_dest_work_dir}")
-        tmp_stat %= 255
-        if tmp_stat != 0:
-            tmp_err_msg = f"{root_core_submit_sh} failed with {tmp_stat}"
-            tmp_log.error(tmp_err_msg)
-            sys.exit(MiscUtils.EC_Config)
-        # copy build and run scripts
-        shutil.copy(root_core_run_sh, root_core_dest_work_dir)
-        shutil.copy(root_core_compile_sh, root_core_dest_work_dir)
-        if options.noCompile:
-            shutil.copy(root_core_compile_nb_sh, root_core_dest_work_dir)
-    # gather Athena packages
-    archive_name = ""
+        _copy_root_core_packages(options, cur_dir, files_to_delete_on_exit, tmp_log)
+
+    # without --useAthenaPackages the tarball is named after gathering the files below
+    archive_name, archive_full_name = "", ""
     if options.useAthenaPackages:
-        if AthenaUtils.useCMake():
-            # archive with cpack
-            archive_name, archive_full_name = AthenaUtils.archiveWithCpack(True, tmp_dir, options.verbose)
-        # set extFile
-        AthenaUtils.setExtFile(options.extFile)
-        if not options.noBuild:
-            # archive sources
-            archive_name, archive_full_name = AthenaUtils.archiveSourceFiles(
-                work_area,
-                run_dir,
-                cur_dir,
-                tmp_dir,
-                options.verbose,
-                options.gluePackages,
-                dereferenceSymLinks=options.followLinks,
-                archiveName=archive_name,
-            )
-        else:
-            # archive jobO
-            archive_name, archive_full_name = AthenaUtils.archiveJobOFiles(
-                work_area,
-                run_dir,
-                cur_dir,
-                tmp_dir,
-                options.verbose,
-                archiveName=archive_name,
-            )
-        # archive InstallArea
-        AthenaUtils.archiveInstallArea(
-            work_area,
-            group_area,
-            archive_name,
-            archive_full_name,
-            tmp_dir,
-            options.noBuild,
-            options.verbose,
-        )
+        archive_name, archive_full_name = _archive_athena_packages(options, cur_dir, tmp_dir, run_dir, work_area, group_area)
 
     # gather normal files
     if options.useAthenaPackages:
