@@ -174,6 +174,78 @@ def _archive_athena_packages(options, cur_dir, tmp_dir, run_dir, work_area, grou
     return archive_name, archive_full_name
 
 
+def _matches_any(patterns, path):
+    """True if any of the regex patterns matches path"""
+    return any(re.search(pattern, path) for pattern in patterns)
+
+
+def _skip_reason(path, size, options, skipped_ext):
+    """
+    Why a file under the work dir is not sent to WNs
+
+    :return: message to print, or None if the file is sent. Files matching --extFile are always sent
+    """
+    if _matches_any([f"{ext}$" for ext in options.extFile], path):
+        return None
+    if path.endswith(tuple(skipped_ext)):
+        return f"skip {skipped_ext} {path}"
+    if re.search(r"\.root(\.\d+)*$", path):
+        return f"skip root file {path}"
+    if size > options.maxFileSize:
+        return f"skip large file {path}:{size}B>{options.maxFileSize}B"
+    return None
+
+
+def _walk_candidate_files(arch_start_dir, follow_links, exclude_patterns, athena_archive_name, verbose):
+    """
+    Walk arch_start_dir and yield (path, size) for readable files not matching exclude_patterns,
+    and (path, None) for empty directories. Files named athena_archive_name are ignored
+    """
+    for root, dirs, files in os.walk(arch_start_dir, followlinks=bool(follow_links)):
+        if not dirs and not files:
+            yield root, None
+        for file_name in files:
+            path = f"{root}/{file_name}"
+            if athena_archive_name and file_name == athena_archive_name:
+                # the tarball is usually under the work dir, since tmp_dir is made in the current dir
+                if verbose:
+                    print(f"skip Athena archive {file_name}")
+                continue
+            try:
+                size = os.path.getsize(path)
+            except OSError as exc:
+                # dead symlink
+                if verbose:
+                    print(f"  Ignore : {type(exc)}:{exc}")
+            else:
+                if not _matches_any(exclude_patterns, path):
+                    yield path, size
+
+
+def _gather_work_dir_files(options, arch_start_dir, tmp_dir, athena_archive_name, exclude_patterns, tmp_log):
+    """Collect the files and empty directories under arch_start_dir to put in the sandbox, without the leading ./"""
+    skipped_ext = [] if options.noCompile else [".o", ".a", ".so"]
+    tmp_dir_name = tmp_dir.split("/")[-1]
+    work_dir_files = []
+    skipped_any = False
+    walk = _walk_candidate_files(arch_start_dir, options.followLinks, exclude_patterns, athena_archive_name, options.verbose)
+    for path, size in walk:
+        # the --extFile patterns are matched against the path with the leading ./
+        rel_path = re.sub(r"^\./", "", path)
+        if size is None:
+            # empty directory, except tmp_dir
+            if not _matches_any(exclude_patterns, rel_path) and rel_path.split("/")[-1] != tmp_dir_name:
+                work_dir_files.append(rel_path)
+        elif reason := _skip_reason(path, size, options, skipped_ext):
+            print(f"  {reason}")
+            skipped_any = True
+        else:
+            work_dir_files.append(rel_path)
+    if skipped_any:
+        tmp_log.info("please use --extFile if you need to send the skipped files to WNs")
+    return work_dir_files
+
+
 def create_sandbox_archive(options, cur_dir, tmp_dir, run_dir, work_area, group_area, files_to_delete_on_exit, tmp_log):
     """Archive the user files into the sandbox tarball
 
@@ -207,139 +279,44 @@ def create_sandbox_archive(options, cur_dir, tmp_dir, run_dir, work_area, group_
 
     # gather normal files
     if options.useAthenaPackages:
-        # go to work_area
         os.chdir(work_area)
-        # gather files under work dir
         tmp_log.info(f"gathering files under {work_area}/{run_dir}")
-        arch_start_dir = run_dir
-        arch_start_dir = re.sub("/+$", "", arch_start_dir)
+        arch_start_dir = run_dir.rstrip("/")
     else:
-        # go to work dir
         os.chdir(options.workDir)
-        # gather files under work dir
         tmp_log.info(f"gathering files under {options.workDir}")
         arch_start_dir = "."
-    # get files in the working dir
-    if options.noCompile:
-        skipped_ext = []
-    else:
-        skipped_ext = [".o", ".a", ".so"]
-    skipped_flag = False
-    work_dir_files = []
-    if options.followLinks:
-        os_walk_list = os.walk(arch_start_dir, followlinks=True)
-    else:
-        os_walk_list = os.walk(arch_start_dir)
-    for tmp_root, tmp_dirs, tmp_files in os_walk_list:
-        empty_flag = True
-        for tmp_file in tmp_files:
-            if options.useAthenaPackages:
-                if os.path.basename(tmp_file) == os.path.basename(archive_full_name):
-                    if options.verbose:
-                        print(f"skip Athena archive {tmp_file}")
-                    continue
-            tmp_path = f"{tmp_root}/{tmp_file}"
-            # get size
-            try:
-                size = os.path.getsize(tmp_path)
-            except Exception:
-                # skip dead symlink
-                if options.verbose:
-                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                    print(f"  Ignore : {exc_type}:{exc_value}")
-                continue
-            # check exclude files
-            exclude_file_flag = False
-            for tmp_patt in AthenaUtils.excludeFile:
-                if re.search(tmp_patt, tmp_path) is not None:
-                    exclude_file_flag = True
-                    break
-            if exclude_file_flag:
-                continue
-            # skipped extension
-            is_skipped_ext = False
-            for tmp_ext in skipped_ext:
-                if tmp_path.endswith(tmp_ext):
-                    is_skipped_ext = True
-                    break
-            # check root
-            is_root = False
-            if re.search(r"\.root(\.\d+)*$", tmp_path) is not None:
-                is_root = True
-            # extra files
-            is_extra = False
-            for tmp_ext in options.extFile:
-                if re.search(f"{tmp_ext}$", tmp_path) is not None:
-                    is_extra = True
-                    break
-            # regular files
-            if not is_extra:
-                # unset empty_flag even if all files are skipped
-                empty_flag = False
-                # skipped extensions
-                if is_skipped_ext:
-                    print(f"  skip {skipped_ext} {tmp_path}")
-                    skipped_flag = True
-                    continue
-                # skip root
-                if is_root:
-                    print(f"  skip root file {tmp_path}")
-                    skipped_flag = True
-                    continue
-                # check size
-                if size > options.maxFileSize:
-                    print(f"  skip large file {tmp_path}:{size}B>{options.maxFileSize}B")
-                    skipped_flag = True
-                    continue
-            # remove ./
-            tmp_path = re.sub(r"^\./", "", tmp_path)
-            # append
-            work_dir_files.append(tmp_path)
-            if empty_flag:
-                empty_flag = False
-        # add empty directory
-        if empty_flag and tmp_dirs == [] and tmp_files == []:
-            tmp_path = re.sub(r"^\./", "", tmp_root)
-            # check exclude pattern
-            exclude_pat_flag = False
-            for tmp_patt in AthenaUtils.excludeFile:
-                if re.search(tmp_patt, tmp_path) is not None:
-                    exclude_pat_flag = True
-                    break
-            if exclude_pat_flag:
-                continue
-            # skip tmp_dir
-            if tmp_path.split("/")[-1] == tmp_dir.split("/")[-1]:
-                continue
-            # append
-            work_dir_files.append(tmp_path)
-    if skipped_flag:
-        tmp_log.info("please use --extFile if you need to send the skipped files to WNs")
-    # set archive name
+    athena_archive_name = os.path.basename(archive_full_name) if options.useAthenaPackages else ""
+    work_dir_files = _gather_work_dir_files(options, arch_start_dir, tmp_dir, athena_archive_name, AthenaUtils.excludeFile, tmp_log)
+
+    # set archive name: 'jobO' for noBuild, 'sources' for normal build
     if not options.useAthenaPackages:
-        # create archive
-        if options.noBuild and not options.noCompile:
-            # use 'jobO' for noBuild
-            archive_name = f"jobO.{MiscUtils.wrappedUuidGen()}.tar"
-        else:
-            # use 'sources' for normal build
-            archive_name = f"sources.{MiscUtils.wrappedUuidGen()}.tar"
+        prefix = "jobO" if options.noBuild and not options.noCompile else "sources"
+        archive_name = f"{prefix}.{MiscUtils.wrappedUuidGen()}.tar"
         archive_full_name = f"{tmp_dir}/{archive_name}"
-    # collect files
+
+    # start one tar process for each entry in work_dir_files and append that entry to the same tarball.
+    # A single tar over the directory would include all the files, also the ones that have been filtered out
+    archive_base_name = os.path.basename(archive_full_name)
     for tmp_file in work_dir_files:
-        # avoid self-archiving
-        if os.path.basename(tmp_file) == os.path.basename(archive_full_name):
+        if os.path.basename(tmp_file) == archive_base_name:
+            # avoid self-archiving, e.g. the Athena archive
             if options.verbose:
                 print(f"skip self-archiving for {tmp_file}")
-            continue
-        if os.path.islink(tmp_file):
-            status, out = MiscUtils.commands_get_status_output(f"tar --exclude '.[a-zA-Z]*' -rh '{tmp_file}' -f '{archive_full_name}'")
         else:
-            status, out = MiscUtils.commands_get_status_output(f"tar --exclude '.[a-zA-Z]*' -rf '{archive_full_name}' '{tmp_file}'")
-        if options.verbose:
-            print(tmp_file)
-        if status != 0 or out != "":
-            print(out)
+            # append (-r) one entry at a time to the uncompressed tarball. Entries are files or empty directories.
+            # --exclude '.[a-zA-Z]*' leaves out hidden files and directories (.git, .svn, editor files, ...)
+            if os.path.islink(tmp_file):
+                # -h dereferences the symlink: the tarball gets a copy of the target's content
+                command = f"tar --exclude '.[a-zA-Z]*' -rh '{tmp_file}' -f '{archive_full_name}'"
+            else:
+                # regular file or empty directory: stored as is
+                command = f"tar --exclude '.[a-zA-Z]*' -rf '{archive_full_name}' '{tmp_file}'"
+            status, out = MiscUtils.commands_get_status_output(command)
+            if options.verbose:
+                print(tmp_file)
+            if status != 0 or out != "":
+                print(out)
     # go to tmpdir
     os.chdir(tmp_dir)
 
