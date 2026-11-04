@@ -971,9 +971,9 @@ def process_common_options(options, tmp_log):
         options.excludedSite = PsubUtils.splitCommaConcatenatedItems(options.excludedSite)
 
     # use certain sites. A list of sites is passed as included sites and the brokerage chooses among them
-    included_site = None
+    included_sites = None
     if re.search(",", options.site) is not None:
-        included_site = PsubUtils.splitCommaConcatenatedItems([options.site])
+        included_sites = PsubUtils.splitCommaConcatenatedItems([options.site])
         options.site = "AUTO"
 
     # list of output files which can be skipped
@@ -987,7 +987,7 @@ def process_common_options(options, tmp_log):
     if options.parentTaskID:
         options.notExpandInDS = True
 
-    return included_site
+    return included_sites
 
 
 def check_split_options(options, tmp_log):

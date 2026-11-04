@@ -40,11 +40,11 @@ from pandaclient.task_param_utils import (
 )
 
 
-def _copy_root_core_packages(options, cur_dir, files_to_delete_on_exit, tmp_log):
+def _copy_root_core_packages(options, current_dir, files_to_delete_on_exit, tmp_log):
     """Copy the user's RootCore packages and the RootCore grid scripts into the sandbox, for --useRootCore
 
     RootCore was the build system of the Run 2 ROOT-based analysis releases, before the CMake-based ones.
-    The packages are copied into <cur_dir>/__panda_rootCoreWorkDir, which is shipped in the sandbox.
+    The packages are copied into <current_dir>/__panda_rootCoreWorkDir, which is shipped in the sandbox.
     On the worker node, buildGen sources grid_compile.sh (or grid_compile_nobuild.sh) to compile them,
     and runGen and runMerge source grid_run.sh to set up the environment before running --exec.
 
@@ -52,7 +52,7 @@ def _copy_root_core_packages(options, cur_dir, files_to_delete_on_exit, tmp_log)
 
     args:
         options: parsed prun options
-        cur_dir: directory where prun was started, which is under the work directory
+        current_dir: directory where prun was started, which is under the work directory
         files_to_delete_on_exit: files and directories deleted when prun exits
         tmp_log: logger
     """
@@ -84,7 +84,7 @@ def _copy_root_core_packages(options, cur_dir, files_to_delete_on_exit, tmp_log)
 
     # the worker-node scripts expect this directory name under the run directory
     panda_root_core_work_dir_name = "__panda_rootCoreWorkDir"
-    root_core_dest_work_dir = f"{cur_dir}/{panda_root_core_work_dir_name}"
+    root_core_dest_work_dir = f"{current_dir}/{panda_root_core_work_dir_name}"
     # ship everything in it, including the files skipped by default (.o, .a, .so, .root, large files)
     options.extFile.append(f"{panda_root_core_work_dir_name}/.*")
     # the copy is only needed for the sandbox
@@ -108,7 +108,7 @@ def _copy_root_core_packages(options, cur_dir, files_to_delete_on_exit, tmp_log)
         shutil.copy(root_core_compile_nb_sh, root_core_dest_work_dir)
 
 
-def _archive_athena_packages(options, cur_dir, tmp_dir, run_dir, work_area, group_area):
+def _archive_athena_packages(options, current_dir, tmp_dir, run_dir, work_area, group_area):
     """Archive the packages of the Athena work area into the sandbox tarball, for --useAthenaPackages
 
     Creates <tmp_dir>/sources.<uuid>.tar, or jobO.<uuid>.tar with --noBuild when CMake isn't used.
@@ -117,7 +117,7 @@ def _archive_athena_packages(options, cur_dir, tmp_dir, run_dir, work_area, grou
 
     args:
         options: parsed prun options
-        cur_dir: directory where prun was started
+        current_dir: directory where prun was started
         tmp_dir: temporary directory where the tarball is made
         run_dir: run directory relative to the work area
         work_area: Athena work area
@@ -142,7 +142,7 @@ def _archive_athena_packages(options, cur_dir, tmp_dir, run_dir, work_area, grou
         archive_name, archive_full_name = AthenaUtils.archiveSourceFiles(
             work_area,
             run_dir,
-            cur_dir,
+            current_dir,
             tmp_dir,
             options.verbose,
             options.gluePackages,
@@ -154,7 +154,7 @@ def _archive_athena_packages(options, cur_dir, tmp_dir, run_dir, work_area, grou
         archive_name, archive_full_name = AthenaUtils.archiveJobOFiles(
             work_area,
             run_dir,
-            cur_dir,
+            current_dir,
             tmp_dir,
             options.verbose,
             archiveName=archive_name,
@@ -245,7 +245,7 @@ def _gather_work_dir_files(options, arch_start_dir, tmp_dir, athena_archive_name
     return work_dir_files
 
 
-def create_sandbox_archive(options, cur_dir, tmp_dir, run_dir, work_area, group_area, files_to_delete_on_exit, tmp_log):
+def create_sandbox_archive(options, current_dir, tmp_dir, run_dir, work_area, group_area, files_to_delete_on_exit, tmp_log):
     """Archive the user files into the sandbox tarball
 
     Copies the RootCore packages with --useRootCore, archives the Athena packages with --useAthenaPackages,
@@ -255,7 +255,7 @@ def create_sandbox_archive(options, cur_dir, tmp_dir, run_dir, work_area, group_
 
     args:
         options: parsed prun options
-        cur_dir: directory where prun was started
+        current_dir: directory where prun was started
         tmp_dir: temporary directory where the tarball is made
         run_dir: run directory relative to the work area
         work_area: Athena work area, used only with --useAthenaPackages
@@ -269,12 +269,12 @@ def create_sandbox_archive(options, cur_dir, tmp_dir, run_dir, work_area, group_
     from pandaclient import AthenaUtils, PsubUtils
 
     if options.useRootCore:
-        _copy_root_core_packages(options, cur_dir, files_to_delete_on_exit, tmp_log)
+        _copy_root_core_packages(options, current_dir, files_to_delete_on_exit, tmp_log)
 
     # without --useAthenaPackages the tarball is named after gathering the files below
     archive_name, archive_full_name = "", ""
     if options.useAthenaPackages:
-        archive_name, archive_full_name = _archive_athena_packages(options, cur_dir, tmp_dir, run_dir, work_area, group_area)
+        archive_name, archive_full_name = _archive_athena_packages(options, current_dir, tmp_dir, run_dir, work_area, group_area)
 
     # gather normal files
     if options.useAthenaPackages:
@@ -614,7 +614,7 @@ def _build_task_params(
     options,
     work_env,
     archive_name,
-    included_site,
+    included_sites,
     full_exec_string,
     files_to_be_used,
     tmp_log,
@@ -626,7 +626,7 @@ def _build_task_params(
         options: parsed prun options, already validated and normalized by main
         work_env: _WorkEnv with the run directory and the Athena setup
         archive_name: name of the uploaded sandbox, or None when no sandbox is sent
-        included_site: sites given with --site
+        included_sites: sites given with --site
         full_exec_string: the full prun command line, stored in the task
         files_to_be_used: input file names from --inputFileList
         tmp_log: logger
@@ -641,7 +641,7 @@ def _build_task_params(
         processing_type = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-cont"
     else:
         processing_type = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-run"
-    set_common_task_params(options, task_param_map, processing_type, included_site, full_exec_string, archive_name)
+    set_common_task_params(options, task_param_map, processing_type, included_sites, full_exec_string, archive_name)
     if options.vo is None:
         task_param_map["vo"] = "atlas"
     else:
@@ -761,25 +761,25 @@ class _WorkEnv:
     cmt_config: str = ""
 
 
-def _resolve_work_env(options, cur_dir, tmp_log):
+def _resolve_work_env(options, current_dir, tmp_log):
     """
     Find the run directory and the Athena setup, and set options.cmtConfig
 
     args:
-        options: parsed prun options, with options.workDir already resolved and containing cur_dir
-        cur_dir: directory where prun was started
+        options: parsed prun options, with options.workDir already resolved and containing current_dir
+        current_dir: directory where prun was started
         tmp_log: logger
     returns:
-        _WorkEnv. Exits with EC_Config when the Athena setup is missing or doesn't match cur_dir or --cmtConfig
+        _WorkEnv. Exits with EC_Config when the Athena setup is missing or doesn't match current_dir or --cmtConfig
     """
     # imported here as in main: importing Client resolves the panda cache host
     from pandaclient import AthenaUtils
 
     work_env = _WorkEnv()
-    if cur_dir != options.workDir:
+    if current_dir != options.workDir:
         # remove special characters
         w_dir_string = re.sub(r"[\+]", ".", options.workDir)
-        work_env.run_dir = re.sub(f"^{w_dir_string}/", "", cur_dir)
+        work_env.run_dir = re.sub(f"^{w_dir_string}/", "", current_dir)
 
     if options.useAthenaPackages:
         # get Athena versions
@@ -795,8 +795,8 @@ def _resolve_work_env(options, cur_dir, tmp_log):
         work_env.cmt_config = athena_env["cmtConfig"]
         # the run directory is relative to the work area instead
         s_string = re.sub(r"[\+]", ".", work_env.work_area)
-        run_dir = re.sub(f"^{s_string}", "", cur_dir)
-        if run_dir == cur_dir:
+        run_dir = re.sub(f"^{s_string}", "", current_dir)
+        if run_dir == current_dir:
             error_message = (
                 f"You need to run prun in a directory under {work_env.work_area}. "
                 f"If {work_env.work_area} is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup."
@@ -854,13 +854,13 @@ def _remove_on_exit(tmp_dir, files, del_command):
     del_command(f"rm -rf {tmp_dir}")
 
 
-def _make_tmp_dir(options, cur_dir, files_to_delete):
+def _make_tmp_dir(options, current_dir, files_to_delete):
     """
-    Make a uniquely named temporary directory under --tmpDir, or under cur_dir by default
+    Make a uniquely named temporary directory under --tmpDir, or under current_dir by default
 
     The directory is removed at exit, together with files_to_delete, including the files added to the list later
     """
-    parent_dir = cur_dir if options.tmpDir == "" else os.path.abspath(options.tmpDir)
+    parent_dir = current_dir if options.tmpDir == "" else os.path.abspath(options.tmpDir)
     tmp_dir = f"{parent_dir}/{MiscUtils.wrappedUuidGen()}"
     os.makedirs(tmp_dir)
     atexit.register(_remove_on_exit, tmp_dir, files_to_delete, MiscUtils.commands_get_output)
@@ -899,6 +899,138 @@ def _request_event_picking(options, full_exec_string, tmp_log):
         )
     tmp_log.info(f"requested Event Picking service to stage input as {dataset}")
     return dataset
+
+
+def _apply_implied_options(options, tmp_log):
+    """Set the options implied by other options"""
+    # noCompile uses noBuild stuff
+    if options.noCompile:
+        options.noBuild = True
+
+    # not skip log files in inDS
+    if options.notSkipLog:
+        options.useLogAsInput = True
+
+    # old container execution mode
+    if options.oldContMode:
+        options.alrb = False
+
+    # use runGen
+    if options.useAthenaPackages and options.alrb:
+        options.directExecInContainer = False
+
+    # container stuff
+    if options.containerImage != "":
+        options.noBuild = True
+        if options.alrb:
+            options.useSandbox = True
+        if not options.useSandbox:
+            tmp_log.warning(
+                "Files in the run directory are not sent out by default when --containerImage is used. "
+                "Please use --useSandbox if you need those files on the grid."
+            )
+
+
+def _check_and_normalize_options(options, tmp_log):
+    """
+    Check and normalize the dataset, DBRelease, ROOT, --writeInputToTxt, and --persistentFile options
+
+    Exits with EC_Config on invalid options
+    """
+    # enforce to use output dataset container
+    if not options.outDS.endswith("/"):
+        options.outDS = f"{options.outDS}/"
+
+    # absolute path for PFN list
+    if options.pfnList != "":
+        options.pfnList = os.path.realpath(options.pfnList)
+
+    # extract DBR from exec
+    dbr_match = re.search("%DB:([^ '\";]+)", options.jobParams)
+    if dbr_match is not None:
+        options.dbRelease = dbr_match.group(1)
+        options.notExpandDBR = True
+
+    # check DBRelease, good run list, and event picking
+    check_input_options(options, tmp_log)
+
+    # check rootVer
+    if options.rootVer != "":
+        if options.useAthenaPackages or options.athenaTag:
+            tmp_log.warning(
+                "--rootVer is ignored when --athenaTag or --useAthenaPackages is used, not to break the runtime environment by superseding the root version"
+            )
+            options.rootVer = ""
+        else:
+            # change / to .
+            options.rootVer = options.rootVer.replace("/", ".")
+
+    # check writeInputToTxt: comma-separated StreamName:FileName, % removed
+    if options.writeInputToTxt != "":
+        options.writeInputToTxt = options.writeInputToTxt.replace("%", "")
+        for stream_and_file in options.writeInputToTxt.split(","):
+            if len(stream_and_file.split(":")) != 2:
+                tmp_log.error(f"invalid StreamName:FileName in --writeInputToTxt : {stream_and_file}")
+                sys.exit(MiscUtils.EC_Config)
+
+    # remove whitespaces
+    options.inDS = options.inDS.replace(" ", "")
+
+    # persistent file
+    if options.persistentFile:
+        options.persistentFile = f"{options.persistentFile}:sources.{MiscUtils.wrappedUuidGen()}.__ow__"
+
+
+def _check_files_per_job(options, tmp_log):
+    """Warn about very few files per job, and cap --nFilesPerJob at --maxNFilesPerJob"""
+    if 0 < options.nFilesPerJob < 5:
+        tmp_log.warning(
+            "Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
+            "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
+        )
+
+    if options.maxNFilesPerJob < 5:
+        tmp_log.warning(
+            "Very small --maxNFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
+            "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
+        )
+
+    if options.nFilesPerJob and options.nFilesPerJob > options.maxNFilesPerJob:
+        tmp_log.warning("--nFilesPerJob cannot be larger than --maxNFilesPerJob. It is set to the value of --maxNFilesPerJob")
+        options.nFilesPerJob = options.maxNFilesPerJob
+
+
+def _glob_to_regex(pattern):
+    """Convert a file name pattern with * as wildcard to a regular expression"""
+    return pattern.replace(".", r"\.").replace("*", ".*")
+
+
+def _normalize_file_patterns(options):
+    """Convert the --extFile, --match, and --antiMatch patterns to regular expressions, and process the other sandbox options"""
+    # additional files: comma-separated, only * is converted, so . matches any character
+    options.extFile = [pattern.replace("*", ".*") for pattern in options.extFile.split(",")] if options.extFile != "" else []
+
+    # merge script, glue packages, and excluded files
+    process_sandbox_options(options)
+
+    # LFN matching and anti-matching
+    options.match = _glob_to_regex(options.match)
+    options.antiMatch = _glob_to_regex(options.antiMatch)
+
+
+def _check_exec_and_out_ds(options, tmp_log):
+    """Check that --exec and --outDS are given, exits with EC_Config otherwise"""
+    if options.jobParams == "":
+        tmp_log.error("you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
+        sys.exit(MiscUtils.EC_Config)
+
+    # replace : to = for backward compatibility
+    options.jobParams = re.sub("%RNDM:", "%RNDM=", options.jobParams)
+
+    # --outDS already ends with / here, so this doesn't catch an empty --outDS
+    if options.outDS == "":
+        tmp_log.error("no outDS is given\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
+        sys.exit(MiscUtils.EC_Config)
 
 
 def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False):
@@ -957,32 +1089,8 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     if options.intrSrv:
         Client.useIntrServer()
 
-    # noCompile uses noBuild stuff
-    if options.noCompile:
-        options.noBuild = True
-
-    # not skip log files in inDS
-    if options.notSkipLog:
-        options.useLogAsInput = True
-
-    # old container execution mode
-    if options.oldContMode:
-        options.alrb = False
-
-    # use runGen
-    if options.useAthenaPackages and options.alrb:
-        options.directExecInContainer = False
-
-    # container stuff
-    if options.containerImage != "":
-        options.noBuild = True
-        if options.alrb:
-            options.useSandbox = True
-        if not options.useSandbox:
-            tmp_log.warning(
-                "Files in the run directory are not sent out by default when --containerImage is used. "
-                "Please use --useSandbox if you need those files on the grid."
-            )
+    # options implied by other options
+    _apply_implied_options(options, tmp_log)
 
     # validate --transferType
     invalid = get_invalid_transfer_types(options.transferType)
@@ -992,14 +1100,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # files to be deleted
     files_to_delete = []
 
-    # save current dir
-    cur_dir = os.path.realpath(os.getcwd())
+    # save current dir, where prun was started
+    current_dir = os.path.realpath(os.getcwd())
 
     # remove spaces
     options.outputs = options.outputs.replace(" ", "")
 
-    # site, memory, and input options handled the same way as in the other tool
-    included_site = process_common_options(options, tmp_log)
+    # site, memory, and input options handled the same way as in the other tools (e.g. pathena)
+    included_sites = process_common_options(options, tmp_log)
 
     # set maxNFilesPerJob
     PsubUtils.limit_maxNumInputs = options.maxNFilesPerJob
@@ -1007,73 +1115,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # bulk submission
     io_list = get_bulk_io_list(options, tmp_log)
 
-    # enforce to use output dataset container
-    if not options.outDS.endswith("/"):
-        options.outDS = f"{options.outDS}/"
-
-    # absolute path for PFN list
-    if options.pfnList != "":
-        options.pfnList = os.path.realpath(options.pfnList)
-
-    # extract DBR from exec
-    tmp_match = re.search("%DB:([^ '\";]+)", options.jobParams)
-    if tmp_match is not None:
-        options.dbRelease = tmp_match.group(1)
-        options.notExpandDBR = True
-
-    # check DBRelease, good run list, and event picking
-    check_input_options(options, tmp_log)
-
-    # check rootVer
-    if options.rootVer != "":
-        if options.useAthenaPackages or options.athenaTag:
-            tmp_log.warning(
-                "--rootVer is ignored when --athenaTag or --useAthenaPackages is used, not to break the runtime environment by superseding the root version"
-            )
-            options.rootVer = ""
-        else:
-            # change / to .
-            options.rootVer = options.rootVer.replace("/", ".")
-
-    # check writeInputToTxt
-    if options.writeInputToTxt != "":
-        # remove %
-        options.writeInputToTxt = options.writeInputToTxt.replace("%", "")
-        # loop over all StreamName:FileName
-        for tmp_item in options.writeInputToTxt.split(","):
-            tmp_items = tmp_item.split(":")
-            if len(tmp_items) != 2:
-                tmp_log.error(f"invalid StreamName:FileName in --writeInputToTxt : {tmp_item}")
-                sys.exit(MiscUtils.EC_Config)
+    # dataset, DBRelease, ROOT, --writeInputToTxt, and --persistentFile options
+    _check_and_normalize_options(options, tmp_log)
 
     # read list of files to be used
     files_to_be_used = _read_file_list(options.inputFileList) if options.inputFileList != "" else []
 
-    # remove whitespaces
-    if options.inDS != "":
-        options.inDS = options.inDS.replace(" ", "")
-
-    # persistent file
-    if options.persistentFile:
-        options.persistentFile = f"{options.persistentFile}:sources.{MiscUtils.wrappedUuidGen()}.__ow__"
-
-    # warning
-    if 0 < options.nFilesPerJob < 5:
-        tmp_log.warning(
-            "Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
-            "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
-        )
-
-    if options.maxNFilesPerJob < 5:
-        tmp_log.warning(
-            "Very small --maxNFilesPerJob tends to generate so many short jobs which could send your task to exhausted state "
-            "after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option."
-        )
-
-    # warning for nFilesPerJob
-    if options.nFilesPerJob and options.nFilesPerJob > options.maxNFilesPerJob:
-        tmp_log.warning("--nFilesPerJob cannot be larger than --maxNFilesPerJob. It is set to the value of --maxNFilesPerJob")
-        options.nFilesPerJob = options.maxNFilesPerJob
+    # files per job
+    _check_files_per_job(options, tmp_log)
 
     # check grid-proxy
     if not dry_mode:
@@ -1087,11 +1136,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     # check working dir
     options.workDir = os.path.realpath(options.workDir)
-    if options.workDir != cur_dir and (not cur_dir.startswith(f"{options.workDir}/")):
+    if options.workDir != current_dir and (not current_dir.startswith(f"{options.workDir}/")):
         tmp_log.error(f"you need to run prun in a directory under {options.workDir}")
         sys.exit(MiscUtils.EC_Config)
 
-    # avoid gathering the home dir
+    # avoid gathering the home dir, unless user confirms
     _confirm_home_dir_upload(options, dry_mode, tmp_log)
 
     # check maxCpuCount
@@ -1100,55 +1149,20 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         sys.exit(MiscUtils.EC_Config)
 
     # create tmp dir, removed at exit
-    tmp_dir = _make_tmp_dir(options, cur_dir, files_to_delete)
+    tmp_dir = _make_tmp_dir(options, current_dir, files_to_delete)
 
     # run directory, Athena setup, and CMTCONFIG
-    work_env = _resolve_work_env(options, cur_dir, tmp_log)
+    work_env = _resolve_work_env(options, current_dir, tmp_log)
 
     # event picking: the picked events are the input dataset
     if options.eventPickEvtList != "":
         options.inDS = _request_event_picking(options, full_exec_string, tmp_log)
 
-    # additional files
-    if options.extFile == "":
-        options.extFile = []
-    else:
-        tmp_items = options.extFile.split(",")
-        options.extFile = []
-        # convert * to .*
-        for tmp_item in tmp_items:
-            options.extFile.append(tmp_item.replace("*", ".*"))
+    # sandbox and input file patterns
+    _normalize_file_patterns(options)
 
-    # merge script, glue packages, and excluded files
-    process_sandbox_options(options)
-
-    # LFN matching
-    if options.match != "":
-        # convert . to \.
-        options.match = options.match.replace(".", r"\.")
-        # convert * to .*
-        options.match = options.match.replace("*", ".*")
-
-    # LFN anti-matching
-    if options.antiMatch != "":
-        # convert . to \.
-        options.antiMatch = options.antiMatch.replace(".", r"\.")
-        # convert * to .*
-        options.antiMatch = options.antiMatch.replace("*", ".*")
-
-    # get job script
-    if options.jobParams == "":
-        tmp_log.error("you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
-        sys.exit(MiscUtils.EC_Config)
-
-    # replace : to = for backward compatibility
-    for optional_arg in ["RNDM"]:
-        options.jobParams = re.sub(f"%{optional_arg}:", f"%{optional_arg}=", options.jobParams)
-
-    # check output dataset
-    if options.outDS == "":
-        tmp_log.error("no outDS is given\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'")
-        sys.exit(MiscUtils.EC_Config)
+    # --exec and --outDS
+    _check_exec_and_out_ds(options, tmp_log)
 
     # check PFN list options
     check_pfn_list_options(options, tmp_log)
@@ -1157,10 +1171,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     parse_secondary_datasets(options, tmp_log)
 
     # reusable secondary streams
-    if options.reusableSecondary == "":
-        options.reusableSecondary = []
-    else:
-        options.reusableSecondary = options.reusableSecondary.split(",")
+    options.reusableSecondary = options.reusableSecondary.split(",") if options.reusableSecondary != "" else []
 
     # get nickname
     nickname = "dummy"
@@ -1187,13 +1198,13 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     if (options.containerImage == "" or options.useSandbox) and not dry_mode:
         if options.inTarBall == "" and options.tarBallViaDDM == "":
             archive_name = create_sandbox_archive(
-                options, cur_dir, tmp_dir, work_env.run_dir, work_env.work_area, work_env.group_area, files_to_delete, tmp_log
+                options, current_dir, tmp_dir, work_env.run_dir, work_env.work_area, work_env.group_area, files_to_delete, tmp_log
             )
         else:
             archive_name, _ = PsubUtils.use_existing_sandbox(options, tmp_dir)
 
         # save for --outTarBall, and upload the sandbox and the good run list
-        archive_name = PsubUtils.upload_sandbox(options, archive_name, cur_dir, tmp_log, files_to_delete, use_cache_srv=options.vo is None)
+        archive_name = PsubUtils.upload_sandbox(options, archive_name, current_dir, tmp_log, files_to_delete, use_cache_srv=options.vo is None)
 
     #####################################################################
     # make task
@@ -1201,7 +1212,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         options,
         work_env=work_env,
         archive_name=archive_name,
-        included_site=included_site,
+        included_sites=included_sites,
         full_exec_string=full_exec_string,
         files_to_be_used=files_to_be_used,
         tmp_log=tmp_log,
@@ -1258,7 +1269,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             with open(os.path.expanduser(options.dumpTaskParams), "w") as f:
                 json.dump(new_task_param_map, f)
         if get_taskparams:
-            os.chdir(cur_dir)
+            os.chdir(current_dir)
             try:
                 shutil.rmtree(tmp_dir)
             except Exception:
@@ -1269,7 +1280,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         dump_list.append(PsubUtils.make_dump_item(options, exit_code, tmp_output, task_id, i_submission, len(io_list)))
 
     # go back to current dir
-    os.chdir(cur_dir)
+    os.chdir(current_dir)
     # dump
     if options.dumpJson is not None:
         with open(os.path.expanduser(options.dumpJson), "w") as f:

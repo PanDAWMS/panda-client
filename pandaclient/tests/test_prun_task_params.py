@@ -120,6 +120,19 @@ CASES = {
     "athena_cwd_is_work_area": {"args": IN + ["--outputs", "o.root", "--useAthenaPackages", "--mergeOutput"] + CMT_CONFIG, "cwd": "work"},
     "athena_cwd_outside_work_area": {"args": IN + ["--outputs", "o.root", "--useAthenaPackages"] + CMT_CONFIG, "work_area": "/somewhere/else"},
     "athena_no_env": {"args": IN + ["--outputs", "o.root", "--useAthenaPackages"] + CMT_CONFIG, "no_athena_env": True},
+    "not_skip_log": IN + ["--outputs", "o.root", "--notSkipLog"],
+    "athena_packages_container": IN + ["--outputs", "o.root", "--useAthenaPackages", "--containerImage", "docker://busybox"] + CMT_CONFIG,
+    "root_ver_with_athena_tag": IN + ["--outputs", "o.root", "--athenaTag", "AnalysisBase,24.2.10", "--rootVer", "6.30/02"] + CMT_CONFIG,
+    "write_input_percent": IN + ["--outputs", "o.root", "--writeInputToTxt", "%IN:in.txt"],
+    "write_input_bad": IN + ["--outputs", "o.root", "--writeInputToTxt", "IN:a:b"],
+    "files_per_job_clamped": IN + ["--outputs", "o.root", "--nFilesPerJob", "50", "--maxNFilesPerJob", "20"],
+    "small_max_files_per_job": IN + ["--outputs", "o.root", "--maxNFilesPerJob", "3"],
+    "spaces_in_ds_and_outputs": ["--inDS", "data18.a, data18.b", "--outputs", "a.root, b.root"],
+    # the trailing / is added before the empty --outDS check, so the check never triggers
+    "empty_out_ds": IN + ["--outputs", "o.root", "--outDS", ""],
+    # --noCompile implies --noBuild, which doesn't allow a --cmtConfig different from the local one
+    "nocompile_athena_other_cmtconfig": IN + ["--outputs", "o.root", "--useAthenaPackages", "--noCompile", "--cmtConfig", "x86_64-el9-gcc12-opt"],
+    "reusable_secondary_two_streams": IN + ["--outputs", "o.root", "--secondaryDSs", "IN2:3:mc.ds2,IN3:1:mc.ds3", "--reusableSecondary", "IN2,IN3"],
     "event_picking_no_submit": ["--eventPickEvtList", "events.txt", "--eventPickDataType", "AOD", "--outputs", "o.root"],
     "cmake_athena_packages": {
         "args": IN + ["--outputs", "o.root", "--useAthenaPackages", "--mergeOutput", "--noCompile"] + CMT_CONFIG,

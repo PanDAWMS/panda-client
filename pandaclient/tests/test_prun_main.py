@@ -97,6 +97,31 @@ class TestEventPicking(unittest.TestCase):
         self.assertEqual(result["task_params"]["dsForIN"], "dummy")
 
 
+class TestExtFile(unittest.TestCase):
+    """--extFile patterns are comma-separated, with * as wildcard, converted to regular expressions"""
+
+    def ext_file_seen_by_sandbox_options(self, extra_args):
+        seen = []
+        real_process_sandbox_options = PrunScript.process_sandbox_options
+
+        def recording_process_sandbox_options(options):
+            seen.append(list(options.extFile))
+            return real_process_sandbox_options(options)
+
+        run_case(
+            {"args": IN + ["--outputs", "o.root"] + extra_args},
+            extra_patches=[mock.patch.object(PrunScript, "process_sandbox_options", recording_process_sandbox_options)],
+        )
+        self.assertEqual(len(seen), 1)
+        return seen[0]
+
+    def test_patterns(self):
+        self.assertEqual(self.ext_file_seen_by_sandbox_options(["--extFile", "data/*.root,config.json,*"]), ["data/.*.root", "config.json", ".*"])
+
+    def test_no_patterns(self):
+        self.assertEqual(self.ext_file_seen_by_sandbox_options([]), [])
+
+
 class TestTmpDir(unittest.TestCase):
     """prun makes a temporary directory, removed with the other temporary files at exit"""
 
