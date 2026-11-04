@@ -1,4 +1,5 @@
 import atexit
+import dataclasses
 import json
 import os
 import re
@@ -57,8 +58,7 @@ def _copy_root_core_packages(options, cur_dir, files_to_delete_on_exit, tmp_log)
     """
     # $ROOTCOREDIR is set by the RootCore setup, the scripts come from that installation
     if "ROOTCOREDIR" not in os.environ:
-        tmp_err_msg = "$ROOTCOREDIR is not defined in your environment. Please setup RootCore runtime beforehand"
-        tmp_log.error(tmp_err_msg)
+        tmp_log.error("$ROOTCOREDIR is not defined in your environment. Please setup RootCore runtime beforehand")
         sys.exit(MiscUtils.EC_Config)
 
     # grid_submit*.sh copy the packages on the client, grid_compile*.sh build them on the worker node
@@ -98,8 +98,7 @@ def _copy_root_core_packages(options, cur_dir, files_to_delete_on_exit, tmp_log)
     # the output of the script goes to the terminal, as before with os.system
     tmp_stat = subprocess.run([submit_sh, root_core_dest_work_dir]).returncode
     if tmp_stat != 0:
-        tmp_err_msg = f"{submit_sh} failed with {tmp_stat}"
-        tmp_log.error(tmp_err_msg)
+        tmp_log.error(f"{submit_sh} failed with {tmp_stat}")
         sys.exit(MiscUtils.EC_Config)
 
     # ship the scripts used on the worker node
@@ -325,6 +324,502 @@ def create_sandbox_archive(options, cur_dir, tmp_dir, run_dir, work_area, group_
 
 
 # main
+def _join_args(conditional_args):
+    """Join the arguments whose condition is true, each followed by a space as in the rest of the job parameters
+
+    args:
+        conditional_args: list of (condition, argument string)
+    returns:
+        joined arguments, "" when no condition is true
+    """
+    return "".join(f"{arg} " for condition, arg in conditional_args if condition)
+
+
+def _has_cmt_config(options):
+    return options.cmtConfig not in ["", "NULL", None]
+
+
+def _container_multi_step_exec(options):
+    """Steps to run the --exec string directly in the --containerImage container, set up by the pilot with ALRB"""
+    multi_step_exec = {
+        "preprocess": {"command": "${TRF}", "args": "--preprocess ${TRF_ARGS}"},
+        "postprocess": {
+            "command": "${TRF}",
+            "args": "--postprocess ${TRF_ARGS}",
+        },
+        "containerOptions": {
+            "containerExec": 'echo "=== cat exec script ==="; ' "cat __run_main_exec.sh; " "echo; " 'echo "=== exec script ==="; ' "/bin/sh __run_main_exec.sh",
+            "containerImage": options.containerImage,
+        },
+    }
+    if options.alrbArgs is not None:
+        multi_step_exec["containerOptions"]["execArgs"] = options.alrbArgs
+    return multi_step_exec
+
+
+def _output_job_params(options, tmp_log):
+    """Job parameters for the --outputs files
+
+    Each output goes to the dataset <outDS without />_<suffix>/. The suffix is given as Suffix:FileName,
+    or else it is the file name, or a sequence number for regex| outputs. Also warns about --allowNoOutput
+    patterns that match no output.
+
+    args:
+        options: parsed prun options
+        tmp_log: logger
+    returns:
+        list of job parameters, empty without --outputs. Exits with EC_Config on invalid output names
+    """
+    # imported here as in main: importing Client resolves the panda cache host
+    from pandaclient import PsubUtils
+
+    job_params = []
+    if options.outputs != "":
+        out_dataset_name = options.outDS
+        out_map = {}
+        ds_suffix = []
+        ds_index = 0
+        for tmp_lfn in options.outputs.split(","):
+            tmp_ds_suffix = ""
+            if ":" in tmp_lfn:
+                tmp_ds_suffix, tmp_lfn = tmp_lfn.split(":")
+                if tmp_ds_suffix in ds_suffix:
+                    tmp_log.error(f"dataset name suffix '{tmp_ds_suffix}' is used for multiple files in --outputs. each output must have a unique suffix.")
+                    sys.exit(MiscUtils.EC_Config)
+                ds_suffix.append(tmp_ds_suffix)
+            if tmp_lfn.startswith("regex|"):
+                # regex
+                lfn = tmp_lfn
+                if not tmp_ds_suffix:
+                    tmp_ds_suffix = ds_index
+                    ds_index += 1
+            else:
+                tmp_new_lfn = tmp_lfn
+                # change * to XYZ and add .tgz
+                if "*" in tmp_new_lfn:
+                    tmp_new_lfn = tmp_new_lfn.replace("*", "XYZ")
+                    tmp_new_lfn += ".tgz"
+                # disallowed character
+                if "/" in tmp_new_lfn:
+                    tmp_log.error(f"An output file name {tmp_new_lfn} contains '/'.")
+                    sys.exit(MiscUtils.EC_Config)
+                # check invalid characters
+                checked = PsubUtils.check_invalid_char(tmp_new_lfn, is_file=True)
+                if checked is not None:
+                    tmp_log.error(f'An output file name {tmp_new_lfn} contains an invalid character "{checked}".')
+                    sys.exit(MiscUtils.EC_Config)
+                if len(out_dataset_name.split(".")) > 2:
+                    lfn = "{}.{}".format(*out_dataset_name.split(".")[:2])
+                else:
+                    lfn = out_dataset_name[:-1]
+                if options.addNthFieldOfInDSToLFN != "" or options.addNthFieldOfInFileToLFN != "":
+                    lfn += "${MIDDLENAME}"
+                lfn += f".$JEDITASKID._${{SN/P}}.{tmp_new_lfn}"
+                if tmp_ds_suffix == "":
+                    tmp_ds_suffix = tmp_new_lfn
+            dataset = f"{out_dataset_name[:-1]}_{tmp_ds_suffix}/"
+            job_params += MiscUtils.makeJediJobParam(
+                lfn,
+                dataset,
+                "output",
+                hidden=True,
+                destination=options.destSE,
+                token=options.spaceToken,
+                allowNoOutput=options.allowNoOutput,
+            )
+            out_map[tmp_lfn] = lfn
+
+        # runGen renames the files produced by --exec to the output file names
+        job_params.append({"type": "constant", "value": f'-o "{out_map!s}"'})
+        # output files allowed not to be produced
+        job_params += get_allow_no_output_job_params(job_params)
+    for tmp_patt in get_unmatched_allow_no_output_patterns(options.allowNoOutput, job_params):
+        tmp_log.warning(
+            f"--allowNoOutput pattern '{tmp_patt}' matches none of output filename templates "
+            f"{[item['value'] for item in job_params if item.get('param_type') == 'output']}"
+        )
+    return job_params
+
+
+def _input_ds_job_param(options, files_to_be_used):
+    """Job parameter for the --inDS input dataset
+
+    args:
+        options: parsed prun options
+        files_to_be_used: input file names from --inputFileList, empty to use all the files
+    returns:
+        template job parameter
+    """
+    in_ds_param = {
+        "type": "template",
+        "param_type": "input",
+        "value": '-i "${IN/T}"',
+        "dataset": options.inDS,
+        "exclude": r"\.log\.tgz(\.\d+)*$",
+    }
+    if options.useLogAsInput:
+        del in_ds_param["exclude"]
+    if options.notExpandInDS:
+        in_ds_param["consolidate"] = f"{'.'.join(options.outDS.split('.')[:2])}.{MiscUtils.wrappedUuidGen()}/"
+    else:
+        in_ds_param["expand"] = True
+    if options.nSkipFiles != 0:
+        in_ds_param["offset"] = options.nSkipFiles
+    if options.match != "":
+        in_ds_param["include"] = options.match
+    if options.antiMatch != "":
+        if "exclude" in in_ds_param:
+            in_ds_param["exclude"] += f",{options.antiMatch}"
+        else:
+            in_ds_param["exclude"] = options.antiMatch
+    if files_to_be_used != []:
+        in_ds_param["files"] = files_to_be_used
+    return in_ds_param
+
+
+def _exec_job_params(options):
+    """Job parameters for the --exec string, quoted as the -p argument of runGen"""
+    # imported here as in main: importing Client resolves the panda cache host
+    from pandaclient import PsubUtils
+
+    return (
+        [{"type": "constant", "value": '-p "', "padding": False}]
+        + PsubUtils.convertParamStrToJediParam(options.jobParams, {}, "", True, False, includeIO=False)
+        + [{"type": "constant", "value": '"'}]
+    )
+
+
+def _secondary_job_params(options):
+    """Job parameters for the --secondaryDSs datasets
+
+    returns:
+        list of job parameters: one input template per secondary dataset, and --inMap giving runGen
+        the files of each stream, the primary IN stream included
+    """
+    job_params = []
+    in_map = {}
+    stream_names = []
+    if options.inDS != "":
+        in_map["IN"] = "tmp_IN"
+        stream_names.append("IN")
+    for ds_name, secondary_ds in options.secondaryDSs.items():
+        stream_name = secondary_ds["streamName"]
+        job_params += MiscUtils.makeJediJobParam(
+            f"${{{stream_name}}}",
+            ds_name,
+            "input",
+            hidden=True,
+            expand=not options.notExpandSecDSs,
+            include=secondary_ds["pattern"],
+            offset=secondary_ds["nSkip"],
+            nFilesPerJob=secondary_ds["nFiles"],
+            useNumFilesAsRatio=options.useNumFilesInSecDSsAsRatio,
+            reusableAtt=stream_name in options.reusableSecondary,
+            outDS=options.outDS,
+            file_list=secondary_ds["files"],
+        )
+        in_map[stream_name] = f"tmp_{stream_name}"
+        stream_names.append(stream_name)
+    # replace the tmp_ values by the placeholders that JEDI fills with the files of each stream
+    str_in_map = str(in_map)
+    for stream_name in stream_names:
+        str_in_map = str_in_map.replace(f"'tmp_{stream_name}'", f"${{{stream_name}/T}}")
+    job_params.append({"type": "constant", "value": f'--inMap "{str_in_map}"'})
+    return job_params
+
+
+def _run_args(options):
+    """Arguments for runGen in the run jobs, "" if none"""
+    # imported here as in main: importing Client resolves the panda cache host
+    from pandaclient import AthenaUtils
+
+    container_without_alrb = options.containerImage != "" and not options.alrb
+    args = _join_args(
+        [
+            (options.pfnList != "", "--givenPFN"),
+            (options.useAthenaPackages, "--useAthenaPackages"),
+            (AthenaUtils.useCMake(), "--useCMake"),
+            (options.useRootCore, "--useRootCore"),
+            (options.rootVer != "", f"--rootVer {options.rootVer}"),
+            (_has_cmt_config(options), f"--cmtConfig {options.cmtConfig}"),
+            (options.writeInputToTxt != "", f"--writeInputToTxt {options.writeInputToTxt}"),
+            # debug parameters
+            (options.queueData != "", f"--overwriteQueuedata={options.queueData}"),
+            # exec string with real output filenames
+            (options.execWithRealFileNames, "--execWithRealFileNames"),
+        ]
+    )
+    args += get_container_job_params(options)
+    args += _join_args(
+        [
+            (container_without_alrb and options.useCentralRegistry, "--useCentralRegistry=True"),
+            (container_without_alrb and not options.useCentralRegistry and options.notUseCentralRegistry, "--useCentralRegistry=False"),
+            (options.persistentFile, f"--fileToSave={options.persistentFile} --fileToLoad={options.persistentFile}"),
+        ]
+    )
+    return args
+
+
+def _build_args(options, run_dir):
+    """Arguments for buildGen in the build job"""
+    # imported here as in main: importing Client resolves the panda cache host
+    from pandaclient import AthenaUtils
+
+    build_job_parameters = "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r {run_dir} "
+    build_job_parameters += _join_args(
+        [
+            (options.bexec != "", f'--bexec "{quote(options.bexec)}"'),
+            (options.useAthenaPackages, "--useAthenaPackages"),
+            (options.useRootCore, "--useRootCore"),
+            (options.noCompile, "--noCompile"),
+            (AthenaUtils.useCMake(), "--useCMake"),
+            (options.rootVer != "", f"--rootVer {options.rootVer}"),
+            (_has_cmt_config(options), f"--cmtConfig {options.cmtConfig}"),
+            # debug parameters
+            (options.queueData != "", f"--overwriteQueuedata={options.queueData}"),
+        ]
+    )
+    build_job_parameters += get_container_job_params(options)
+    return build_job_parameters
+
+
+def _merge_args(options, run_dir, archive_name):
+    """Arguments for runMerge in the merge jobs"""
+    # imported here as in main: importing Client resolves the panda cache host
+    from pandaclient import AthenaUtils
+
+    merge_job_parameters = f"-r {run_dir} "
+    merge_job_parameters += _join_args(
+        [
+            (options.mergeScript != "", f'-j "{options.mergeScript}"'),
+            (options.mergeSingleFile, "--mergeSingleFile"),
+            (options.rootVer != "", f"--rootVer {options.rootVer}"),
+            (_has_cmt_config(options), f"--cmtConfig {options.cmtConfig}"),
+            (options.useAthenaPackages, "--useAthenaPackages"),
+            (AthenaUtils.useCMake(), "--useCMake"),
+            (options.useRootCore, "--useRootCore"),
+        ]
+    )
+    # where the merge job gets the user files: the container, the build job's lib tarball, or the sandbox
+    if options.containerImage != "" and not options.alrb:
+        merge_job_parameters += get_container_job_params(options)
+    elif use_build_step(options):
+        merge_job_parameters += "-l ${LIB} "
+    else:
+        merge_job_parameters += f"-a {archive_name} --sourceURL ${{SURL}} "
+    return merge_job_parameters
+
+
+def _build_task_params(
+    options,
+    work_env,
+    archive_name,
+    included_site,
+    full_exec_string,
+    files_to_be_used,
+    tmp_log,
+):
+    """
+    Build the task parameters for JEDI from the prun options
+
+    args:
+        options: parsed prun options, already validated and normalized by main
+        work_env: _WorkEnv with the run directory and the Athena setup
+        archive_name: name of the uploaded sandbox, or None when no sandbox is sent
+        included_site: sites given with --site
+        full_exec_string: the full prun command line, stored in the task
+        files_to_be_used: input file names from --inputFileList
+        tmp_log: logger
+    returns:
+        task parameter map. Exits with EC_Config on invalid --outputs
+    """
+    # imported here as in main: importing Client resolves the panda cache host
+    from pandaclient import AthenaUtils, Client
+
+    task_param_map = {}
+    if options.containerImage != "" and not options.alrb:
+        processing_type = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-cont"
+    else:
+        processing_type = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-run"
+    set_common_task_params(options, task_param_map, processing_type, included_site, full_exec_string, archive_name)
+    if options.vo is None:
+        task_param_map["vo"] = "atlas"
+    else:
+        task_param_map["vo"] = options.vo
+    if options.containerImage != "" and options.alrb:
+        task_param_map["architecture"] = options.architecture
+    else:
+        task_param_map["architecture"] = AthenaUtils.getCmtConfigImg(
+            work_env.athena_version,
+            work_env.cache_version,
+            work_env.nightly_version,
+            options.cmtConfig,
+            architecture=options.architecture,
+        )
+    task_param_map["transUses"] = work_env.athena_version
+    if work_env.athena_version != "":
+        task_param_map["transHome"] = f"AnalysisTransforms{work_env.cache_version}{work_env.nightly_version}"
+    else:
+        task_param_map["transHome"] = None
+    if options.msgDriven:
+        task_param_map["messageDriven"] = True
+    if options.workingGroup is not None:
+        # remove role
+        task_param_map["workingGroup"] = options.workingGroup.split(".")[0].split(":")[0]
+    task_param_map["nMaxFilesPerJob"] = options.maxNFilesPerJob
+    if options.useSecrets:
+        task_param_map["useSecrets"] = True
+    # source URL
+    if options.vo is None:
+        set_source_url(task_param_map, Client.baseURLCSRVSSL)
+    else:
+        set_source_url(task_param_map, Client.baseURLSSL)
+
+    if options.containerImage != "" and options.alrb:
+        task_param_map["container_name"] = options.containerImage
+        if options.directExecInContainer:
+            task_param_map["multiStepExec"] = _container_multi_step_exec(options)
+
+    # log
+    if not options.noSeparateLog:
+        set_log_task_params(options, task_param_map)
+
+    # job parameters, in the order runGen gets them
+    job_params = [
+        {"type": "constant", "value": '-j "" --sourceURL ${SURL}'},
+        {"type": "constant", "value": f"-r {work_env.run_dir}"},
+        {"type": "constant", "value": "__delimiter__", "hidden": True},
+    ]
+    task_param_map["jobParameters"] = job_params
+
+    # where the run jobs get the user files: the sandbox with --noBuild, otherwise the build job's lib tarball
+    if options.containerImage == "" or options.useSandbox:
+        if options.noBuild and not options.noCompile:
+            sandbox_arg = f"-a {archive_name}"
+            if options.tarBallViaDDM:
+                sandbox_arg += " --noTarballDownload"
+        else:
+            sandbox_arg = "-l ${LIB}"
+        job_params.append({"type": "constant", "value": sandbox_arg})
+
+    job_params += _output_job_params(options, tmp_log)
+
+    # input
+    if options.inDS != "":
+        job_params.append(_input_ds_job_param(options, files_to_be_used))
+        task_param_map["dsForIN"] = options.inDS
+    elif options.pfnList != "":
+        set_pfn_list_input_params(options, task_param_map)
+    elif options.goodRunListXML != "":
+        set_good_run_list_input_params(task_param_map)
+    else:
+        task_param_map["noInput"] = True
+
+    job_params += _exec_job_params(options)
+    job_params += get_dbr_job_params(options.dbRelease, options.notExpandDBR)
+
+    if options.secondaryDSs != {}:
+        job_params += _secondary_job_params(options)
+        task_param_map["reuseSecOnDemand"] = True
+
+    run_args = _run_args(options)
+    if run_args != "":
+        job_params.append({"type": "constant", "value": run_args})
+
+    # force stage-in
+    if options.forceStaged or options.transferType == "file":
+        task_param_map["useLocalIO"] = 1
+    elif options.useDirectIOSites or options.transferType == "direct":
+        task_param_map["allowInputLAN"] = "only"
+
+    # build step
+    build_args = _build_args(options, work_env.run_dir) if use_build_step(options) else None
+    set_build_task_params(options, task_param_map, archive_name, build_args)
+
+    # preprocessing step
+    set_prepro_task_params(options, task_param_map)
+
+    # merging
+    if options.mergeOutput:
+        set_merge_task_params(options, task_param_map, _merge_args(options, work_env.run_dir, archive_name), tmp_log)
+    return task_param_map
+
+
+@dataclasses.dataclass
+class _WorkEnv:
+    """Where prun runs: the run directory and the Athena setup. The Athena fields are "" when not used"""
+
+    # run directory relative to the work dir, or relative to the work area with a trailing / for --useAthenaPackages
+    run_dir: str = "."
+    # Athena release like Atlas-24.0.10, cache and nightly versions, from --athenaTag or --useAthenaPackages
+    athena_version: str = ""
+    cache_version: str = ""
+    nightly_version: str = ""
+    # only for --useAthenaPackages: areas and CMTCONFIG of the local Athena setup
+    group_area: str = ""
+    work_area: str = ""
+    cmt_config: str = ""
+
+
+def _resolve_work_env(options, cur_dir, tmp_log):
+    """
+    Find the run directory and the Athena setup, and set options.cmtConfig
+
+    args:
+        options: parsed prun options, with options.workDir already resolved and containing cur_dir
+        cur_dir: directory where prun was started
+        tmp_log: logger
+    returns:
+        _WorkEnv. Exits with EC_Config when the Athena setup is missing or doesn't match cur_dir or --cmtConfig
+    """
+    # imported here as in main: importing Client resolves the panda cache host
+    from pandaclient import AthenaUtils
+
+    work_env = _WorkEnv()
+    if cur_dir != options.workDir:
+        # remove special characters
+        w_dir_string = re.sub(r"[\+]", ".", options.workDir)
+        work_env.run_dir = re.sub(f"^{w_dir_string}/", "", cur_dir)
+
+    if options.useAthenaPackages:
+        # get Athena versions
+        has_athena_env, athena_env = AthenaUtils.getAthenaVer()
+        if not has_athena_env:
+            tmp_log.error("You need to setup Athena runtime to use --useAthenaPackages")
+            sys.exit(MiscUtils.EC_Config)
+        work_env.work_area = athena_env["workArea"]
+        work_env.athena_version = f"Atlas-{athena_env['athenaVer']}"
+        work_env.group_area = athena_env["groupArea"]
+        work_env.cache_version = athena_env["cacheVer"]
+        work_env.nightly_version = athena_env["nightVer"]
+        work_env.cmt_config = athena_env["cmtConfig"]
+        # the run directory is relative to the work area instead
+        s_string = re.sub(r"[\+]", ".", work_env.work_area)
+        run_dir = re.sub(f"^{s_string}", "", cur_dir)
+        if run_dir == cur_dir:
+            error_message = (
+                f"You need to run prun in a directory under {work_env.work_area}. "
+                f"If {work_env.work_area} is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup."
+            )
+            tmp_log.error(error_message)
+            sys.exit(MiscUtils.EC_Config)
+        elif run_dir == "":
+            run_dir = "."
+        elif run_dir.startswith("/"):
+            run_dir = run_dir[1:]
+        work_env.run_dir = run_dir + "/"
+    elif options.athenaTag != "":
+        work_env.athena_version, work_env.cache_version, work_env.nightly_version = AthenaUtils.parse_athena_tag(options.athenaTag, options.verbose, tmp_log)
+
+    # set CMTCONFIG
+    options.cmtConfig = AthenaUtils.getCmtConfig(work_env.athena_version, work_env.cache_version, work_env.nightly_version, options.cmtConfig, options.verbose)
+
+    # check CMTCONFIG
+    if not AthenaUtils.checkCmtConfig(work_env.cmt_config, options.cmtConfig, options.noBuild):
+        sys.exit(MiscUtils.EC_Config)
+    return work_env
+
+
 def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False):
     """
     Execute prun command
@@ -365,7 +860,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         sys.exit(0)
 
     # imported after --version: importing Client resolves the panda cache host
-    from pandaclient import AthenaUtils, Client, PLogger, PsubUtils
+    from pandaclient import Client, PLogger, PsubUtils
 
     # full execution string
     fullExecString = PsubUtils.convSysArgv()
@@ -414,7 +909,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         optP.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
 
     # files to be deleted
-    delFilesOnExit = []
+    files_to_delete = []
 
     # save current dir
     curDir = os.path.realpath(os.getcwd())
@@ -531,12 +1026,11 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         and os.path.realpath(os.path.expanduser(os.environ["HOME"])) == options.workDir
         and not dry_mode
     ):
-        tmpStr = (
+        tmp_log.warning(
             "prun is executed just under the HOME directory "
             "and is going to send all files under the dir including ~/Mail/* and ~/private/*. "
             "Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)"
         )
-        tmp_log.warning(tmpStr)
         while True:
             tmpAnswer = input("y/N: ")
             tmpAnswer = tmpAnswer.strip()
@@ -544,13 +1038,6 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
                 break
         if tmpAnswer == "N":
             sys.exit(MiscUtils.EC_Config)
-
-    # run dir
-    runDir = "."
-    if curDir != options.workDir:
-        # remove special characters
-        wDirString = re.sub(r"[\+]", ".", options.workDir)
-        runDir = re.sub(f"^{wDirString}/", "", curDir)
 
     # check maxCpuCount
     if options.maxCpuCount > Client.maxCpuCountLimit:
@@ -570,52 +1057,10 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             del_command(f"rm -rf {tmpFile}")
         del_command(f"rm -rf {dir}")
 
-    atexit.register(_onExit, tmpDir, delFilesOnExit, MiscUtils.commands_get_output)
+    atexit.register(_onExit, tmpDir, files_to_delete, MiscUtils.commands_get_output)
 
-    # parse tag
-    athenaVer = ""
-    cacheVer = ""
-    nightVer = ""
-    groupArea = ""
-    workArea = ""
-    cmtConfig = ""
-    if options.useAthenaPackages:
-        # get Athena versions
-        has_athena_env, athena_env = AthenaUtils.getAthenaVer()
-        # failed
-        if not has_athena_env:
-            tmp_log.error("You need to setup Athena runtime to use --useAthenaPackages")
-            sys.exit(MiscUtils.EC_Config)
-        workArea = athena_env["workArea"]
-        athenaVer = f"Atlas-{athena_env['athenaVer']}"
-        groupArea = athena_env["groupArea"]
-        cacheVer = athena_env["cacheVer"]
-        nightVer = athena_env["nightVer"]
-        cmtConfig = athena_env["cmtConfig"]
-        # override run directory
-        sString = re.sub(r"[\+]", ".", workArea)
-        runDir = re.sub(f"^{sString}", "", curDir)
-        if runDir == curDir:
-            error_message = (
-                f"You need to run prun in a directory under {workArea}. "
-                f"If {workArea} is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup."
-            )
-            tmp_log.error(error_message)
-            sys.exit(MiscUtils.EC_Config)
-        elif runDir == "":
-            runDir = "."
-        elif runDir.startswith("/"):
-            runDir = runDir[1:]
-        runDir = runDir + "/"
-    elif options.athenaTag != "":
-        athenaVer, cacheVer, nightVer = AthenaUtils.parse_athena_tag(options.athenaTag, options.verbose, tmp_log)
-
-    # set CMTCONFIG
-    options.cmtConfig = AthenaUtils.getCmtConfig(athenaVer, cacheVer, nightVer, options.cmtConfig, options.verbose)
-
-    # check CMTCONFIG
-    if not AthenaUtils.checkCmtConfig(cmtConfig, options.cmtConfig, options.noBuild):
-        sys.exit(MiscUtils.EC_Config)
+    # run directory, Athena setup, and CMTCONFIG
+    work_env = _resolve_work_env(options, curDir, tmp_log)
 
     # event picking
     if options.eventPickEvtList != "":
@@ -720,405 +1165,27 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
 
     #####################################################################
     # archive sources and send it to HTTP-reachable location
-
-    # create archive
     archiveName = None
     if (options.containerImage == "" or options.useSandbox) and not dry_mode:
         if options.inTarBall == "" and options.tarBallViaDDM == "":
-            archiveName = create_sandbox_archive(options, curDir, tmpDir, runDir, workArea, groupArea, delFilesOnExit, tmp_log)
+            archiveName = create_sandbox_archive(options, curDir, tmpDir, work_env.run_dir, work_env.work_area, work_env.group_area, files_to_delete, tmp_log)
         else:
             archiveName, _ = PsubUtils.use_existing_sandbox(options, tmpDir)
 
         # save for --outTarBall, and upload the sandbox and the good run list
-        archiveName = PsubUtils.upload_sandbox(options, archiveName, curDir, tmp_log, delFilesOnExit, use_cache_srv=options.vo is None)
+        archiveName = PsubUtils.upload_sandbox(options, archiveName, curDir, tmp_log, files_to_delete, use_cache_srv=options.vo is None)
 
     #####################################################################
     # make task
-    task_param_map = {}
-    if options.containerImage != "" and not options.alrb:
-        processing_type = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-cont"
-    else:
-        processing_type = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-run"
-    set_common_task_params(options, task_param_map, processing_type, includedSite, fullExecString, archiveName)
-    if options.vo is None:
-        task_param_map["vo"] = "atlas"
-    else:
-        task_param_map["vo"] = options.vo
-    if options.containerImage != "" and options.alrb:
-        task_param_map["architecture"] = options.architecture
-    else:
-        task_param_map["architecture"] = AthenaUtils.getCmtConfigImg(
-            athenaVer,
-            cacheVer,
-            nightVer,
-            options.cmtConfig,
-            architecture=options.architecture,
-        )
-    task_param_map["transUses"] = athenaVer
-    if athenaVer != "":
-        task_param_map["transHome"] = f"AnalysisTransforms{cacheVer}{nightVer}"
-    else:
-        task_param_map["transHome"] = None
-    if options.msgDriven:
-        task_param_map["messageDriven"] = True
-    if options.workingGroup is not None:
-        # remove role
-        task_param_map["workingGroup"] = options.workingGroup.split(".")[0].split(":")[0]
-    task_param_map["nMaxFilesPerJob"] = options.maxNFilesPerJob
-    if options.useSecrets:
-        task_param_map["useSecrets"] = True
-    # source URL
-    if options.vo is None:
-        set_source_url(task_param_map, Client.baseURLCSRVSSL)
-    else:
-        set_source_url(task_param_map, Client.baseURLSSL)
-
-    if options.containerImage != "" and options.alrb:
-        task_param_map["container_name"] = options.containerImage
-        if options.directExecInContainer:
-            task_param_map["multiStepExec"] = {
-                "preprocess": {"command": "${TRF}", "args": "--preprocess ${TRF_ARGS}"},
-                "postprocess": {
-                    "command": "${TRF}",
-                    "args": "--postprocess ${TRF_ARGS}",
-                },
-                "containerOptions": {
-                    "containerExec": 'echo "=== cat exec script ==="; '
-                    "cat __run_main_exec.sh; "
-                    "echo; "
-                    'echo "=== exec script ==="; '
-                    "/bin/sh __run_main_exec.sh",
-                    "containerImage": options.containerImage,
-                },
-            }
-            if options.alrbArgs is not None:
-                task_param_map["multiStepExec"]["containerOptions"]["execArgs"] = options.alrbArgs
-
-    outDatasetName = options.outDS
-    # log
-    if not options.noSeparateLog:
-        set_log_task_params(options, task_param_map)
-
-    # job parameters
-    task_param_map["jobParameters"] = [
-        {
-            "type": "constant",
-            "value": '-j "" --sourceURL ${SURL}',
-        },
-        {
-            "type": "constant",
-            "value": f"-r {runDir}",
-        },
-    ]
-
-    # delimiter
-    task_param_map["jobParameters"] += [
-        {"type": "constant", "value": "__delimiter__", "hidden": True},
-    ]
-
-    # build
-    if options.containerImage == "" or options.useSandbox:
-        if options.noBuild and not options.noCompile:
-            tmp_str = f"-a {archiveName}"
-            if options.tarBallViaDDM:
-                tmp_str += " --noTarballDownload"
-        else:
-            tmp_str = "-l ${LIB}"
-        task_param_map["jobParameters"] += [
-            {
-                "type": "constant",
-                "value": tmp_str,
-            },
-        ]
-    # output
-    if options.outputs != "":
-        outMap = {}
-        dsSuffix = []
-        dsIndex = 0
-        for tmpLFN in options.outputs.split(","):
-            tmpDsSuffix = ""
-            if ":" in tmpLFN:
-                tmpDsSuffix, tmpLFN = tmpLFN.split(":")
-                if tmpDsSuffix in dsSuffix:
-                    tmpErrMsg = f"dataset name suffix '{tmpDsSuffix}' is used for multiple files in --outputs. each output must have a unique suffix."
-                    tmp_log.error(tmpErrMsg)
-                    sys.exit(MiscUtils.EC_Config)
-                dsSuffix.append(tmpDsSuffix)
-            if tmpLFN.startswith("regex|"):
-                # regex
-                lfn = tmpLFN
-                if not tmpDsSuffix:
-                    tmpDsSuffix = dsIndex
-                    dsIndex += 1
-            else:
-                tmpNewLFN = tmpLFN
-                # change * to XYZ and add .tgz
-                if "*" in tmpNewLFN:
-                    tmpNewLFN = tmpNewLFN.replace("*", "XYZ")
-                    tmpNewLFN += ".tgz"
-                # disallowed character
-                if "/" in tmpNewLFN:
-                    tmp_err_msg = f"An output file name {tmpNewLFN} contains '/'."
-                    tmp_log.error(tmp_err_msg)
-                    sys.exit(MiscUtils.EC_Config)
-                # check invalid characters
-                checked = PsubUtils.check_invalid_char(tmpNewLFN, is_file=True)
-                if checked is not None:
-                    tmp_err_msg = f'An output file name {tmpNewLFN} contains an invalid character "{checked}".'
-                    tmp_log.error(tmp_err_msg)
-                    sys.exit(MiscUtils.EC_Config)
-                if len(outDatasetName.split(".")) > 2:
-                    lfn = "{}.{}".format(*outDatasetName.split(".")[:2])
-                else:
-                    lfn = outDatasetName[:-1]
-                if options.addNthFieldOfInDSToLFN != "" or options.addNthFieldOfInFileToLFN != "":
-                    lfn += "${MIDDLENAME}"
-                lfn += f".$JEDITASKID._${{SN/P}}.{tmpNewLFN}"
-                if tmpDsSuffix == "":
-                    tmpDsSuffix = tmpNewLFN
-            dataset = f"{outDatasetName[:-1]}_{tmpDsSuffix}/"
-            task_param_map["jobParameters"] += MiscUtils.makeJediJobParam(
-                lfn,
-                dataset,
-                "output",
-                hidden=True,
-                destination=options.destSE,
-                token=options.spaceToken,
-                allowNoOutput=options.allowNoOutput,
-            )
-            outMap[tmpLFN] = lfn
-
-        task_param_map["jobParameters"] += [
-            {
-                "type": "constant",
-                "value": f'-o "{outMap!s}"',
-            },
-        ]
-        # output files allowed not to be produced
-        task_param_map["jobParameters"] += get_allow_no_output_job_params(task_param_map["jobParameters"])
-    for tmpPatt in get_unmatched_allow_no_output_patterns(options.allowNoOutput, task_param_map["jobParameters"]):
-        tmp_log.warning(
-            f"--allowNoOutput pattern '{tmpPatt}' matches none of output filename templates "
-            f"{[item['value'] for item in task_param_map['jobParameters'] if item.get('param_type') == 'output']}"
-        )
-    # input
-    if options.inDS != "":
-        tmpDict = {
-            "type": "template",
-            "param_type": "input",
-            "value": '-i "${IN/T}"',
-            "dataset": options.inDS,
-            "exclude": r"\.log\.tgz(\.\d+)*$",
-        }
-        if options.useLogAsInput:
-            del tmpDict["exclude"]
-        if not options.notExpandInDS:
-            tmpDict["expand"] = True
-        if options.notExpandInDS:
-            tmpDict["consolidate"] = f"{'.'.join(options.outDS.split('.')[:2])}.{MiscUtils.wrappedUuidGen()}/"
-        if options.nSkipFiles != 0:
-            tmpDict["offset"] = options.nSkipFiles
-        if options.match != "":
-            tmpDict["include"] = options.match
-        if options.antiMatch != "":
-            if "exclude" in tmpDict:
-                tmpDict["exclude"] += f",{options.antiMatch}"
-            else:
-                tmpDict["exclude"] = options.antiMatch
-        if filesToBeUsed != []:
-            tmpDict["files"] = filesToBeUsed
-        task_param_map["jobParameters"].append(tmpDict)
-        task_param_map["dsForIN"] = options.inDS
-    elif options.pfnList != "":
-        set_pfn_list_input_params(options, task_param_map)
-    elif options.goodRunListXML != "":
-        set_good_run_list_input_params(task_param_map)
-    else:
-        # no input
-        task_param_map["noInput"] = True
-
-    # exec string
-    task_param_map["jobParameters"] += [
-        {
-            "type": "constant",
-            "value": '-p "',
-            "padding": False,
-        },
-    ]
-    task_param_map["jobParameters"] += PsubUtils.convertParamStrToJediParam(options.jobParams, {}, "", True, False, includeIO=False)
-    task_param_map["jobParameters"] += [
-        {
-            "type": "constant",
-            "value": '"',
-        },
-    ]
-
-    # param for DBR
-    task_param_map["jobParameters"] += get_dbr_job_params(options.dbRelease, options.notExpandDBR)
-
-    # secondary
-    if options.secondaryDSs != {}:
-        inMap = {}
-        streamNames = []
-        if options.inDS != "":
-            inMap["IN"] = "tmp_IN"
-            streamNames.append("IN")
-        for tmpDsName in options.secondaryDSs:
-            tmpMap = options.secondaryDSs[tmpDsName]
-            # make template item
-            streamName = tmpMap["streamName"]
-            if not options.notExpandSecDSs:
-                expandFlag = True
-            else:
-                expandFlag = False
-            # re-usability
-            reusableAtt = False
-            if streamName in options.reusableSecondary:
-                reusableAtt = True
-            dictItem = MiscUtils.makeJediJobParam(
-                f"${{{streamName}}}",
-                tmpDsName,
-                "input",
-                hidden=True,
-                expand=expandFlag,
-                include=tmpMap["pattern"],
-                offset=tmpMap["nSkip"],
-                nFilesPerJob=tmpMap["nFiles"],
-                useNumFilesAsRatio=options.useNumFilesInSecDSsAsRatio,
-                reusableAtt=reusableAtt,
-                outDS=options.outDS,
-                file_list=tmpMap["files"],
-            )
-            task_param_map["jobParameters"] += dictItem
-            inMap[streamName] = f"tmp_{streamName}"
-            streamNames.append(streamName)
-        # make constant item
-        strInMap = str(inMap)
-        # set placeholders
-        for streamName in streamNames:
-            strInMap = strInMap.replace(f"'tmp_{streamName}'", f"${{{streamName}/T}}")
-        dictItem = {
-            "type": "constant",
-            "value": f'--inMap "{strInMap}"',
-        }
-        task_param_map["jobParameters"] += [dictItem]
-        task_param_map["reuseSecOnDemand"] = True
-
-    # misc
-    jobParameters = ""
-    # given PFN
-    if options.pfnList != "":
-        jobParameters += "--givenPFN "
-    # use Athena packages
-    if options.useAthenaPackages:
-        jobParameters += "--useAthenaPackages "
-    # use CMake
-    if AthenaUtils.useCMake():
-        jobParameters += "--useCMake "
-    # use RootCore
-    if options.useRootCore:
-        jobParameters += "--useRootCore "
-    # root
-    if options.rootVer != "":
-        jobParameters += f"--rootVer {options.rootVer} "
-    # cmt config
-    if options.cmtConfig not in ["", "NULL", None]:
-        jobParameters += f"--cmtConfig {options.cmtConfig} "
-    # write input to txt
-    if options.writeInputToTxt != "":
-        jobParameters += f"--writeInputToTxt {options.writeInputToTxt} "
-    # debug parameters
-    if options.queueData != "":
-        jobParameters += f"--overwriteQueuedata={options.queueData} "
-    # exec string with real output filenames
-    if options.execWithRealFileNames:
-        jobParameters += "--execWithRealFileNames "
-    # container
-    jobParameters += get_container_job_params(options)
-    if options.containerImage != "" and not options.alrb:
-        if options.useCentralRegistry:
-            jobParameters += "--useCentralRegistry=True "
-        elif options.notUseCentralRegistry:
-            jobParameters += "--useCentralRegistry=False "
-    # persistent file
-    if options.persistentFile:
-        jobParameters += f"--fileToSave={options.persistentFile} --fileToLoad={options.persistentFile} "
-    # set task param
-    if jobParameters != "":
-        task_param_map["jobParameters"] += [
-            {
-                "type": "constant",
-                "value": jobParameters,
-            },
-        ]
-
-    # force stage-in
-    if options.forceStaged or options.transferType == "file":
-        task_param_map["useLocalIO"] = 1
-    elif options.useDirectIOSites or options.transferType == "direct":
-        task_param_map["allowInputLAN"] = "only"
-
-    # build step
-    build_job_params = None
-    if use_build_step(options):
-        build_job_params = "-i ${IN} -o ${OUT} --sourceURL ${SURL} "
-        build_job_params += f"-r {runDir} "
-        # exec
-        if options.bexec != "":
-            build_job_params += f'--bexec "{quote(options.bexec)}" '
-        # use Athena packages
-        if options.useAthenaPackages:
-            build_job_params += "--useAthenaPackages "
-        # use RootCore
-        if options.useRootCore:
-            build_job_params += "--useRootCore "
-        # no compile
-        if options.noCompile:
-            build_job_params += "--noCompile "
-        # use CMake
-        if AthenaUtils.useCMake():
-            build_job_params += "--useCMake "
-        # root
-        if options.rootVer != "":
-            build_job_params += f"--rootVer {options.rootVer} "
-        # cmt config
-        if options.cmtConfig not in ["", "NULL", None]:
-            build_job_params += f"--cmtConfig {options.cmtConfig} "
-        # debug parameters
-        if options.queueData != "":
-            build_job_params += f"--overwriteQueuedata={options.queueData} "
-        # container
-        build_job_params += get_container_job_params(options)
-    set_build_task_params(options, task_param_map, archiveName, build_job_params)
-
-    # preprocessing step
-    set_prepro_task_params(options, task_param_map)
-
-    # merging
-    if options.mergeOutput:
-        merge_job_params = f"-r {runDir} "
-        if options.mergeScript != "":
-            merge_job_params += f'-j "{options.mergeScript}" '
-        if options.mergeSingleFile:
-            merge_job_params += "--mergeSingleFile "
-        if options.rootVer != "":
-            merge_job_params += f"--rootVer {options.rootVer} "
-        if options.cmtConfig not in ["", "NULL", None]:
-            merge_job_params += f"--cmtConfig {options.cmtConfig} "
-        if options.useAthenaPackages:
-            merge_job_params += "--useAthenaPackages "
-        if AthenaUtils.useCMake():
-            merge_job_params += "--useCMake "
-        if options.useRootCore:
-            merge_job_params += "--useRootCore "
-        if options.containerImage != "" and not options.alrb:
-            merge_job_params += get_container_job_params(options)
-        elif use_build_step(options):
-            merge_job_params += "-l ${LIB} "
-        else:
-            merge_job_params += f"-a {archiveName} "
-            merge_job_params += "--sourceURL ${SURL} "
-        set_merge_task_params(options, task_param_map, merge_job_params, tmp_log)
+    task_param_map = _build_task_params(
+        options,
+        work_env=work_env,
+        archive_name=archiveName,
+        included_site=includedSite,
+        full_exec_string=fullExecString,
+        files_to_be_used=filesToBeUsed,
+        tmp_log=tmp_log,
+    )
 
     #####################################################################
     # submission
@@ -1129,17 +1196,25 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # submit task
     for iSubmission, ioItem in enumerate(ioList):
         if options.verbose:
-            PsubUtils.print_submission_parameters(options.site, athenaVer, groupArea, cacheVer, nightVer, runDir, [("exec", options.jobParams)])
+            PsubUtils.print_submission_parameters(
+                options.site,
+                work_env.athena_version,
+                work_env.group_area,
+                work_env.cache_version,
+                work_env.nightly_version,
+                work_env.run_dir,
+                [("exec", options.jobParams)],
+            )
 
         if len(ioList) == 1:
-            newTaskParamMap = task_param_map
+            new_task_param_map = task_param_map
         else:
             # replace input and output
             options.inDS = ioItem["inDS"]
             options.outDS = ioItem["outDS"]
-            newTaskParamMap = PsubUtils.replaceInputOutput(task_param_map, ioItem["inDS"], ioItem["outDS"], iSubmission)
-        exitCode = 0
-        tmpStr = ""
+            new_task_param_map = PsubUtils.replaceInputOutput(task_param_map, ioItem["inDS"], ioItem["outDS"], iSubmission)
+        exit_code = 0
+        tmp_output = ""
         taskID = None
         # check outDS format
         if not dry_mode and not PsubUtils.checkOutDsName(
@@ -1149,29 +1224,29 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
             options.mergeOutput,
             options.verbose,
         ):
-            tmpStr = f"invalid output datasetname:{options.outDS}"
-            tmp_log.error(tmpStr)
-            exitCode = MiscUtils.EC_Config
+            tmp_output = f"invalid output datasetname:{options.outDS}"
+            tmp_log.error(tmp_output)
+            exit_code = MiscUtils.EC_Config
         # check task parameters
-        if exitCode == 0:
-            exitCode, tmpStr = PsubUtils.checkTaskParam(newTaskParamMap, options.unlimitNumOutputs)
-        if exitCode != 0 and len(ioList) == 1:
-            sys.exit(exitCode)
+        if exit_code == 0:
+            exit_code, tmp_output = PsubUtils.checkTaskParam(new_task_param_map, options.unlimitNumOutputs)
+        if exit_code != 0 and len(ioList) == 1:
+            sys.exit(exit_code)
         if options.noSubmit and options.verbose:
-            PsubUtils.print_task_params(newTaskParamMap, tmp_log)
+            PsubUtils.print_task_params(new_task_param_map, tmp_log)
         if options.dumpTaskParams is not None:
             with open(os.path.expanduser(options.dumpTaskParams), "w") as f:
-                json.dump(newTaskParamMap, f)
+                json.dump(new_task_param_map, f)
         if get_taskparams:
             os.chdir(curDir)
             try:
                 shutil.rmtree(tmpDir)
             except Exception:
                 pass
-            return newTaskParamMap
-        if not options.noSubmit and exitCode == 0:
-            exitCode, tmpStr, taskID = PsubUtils.submit_task(newTaskParamMap, options, tmp_log)
-        dumpList.append(PsubUtils.make_dump_item(options, exitCode, tmpStr, taskID, iSubmission, len(ioList)))
+            return new_task_param_map
+        if not options.noSubmit and exit_code == 0:
+            exit_code, tmp_output, taskID = PsubUtils.submit_task(new_task_param_map, options, tmp_log)
+        dumpList.append(PsubUtils.make_dump_item(options, exit_code, tmp_output, taskID, iSubmission, len(ioList)))
 
     # go back to current dir
     os.chdir(curDir)
@@ -1180,4 +1255,4 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         with open(os.path.expanduser(options.dumpJson), "w") as f:
             json.dump(dumpList, f)
     # succeeded
-    sys.exit(exitCode)
+    sys.exit(exit_code)
