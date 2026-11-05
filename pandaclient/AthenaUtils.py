@@ -1225,7 +1225,7 @@ def convertConfToOutput(
     if extOutFile:
         if extOutStreams is not None:
             if len(extOutStreams) != len(extOutFile):
-                tmpLog.error("Missmatched --outputStreamNames (%s) to ext output files (%s)" % extOutStreams, extOutFile)
+                tmpLog.error("Missmatched --outputStreamNames (%s) to ext output files (%s)" % (extOutStreams, extOutFile))
                 sys.exit(MiscUtils.EC_Config)
             if len(extOutStreams) != len(set(extOutStreams)):
                 tmpLog.error(f"All output stream names indicated with --outputStreamNames ({extOutStreams}) must be different")
