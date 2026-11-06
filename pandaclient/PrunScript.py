@@ -565,7 +565,7 @@ def _build_args(options, run_dir):
     # imported here as in main: importing Client resolves the panda cache host
     from pandaclient import AthenaUtils
 
-    build_job_parameters = "-i ${IN} -o ${OUT} --sourceURL ${SURL} " + f"-r {run_dir} "
+    build_job_parameters = f"-i ${{IN}} -o ${{OUT}} --sourceURL ${{SURL}} -r {run_dir} "
     build_job_parameters += _join_args(
         [
             (options.bexec != "", f'--bexec "{quote(options.bexec)}"'),
