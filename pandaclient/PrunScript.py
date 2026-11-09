@@ -1063,7 +1063,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         unknown_key_exit_code=0,
     )
 
-    # return options
+    # Prun was executed as an option parser
     if get_options:
         return vars(options)
 
@@ -1173,14 +1173,14 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     # reusable secondary streams
     options.reusableSecondary = options.reusableSecondary.split(",") if options.reusableSecondary != "" else []
 
-    # get nickname
+    # get user nickname for Rucio
     nickname = "dummy"
     if not dry_mode:
         nickname = PsubUtils.getNickname()
     if nickname == "":
         sys.exit(MiscUtils.EC_Config)
 
-    # set Rucio accounting
+    # set Rucio account
     PsubUtils.setRucioAccount(nickname, "prun", True)
 
     # check split options
@@ -1193,7 +1193,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     set_n_files_from_n_jobs(options)
 
     #####################################################################
-    # archive sources and send it to HTTP-reachable location
+    # archive sources and send the archive to PanDA cache
     archive_name = None
     if (options.containerImage == "" or options.useSandbox) and not dry_mode:
         if options.inTarBall == "" and options.tarBallViaDDM == "":
@@ -1219,7 +1219,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
     )
 
     #####################################################################
-    # submission
+    # submit the task
 
     exit_code = 0
     dump_list = []
