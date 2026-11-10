@@ -262,7 +262,7 @@ def build_parser():
         action="store",
         dest="persistentFile",
         default="",
-        help="Please don't use this option. Only for junction steps " "to keep persistent information in workflows",
+        help="Please don't use this option. Only for junction steps to keep persistent information in workflows",
     )
     group_build.add_argument(
         "--bexec",

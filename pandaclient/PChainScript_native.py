@@ -125,7 +125,7 @@ def main():
         dest="vomsRoles",
         default=None,
         type=str,
-        help="generate proxy with particular roles. " "e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
+        help="generate proxy with particular roles. e.g., atlas:/atlas/ca/Role=production,atlas:/atlas/fr/Role=pilot",
     )
     group_submit.add_argument("--noEmail", action="store_const", const=True, dest="noEmail", default=False, help="Suppress email notification")
     group_submit.add_argument("--prodSourceLabel", action="store", dest="prodSourceLabel", default="", help="set prodSourceLabel")
@@ -255,10 +255,10 @@ def main():
     tmpOut = MiscUtils.commands_get_output(f"find . {find_opt} | tar cvfz {archiveFullName} --files-from - ")
 
     if options.verbose:
-        print(tmpOut + "\n")
+        print(f"{tmpOut}\n")
         tmpLog.debug("checking sandbox")
         tmpOut = MiscUtils.commands_get_output(f"tar tvfz {archiveFullName}")
-        print(tmpOut + "\n")
+        print(f"{tmpOut}\n")
 
     if not options.noSubmit:
         tmpLog.info("uploading workflow sandbox")
@@ -286,7 +286,7 @@ def main():
     # check if the workflow uses athena packages
     if not options.useAthenaPackages:
         with open(workflow_file) as f:
-            for line in f.readlines():
+            for line in f:
                 if re.search(r"^\s*[^#]\s*opt_useAthenaPackages", line):
                     options.useAthenaPackages = True
                     break

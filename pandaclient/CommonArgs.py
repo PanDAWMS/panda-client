@@ -576,7 +576,7 @@ _COMMON_ARGS = [
             action="store",
             dest="inputFileList",
             default="",
-            help="A local file which specifies names of files to be used in the input dataset. " "One filename per line in the local file",
+            help="A local file which specifies names of files to be used in the input dataset. One filename per line in the local file",
         ),
     ),
     (
@@ -839,7 +839,7 @@ _COMMON_ARGS = [
             dest="maxWalltime",
             default=0,
             type=int,
-            help="Max walltime for each job in hours. Note that this option works only " "when the nevents metadata of input files are available in rucio",
+            help="Max walltime for each job in hours. Note that this option works only when the nevents metadata of input files are available in rucio",
         ),
     ),
 ]
@@ -940,7 +940,7 @@ def load_json_options(options, key_aliases=None, special_keys=(), unknown_key_ex
     if options.verbose:
         print("options after loading json")
         print(options)
-        print("")
+        print()
     return json_exec_str, special_values
 
 
@@ -971,9 +971,9 @@ def process_common_options(options, tmp_log):
         options.excludedSite = PsubUtils.splitCommaConcatenatedItems(options.excludedSite)
 
     # use certain sites. A list of sites is passed as included sites and the brokerage chooses among them
-    included_site = None
+    included_sites = None
     if re.search(",", options.site) is not None:
-        included_site = PsubUtils.splitCommaConcatenatedItems([options.site])
+        included_sites = PsubUtils.splitCommaConcatenatedItems([options.site])
         options.site = "AUTO"
 
     # list of output files which can be skipped
@@ -987,7 +987,7 @@ def process_common_options(options, tmp_log):
     if options.parentTaskID:
         options.notExpandInDS = True
 
-    return included_site
+    return included_sites
 
 
 def check_split_options(options, tmp_log):

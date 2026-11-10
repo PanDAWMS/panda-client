@@ -35,7 +35,7 @@ def main(task_id):
         cmd = f'prun --exec "pwd; ls; echo Hello-world > myout.txt" --outDS {outds} --nJobs 3 --output myout.txt'
 
         res = subprocess.run(cmd, shell=True, text=True, capture_output=True)
-        out = (res.stdout or "") + "\n" + (res.stderr or "")
+        out = f"{res.stdout or ''}\n{res.stderr or ''}"
         print(out)
 
         os.chdir(cwd)  # back to original dir

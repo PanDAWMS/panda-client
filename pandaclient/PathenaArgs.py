@@ -80,7 +80,7 @@ Check the following on how to test container job interactively:
         action="store",
         dest="secondaryDSs",
         default="",
-        help="A versatile option to specify arbitrary secondary inputs that takes a list of " "secondary datasets. See PandaRun wiki page for detail",
+        help="A versatile option to specify arbitrary secondary inputs that takes a list of secondary datasets. See PandaRun wiki page for detail",
     )
     group_input.add_argument(
         "--minDS",

@@ -1,0 +1,4548 @@
+{
+ "no_input": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "nEvents": 1,
+   "nEventsPerJob": 1,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "noInput": true,
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "basic": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs out.root --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.out.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_out.root/",
+     "container": "user.someone.test.v1_out.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'out.root': 'user.someone.$JEDITASKID._${SN/P}.out.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "outputs_mixed": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs \"AAA:out.root,BBB:regex|hist_.*\\.root,log*.txt,plain.txt\" --allowNoOutput plain.txt,nomatch.txt --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.out.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_AAA/",
+     "container": "user.someone.test.v1_AAA/",
+     "hidden": true
+    },
+    {
+     "type": "template",
+     "value": "regex|hist_.*\\.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_BBB/",
+     "container": "user.someone.test.v1_BBB/",
+     "hidden": true
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.logXYZ.txt.tgz",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_logXYZ.txt.tgz/",
+     "container": "user.someone.test.v1_logXYZ.txt.tgz/",
+     "hidden": true
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.plain.txt",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_plain.txt/",
+     "container": "user.someone.test.v1_plain.txt/",
+     "allowNoOutput": true,
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'out.root': 'user.someone.$JEDITASKID._${SN/P}.out.root', 'regex|hist_.*\\\\.root': 'regex|hist_.*\\\\.root', 'log*.txt': 'user.someone.$JEDITASKID._${SN/P}.logXYZ.txt.tgz', 'plain.txt': 'user.someone.$JEDITASKID._${SN/P}.plain.txt'}\""
+    },
+    {
+     "type": "constant",
+     "value": "--allowNoOutput=user.someone.$JEDITASKID._${SN/P}.plain.txt"
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": "--allowNoOutput pattern 'nomatch.txt' matches none of output filename templates ['user.someone.$JEDITASKID._${SN/P}.out.root', 'regex|hist_.*\\\\.root', 'user.someone.$JEDITASKID._${SN/P}.logXYZ.txt.tgz', 'user.someone.$JEDITASKID._${SN/P}.plain.txt']\n"
+ },
+ "outputs_nth_field": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs out.root --addNthFieldOfInDSToLFN 2,3 --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "addNthFieldToLFN": "2,3",
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone${MIDDLENAME}.$JEDITASKID._${SN/P}.out.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_out.root/",
+     "container": "user.someone.test.v1_out.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'out.root': 'user.someone${MIDDLENAME}.$JEDITASKID._${SN/P}.out.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "outputs_bad_slash": {
+  "exit": 10,
+  "output": "An output file name a/b.root contains '/'.\n"
+ },
+ "outputs_dup_suffix": {
+  "exit": 10,
+  "output": "dataset name suffix 'X' is used for multiple files in --outputs. each output must have a unique suffix.\n"
+ },
+ "outputs_short_outds": {
+  "task_params": {
+   "taskName": "user.someone/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outDS user.someone/ --outputs a.root --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.log/",
+    "container": "user.someone.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.a.root",
+     "param_type": "output",
+     "dataset": "user.someone_a.root/",
+     "container": "user.someone_a.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'a.root': 'user.someone.$JEDITASKID._${SN/P}.a.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "input_options": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "nFilesPerJob": 2,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --match \"*.pool.root.*\" --antiMatch \"*.tmp\" --nSkipFiles 3 --nFilesPerJob 2 --inputFileList files.txt --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$,.*\\.tmp",
+     "expand": true,
+     "offset": 3,
+     "include": ".*\\.pool\\.root\\..*",
+     "files": [
+      "f1.root",
+      "f2.root"
+     ]
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": "Very small --nFilesPerJob tends to generate so many short jobs which could send your task to exhausted state after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option.\n"
+ },
+ "input_notexpand_logs": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --notExpandInDS --useLogAsInput --antiMatch \"bad*\" --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "consolidate": "user.someone.UUID0001/",
+     "exclude": "bad.*"
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "secondary": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --secondaryDSs \"IN2:3:mc.ds2,IN3:1:mc.ds3:*.root:2\" --reusableSecondary IN3 --notExpandSecDSs --useNumFilesInSecDSsAsRatio --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "template",
+     "value": "${IN2}",
+     "param_type": "input",
+     "dataset": "mc.ds2",
+     "consolidate": "user.someone.UUID0001/",
+     "ratio": 3,
+     "hidden": true
+    },
+    {
+     "type": "template",
+     "value": "${IN3}",
+     "param_type": "input",
+     "dataset": "mc.ds3",
+     "offset": 2,
+     "include": "*.root",
+     "consolidate": "user.someone.UUID0002/",
+     "ratio": 1,
+     "hidden": true,
+     "reusable": true
+    },
+    {
+     "type": "constant",
+     "value": "--inMap \"{'IN': ${IN/T}, 'IN2': ${IN2/T}, 'IN3': ${IN3/T}}\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "reuseSecOnDemand": true,
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "secondary_no_primary": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "nEvents": 1,
+   "nEventsPerJob": 1,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --secondaryDSs IN2:3:mc.ds2 --outputs o.root --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "template",
+     "value": "${IN2}",
+     "param_type": "input",
+     "dataset": "mc.ds2",
+     "expand": true,
+     "nFilesPerJob": 3,
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "--inMap \"{'IN2': ${IN2/T}}\""
+    }
+   ],
+   "noInput": true,
+   "reuseSecOnDemand": true,
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "secondary_with_pattern_files": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --secondaryDSs \"IN2:2:mc.ds2:*.pool.root:1,IN3:3:mc.ds3\" --useNumFilesInSecDSsAsRatio --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "template",
+     "value": "${IN2}",
+     "param_type": "input",
+     "dataset": "mc.ds2",
+     "offset": 1,
+     "include": "*.pool.root",
+     "expand": true,
+     "ratio": 2,
+     "hidden": true
+    },
+    {
+     "type": "template",
+     "value": "${IN3}",
+     "param_type": "input",
+     "dataset": "mc.ds3",
+     "expand": true,
+     "ratio": 3,
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "--inMap \"{'IN': ${IN/T}, 'IN2': ${IN2/T}, 'IN3': ${IN3/T}}\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "reuseSecOnDemand": true,
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "pfn_list": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": "CERN-PROD",
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --pfnList pfns.txt --outputs o.root --site CERN-PROD --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "constant",
+     "value": "-i \"${IN/T}\""
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--givenPFN "
+    }
+   ],
+   "pfnList": [
+    "root://a/f1.root",
+    "root://a/f2.root"
+   ],
+   "noInput": true,
+   "nFiles": 2,
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": "The grid queue names could change due to consolidation, migration, etc. Please check with the command listAnalyPQ to use only online/valid queues when site and/or excludedSite options are specified.\n"
+ },
+ "pfn_list_no_site": {
+  "exit": 10,
+  "output": "--site must be specified when --pfnList is used\n"
+ },
+ "merge": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --mergeOutput --mergeScript \"hadd %OUT %IN\" --mergeSingleFile --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   },
+   "mergeSpec": {
+    "useLocalIO": 1,
+    "jobParameters": "-r sub -j \"hadd %OUT %IN\" --mergeSingleFile -l ${LIB} ${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}"
+   },
+   "mergeOutput": true
+  },
+  "output": ""
+ },
+ "merge_nobuild": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --mergeOutput --noBuild --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-a None"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "mergeSpec": {
+    "useLocalIO": 1,
+    "jobParameters": "-r sub -a None --sourceURL ${SURL} ${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}"
+   },
+   "mergeOutput": true
+  },
+  "output": ""
+ },
+ "nocompile": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --noCompile --mergeOutput --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub --noCompile "
+   },
+   "mergeSpec": {
+    "useLocalIO": 1,
+    "jobParameters": "-r sub -l ${LIB} ${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}"
+   },
+   "mergeOutput": true
+  },
+  "output": ""
+ },
+ "build_options": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --bexec \"make all && echo 'done'\" --rootVer 6.28/04 --cmtConfig x86_64-el9-gcc13-opt --queueData q.json --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "x86_64-el9-gcc13-opt",
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--rootVer 6.28.04 --cmtConfig x86_64-el9-gcc13-opt --overwriteQueuedata=q.json "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub --bexec \"make%20all%20%26%26%20echo%20%27done%27\" --rootVer 6.28.04 --cmtConfig x86_64-el9-gcc13-opt --overwriteQueuedata=q.json "
+   }
+  },
+  "output": ""
+ },
+ "misc_job_params": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --writeInputToTxt IN:in.txt,IN2:in2.txt --persistentFile state.tgz --execWithRealFileNames --forceStaged --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--writeInputToTxt IN:in.txt,IN2:in2.txt --execWithRealFileNames --fileToSave=state.tgz:sources.UUID0000.__ow__ --fileToLoad=state.tgz:sources.UUID0000.__ow__ "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "useLocalIO": 1,
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "transfer_direct": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --transferType direct --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "transferType": "direct",
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "allowInputLAN": "only",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "direct_io_sites": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --useDirectIOSites --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "allowInputLAN": "only",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "tarball_via_ddm": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --noBuild --tarBallViaDDM user.someone.tarball --mergeOutput --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-a None --noTarballDownload"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "tarBallViaDDM": "user.someone.tarball",
+   "mergeSpec": {
+    "useLocalIO": 1,
+    "jobParameters": "-r sub -a None --sourceURL ${SURL} ${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}"
+   },
+   "mergeOutput": true
+  },
+  "output": ""
+ },
+ "container_alrb": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --containerImage docker://busybox --alrbArgs=--nohome --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "",
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "container_name": "docker://busybox",
+   "multiStepExec": {
+    "preprocess": {
+     "command": "${TRF}",
+     "args": "--preprocess ${TRF_ARGS}"
+    },
+    "postprocess": {
+     "command": "${TRF}",
+     "args": "--postprocess ${TRF_ARGS}"
+    },
+    "containerOptions": {
+     "containerExec": "echo \"=== cat exec script ===\"; cat __run_main_exec.sh; echo; echo \"=== exec script ===\"; /bin/sh __run_main_exec.sh",
+     "containerImage": "docker://busybox",
+     "execArgs": "--nohome"
+    }
+   },
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-a None"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS"
+  },
+  "output": ""
+ },
+ "container_alrb_sandbox_merge": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --containerImage docker://busybox --useSandbox --mergeOutput --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "",
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "container_name": "docker://busybox",
+   "multiStepExec": {
+    "preprocess": {
+     "command": "${TRF}",
+     "args": "--preprocess ${TRF_ARGS}"
+    },
+    "postprocess": {
+     "command": "${TRF}",
+     "args": "--postprocess ${TRF_ARGS}"
+    },
+    "containerOptions": {
+     "containerExec": "echo \"=== cat exec script ===\"; cat __run_main_exec.sh; echo; echo \"=== exec script ===\"; /bin/sh __run_main_exec.sh",
+     "containerImage": "docker://busybox"
+    }
+   },
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-a None"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "mergeSpec": {
+    "useLocalIO": 1,
+    "jobParameters": "-r sub -a None --sourceURL ${SURL} ${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}"
+   },
+   "mergeOutput": true
+  },
+  "output": ""
+ },
+ "container_old_mode": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-cont",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --containerImage docker://busybox --oldContMode --useCentralRegistry --mergeOutput --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--containerImage docker://busybox --useCentralRegistry=True "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "mergeSpec": {
+    "useLocalIO": 1,
+    "jobParameters": "-r sub --containerImage docker://busybox ${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}"
+   },
+   "mergeOutput": true
+  },
+  "output": "Files in the run directory are not sent out by default when --containerImage is used. Please use --useSandbox if you need those files on the grid.\n"
+ },
+ "container_old_not_central": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-cont",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --containerImage docker://busybox --oldContMode --notUseCentralRegistry --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--containerImage docker://busybox --useCentralRegistry=False "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS"
+  },
+  "output": "Files in the run directory are not sent out by default when --containerImage is used. Please use --useSandbox if you need those files on the grid.\n"
+ },
+ "container_old_both_registry": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-cont",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --containerImage docker://busybox --oldContMode --useCentralRegistry --notUseCentralRegistry --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--containerImage docker://busybox --useCentralRegistry=True "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS"
+  },
+  "output": "Files in the run directory are not sent out by default when --containerImage is used. Please use --useSandbox if you need those files on the grid.\n"
+ },
+ "container_old_merge_not_central": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-cont",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --containerImage docker://busybox --oldContMode --notUseCentralRegistry --mergeOutput --ctrCvmfs --persistentFile s.tgz --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--containerImage docker://busybox --cvmfs --useCentralRegistry=False --fileToSave=s.tgz:sources.UUID0000.__ow__ --fileToLoad=s.tgz:sources.UUID0000.__ow__ "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "mergeSpec": {
+    "useLocalIO": 1,
+    "jobParameters": "-r sub --containerImage docker://busybox --cvmfs ${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}"
+   },
+   "mergeOutput": true
+  },
+  "output": "Files in the run directory are not sent out by default when --containerImage is used. Please use --useSandbox if you need those files on the grid.\n"
+ },
+ "container_no_direct_exec": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --containerImage docker://busybox --wrapExecInContainer --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "",
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "container_name": "docker://busybox",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-a None"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS"
+  },
+  "output": ""
+ },
+ "vo_and_misc": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --vo wlcg --workingGroup phys-higgs.role:x --msgDriven --useSecrets --noSeparateLog --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "wlcg",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "messageDriven": true,
+   "workingGroup": "phys-higgs",
+   "nMaxFilesPerJob": 200,
+   "useSecrets": true,
+   "sourceURL": "https://pandaserver.test",
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "dbr_in_exec": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --exec \"run.sh %DB:ddo.000001.Atlas.Ideal.DBRelease.v100:DBRelease-100.tar.gz %IN\" --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20",
+     "padding": false
+    },
+    {
+     "type": "template",
+     "value": "${DBR}",
+     "param_type": "number",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "%20%25IN",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "--dbrFile=${DBR}",
+     "dataset": "ddo.000001.Atlas.Ideal.DBRelease.v100"
+    },
+    {
+     "type": "constant",
+     "value": "--noExpandDBR"
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "dbrelease_opt": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --dbRelease ddo.000001.Atlas.Ideal.DBRelease.v100:DBRelease-100.tar.gz --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "--dbrFile=${DBR}",
+     "dataset": "ddo.000001.Atlas.Ideal.DBRelease.v100"
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "rndm": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "nEvents": 5,
+   "nEventsPerJob": 1,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --exec \"gen.sh %RNDM:100\" --outputs o.root --nJobs 5 --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "gen.sh%20",
+     "padding": false
+    },
+    {
+     "type": "template",
+     "value": "${SEQNUMBER}",
+     "param_type": "pseudo_input",
+     "dataset": "seq_number",
+     "offset": 100,
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "noInput": true,
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "no_exec": {
+  "exit": 10,
+  "output": "you need to give --exec\n  prun [--inDS inputdataset] --outDS outputdataset --exec 'myScript arg1 arg2 ...'\n"
+ },
+ "cwd_is_work_dir": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --mergeOutput --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r ."
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r . "
+   },
+   "mergeSpec": {
+    "useLocalIO": 1,
+    "jobParameters": "-r . -l ${LIB} ${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}"
+   },
+   "mergeOutput": true
+  },
+  "output": ""
+ },
+ "cmake_build_merge": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --mergeOutput --rootVer 6.30.02 --useRootCore --bexec make --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--useCMake --useRootCore --rootVer 6.30.02 "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub --bexec \"make\" --useRootCore --useCMake --rootVer 6.30.02 "
+   },
+   "mergeSpec": {
+    "useLocalIO": 1,
+    "jobParameters": "-r sub --rootVer 6.30.02 --useCMake --useRootCore -l ${LIB} ${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}"
+   },
+   "mergeOutput": true
+  },
+  "output": ""
+ },
+ "athena_tag": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --athenaTag AnalysisBase,24.2.10 --cmtConfig x86_64-el9-gcc13-opt --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "x86_64-el9-gcc13-opt",
+   "transUses": "Atlas-24.2.10",
+   "transHome": "AnalysisTransforms-AnalysisBase_24.2.10",
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--cmtConfig x86_64-el9-gcc13-opt "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub --cmtConfig x86_64-el9-gcc13-opt "
+   }
+  },
+  "output": ""
+ },
+ "athena_tag_verbose": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --athenaTag AnalysisBase,24.2.10 -v --cmtConfig x86_64-el9-gcc13-opt --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "x86_64-el9-gcc13-opt",
+   "transUses": "Atlas-24.2.10",
+   "transHome": "AnalysisTransforms-AnalysisBase_24.2.10",
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--cmtConfig x86_64-el9-gcc13-opt "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub --cmtConfig x86_64-el9-gcc13-opt "
+   }
+  },
+  "output": "\n== parameters ==\nSite       : AUTO\nAthena     : Atlas-24.2.10\nCache      : AnalysisBase_24.2.10\nRunDir     : sub\nexec       : run.sh %IN out.root\narchitecture : x86_64-el9-gcc13-opt\nbuildSpec : {'prodSourceLabel': 'panda', 'archiveName': None, 'jobParameters': '-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub --cmtConfig x86_64-el9-gcc13-opt '}\ncliParams : prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --athenaTag AnalysisBase,24.2.10 -v --cmtConfig x86_64-el9-gcc13-opt --workDir WORK\ndsForIN : data18_13TeV.periodA.DAOD_PHYS\nexcludedSite : []\nincludedSite : None\njobParameters : [{'type': 'constant', 'value': '-j \"\" --sourceURL ${SURL}'}, {'type': 'constant', 'value': '-r sub'}, {'type': 'constant', 'value': '__delimiter__', 'hidden': True}, {'type': 'constant', 'value': '-l ${LIB}'}, {'type': 'template', 'value': 'user.someone.$JEDITASKID._${SN/P}.o.root', 'param_type': 'output', 'dataset': 'user.someone.test.v1_o.root/', 'container': 'user.someone.test.v1_o.root/', 'hidden': True}, {'type': 'constant', 'value': '-o \"{\\'o.root\\': \\'user.someone.$JEDITASKID._${SN/P}.o.root\\'}\"'}, {'type': 'template', 'param_type': 'input', 'value': '-i \"${IN/T}\"', 'dataset': 'data18_13TeV.periodA.DAOD_PHYS', 'exclude': '\\\\.log\\\\.tgz(\\\\.\\\\d+)*$', 'expand': True}, {'type': 'constant', 'value': '-p \"', 'padding': False}, {'type': 'constant', 'value': 'run.sh%20%25IN%20out.root', 'padding': False}, {'type': 'constant', 'value': '\"'}, {'type': 'constant', 'value': '--cmtConfig x86_64-el9-gcc13-opt '}]\nlog : {'dataset': 'user.someone.test.v1.log/', 'container': 'user.someone.test.v1.log/', 'type': 'template', 'param_type': 'log', 'value': 'user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz'}\nnMaxFilesPerJob : 200\nosInfo : TestOS-1.0-x86_64\nprocessingType : panda-client-0.0.0-jedi-run\nprodSourceLabel : user\nrespectSplitRule : True\nsite : None\nsourceURL : https://pandacache.test\ntaskName : user.someone.test.v1/\ntransHome : AnalysisTransforms-AnalysisBase_24.2.10\ntransUses : Atlas-24.2.10\nuniqueTaskName : True\nvo : atlas\n"
+ },
+ "athena_packages": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --useAthenaPackages --cmtConfig x86_64-el9-gcc13-opt --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "x86_64-el9-gcc13-opt",
+   "transUses": "Atlas-24.0.10",
+   "transHome": "AnalysisTransforms_AnalysisBase,24.2.10",
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub/"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--useAthenaPackages --cmtConfig x86_64-el9-gcc13-opt "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub/ --useAthenaPackages --cmtConfig x86_64-el9-gcc13-opt "
+   }
+  },
+  "output": ""
+ },
+ "athena_packages_verbose": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --useAthenaPackages -v --cmtConfig x86_64-el9-gcc13-opt --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "x86_64-el9-gcc13-opt",
+   "transUses": "Atlas-24.0.10",
+   "transHome": "AnalysisTransforms_AnalysisBase,24.2.10",
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub/"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--useAthenaPackages --cmtConfig x86_64-el9-gcc13-opt "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub/ --useAthenaPackages --cmtConfig x86_64-el9-gcc13-opt "
+   }
+  },
+  "output": "\n== parameters ==\nSite       : AUTO\nAthena     : Atlas-24.0.10\nCache      : AnalysisBase,24.2.10\nRunDir     : sub/\nexec       : run.sh %IN out.root\narchitecture : x86_64-el9-gcc13-opt\nbuildSpec : {'prodSourceLabel': 'panda', 'archiveName': None, 'jobParameters': '-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub/ --useAthenaPackages --cmtConfig x86_64-el9-gcc13-opt '}\ncliParams : prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --useAthenaPackages -v --cmtConfig x86_64-el9-gcc13-opt --workDir WORK\ndsForIN : data18_13TeV.periodA.DAOD_PHYS\nexcludedSite : []\nincludedSite : None\njobParameters : [{'type': 'constant', 'value': '-j \"\" --sourceURL ${SURL}'}, {'type': 'constant', 'value': '-r sub/'}, {'type': 'constant', 'value': '__delimiter__', 'hidden': True}, {'type': 'constant', 'value': '-l ${LIB}'}, {'type': 'template', 'value': 'user.someone.$JEDITASKID._${SN/P}.o.root', 'param_type': 'output', 'dataset': 'user.someone.test.v1_o.root/', 'container': 'user.someone.test.v1_o.root/', 'hidden': True}, {'type': 'constant', 'value': '-o \"{\\'o.root\\': \\'user.someone.$JEDITASKID._${SN/P}.o.root\\'}\"'}, {'type': 'template', 'param_type': 'input', 'value': '-i \"${IN/T}\"', 'dataset': 'data18_13TeV.periodA.DAOD_PHYS', 'exclude': '\\\\.log\\\\.tgz(\\\\.\\\\d+)*$', 'expand': True}, {'type': 'constant', 'value': '-p \"', 'padding': False}, {'type': 'constant', 'value': 'run.sh%20%25IN%20out.root', 'padding': False}, {'type': 'constant', 'value': '\"'}, {'type': 'constant', 'value': '--useAthenaPackages --cmtConfig x86_64-el9-gcc13-opt '}]\nlog : {'dataset': 'user.someone.test.v1.log/', 'container': 'user.someone.test.v1.log/', 'type': 'template', 'param_type': 'log', 'value': 'user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz'}\nnMaxFilesPerJob : 200\nosInfo : TestOS-1.0-x86_64\nprocessingType : panda-client-0.0.0-jedi-run\nprodSourceLabel : user\nrespectSplitRule : True\nsite : None\nsourceURL : https://pandacache.test\ntaskName : user.someone.test.v1/\ntransHome : AnalysisTransforms_AnalysisBase,24.2.10\ntransUses : Atlas-24.0.10\nuniqueTaskName : True\nvo : atlas\n"
+ },
+ "athena_packages_merge": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --useAthenaPackages --mergeOutput --rootVer 6.30.02 --cmtConfig x86_64-el9-gcc13-opt --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "x86_64-el9-gcc13-opt",
+   "transUses": "Atlas-24.0.10",
+   "transHome": "AnalysisTransforms_AnalysisBase,24.2.10",
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub/"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--useAthenaPackages --cmtConfig x86_64-el9-gcc13-opt "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub/ --useAthenaPackages --cmtConfig x86_64-el9-gcc13-opt "
+   },
+   "mergeSpec": {
+    "useLocalIO": 1,
+    "jobParameters": "-r sub/ --cmtConfig x86_64-el9-gcc13-opt --useAthenaPackages -l ${LIB} ${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}"
+   },
+   "mergeOutput": true
+  },
+  "output": "--rootVer is ignored when --athenaTag or --useAthenaPackages is used, not to break the runtime environment by superseding the root version\n"
+ },
+ "athena_packages_no_cmtconfig": {
+  "exit": 10,
+  "output": "environment variable CMTCONFIG is undefined. Please set --cmtConfig\n"
+ },
+ "athena_cwd_is_work_area": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --useAthenaPackages --mergeOutput --cmtConfig x86_64-el9-gcc13-opt --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "x86_64-el9-gcc13-opt",
+   "transUses": "Atlas-24.0.10",
+   "transHome": "AnalysisTransforms_AnalysisBase,24.2.10",
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r ./"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--useAthenaPackages --cmtConfig x86_64-el9-gcc13-opt "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r ./ --useAthenaPackages --cmtConfig x86_64-el9-gcc13-opt "
+   },
+   "mergeSpec": {
+    "useLocalIO": 1,
+    "jobParameters": "-r ./ --cmtConfig x86_64-el9-gcc13-opt --useAthenaPackages -l ${LIB} ${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}"
+   },
+   "mergeOutput": true
+  },
+  "output": ""
+ },
+ "athena_cwd_outside_work_area": {
+  "exit": 10,
+  "output": "You need to run prun in a directory under /somewhere/else. If /somewhere/else is a read-only directory, perhaps you did setup Athena without --testarea or the 'here' tag of asetup.\n"
+ },
+ "athena_no_env": {
+  "exit": 10,
+  "output": "You need to setup Athena runtime to use --useAthenaPackages\n"
+ },
+ "not_skip_log": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --notSkipLog --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "athena_packages_container": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --useAthenaPackages --containerImage docker://busybox --cmtConfig x86_64-el9-gcc13-opt --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "",
+   "transUses": "Atlas-24.0.10",
+   "transHome": "AnalysisTransforms_AnalysisBase,24.2.10",
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "container_name": "docker://busybox",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub/"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-a None"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--useAthenaPackages --cmtConfig x86_64-el9-gcc13-opt "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS"
+  },
+  "output": ""
+ },
+ "root_ver_with_athena_tag": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --athenaTag AnalysisBase,24.2.10 --rootVer 6.30/02 --cmtConfig x86_64-el9-gcc13-opt --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "x86_64-el9-gcc13-opt",
+   "transUses": "Atlas-24.2.10",
+   "transHome": "AnalysisTransforms-AnalysisBase_24.2.10",
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--cmtConfig x86_64-el9-gcc13-opt "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub --cmtConfig x86_64-el9-gcc13-opt "
+   }
+  },
+  "output": "--rootVer is ignored when --athenaTag or --useAthenaPackages is used, not to break the runtime environment by superseding the root version\n"
+ },
+ "write_input_percent": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --writeInputToTxt %IN:in.txt --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--writeInputToTxt IN:in.txt "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "write_input_bad": {
+  "exit": 10,
+  "output": "invalid StreamName:FileName in --writeInputToTxt : IN:a:b\n"
+ },
+ "files_per_job_clamped": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "nFilesPerJob": 20,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --nFilesPerJob 50 --maxNFilesPerJob 20 --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 20,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": "--nFilesPerJob cannot be larger than --maxNFilesPerJob. It is set to the value of --maxNFilesPerJob\n"
+ },
+ "small_max_files_per_job": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --maxNFilesPerJob 3 --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 3,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": "Very small --maxNFilesPerJob tends to generate so many short jobs which could send your task to exhausted state after scouts are done, since short jobs are problematic for the grid. Please consider not to use the option.\n"
+ },
+ "spaces_in_ds_and_outputs": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS \"data18.a, data18.b\" --outputs \"a.root, b.root\" --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.a.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_a.root/",
+     "container": "user.someone.test.v1_a.root/",
+     "hidden": true
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.b.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_b.root/",
+     "container": "user.someone.test.v1_b.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'a.root': 'user.someone.$JEDITASKID._${SN/P}.a.root', 'b.root': 'user.someone.$JEDITASKID._${SN/P}.b.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18.a,data18.b",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18.a,data18.b",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "empty_out_ds": {
+  "task_params": {
+   "taskName": "/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --outDS  --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": ".log/",
+    "container": ".log/",
+    "type": "template",
+    "param_type": "log",
+    "value": ".log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": ".$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "_o.root/",
+     "container": "_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': '.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "nocompile_athena_other_cmtconfig": {
+  "exit": 10,
+  "output": "You cannot use --noBuild when --cmtConfig=x86_64-el9-gcc12-opt is inconsistent with local CMTCONFIG=x86_64-el9-gcc13-opt since you need re-compile source files on remote worker-node. Please remove --noBuild\n"
+ },
+ "reusable_secondary_two_streams": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --secondaryDSs IN2:3:mc.ds2,IN3:1:mc.ds3 --reusableSecondary IN2,IN3 --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "template",
+     "value": "${IN2}",
+     "param_type": "input",
+     "dataset": "mc.ds2",
+     "expand": true,
+     "nFilesPerJob": 3,
+     "hidden": true,
+     "reusable": true
+    },
+    {
+     "type": "template",
+     "value": "${IN3}",
+     "param_type": "input",
+     "dataset": "mc.ds3",
+     "expand": true,
+     "nFilesPerJob": 1,
+     "hidden": true,
+     "reusable": true
+    },
+    {
+     "type": "constant",
+     "value": "--inMap \"{'IN': ${IN/T}, 'IN2': ${IN2/T}, 'IN3': ${IN3/T}}\""
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "reuseSecOnDemand": true,
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "event_picking_no_submit": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run-evp",
+   "waitInput": 1,
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --eventPickEvtList events.txt --eventPickDataType AOD --outputs o.root --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": null,
+   "transUses": "",
+   "transHome": null,
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "dummy",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    }
+   ],
+   "dsForIN": "dummy",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub "
+   }
+  },
+  "output": ""
+ },
+ "cmake_athena_packages": {
+  "task_params": {
+   "taskName": "user.someone.test.v1/",
+   "uniqueTaskName": true,
+   "processingType": "panda-client-0.0.0-jedi-run",
+   "prodSourceLabel": "user",
+   "site": null,
+   "excludedSite": [],
+   "includedSite": null,
+   "cliParams": "prun --exec \"run.sh %IN out.root\" --outDS user.someone.test.v1 --noSubmit --inDS data18_13TeV.periodA.DAOD_PHYS --outputs o.root --useAthenaPackages --mergeOutput --noCompile --cmtConfig x86_64-el9-gcc13-opt --workDir WORK",
+   "osInfo": "TestOS-1.0-x86_64",
+   "respectSplitRule": true,
+   "vo": "atlas",
+   "architecture": "x86_64-el9-gcc13-opt",
+   "transUses": "Atlas-24.0.10",
+   "transHome": "AnalysisTransforms_AnalysisBase,24.2.10",
+   "nMaxFilesPerJob": 200,
+   "sourceURL": "https://pandacache.test",
+   "log": {
+    "dataset": "user.someone.test.v1.log/",
+    "container": "user.someone.test.v1.log/",
+    "type": "template",
+    "param_type": "log",
+    "value": "user.someone.test.v1.log.$JEDITASKID.${SN}.log.tgz"
+   },
+   "jobParameters": [
+    {
+     "type": "constant",
+     "value": "-j \"\" --sourceURL ${SURL}"
+    },
+    {
+     "type": "constant",
+     "value": "-r sub/"
+    },
+    {
+     "type": "constant",
+     "value": "__delimiter__",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-l ${LIB}"
+    },
+    {
+     "type": "template",
+     "value": "user.someone.$JEDITASKID._${SN/P}.o.root",
+     "param_type": "output",
+     "dataset": "user.someone.test.v1_o.root/",
+     "container": "user.someone.test.v1_o.root/",
+     "hidden": true
+    },
+    {
+     "type": "constant",
+     "value": "-o \"{'o.root': 'user.someone.$JEDITASKID._${SN/P}.o.root'}\""
+    },
+    {
+     "type": "template",
+     "param_type": "input",
+     "value": "-i \"${IN/T}\"",
+     "dataset": "data18_13TeV.periodA.DAOD_PHYS",
+     "exclude": "\\.log\\.tgz(\\.\\d+)*$",
+     "expand": true
+    },
+    {
+     "type": "constant",
+     "value": "-p \"",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "run.sh%20%25IN%20out.root",
+     "padding": false
+    },
+    {
+     "type": "constant",
+     "value": "\""
+    },
+    {
+     "type": "constant",
+     "value": "--useAthenaPackages --useCMake --cmtConfig x86_64-el9-gcc13-opt "
+    }
+   ],
+   "dsForIN": "data18_13TeV.periodA.DAOD_PHYS",
+   "buildSpec": {
+    "prodSourceLabel": "panda",
+    "archiveName": null,
+    "jobParameters": "-i ${IN} -o ${OUT} --sourceURL ${SURL} -r sub/ --useAthenaPackages --noCompile --useCMake --cmtConfig x86_64-el9-gcc13-opt "
+   },
+   "mergeSpec": {
+    "useLocalIO": 1,
+    "jobParameters": "-r sub/ --cmtConfig x86_64-el9-gcc13-opt --useAthenaPackages --useCMake -l ${LIB} ${TRN_OUTPUT:OUTPUT} ${TRN_LOG:LOG}"
+   },
+   "mergeOutput": true
+  },
+  "output": ""
+ }
+}

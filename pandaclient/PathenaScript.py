@@ -49,7 +49,7 @@ options, args = optP.parse_known_args()
 if options.verbose:
     print(options)
     print(f"args={args}")
-    print("")
+    print()
 
 # load json. athena_args holds the job options and arguments given as positional arguments on the command line
 json_exec_string, json_special_values = load_json_options(options, special_keys=("athena_args",))
@@ -122,7 +122,7 @@ included_sites = process_common_options(options, tmp_log)
 
 # use outputPath as outDS
 if not options.outDS.endswith("/"):
-    options.outDS = options.outDS + "/"
+    options.outDS = f"{options.outDS}/"
 
 # bulk submission
 io_list = get_bulk_io_list(options, tmp_log)
@@ -456,7 +456,7 @@ if not options.trf:
                 options.extOutFile.remove(tmpExtOutFile)
     # add -c
     if options.singleLine:
-        job_options = f'-c "{options.singleLine}" ' + job_options
+        job_options = f'-c "{options.singleLine}" {job_options}'
 else:
     # parse parameters for trf
     # AMI tag
@@ -465,11 +465,11 @@ else:
         match = re.search(" AMI=", trf_command)
         if match is None:
             # use original command
-            new_job_options += trf_command + ";"
+            new_job_options += f"{trf_command};"
         else:
             tmp_log.info("getting configuration from AMI")
             # get configuration using GetCommand.py
-            com = "GetCommand.py " + re.sub("^[^ ]+ ", "", trf_command.strip())
+            com = f"GetCommand.py {re.sub('^[^ ]+ ', '', trf_command.strip())}"
             if options.verbose:
                 tmp_log.debug(com)
             amiSt, amiOut = MiscUtils.commands_get_status_output_with_env(com)
@@ -493,14 +493,14 @@ else:
                 tmp_log.error("Failed to extract configuration from AMI's output")
                 sys.exit(MiscUtils.EC_Config)
             # replace
-            new_job_options += fullCommand + ";"
+            new_job_options += f"{fullCommand};"
     # remove redundant ;
     new_job_options = new_job_options[:-1]
     # replace
     if new_job_options != "":
         job_options = new_job_options
         if options.verbose:
-            tmp_log.debug("new job_options : " + job_options)
+            tmp_log.debug(f"new job_options : {job_options}")
     # output
     oneOut = False
     # replace ; for job sequence
@@ -516,7 +516,7 @@ else:
         match = re.search(r"(--reductionConf|--formats)[ =\"\']+([^ \"\']+)", tmpString)
         if match is not None:
             # remove %OUT from outputDAODFile
-            job_options = job_options.replace("%OUT." + dxaod_output_filename, dxaod_output_filename)
+            job_options = job_options.replace(f"%OUT.{dxaod_output_filename}", dxaod_output_filename)
             # loop over all configs
             reductionConf = match.group(2)
             for reductionItem in reductionConf.split(","):
@@ -618,7 +618,7 @@ if len(runConfig.other.rndmStream) != 0:
         print("Initial random seeds need to be defined.")
         print("Enter two numbers for each random stream.")
         print("  e.g., PYTHIA : 4789899 989240512")
-        print("")
+        print()
     for stream in runConfig.other.rndmStream:
         if options.norandom:
             # enter manually
@@ -633,13 +633,13 @@ if len(runConfig.other.rndmStream) != 0:
             # automatic
             runConfig.other.rndmNumbers.append([random.randint(1, 5000000), random.randint(1, 5000000)])
     if options.norandom:
-        print("")
+        print()
 if runConfig.other.G4RandomSeeds:
     if options.norandom:
-        print("")
+        print()
         print("Initial G4 random seeds need to be defined.")
         print("Enter one positive number.")
-        print("")
+        print()
         # enter manually
         while True:
             num = input("SimFlags.SeedsG4=")
@@ -650,7 +650,7 @@ if runConfig.other.G4RandomSeeds:
                     break
             except Exception:
                 pass
-        print("")
+        print()
     else:
         # automatic
         runConfig.other.G4RandomSeeds = random.randint(1, 10000)
@@ -781,22 +781,8 @@ if options.inTarBall == "" and options.tarBallViaDDM == "":
     os.chdir(tmpDir)
     # remove some athena specific files
     AthenaUtils.deleteAthenaStuff(current_dir)
-    if not os.path.exists(archiveName):
-        MiscUtils.commands_get_status_output(f"tar -cf {archiveName} -T /dev/null")
-    # compress
-    status, out = MiscUtils.commands_get_status_output(f"gzip -f {archiveName}")
-    if status != 0 or options.verbose:
-        print(out)
-    archiveName += ".gz"
-    # check archive
-    status, out = MiscUtils.commands_get_status_output(f"ls -l {archiveName}")
-    if status != 0:
-        print(out)
-        tmp_log.error("Failed to archive working area.\n        If you see 'Disk quota exceeded', try '--tmpDir /tmp'")
-        sys.exit(MiscUtils.EC_Archive)
-
-    # check symlinks
-    PsubUtils.check_sandbox_symlinks(archiveName, tmp_log)
+    # compress and check the sandbox
+    archiveName = PsubUtils.finalize_sandbox(archiveName, options.verbose, tmp_log)
 else:
     archiveName, archiveFullName = PsubUtils.use_existing_sandbox(options, tmpDir)
 
@@ -829,7 +815,7 @@ else:
     task_param_map["architecture"] = options.architecture
     task_param_map["container_name"] = options.containerImage
 task_param_map["transUses"] = athenaVer
-task_param_map["transHome"] = "AnalysisTransforms" + cacheVer + nightVer
+task_param_map["transHome"] = f"AnalysisTransforms{cacheVer}{nightVer}"
 if options.workingGroup is not None:
     task_param_map["workingGroup"] = options.workingGroup
 if options.maxCpuCount > 0:
@@ -974,7 +960,7 @@ if options.inDS != "":
     }
     if options.notExpandInDS:
         del tmpDict["expand"]
-        tmpDict["consolidate"] = ".".join(options.outDS.split(".")[:2]) + "." + MiscUtils.wrappedUuidGen() + "/"
+        tmpDict["consolidate"] = f"{'.'.join(options.outDS.split('.')[:2])}.{MiscUtils.wrappedUuidGen()}/"
     if options.inputType != "":
         tmpDict["include"] = options.inputType
     if options.filelist:
@@ -1242,7 +1228,7 @@ if options.secondaryDSs:
         else:
             expandFlag = False
         dictItem = MiscUtils.makeJediJobParam(
-            "${" + streamName + "}",
+            f"${{{streamName}}}",
             tmpDsName,
             "input",
             hidden=True,
@@ -1308,7 +1294,7 @@ if not options.trf:
                 tmpJobO,
             )
         else:
-            tmpJobO = '-c "from G4AtlasApps.SimFlags import SimFlags;SimFlags.SeedsG4=${RNDMSEED}" ' + tmpJobO
+            tmpJobO = f'-c "from G4AtlasApps.SimFlags import SimFlags;SimFlags.SeedsG4=${{RNDMSEED}}" {tmpJobO}'
         dictItem = {
             "type": "template",
             "param_type": "number",
@@ -1324,7 +1310,7 @@ else:
     tmpOutMap = []
     if "IROOT" in outMap:
         for tmpName, tmpLFN in outMap["IROOT"]:
-            tmpJobO = tmpJobO.replace("%OUT." + tmpName, tmpName)
+            tmpJobO = tmpJobO.replace(f"%OUT.{tmpName}", tmpName)
     # replace DBR
     tmpJobO = re.sub("%DB=[^ '\";]+", "${DBR}", tmpJobO)
 # set job_options parameter

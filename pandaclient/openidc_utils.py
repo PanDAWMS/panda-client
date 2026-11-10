@@ -87,7 +87,7 @@ class OpenIdConnect_Utils:
             choice = input().lower()
             if choice == "y":
                 break
-            elif choice == "n":
+            if choice == "n":
                 return False, "aborted"
         if self.verbose:
             self.log_stream.debug("getting ID token")
@@ -156,7 +156,7 @@ class OpenIdConnect_Utils:
                 with open(path) as f:
                     return True, json.load(f)
             except Exception as e:
-                self.log_stream.debug(f"cached {os.path.basename(url)} is corrupted: {str(e)}")
+                self.log_stream.debug(f"cached {os.path.basename(url)} is corrupted: {e!s}")
         if self.verbose:
             self.log_stream.debug(f"fetching {url}")
         try:
@@ -231,9 +231,8 @@ class OpenIdConnect_Utils:
             # refreshed
             if s:
                 return True, o
-            else:
-                if self.verbose:
-                    self.log_stream.debug(f"failed to refresh token: {o}")
+            if self.verbose:
+                self.log_stream.debug(f"failed to refresh token: {o}")
         # get device code
         jwt_profile = auth_config.get("jwt_profile")
         s, o = self.get_device_code(endpoint_config["device_authorization_endpoint"], auth_config["client_id"], auth_config["audience"], jwt_profile)
@@ -256,5 +255,5 @@ class OpenIdConnect_Utils:
     # cleanup
     def cleanup(self):
         for patt in [TOKEN_BASENAME, CACHE_PREFIX]:
-            for f in glob.glob(os.path.join(self.token_dir, patt + "*")):
+            for f in glob.glob(os.path.join(self.token_dir, f"{patt}*")):
                 os.remove(f)

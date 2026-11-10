@@ -124,7 +124,7 @@ def _count_rucio_files(in_ds):
     try:
         from rucio.client import Client as RucioClient
     except ImportError as exc:
-        raise ImportError("The 'rucio-clients' package is required for the multistep_merge template. " "Install it with: pip install rucio-clients") from exc
+        raise ImportError("The 'rucio-clients' package is required for the multistep_merge template. Install it with: pip install rucio-clients") from exc
 
     scope, name = extract_scope(in_ds, strip_slash=True)
 

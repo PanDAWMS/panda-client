@@ -667,7 +667,7 @@ def dump_log(func_name, exception_obj, output):
     """
     print(traceback.format_exc())
     print(output)
-    err_str = f"{func_name} failed : {str(exception_obj)}"
+    err_str = f"{func_name} failed : {exception_obj!s}"
     tmp_log = PLogger.getPandaLogger()
     tmp_log.error(err_str)
     return err_str
@@ -962,7 +962,7 @@ def getFile(filename, output_path=None, verbose=False, n_try=1):
     url = f"{netloc.scheme}://{netloc.hostname}"
     if netloc.port:
         url += f":{netloc.port}"
-    url = url + "/cache/" + filename
+    url = f"{url}/cache/{filename}"
     s, o = client.get(url, {}, output_name=output_path, n_try=n_try)
     return s, o
 
@@ -1013,7 +1013,7 @@ def getDN(dn):
                 # look for full name
                 name = name.replace(" ", "")
                 break
-            elif short_name == "":
+            if short_name == "":
                 # keep short name
                 short_name = name
             # reset so a later, non-full CN doesn't override the fallback
@@ -1255,7 +1255,7 @@ def requestEventPicking(
     client.verbose = verbose
 
     # execute
-    url = baseURLSSL + "/putEventPickingRequest"
+    url = f"{baseURLSSL}/putEventPickingRequest"
     data = {
         "runEventList": evpFile.read(),
         "eventPickDataType": eventPickDataType,
@@ -1494,7 +1494,7 @@ def hello(verbose=False):
     client.ssl_key = _x509_proxy_path()
     client.verbose = verbose
     # execute
-    url = server_base_path_ssl + "/system/is_alive"
+    url = f"{server_base_path_ssl}/system/is_alive"
     try:
         status, response = client.get(url, {}, json_out=True)
 
@@ -1619,7 +1619,7 @@ def call_idds_command(
     client.verbose = verbose
 
     # execute
-    url = baseURLSSL + "/relay_idds_command"
+    url = f"{baseURLSSL}/relay_idds_command"
     try:
         data = dict()
         data["command_name"] = command_name
@@ -1640,14 +1640,12 @@ def call_idds_command(
         status, output = client.post(url, data, compress_body=compress, n_try=n_try)
         if status != 0:
             return EC_Failed, output
-        else:
-            try:
-                if loader:
-                    return 0, loader(output)
-                else:
-                    return 0, json.loads(output)
-            except Exception:
-                return EC_Failed, output
+        try:
+            if loader:
+                return 0, loader(output)
+            return 0, json.loads(output)
+        except Exception:
+            return EC_Failed, output
     except Exception as e:
         msg = f"Failed with {e}"
         print(traceback.format_exc())
@@ -1675,7 +1673,7 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
     client.verbose = verbose
 
     # execute
-    url = baseURLSSL + "/execute_idds_workflow_command"
+    url = f"{baseURLSSL}/execute_idds_workflow_command"
     try:
         data = dict()
         data["command_name"] = command_name
@@ -1686,8 +1684,7 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
         status, output = client.post(url, data, n_try=n_try)
         if status != 0:
             return EC_Failed, output
-        else:
-            return 0, json.loads(output)
+        return 0, json.loads(output)
     except Exception as e:
         msg = f"Failed with {e}"
         print(traceback.format_exc())
@@ -1748,12 +1745,11 @@ def send_workflow_request(params, relay_host=None, check=False, verbose=False):
         if status != 0:
             tmp_log.error(output)
             return EC_Failed, output
-        else:
-            return 0, output
+        return 0, output
     except Exception as e:
         msg = f"Failed with {e}."
         if output:
-            msg += f' raw output="{str(output)}"'
+            msg += f' raw output="{output!s}"'
         tmp_log.error(msg)
         return EC_Failed, msg
 
@@ -1795,12 +1791,11 @@ def submit_workflow_tmp(params, relay_host=None, check=False, verbose=False):
         if status != 0:
             tmp_log.error(output)
             return EC_Failed, output
-        else:
-            return 0, output
+        return 0, output
     except Exception as e:
         msg = f"Failed with {e}."
         if output:
-            msg += f' raw output="{str(output)}"'
+            msg += f' raw output="{output!s}"'
         tmp_log.error(msg)
         return EC_Failed, msg
 

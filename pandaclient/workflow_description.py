@@ -350,7 +350,7 @@ class WorkflowDescription:
             if m and m.group(1) not in step_names:
                 errors.append(f"step '{sname}': unknown step reference '{m.group(1)}/outDS'")
             if step.secondary_ds_types and len(step.secondary_ds_types) != len(step.secondary_dss):
-                errors.append(f"step '{sname}': secondaryDsTypes has {len(step.secondary_ds_types)} entries " f"but secondaryDSs has {len(step.secondary_dss)}")
+                errors.append(f"step '{sname}': secondaryDsTypes has {len(step.secondary_ds_types)} entries but secondaryDSs has {len(step.secondary_dss)}")
             for ds_ref in step.secondary_dss:
                 for ref in re.findall(r"\{(\w+)\}", ds_ref):
                     if ref not in input_names:

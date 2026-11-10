@@ -146,9 +146,9 @@ def getNickname(verbose=False):
         wMessage = "Could not get nickname by using voms-proxy-info which gave\n\n"
         wMessage += output
         wMessage += "\nPlease contact VO Admins using project-lcg-vo-atlas-admin@cern.ch mailing list to register nickname in IAM"
-        print("")
+        print()
         tmpLog.warning(wMessage)
-        print("")
+        print()
     return nickName
 
 
@@ -252,8 +252,8 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
         allowedPrefix = ["group"]
         for tmpPrefix in allowedPrefix:
             for tmpGroup in prodGroups:
-                tmpPattO = "^" + tmpPrefix + r"\d{2}" + r"\." + tmpGroup + r"\."
-                tmpPattN = "^" + tmpPrefix + r"\." + tmpGroup + r"\."
+                tmpPattO = f"^{tmpPrefix}\\d{{2}}\\.{tmpGroup}\\."
+                tmpPattN = f"^{tmpPrefix}\\.{tmpGroup}\\."
                 if re.search(tmpPattO, outDS) is not None or re.search(tmpPattN, outDS) is not None:
                     return True
         # didn't match
@@ -296,11 +296,10 @@ def checkOutDsName(outDS, official, nickName="", mergeOutput=False, verbose=Fals
             tmpErrStr += "Please note that the limit on the name length is tighter for containers than datasets"
             tmpLog.error(tmpErrStr)
             return False
-    else:
-        # dataset
-        if len(outDS) > maxLength:
-            tmpLog.error(f"output datasetname is too long ({len(outDS)}). The length must be less than {maxLength}")
-            return False
+    # dataset
+    elif len(outDS) > maxLength:
+        tmpLog.error(f"output datasetname is too long ({len(outDS)}). The length must be less than {maxLength}")
+        return False
     return True
 
 
@@ -485,7 +484,7 @@ def convertParamStrToJediParam(
         # JEDI-only placeholders
         if oldH is None:
             oldH = newH
-        oldH = "%" + oldH
+        oldH = f"%{oldH}"
         # with extension
         if newH in allExList:
             if newH in digExList:
@@ -496,13 +495,13 @@ def convertParamStrToJediParam(
             tmpM = re.search(oldH, encStr)
             if tmpM is not None:
                 extensionMap[newH] = tmpM.group(2)
-            newH = "${" + newH + "}"
+            newH = f"${{{newH}}}"
         else:
-            newH = "${" + newH + "}"
+            newH = f"${{{newH}}}"
         encStr = re.sub(oldH, newH, encStr)
     # replace %OUT to outDS${SN}
     if includeIO:
-        encStr = re.sub("%OUT", outNamePrefix + ".${" + outHolder + "}", encStr)
+        encStr = re.sub("%OUT", f"{outNamePrefix}.${{{outHolder}}}", encStr)
     # make pattern for split
     patS = "("
     allKeys = list(holders)
@@ -510,7 +509,7 @@ def convertParamStrToJediParam(
         allKeys += inList
         allKeys += [outHolder]
     for tmpH in allKeys:
-        patS += "[^=,\"' \\(\\{;]*\\$\\{" + tmpH + "[^\\}]*\\}[^,\"' \\)\\};]*|"
+        patS += f"[^=,\"' \\(\\{{;]*\\$\\{{{tmpH}[^\\}}]*\\}}[^,\"' \\)\\}};]*|"
     patS = patS[:-1]
     patS += ")"
     # split
@@ -527,7 +526,7 @@ def convertParamStrToJediParam(
                 # use constant since it is templated in another option e.g., -i
                 tmpDict = {"type": "constant"}
                 if encode:
-                    tmpDict["value"] = "${" + tmpHolder + "/E}"
+                    tmpDict["value"] = f"${{{tmpHolder}/E}}"
                 else:
                     tmpDict["value"] = tmpItem
                 # set dataset if PFN list is not used or the stream is not primary
@@ -542,7 +541,7 @@ def convertParamStrToJediParam(
                     except Exception:
                         pass
             elif tmpHolder == outHolder:
-                tmpDict = {"type": "template", "value": tmpItem, "param_type": "output", "dataset": outNamePrefix + tmpItem.split("}")[-1] + "/"}
+                tmpDict = {"type": "template", "value": tmpItem, "param_type": "output", "dataset": f"{outNamePrefix + tmpItem.split('}')[-1]}/"}
                 tmpDict["container"] = tmpDict["dataset"]
             else:
                 tmpDict = {"type": "template", "value": tmpItem, "param_type": "number"}
@@ -803,6 +802,40 @@ def check_sandbox_symlinks(archive_name, tmp_log):
         tmp_log.warning("Found some unresolved symlinks which may cause a problem\n   Please ignore if you believe they are harmless")
         for symlink in symlinks:
             print(f"  {symlink}")
+
+
+def finalize_sandbox(archive_name, verbose, tmp_log, check_symlinks=True):
+    """Compress the sandbox tarball and check it, creating an empty one if no file was archived
+
+    Must be called from the directory holding the tarball (tmpDir).
+    Exits with EC_Archive when the compressed sandbox is missing or cannot be listed.
+
+    args:
+        archive_name: name of the uncompressed tarball in the current directory
+        verbose: print the output of gzip and ls
+        tmp_log: logger
+        check_symlinks: warn about symlinks pointing to absolute paths
+    returns:
+        name of the gzipped tarball
+    """
+    # make an empty tarball if nothing was archived
+    if not os.path.exists(archive_name):
+        commands_get_status_output(f"tar -cf {archive_name} -T /dev/null")
+    # compress
+    status, out = commands_get_status_output(f"gzip -f {archive_name}")
+    if status != 0 or verbose:
+        print(out)
+    archive_name += ".gz"
+    # check the compressed tarball
+    status, out = commands_get_status_output(f"ls -l {archive_name}")
+    if status != 0 or verbose:
+        print(out)
+    if status != 0:
+        tmp_log.error("Failed to archive working area.\nIf you see 'Disk quota exceeded', try '--tmpDir /tmp'")
+        sys.exit(MiscUtils.EC_Archive)
+    if check_symlinks:
+        check_sandbox_symlinks(archive_name, tmp_log)
+    return archive_name
 
 
 def use_existing_sandbox(options, tmp_dir):

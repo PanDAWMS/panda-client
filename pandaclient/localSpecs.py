@@ -171,7 +171,7 @@ class LocalTaskSpec:
         _console.print(t)
 
 
-class LocalNativeWorkflowSpec(object):
+class LocalNativeWorkflowSpec:
     """A PanDA native workflow as the server reports it, rendered for pbook
 
     The server answers with one dictionary holding the workflow, its steps and its data, so this

@@ -7,7 +7,7 @@ import tempfile
 
 # make arg parse with option definitions
 def make_arg_parse():
-    usage = "pcontainer [options]\n" "  HowTo is available at https://twiki.cern.ch/twiki/bin/view/PanDA/PandaContainer"
+    usage = "pcontainer [options]\n  HowTo is available at https://twiki.cern.ch/twiki/bin/view/PanDA/PandaContainer"
     optP = argparse.ArgumentParser(usage=usage, conflict_handler="resolve")
     optP.add_argument("--version", action="store_const", const=True, dest="version", default=None, help="Displays version")
     optP.add_argument(
@@ -22,7 +22,7 @@ def make_arg_parse():
         action="store",
         dest="dumpJson",
         default=None,
-        help="Dump all command-line parameters and submission result such as returnCode, returnOut, " "jediTaskID, etc to a json file",
+        help="Dump all command-line parameters and submission result such as returnCode, returnOut, jediTaskID, etc to a json file",
     )
     optP.add_argument("--cvmfs", action="store_const", const=True, dest="cvmfs", default=False, help="Bind /cvmfs to the container, bool, default False")
     optP.add_argument(
@@ -80,7 +80,7 @@ def make_arg_parse():
         action="store",
         dest="outDS",
         default=None,
-        help="Base name of the output dataset container. Actual output dataset name is defined " "for each output file type",
+        help="Base name of the output dataset container. Actual output dataset name is defined for each output file type",
     )
     optP.add_argument(
         "--outputs",
@@ -112,7 +112,7 @@ def make_arg_parse():
         const=True,
         dest="useSandbox",
         default=False,
-        help="To send files in the run directory to remote sites which are not sent out by default " "when --containerImage is used",
+        help="To send files in the run directory to remote sites which are not sent out by default when --containerImage is used",
     )
     optP.add_argument("-3", action="store_true", dest="python3", default=False, help="Use python3")
 
