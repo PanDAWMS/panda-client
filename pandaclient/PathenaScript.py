@@ -1,4 +1,3 @@
-import atexit
 import dataclasses
 import json
 import os
@@ -203,26 +202,6 @@ def _make_paths_absolute(options):
 
 #####################################################################
 # work environment
-
-
-def _remove_on_exit(tmp_dir, files, del_command):
-    """atexit action removing the temporary files and directory"""
-    for tmp_file in files:
-        del_command(f"rm -rf {tmp_file}")
-    del_command(f"rm -rf {tmp_dir}")
-
-
-def _make_tmp_dir(options, current_dir, files_to_delete):
-    """
-    Make a uniquely named temporary directory under --tmpDir, or under current_dir by default
-
-    The directory is removed at exit, together with files_to_delete, including the files added to the list later
-    """
-    parent_dir = current_dir if options.tmpDir == "" else os.path.abspath(options.tmpDir)
-    tmp_dir = f"{parent_dir}/{MiscUtils.wrappedUuidGen()}"
-    os.makedirs(tmp_dir)
-    atexit.register(_remove_on_exit, tmp_dir, files_to_delete, MiscUtils.commands_get_output)
-    return tmp_dir
 
 
 @dataclasses.dataclass
@@ -1394,7 +1373,7 @@ def main():
         sys.exit(MiscUtils.EC_Config)
 
     # create tmp dir, removed at exit
-    tmp_dir = _make_tmp_dir(options, current_dir, files_to_delete)
+    tmp_dir = PsubUtils.make_tmp_dir(options, current_dir, files_to_delete)
 
     # Athena setup, CMTCONFIG, and run directory
     work_env = _resolve_work_env(options, current_dir, tmp_log)
@@ -1453,7 +1432,6 @@ def main():
     #####################################################################
     # submit the task
 
-    exit_code = 0
     dump_list = []
 
     for i_submission, io_item in enumerate(io_list):

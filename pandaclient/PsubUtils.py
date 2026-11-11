@@ -1,3 +1,4 @@
+import atexit
 import copy
 import datetime
 import gzip
@@ -1004,3 +1005,23 @@ def make_dump_item(options, exit_code, tmp_str, task_id, i_submission, n_submiss
     if n_submissions > 1:
         dump_item["bulkSeqNumber"] = i_submission
     return dump_item
+
+
+def remove_on_exit(tmp_dir, files, del_command):
+    """atexit action removing the temporary files and directory"""
+    for tmp_file in files:
+        del_command(f"rm -rf {tmp_file}")
+    del_command(f"rm -rf {tmp_dir}")
+
+
+def make_tmp_dir(options, current_dir, files_to_delete):
+    """
+    Make a uniquely named temporary directory under --tmpDir, or under current_dir by default
+
+    The directory is removed at exit, together with files_to_delete, including the files added to the list later
+    """
+    parent_dir = current_dir if options.tmpDir == "" else os.path.abspath(options.tmpDir)
+    tmp_dir = f"{parent_dir}/{MiscUtils.wrappedUuidGen()}"
+    os.makedirs(tmp_dir)
+    atexit.register(remove_on_exit, tmp_dir, files_to_delete, MiscUtils.commands_get_output)
+    return tmp_dir
