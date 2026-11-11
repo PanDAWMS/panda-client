@@ -1,3 +1,49 @@
+"""
+pathena: submit an ATLAS Athena job to PanDA as a JEDI task
+
+main() runs these phases in order:
+
+1. Options: parse, apply implied options, and validate. This is mostly the same as in prun (CommonArgs)
+2. Work environment: the Athena release, the user's work area, and the run directory inside it (_resolve_work_env)
+3. What the job does: pathena can't see inside the user's job, so it finds out what the job reads and writes.
+   There are two modes:
+     - job options mode (the default): the positional args are Athena job options (.py files). pathena runs
+       athena.py dry with a fake application manager and ConfigExtractor.py, and parses what it prints into the
+       run configuration (_extract_run_config): output streams, the kind of input, random number streams, ...
+     - trf mode (--trf): the user gives a transform command. Inputs and outputs come from placeholders in the
+       command (%IN, %OUT.<name>, %RNDM=, %DB=, %SKIPEVENTS, ...), and the run configuration stays mostly empty
+   Both modes then go through the same checks: an output exists, random seeds, extra input datasets
+4. Sandbox: archive the user's code and files, and upload it to the PanDA cache (create_sandbox_archive)
+5. Task parameters: turn all of the above into the JEDI task dict (_build_task_params). jobParameters is the
+   command line of the runAthena job script on the worker node, with templates like ${IN} that JEDI fills per job
+6. Submission: once, or once per inDS/outDS pair of --inOutDsJson (bulk submission)
+
+Glossary:
+    jobO / job options       Python configuration given to athena.py, e.g. MyAnalysis_jobOptions.py
+    trf / transform          production wrapper around athena (Reco_tf.py, Derivation_tf.py, ...), see --trf
+    run configuration        what ConfigExtractor found in the job options, in three ConfigAttr dicts: input,
+                             output, and other. A ConfigAttr returns False for missing keys
+    stream                   an Athena output (AOD, ESD, HIST, ntuple, ...) or a kind of input
+    AOD / ESD / RDO / DAOD   ATLAS event data formats: analysis, reconstruction output, raw digits, derived AOD
+    BS / bytestream          raw detector data format; reading it needs local IO (-b in the job parameters)
+    TAG / collection         event-level metadata files used to select events from other files (inColl, collRefName)
+    back navigation          reading events of the parent file referenced by the input (-e)
+    minimum bias / cavern    background events overlaid on simulated events (pileup): the minimum bias, low/high
+    beam halo / beam gas     pT minimum bias, cavern, beam halo, and beam gas streams, each with its own dataset
+    secondary datasets       generic extra inputs given with --secondaryDSs, the newer way to add extra streams
+    random seeds             AtRndmGenSvc streams and Geant4 (G4) seeds; each job gets different seeds
+    DBRelease / DBR          tarball of the conditions database, given with --dbRelease or %DB= in --trf
+    PoolFileCatalog          Athena's file catalog; condition files are added with --addPoolFC
+    AMI                      ATLAS Metadata Interface: config tags like r1234 (AMI=tag in --trf), and the number
+                             of events per file (--useAMIEventLevelSplit)
+    CMTCONFIG / cmtConfig    platform of the release, like x86_64-el9-gcc13-opt; CMT is the old build system
+                             and CMake the current one
+    event picking            select single events by run/event number; the picked events become the input
+    good run list / GRL      XML list of good data-taking periods; a preprocessing job converts it to input datasets
+    build step               a first job compiling the sandbox on the site, producing ${LIB} for the other jobs
+    merge step               jobs merging the outputs after the processing jobs
+"""
+
 import dataclasses
 import json
 import os
