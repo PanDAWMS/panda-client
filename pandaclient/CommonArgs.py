@@ -885,7 +885,7 @@ def set_n_files_from_n_jobs(options):
             options.nFiles = options.nFilesPerJob * options.nJobs
 
         # set nFiles per job when nFiles is set
-        if options.nFilesPerJob < 0 and options.nFiles > 0:
+        if options.nFilesPerJob < 0 < options.nFiles:
             options.nFilesPerJob = options.nFiles // options.nJobs
             if options.nFilesPerJob == 0:
                 options.nFilesPerJob = 1
