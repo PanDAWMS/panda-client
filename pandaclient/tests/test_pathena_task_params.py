@@ -1,8 +1,7 @@
 """Golden-file regression test for the task parameters built by pathena.
 
-Runs the pathena module for a set of pathena command lines and compares the task parameters, the exit
+Runs PathenaScript.main() for a set of pathena command lines and compares the task parameters, the exit
 code, the calls to the Athena-specific steps, and the printed output with data/pathena_task_params.json.
-pathena runs when its module is executed, so each case executes it again with runpy.
 
 It doesn't touch the network, the grid, or Athena: every case uses --noSubmit, the proxy check and the
 nickname are mocked, the run configuration extracted from the job options by Athena is replaced by the
@@ -24,7 +23,6 @@ import json
 import logging
 import os
 import random
-import runpy
 import shutil
 import sys
 import tempfile
@@ -34,7 +32,7 @@ from unittest import mock
 # importing Client resolves the panda cache host with DNS unless this is set
 os.environ.setdefault("PANDA_BEHIND_REAL_LB", "1")
 
-from pandaclient import AthenaUtils, Client, MiscUtils, PandaToolsPkgInfo, PsubUtils  # noqa: E402
+from pandaclient import AthenaUtils, Client, MiscUtils, PandaToolsPkgInfo, PathenaScript, PsubUtils  # noqa: E402
 
 GOLDEN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "pathena_task_params.json")
 
@@ -401,7 +399,7 @@ def run_case(case, extra_patches=()):
             stack.enter_context(contextlib.redirect_stdout(output))
             stack.enter_context(contextlib.redirect_stderr(output))
             try:
-                runpy.run_module("pandaclient.PathenaScript", run_name="__main__")
+                PathenaScript.main()
                 result["exit"] = "no exit"
             except SystemExit as exc:
                 result["exit"] = exc.code

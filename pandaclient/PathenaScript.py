@@ -37,9 +37,8 @@ from pandaclient.task_param_utils import (
     use_build_step,
 )
 
-# pathena runs when this module is executed: the helpers below are called by the script part at the end
-# of the module. They use AthenaUtils, Client, and PsubUtils, imported by the script part after --version
-# since importing Client resolves the panda cache host
+# AthenaUtils, Client, and PsubUtils are imported where they are used, after --version is handled, since
+# importing Client resolves the panda cache host
 
 # log files of the input datasets are not used as input
 LOG_FILES_PATTERN = r"\.log\.tgz(\.\d+)*$"
@@ -145,6 +144,8 @@ def _normalize_file_options(options):
 
     --fileList patterns use * as wildcard, converted to regular expressions
     """
+    from pandaclient import AthenaUtils
+
     # additional files
     options.extFile = _split_list_option(options.extFile)
     AthenaUtils.set_user_set_ext_files(options.extFile)
@@ -251,6 +252,8 @@ def _resolve_work_env(options, current_dir, tmp_log):
         _WorkEnv. Exits with EC_CMT when the Athena setup is missing without --containerImage, or doesn't match
         --cmtConfig, and with EC_Config when current_dir is not under the work area
     """
+    from pandaclient import AthenaUtils
+
     # get Athena versions
     cmt_verbose = options.verbose or options.containerImage == ""
     has_athena_env, athena_env = AthenaUtils.getAthenaVer(cmt_verbose)
@@ -318,6 +321,8 @@ def _request_event_picking(options, full_exec_string, current_dir, files_to_dele
     returns:
         path of the run/event list file shipped with the sandbox
     """
+    from pandaclient import Client
+
     if not options.noSubmit:
         _, options.inDS = Client.requestEventPicking(
             options.eventPickEvtList,
@@ -387,6 +392,8 @@ def _extract_run_config(options, job_options, tmp_dir, tmp_log):
     returns:
         whether the extraction succeeded, and the run configuration
     """
+    from pandaclient import AthenaUtils
+
     if options.inRunConfig == "":
         tmp_log.info("extracting run configuration")
         # run ConfigExtractor for normal job_options
@@ -749,6 +756,8 @@ def create_sandbox_archive(options, job_options, work_env, current_dir, tmp_dir,
     returns:
         name of the gzipped tarball in tmp_dir
     """
+    from pandaclient import AthenaUtils, PsubUtils
+
     # extract jobOs with full pathnames, with random names to avoid overwriting
     for tmp_item in job_options.split():
         if re.search(r"^/.*\.py$", tmp_item) is not None:
@@ -813,6 +822,8 @@ def create_sandbox_archive(options, job_options, work_env, current_dir, tmp_dir,
 
 def _pre_exec_job_params(options, run_config):
     """Job parameters for -f, the Python executed before the job options: the random seeds, and the events to process per job"""
+    from pandaclient import PsubUtils
+
     job_params = []
     # random seeds
     pre_exec_seeds = ""
@@ -848,6 +859,8 @@ def _pre_exec_job_params(options, run_config):
 
 def _runtime_args(options, run_config, run_dir, event_pick_file):
     """Arguments of the runAthena job script"""
+    from pandaclient import AthenaUtils
+
     conditional_args = [
         (options.addPoolFC != "", f"--addPoolFC {options.addPoolFC}"),
         # disable to skip missing files
@@ -1040,6 +1053,8 @@ def _output_job_params(options, run_config, task_param_map, tmp_log):
     returns:
         map of the outputs, as given to the job with -o
     """
+    from pandaclient import AthenaUtils
+
     description_in_lfn = "${MIDDLENAME}" if options.addNthFieldOfInDSToLFN != "" or options.addNthFieldOfInFileToLFN != "" else ""
     out_map, output_params = AthenaUtils.convertConfToOutput(
         run_config,
@@ -1072,6 +1087,8 @@ def _job_options_job_params(options, run_config, job_options, out_map, input_map
     Job options given with absolute paths are replaced with their names in the sandbox, and the G4 random seed is
     set in the one-liner. In the --trf command, %OUT. is removed from the outputs, and %DB= is replaced with ${DBR}
     """
+    from pandaclient import AthenaUtils, PsubUtils
+
     job_options_param = job_options
     if not options.trf:
         # replace full-path jobOs
@@ -1119,6 +1136,8 @@ def _job_options_job_params(options, run_config, job_options, out_map, input_map
 
 def _build_args(options):
     """Arguments of the buildJob script, or None without build step"""
+    from pandaclient import AthenaUtils
+
     if not use_build_step(options):
         return None
     build_args = "-i ${IN} -o ${OUT} --sourceURL ${SURL} "
@@ -1134,6 +1153,8 @@ def _build_args(options):
 
 def _merge_args(options, run_dir, archive_name):
     """Arguments of the merge job script"""
+    from pandaclient import AthenaUtils
+
     merge_args = f"-r {run_dir} "
     if options.mergeScript != "":
         merge_args += f'-j "{options.mergeScript}" '
@@ -1167,6 +1188,8 @@ def _build_task_params(options, work_env, run_config, job_options, archive_name,
     returns:
         task parameters
     """
+    from pandaclient import AthenaUtils, Client
+
     task_param_map = {}
     processing_type = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-athena"
     if options.trf:
@@ -1265,208 +1288,219 @@ def _build_task_params(options, work_env, run_config, job_options, archive_name,
 #####################################################################
 # pathena
 
-# tweak sys.argv
-sys.argv.pop(0)
-sys.argv.insert(0, "pathena")
 
-# parse options and check against the obsolete options first
-parser = PathenaArgs.build_parser()
-MiscUtils.remove_obsolete_options(sys.argv, MiscUtils.PATHENA_OBSOLETE_OPTIONS)
-# using parse_known_args for passing arguments with -
-options, args = parser.parse_known_args()
+def main():
+    """
+    Execute pathena with the arguments in sys.argv
 
-if options.verbose:
-    print(options)
-    print(f"args={args}")
-    print()
+    Always exits: with 0 after the submission, and with an error code from MiscUtils when it fails
+    """
+    # tweak sys.argv
+    sys.argv.pop(0)
+    sys.argv.insert(0, "pathena")
 
-# load json. athena_args holds the job options and arguments given as positional arguments on the command line
-json_exec_string, json_special_values = load_json_options(options, special_keys=("athena_args",))
-if "athena_args" in json_special_values:
-    args = json_special_values["athena_args"]
+    # parse options and check against the obsolete options first
+    parser = PathenaArgs.build_parser()
+    MiscUtils.remove_obsolete_options(sys.argv, MiscUtils.PATHENA_OBSOLETE_OPTIONS)
+    # using parse_known_args for passing arguments with -
+    options, args = parser.parse_known_args()
 
-# display version
-if options.version:
-    print(f"Version: {PandaToolsPkgInfo.release_version}")
+    if options.verbose:
+        print(options)
+        print(f"args={args}")
+        print()
+
+    # load json. athena_args holds the job options and arguments given as positional arguments on the command line
+    json_exec_string, json_special_values = load_json_options(options, special_keys=("athena_args",))
+    if "athena_args" in json_special_values:
+        args = json_special_values["athena_args"]
+
+    # display version
+    if options.version:
+        print(f"Version: {PandaToolsPkgInfo.release_version}")
+        sys.exit(0)
+
+    # imported after --version: importing Client resolves the panda cache host
+    from pandaclient import AthenaUtils, Client, PLogger, PsubUtils
+
+    # full execution string
+    full_exec_string = PsubUtils.convSysArgv()
+    full_exec_string += json_exec_string
+
+    tmp_log = PLogger.getPandaLogger()
+
+    # job options can't look like options
+    _check_unknown_args(args, tmp_log)
+
+    # use dev server
+    if options.devSrv:
+        Client.useDevServer()
+
+    # use INTR server
+    if options.intrSrv:
+        Client.useIntrServer()
+
+    # --CA, and options implied by other options
+    _apply_implied_options(options, tmp_log)
+
+    # validate --transferType
+    invalid_transfer_types = get_invalid_transfer_types(options.transferType)
+    if invalid_transfer_types:
+        tmp_log.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid_transfer_types))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
+        sys.exit(MiscUtils.EC_Config)
+
+    # files to be deleted
+    files_to_delete = []
+
+    # save current dir, where pathena was started
+    current_dir = os.path.realpath(os.getcwd())
+
+    # site, memory, and input options handled the same way as in the other tools (e.g. prun)
+    included_sites = process_common_options(options, tmp_log)
+
+    # use outputPath as outDS
+    if not options.outDS.endswith("/"):
+        options.outDS = f"{options.outDS}/"
+
+    # bulk submission
+    io_list = get_bulk_io_list(options, tmp_log)
+
+    # outDS, nJobs, PFN list, split, scouting, and input options
+    _check_and_normalize_options(options, tmp_log)
+
+    # file options to lists
+    _normalize_file_options(options)
+
+    # split related
+    _check_job_splitting(options, tmp_log)
+
+    # check grid-proxy
+    PsubUtils.check_proxy(options.verbose, options.vomsRoles)
+
+    # get nickname
+    nickname = PsubUtils.getNickname(options.verbose)
+    if nickname == "":
+        sys.exit(MiscUtils.EC_Config)
+
+    # set Rucio accounting
+    PsubUtils.setRucioAccount(nickname, "pathena", True)
+
+    # convert in/outTarBall and in/outRunConfig to full path
+    _make_paths_absolute(options)
+
+    # check maxCpuCount
+    if options.maxCpuCount > Client.maxCpuCountLimit:
+        tmp_log.error(f"too large maxCpuCount. Must be less than {Client.maxCpuCountLimit}")
+        sys.exit(MiscUtils.EC_Config)
+
+    # create tmp dir, removed at exit
+    tmp_dir = _make_tmp_dir(options, current_dir, files_to_delete)
+
+    # Athena setup, CMTCONFIG, and run directory
+    work_env = _resolve_work_env(options, current_dir, tmp_log)
+
+    # event picking: the picked events are the input dataset
+    event_pick_file = None
+    if options.eventPickEvtList != "":
+        event_pick_file = _request_event_picking(options, full_exec_string, current_dir, files_to_delete, tmp_log)
+
+    # get job options
+    job_options = _get_job_options(options, args, tmp_log)
+
+    # run configuration, and the files and outputs it implies
+    extracted, run_config = _extract_run_config(options, job_options, tmp_dir, tmp_log)
+    if not options.trf:
+        job_options = _apply_run_config(options, run_config, extracted, job_options, tmp_log)
+    else:
+        job_options = _resolve_ami_tags(options, job_options, tmp_log)
+        job_options = _add_trf_outputs(options, job_options, tmp_log)
+        _check_trf_events_and_cores(options, job_options, tmp_log)
+
+    # outputs and shipped files
+    _check_outputs(options, run_config, tmp_log)
+
+    # random seeds
+    _set_random_seeds(options, run_config)
+
+    # minimum bias, cavern, beam halo, beam gas, and secondary datasets
+    if options.inDS != "" or options.shipinput or options.pfnList != "":
+        _resolve_extra_input_datasets(options, run_config, job_options, tmp_log)
+
+    #####################################################################
+    # archive sources and send the archive to PanDA cache
+    if options.inTarBall == "" and options.tarBallViaDDM == "":
+        archive_name = create_sandbox_archive(options, job_options, work_env, current_dir, tmp_dir, tmp_log)
+    else:
+        archive_name, _ = PsubUtils.use_existing_sandbox(options, tmp_dir)
+
+    # save for --outTarBall, and upload the sandbox and the good run list
+    archive_name = PsubUtils.upload_sandbox(options, archive_name, current_dir, tmp_log, files_to_delete)
+
+    #####################################################################
+    # make task
+    task_param_map = _build_task_params(
+        options,
+        work_env=work_env,
+        run_config=run_config,
+        job_options=job_options,
+        archive_name=archive_name,
+        included_sites=included_sites,
+        full_exec_string=full_exec_string,
+        event_pick_file=event_pick_file,
+        tmp_log=tmp_log,
+    )
+
+    #####################################################################
+    # submit the task
+
+    exit_code = 0
+    dump_list = []
+
+    for i_submission, io_item in enumerate(io_list):
+        if options.verbose:
+            cmt_config = AthenaUtils.getCmtConfigImg(work_env.athena_version, work_env.cache_version, work_env.nightly_version, options.cmtConfig)
+            extra_lines = [("cmtConfig", cmt_config), ("jobO", job_options.lstrip())]
+            PsubUtils.print_submission_parameters(
+                options.site,
+                work_env.athena_version,
+                work_env.group_area,
+                work_env.cache_version,
+                work_env.nightly_version,
+                work_env.run_dir,
+                extra_lines,
+            )
+
+        if len(io_list) == 1:
+            new_task_param_map = task_param_map
+        else:
+            # replace input and output
+            options.inDS = io_item["inDS"]
+            options.outDS = io_item["outDS"]
+            new_task_param_map = PsubUtils.replaceInputOutput(task_param_map, io_item["inDS"], io_item["outDS"], i_submission)
+        task_id = None
+        # check outDS format
+        if not PsubUtils.checkOutDsName(options.outDS, options.official, nickname, options.mergeOutput, options.verbose):
+            tmp_log.error(f"invalid output datasetname:{options.outDS}")
+            sys.exit(MiscUtils.EC_Config)
+        # check task parameters
+        exit_code, tmp_output = PsubUtils.checkTaskParam(new_task_param_map, options.unlimitNumOutputs)
+        if exit_code != 0 and len(io_list) == 1:
+            sys.exit(exit_code)
+        if options.noSubmit and options.verbose:
+            PsubUtils.print_task_params(new_task_param_map, tmp_log)
+        if not options.noSubmit and exit_code == 0:
+            exit_code, tmp_output, task_id = PsubUtils.submit_task(new_task_param_map, options, tmp_log)
+        dump_list.append(PsubUtils.make_dump_item(options, exit_code, tmp_output, task_id, i_submission, len(io_list)))
+
+    # go back to current dir
+    os.chdir(current_dir)
+    # dump
+    if options.dumpJson is not None:
+        with open(options.dumpJson, "w") as f:
+            json.dump(dump_list, f)
+    # succeeded, also when one of the bulk submissions failed
     sys.exit(0)
 
-# imported after --version: importing Client resolves the panda cache host
-from pandaclient import AthenaUtils, Client, PLogger, PsubUtils  # noqa: E402
 
-# full execution string
-full_exec_string = PsubUtils.convSysArgv()
-full_exec_string += json_exec_string
-
-tmp_log = PLogger.getPandaLogger()
-
-# job options can't look like options
-_check_unknown_args(args, tmp_log)
-
-# use dev server
-if options.devSrv:
-    Client.useDevServer()
-
-# use INTR server
-if options.intrSrv:
-    Client.useIntrServer()
-
-# --CA, and options implied by other options
-_apply_implied_options(options, tmp_log)
-
-# validate --transferType
-invalid_transfer_types = get_invalid_transfer_types(options.transferType)
-if invalid_transfer_types:
-    tmp_log.error(f"--transferType: invalid value(s) {', '.join(sorted(invalid_transfer_types))}. Allowed: {', '.join(sorted(VALID_TRANSFER_TYPES))}")
-    sys.exit(MiscUtils.EC_Config)
-
-# files to be deleted
-files_to_delete = []
-
-# save current dir, where pathena was started
-current_dir = os.path.realpath(os.getcwd())
-
-# site, memory, and input options handled the same way as in the other tools (e.g. prun)
-included_sites = process_common_options(options, tmp_log)
-
-# use outputPath as outDS
-if not options.outDS.endswith("/"):
-    options.outDS = f"{options.outDS}/"
-
-# bulk submission
-io_list = get_bulk_io_list(options, tmp_log)
-
-# outDS, nJobs, PFN list, split, scouting, and input options
-_check_and_normalize_options(options, tmp_log)
-
-# file options to lists
-_normalize_file_options(options)
-
-# split related
-_check_job_splitting(options, tmp_log)
-
-# check grid-proxy
-PsubUtils.check_proxy(options.verbose, options.vomsRoles)
-
-# get nickname
-nickname = PsubUtils.getNickname(options.verbose)
-if nickname == "":
-    sys.exit(MiscUtils.EC_Config)
-
-# set Rucio accounting
-PsubUtils.setRucioAccount(nickname, "pathena", True)
-
-# convert in/outTarBall and in/outRunConfig to full path
-_make_paths_absolute(options)
-
-# check maxCpuCount
-if options.maxCpuCount > Client.maxCpuCountLimit:
-    tmp_log.error(f"too large maxCpuCount. Must be less than {Client.maxCpuCountLimit}")
-    sys.exit(MiscUtils.EC_Config)
-
-# create tmp dir, removed at exit
-tmp_dir = _make_tmp_dir(options, current_dir, files_to_delete)
-
-# Athena setup, CMTCONFIG, and run directory
-work_env = _resolve_work_env(options, current_dir, tmp_log)
-
-# event picking: the picked events are the input dataset
-event_pick_file = None
-if options.eventPickEvtList != "":
-    event_pick_file = _request_event_picking(options, full_exec_string, current_dir, files_to_delete, tmp_log)
-
-# get job options
-job_options = _get_job_options(options, args, tmp_log)
-
-# run configuration, and the files and outputs it implies
-extracted, run_config = _extract_run_config(options, job_options, tmp_dir, tmp_log)
-if not options.trf:
-    job_options = _apply_run_config(options, run_config, extracted, job_options, tmp_log)
-else:
-    job_options = _resolve_ami_tags(options, job_options, tmp_log)
-    job_options = _add_trf_outputs(options, job_options, tmp_log)
-    _check_trf_events_and_cores(options, job_options, tmp_log)
-
-# outputs and shipped files
-_check_outputs(options, run_config, tmp_log)
-
-# random seeds
-_set_random_seeds(options, run_config)
-
-# minimum bias, cavern, beam halo, beam gas, and secondary datasets
-if options.inDS != "" or options.shipinput or options.pfnList != "":
-    _resolve_extra_input_datasets(options, run_config, job_options, tmp_log)
-
-#####################################################################
-# archive sources and send the archive to PanDA cache
-if options.inTarBall == "" and options.tarBallViaDDM == "":
-    archive_name = create_sandbox_archive(options, job_options, work_env, current_dir, tmp_dir, tmp_log)
-else:
-    archive_name, _ = PsubUtils.use_existing_sandbox(options, tmp_dir)
-
-# save for --outTarBall, and upload the sandbox and the good run list
-archive_name = PsubUtils.upload_sandbox(options, archive_name, current_dir, tmp_log, files_to_delete)
-
-#####################################################################
-# make task
-task_param_map = _build_task_params(
-    options,
-    work_env=work_env,
-    run_config=run_config,
-    job_options=job_options,
-    archive_name=archive_name,
-    included_sites=included_sites,
-    full_exec_string=full_exec_string,
-    event_pick_file=event_pick_file,
-    tmp_log=tmp_log,
-)
-
-#####################################################################
-# submit the task
-
-exit_code = 0
-dump_list = []
-
-for i_submission, io_item in enumerate(io_list):
-    if options.verbose:
-        cmt_config = AthenaUtils.getCmtConfigImg(work_env.athena_version, work_env.cache_version, work_env.nightly_version, options.cmtConfig)
-        extra_lines = [("cmtConfig", cmt_config), ("jobO", job_options.lstrip())]
-        PsubUtils.print_submission_parameters(
-            options.site,
-            work_env.athena_version,
-            work_env.group_area,
-            work_env.cache_version,
-            work_env.nightly_version,
-            work_env.run_dir,
-            extra_lines,
-        )
-
-    if len(io_list) == 1:
-        new_task_param_map = task_param_map
-    else:
-        # replace input and output
-        options.inDS = io_item["inDS"]
-        options.outDS = io_item["outDS"]
-        new_task_param_map = PsubUtils.replaceInputOutput(task_param_map, io_item["inDS"], io_item["outDS"], i_submission)
-    task_id = None
-    # check outDS format
-    if not PsubUtils.checkOutDsName(options.outDS, options.official, nickname, options.mergeOutput, options.verbose):
-        tmp_log.error(f"invalid output datasetname:{options.outDS}")
-        sys.exit(MiscUtils.EC_Config)
-    # check task parameters
-    exit_code, tmp_output = PsubUtils.checkTaskParam(new_task_param_map, options.unlimitNumOutputs)
-    if exit_code != 0 and len(io_list) == 1:
-        sys.exit(exit_code)
-    if options.noSubmit and options.verbose:
-        PsubUtils.print_task_params(new_task_param_map, tmp_log)
-    if not options.noSubmit and exit_code == 0:
-        exit_code, tmp_output, task_id = PsubUtils.submit_task(new_task_param_map, options, tmp_log)
-    dump_list.append(PsubUtils.make_dump_item(options, exit_code, tmp_output, task_id, i_submission, len(io_list)))
-
-# go back to current dir
-os.chdir(current_dir)
-# dump
-if options.dumpJson is not None:
-    with open(options.dumpJson, "w") as f:
-        json.dump(dump_list, f)
-# succeeded, also when one of the bulk submissions failed
-sys.exit(0)
+if __name__ == "__main__":
+    main()
