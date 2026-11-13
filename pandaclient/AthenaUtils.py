@@ -645,8 +645,10 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                         appFileName = os.path.abspath(fullName)
                 else:
                     appFileName = os.path.abspath(fullName)
+                # NOTE: there is a typo in appFilename vs appFileName. Commented out to avoid changing the behaviour
                 # remove redundant //
-                appFilename = re.sub("//", "/", appFileName)
+                # appFilename = re.sub("//", "/", appFileName)
+
                 # append
                 files.append(appFileName)
 

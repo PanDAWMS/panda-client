@@ -9,18 +9,19 @@ dynamic = ["version"]
 description = "PanDA Client Package"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">3.6"
+requires-python = ">=3.9"
 authors = [
     { name = "PanDA Team", email = "panda-support@cern.ch" },
 ]
 classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 
@@ -91,3 +92,19 @@ aggressive = 3
 profile = "black"
 # keep in sync with tool.black line-length; profile="black" alone would default to 88
 line_length = 160
+
+
+# ruff runs as a linter only; black and isort (above) still own the formatting.
+[tool.ruff]
+line-length = 160
+target-version = "py39"
+
+[tool.ruff.lint]
+# F: pyflakes. Catches undefined names and similar mistakes that parse fine and
+# only fail when the line runs, which the Python compatibility workflow cannot see.
+select = ["F"]
+
+[tool.ruff.lint.per-file-ignores]
+# These files run as Athena jobOptions, where theApp, include, Service, os, ...
+# are globals injected by the job's interpreter rather than imported.
+"share/*.py" = ["F821"]
