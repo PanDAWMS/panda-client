@@ -371,25 +371,26 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
     sourceURL = matchURL.group(1)
 
     # making task params
-    taskParamMap = {}
+    taskParamMap = {
+        "noInput": True,
+        "nEventsPerJob": 1,
+        "nEvents": options.nParallelEvaluation,
+        "maxNumJobs": options.maxEvaluationJobs,
+        "totNumJobs": options.maxPoints,
+        "taskName": options.outDS,
+        "vo": "atlas",
+        "architecture": options.architecture,
+        "hpoWorkflow": True,
+        "transUses": "",
+        "transHome": "",
+        "transPath": "http://pandaserver.cern.ch:25080/trf/user/runHPO-00-00-01",
+        "processingType": f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-hpo",
+        "prodSourceLabel": "user",
+        "useLocalIO": 1,
+        "cliParams": fullExecString,
+        "skipScout": True,
+    }
 
-    taskParamMap["noInput"] = True
-    taskParamMap["nEventsPerJob"] = 1
-    taskParamMap["nEvents"] = options.nParallelEvaluation
-    taskParamMap["maxNumJobs"] = options.maxEvaluationJobs
-    taskParamMap["totNumJobs"] = options.maxPoints
-    taskParamMap["taskName"] = options.outDS
-    taskParamMap["vo"] = "atlas"
-    taskParamMap["architecture"] = options.architecture
-    taskParamMap["hpoWorkflow"] = True
-    taskParamMap["transUses"] = ""
-    taskParamMap["transHome"] = ""
-    taskParamMap["transPath"] = "http://pandaserver.cern.ch:25080/trf/user/runHPO-00-00-01"
-    taskParamMap["processingType"] = f"panda-client-{PandaToolsPkgInfo.release_version}-jedi-hpo"
-    taskParamMap["prodSourceLabel"] = "user"
-    taskParamMap["useLocalIO"] = 1
-    taskParamMap["cliParams"] = fullExecString
-    taskParamMap["skipScout"] = True
     if options.noEmail:
         taskParamMap["noEmail"] = True
     if options.workingGroup is not None:
@@ -523,9 +524,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False):
                 segments[i].update({"id": i})
                 # make clone of search space if needed
                 if space is not None:
-                    new_space = dict()
-                    new_space["model_id"] = i
-                    new_space["search_space"] = copy.deepcopy(space)
+                    new_space = {"model_id": i, "search_space": copy.deepcopy(space)}
                     taskParamMap["hpoRequestData"]["opt_space"].append(new_space)
             taskParamMap["segmentSpecs"] = segments
             # multiply by num of segments

@@ -5,12 +5,6 @@ import sys
 rootLog = None
 
 
-# set logger
-def setLogger(tmpLog):
-    global rootLog
-    rootLog = tmpLog
-
-
 # return logger
 def getPandaLogger(use_stdout=True):
     # use root logger

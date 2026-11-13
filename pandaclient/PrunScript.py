@@ -1,4 +1,3 @@
-import atexit
 import dataclasses
 import json
 import os
@@ -847,26 +846,6 @@ def _confirm_home_dir_upload(options, dry_mode, tmp_log):
         sys.exit(MiscUtils.EC_Config)
 
 
-def _remove_on_exit(tmp_dir, files, del_command):
-    """atexit action removing the temporary files and directory"""
-    for tmp_file in files:
-        del_command(f"rm -rf {tmp_file}")
-    del_command(f"rm -rf {tmp_dir}")
-
-
-def _make_tmp_dir(options, current_dir, files_to_delete):
-    """
-    Make a uniquely named temporary directory under --tmpDir, or under current_dir by default
-
-    The directory is removed at exit, together with files_to_delete, including the files added to the list later
-    """
-    parent_dir = current_dir if options.tmpDir == "" else os.path.abspath(options.tmpDir)
-    tmp_dir = f"{parent_dir}/{MiscUtils.wrappedUuidGen()}"
-    os.makedirs(tmp_dir)
-    atexit.register(_remove_on_exit, tmp_dir, files_to_delete, MiscUtils.commands_get_output)
-    return tmp_dir
-
-
 def _request_event_picking(options, full_exec_string, tmp_log):
     """
     Ask the event picking service to stage the events of --eventPickEvtList as a dataset
@@ -1149,7 +1128,7 @@ def main(get_taskparams=False, ext_args=None, dry_mode=False, get_options=False)
         sys.exit(MiscUtils.EC_Config)
 
     # create tmp dir, removed at exit
-    tmp_dir = _make_tmp_dir(options, current_dir, files_to_delete)
+    tmp_dir = PsubUtils.make_tmp_dir(options, current_dir, files_to_delete)
 
     # run directory, Athena setup, and CMTCONFIG
     work_env = _resolve_work_env(options, current_dir, tmp_log)

@@ -477,25 +477,6 @@ athenaStuff = []
 fullPathJobOs = {}
 
 
-# convert fullPathJobOs to str
-def convFullPathJobOsToStr():
-    tmpStr = ""
-    for fullJobO in fullPathJobOs:
-        localName = fullPathJobOs[fullJobO]
-        tmpStr += f"{fullJobO}:{localName},"
-    tmpStr = tmpStr[:-1]
-    return tmpStr
-
-
-# convert str to fullPathJobOs
-def convStrToFullPathJobOs(tmpStr):
-    retMap = {}
-    for tmpItem in tmpStr.split(","):
-        fullJobO, localName = tmpItem.split(":")
-        retMap[fullJobO] = localName
-    return retMap
-
-
 # copy some athena specific files and full-path jobOs
 def copyAthenaStuff(currentDir):
     baseName = f"{os.environ['PANDA_SYS']}/etc/panda/share"
@@ -664,8 +645,10 @@ def archiveSourceFiles(workArea, runDir, currentDir, tmpDir, verbose, gluePackag
                         appFileName = os.path.abspath(fullName)
                 else:
                     appFileName = os.path.abspath(fullName)
+                # NOTE: there is a typo in appFilename vs appFileName. Commented out to avoid changing the behaviour
                 # remove redundant //
-                appFilename = re.sub("//", "/", appFileName)
+                # appFilename = re.sub("//", "/", appFileName)
+
                 # append
                 files.append(appFileName)
 

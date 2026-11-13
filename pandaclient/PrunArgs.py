@@ -34,7 +34,7 @@ def build_parser():
     group_job = optP.add_group("job", "job running control on grid")
     group_build = optP.add_group("build", "build/compile the package and env setup")
     group_submit = optP.add_group("submit", "job submission/site/retry")
-    group_evtFilter = optP.add_group("evtFilter", "event filter such as good run and event pick")
+    _ = optP.add_group("evtFilter", "event filter such as good run and event pick")
     group_expert = optP.add_group("expert", "for experts/developers only")
 
     usage_containerJob = """Visit the following wiki page for examples:

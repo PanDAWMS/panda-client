@@ -125,7 +125,7 @@ def construct_cli_options(options):
     if "loadJson" in options and options["loadJson"] is not None:
         newOpts = json.load(open(options["loadJson"]))
     else:
-        newOpts = dict()
+        newOpts = {}
     for key in options:
         val = options[key]
         if key in ["loadJson"]:

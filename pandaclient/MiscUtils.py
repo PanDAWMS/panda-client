@@ -432,17 +432,6 @@ def dump_jobs_json(jobs):
     return json.dumps(state_objects, cls=NonJsonObjectEncoder)
 
 
-# load serialized json to jobs
-def load_jobs_json(state):
-    state_objects = json.loads(state, object_hook=as_python_object)
-    jobs = []
-    for job_state in state_objects:
-        job_spec = JobSpec.JobSpec()
-        job_spec.load_from_json_serializable(job_state)
-        jobs.append(job_spec)
-    return jobs
-
-
 # load dictionary list into jobs
 def load_jobs(job_dicts):
     jobs = []
