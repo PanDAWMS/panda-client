@@ -1,0 +1,72 @@
+name: Python compatibility
+
+# Checks that panda-client installs, compiles and imports on every supported
+# Python version. Keep the matrix in sync with requires-python / classifiers in
+# pyproject.toml and with the relocatable build matrix.
+
+on:
+  pull_request:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+# a new push to the PR supersedes the previous check
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compat:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13", "3.14" ]
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # needed for hatch's git-tag-based dynamic versioning
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+
+      - name: Byte-compile all sources
+        # catches syntax that is newer than the target Python
+        run: python -m compileall -q pandaclient
+
+      - name: Import all modules
+        # catches runtime-evaluated constructs (e.g. annotations, stdlib names)
+        # that compile but fail on import. Run outside the checkout so the
+        # installed package is imported, not the source tree.
+        working-directory: ${{ runner.temp }}
+        run: |
+          python - <<'EOF'
+          import importlib
+          import pkgutil
+          import sys
+
+          import pandaclient
+
+          # PcontainerScript runs the command on import; panda_gui and
+          # panda_jupyter need the optional jupyter extras
+          skip = {"pandaclient.PcontainerScript", "pandaclient.panda_gui", "pandaclient.panda_jupyter"}
+          failed = []
+          for mod in pkgutil.walk_packages(pandaclient.__path__, "pandaclient."):
+              if mod.name in skip or mod.name.startswith("pandaclient.tests"):
+                  continue
+              try:
+                  importlib.import_module(mod.name)
+              except BaseException as e:
+                  failed.append(f"{mod.name}: {type(e).__name__}: {e}")
+          print("\n".join(failed) or "all modules imported")
+          sys.exit(1 if failed else 0)
+          EOF

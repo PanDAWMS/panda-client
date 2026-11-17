@@ -1621,8 +1621,7 @@ def call_idds_command(
     # execute
     url = f"{baseURLSSL}/relay_idds_command"
     try:
-        data = dict()
-        data["command_name"] = command_name
+        data = {"command_name": command_name}
         if args:
             if dumper is None:
                 data["args"] = json.dumps(args)
@@ -1675,7 +1674,7 @@ def call_idds_user_workflow_command(command_name, kwargs=None, verbose=False, js
     # execute
     url = f"{baseURLSSL}/execute_idds_workflow_command"
     try:
-        data = dict()
+        data = {}
         data["command_name"] = command_name
         if kwargs:
             data["kwargs"] = json.dumps(kwargs)

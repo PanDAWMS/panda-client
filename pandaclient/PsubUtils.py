@@ -1,5 +1,5 @@
+import atexit
 import copy
-import datetime
 import gzip
 import os
 import platform
@@ -12,33 +12,7 @@ from urllib.parse import quote
 from . import Client, MiscUtils, PLogger
 from .MiscUtils import commands_get_status_output, commands_get_status_output_with_env
 
-cacheProxyStatus = None
-cacheVomsStatus = None
-cacheActimeStatus = None
-cacheVomsFQAN = ""
-cacheActime = ""
-cacheLastUpdate = None
 cacheVomsInfo = None
-
-
-# reset cache values
-def resetCacheValues():
-    global cacheProxyStatus
-    global cacheVomsStatus
-    global cacheActimeStatus
-    global cacheVomsFQAN
-    global cacheActime
-    global cacheLastUpdate
-    global cacheVomsInfo
-    timeNow = datetime.datetime.utcnow()
-    if cacheLastUpdate is None or (timeNow - cacheLastUpdate) > datetime.timedelta(minutes=60):
-        cacheLastUpdate = timeNow
-        cacheProxyStatus = None
-        cacheVomsStatus = None
-        cacheActimeStatus = None
-        cacheVomsFQAN = ""
-        cacheActime = ""
-        cacheVomsInfo = None
 
 
 # get proxy info
@@ -331,76 +305,6 @@ def convSysArgv(argv=None):
             paramStr += f'"{item}"'
 
     return paramStr
-
-
-# compare version
-def isLatestVersion(latestVer):
-    # extract local version numbers
-    import PandaToolsPkgInfo
-
-    match = re.search(r"^(\d+)\.(\d+)\.(\d+)$", PandaToolsPkgInfo.release_version)
-    if match is None:
-        return True
-    localMajorVer = int(match.group(1))
-    localMinorVer = int(match.group(2))
-    localBugfixVer = int(match.group(3))
-    # extract local version numbers
-    match = re.search(r"^(\d+)\.(\d+)\.(\d+)$", latestVer)
-    if match is None:
-        return True
-    latestMajorVer = int(match.group(1))
-    latestMinorVer = int(match.group(2))
-    latestBugfixVer = int(match.group(3))
-    # compare
-    if latestMajorVer > localMajorVer:
-        return False
-    if latestMajorVer < localMajorVer:
-        return True
-    if latestMinorVer > localMinorVer:
-        return False
-    if latestMinorVer < localMinorVer:
-        return True
-    if latestBugfixVer > localBugfixVer:
-        return False
-    # latest or higher
-    return True
-
-
-# function for path completion
-def completePathFunc(text, status):
-    # remove white spaces
-    text = text.strip()
-    # convert ~
-    useTilde = False
-    if text.startswith("~"):
-        useTilde = True
-        # keep original
-        origText = text
-        # convert
-        text = os.path.expanduser(text)
-    # put / to directories
-    if (not text.endswith("/")) and os.path.isdir(text):
-        text += "/"
-    # list dirs/files
-    lsStat, output = commands_get_status_output(f"ls -d {text}*")
-    results = []
-    if lsStat == 0:
-        for tmpItem in output.split("\n"):
-            # ignore current and parent dirs
-            if tmpItem in [".", ".."]:
-                continue
-            # put /
-            if os.path.isdir(tmpItem) and not tmpItem.endswith("/"):
-                tmpItem += "/"
-            # recover ~
-            if useTilde:
-                tmpItem = re.sub(f"^{os.path.expanduser(origText)}", origText, tmpItem)
-            # append
-            results.append(tmpItem)
-        # sort
-        results.sort()
-
-    return results[status]
 
 
 # read dataset names from text
@@ -1004,3 +908,23 @@ def make_dump_item(options, exit_code, tmp_str, task_id, i_submission, n_submiss
     if n_submissions > 1:
         dump_item["bulkSeqNumber"] = i_submission
     return dump_item
+
+
+def remove_on_exit(tmp_dir, files, del_command):
+    """atexit action removing the temporary files and directory"""
+    for tmp_file in files:
+        del_command(f"rm -rf {tmp_file}")
+    del_command(f"rm -rf {tmp_dir}")
+
+
+def make_tmp_dir(options, current_dir, files_to_delete):
+    """
+    Make a uniquely named temporary directory under --tmpDir, or under current_dir by default
+
+    The directory is removed at exit, together with files_to_delete, including the files added to the list later
+    """
+    parent_dir = current_dir if options.tmpDir == "" else os.path.abspath(options.tmpDir)
+    tmp_dir = f"{parent_dir}/{MiscUtils.wrappedUuidGen()}"
+    os.makedirs(tmp_dir)
+    atexit.register(remove_on_exit, tmp_dir, files_to_delete, MiscUtils.commands_get_output)
+    return tmp_dir

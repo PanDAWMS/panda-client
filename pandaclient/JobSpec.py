@@ -609,7 +609,7 @@ class JobSpec:
 
     # get zip file map
     def getZipFileMap(self):
-        zipMap = dict()
+        zipMap = {}
         try:
             if self.jobParameters is not None:
                 zipStr = re.search("<ZIP_MAP>(.+)</ZIP_MAP>", self.jobParameters)

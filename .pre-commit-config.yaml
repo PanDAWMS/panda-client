@@ -13,3 +13,12 @@ repos:
     -   id: isort
         name: isort (python)
         args: ["--settings-path", "pyproject.toml"]
+# Linter only (pyflakes, see [tool.ruff] in pyproject.toml); formatting stays with
+# black and isort above. The whole tree is scanned rather than the staged files,
+# because an edit in one file (a renamed or deleted name) can break another.
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3
+    hooks:
+    -   id: ruff-check
+        args: [.]
+        pass_filenames: false

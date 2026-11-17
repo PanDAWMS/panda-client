@@ -42,10 +42,8 @@ class GroupArgParser(argparse.ArgumentParser):
         choices_m = self.MyList(list(self.groups_dict.keys()) + ["ALL"])
         self.add_argument("--helpGroup", choices=choices_m, action=self.print_groupHelp, help=help)
 
-        try:
-            from cStringIO import StringIO
-        except Exception:
-            from io import StringIO
+        from io import StringIO
+
         old_stdout = sys.stdout
         sys.stdout = self.briefHelp = StringIO()
         self.print_help()

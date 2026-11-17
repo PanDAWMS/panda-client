@@ -139,7 +139,7 @@ class TestTmpDir(unittest.TestCase):
             run_case(
                 {"args": IN + ["--outputs", "o.root", "--tmpDir", parent]},
                 extra_patches=[
-                    mock.patch.object(PrunScript.atexit, "register", register_mock),
+                    mock.patch.object(PsubUtils.atexit, "register", register_mock),
                     mock.patch.object(PrunScript.os, "makedirs", recording_makedirs),
                 ],
             )

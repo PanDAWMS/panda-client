@@ -1,0 +1,39 @@
+name: Syntax Check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+# a new push to the PR supersedes the previous check
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-syntax:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.11'
+
+    - name: Cache pre-commit environments
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/pre-commit
+        key: pre-commit-${{ runner.os }}-py3.11-${{ hashFiles('.pre-commit-config.yaml') }}
+
+    # What is checked, and at which version, is defined once in
+    # .pre-commit-config.yaml (black, isort, ruff). This job only runs it, so a
+    # contributor who runs `pre-commit run --all-files` gets this job's result
+    # before opening the PR. Do not add a tool here without adding it there.
+    - name: Run pre-commit
+      run: |
+        pip install 'pre-commit==4.6.2'
+        pre-commit run --all-files --show-diff-on-failure
