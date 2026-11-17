@@ -29,7 +29,7 @@ dependencies = [
     "rich",
     "certifi",
     "httpx",
-    "typer",
+     "typer<0.29",
 ]
 
 [project.optional-dependencies]
