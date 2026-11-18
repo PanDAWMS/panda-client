@@ -43,7 +43,12 @@ jobs:
       - name: Install base tools
         # Unconditional: the from-source path skips its install step on a
         # cache hit, but tar is still needed below to pack the tree.
-        run: dnf install -y git tar gzip
+        # zstd: actions/cache keys entries on the compression it finds at
+        # lookup time (zstd if the binary exists, else gzip). It must already
+        # be here before the cache lookup; otherwise the lookup is gzip but
+        # "Development Tools" pulls zstd in afterwards and the entry is saved
+        # as zstd, so it never hits again (here or in smoke-test).
+        run: dnf install -y git tar gzip zstd
 
       - name: Install the target Python (dnf)
         if: matrix.install == 'dnf'
@@ -181,7 +186,8 @@ jobs:
 
     steps:
       - name: Install base tools
-        run: dnf install -y tar gzip findutils
+        # zstd: must match build-relocatable, or the cache restore below misses
+        run: dnf install -y tar gzip zstd findutils
 
       - name: Install the target Python (dnf)
         if: matrix.install == 'dnf'
