@@ -20,6 +20,7 @@ directly into the interactive REPL namespace (`>>> command(...)`).
 
 import atexit
 import code
+import functools
 import os
 import re
 import readline
@@ -40,6 +41,7 @@ from typing import (
     get_type_hints,
 )
 
+import click
 import typer
 from rich import box
 from rich.console import Console
@@ -159,6 +161,49 @@ def _require_bool(name: str, value):
         typer.echo(f"Error: '{name}' must be True or False, got {value!r}", err=True)
         return _INVALID
     return value
+
+
+@functools.lru_cache(maxsize=None)
+def _cli_params(command_name: str) -> dict:
+    """The Click parameters Typer builds from a command's declaration, keyed by Python parameter name.
+
+    They carry what the declaration says about each parameter - its type, its range (min/max)
+    and its option names including aliases - so values that don't come through the CLI can be
+    checked against the same declaration.
+    """
+    return {param.name: param for param in typer.main.get_command(app).commands[command_name].params}
+
+
+# Python types a value passed from Python must have, per Click parameter type (subclasses such as
+# IntRange included), with how to name them in an error message. bool is excluded from int and
+# float explicitly since it is a subclass of int.
+_DECLARED_PYTHON_TYPES = (
+    (click.types.BoolParamType, lambda v: isinstance(v, bool), "True or False"),
+    (click.types.IntParamType, lambda v: isinstance(v, int) and not isinstance(v, bool), "an integer"),
+    (click.types.FloatParamType, lambda v: isinstance(v, (int, float)) and not isinstance(v, bool), "a number"),
+    (click.types.StringParamType, lambda v: isinstance(v, str), "a string"),
+)
+
+
+def _check_declared_value(param: click.Parameter, name: str, value) -> Optional[str]:
+    """Error message when a value passed from Python doesn't fit the declaration of param, else None.
+
+    Click checks values coming through the CLI, but a plain Python call from the REPL, or a
+    value inside a dict like retry's newOpts, bypasses it. Click's own conversion can't simply
+    be reused for these: it converts leniently (1.5 -> 1 for an integer, 'yes' -> True for a
+    flag), so the Python type is checked strictly here, and Click is only asked for the rest
+    (ranges, choices). name is how the caller referred to the parameter, used in the message.
+    """
+    for param_type, is_valid, description in _DECLARED_PYTHON_TYPES:
+        if isinstance(param.type, param_type):
+            if not is_valid(value):
+                return f"'{name}' must be {description}, got {value!r}."
+            break
+    try:
+        param.type.convert(value, param, None)
+    except click.BadParameter as e:
+        return f"Invalid value for '{name}': {e.message}"
+    return None
 
 
 def _setup() -> None:
@@ -750,23 +795,21 @@ def finish(
     return core.finish(ids, soft=soft)
 
 
-# The options newOpts accepts: the individual retry options below (including their aliases),
-# mapped to the task parameter the server expects for each, as the individual options are sent.
-# The server silently ignores task parameters a retry cannot change, so anything else is refused
-# before the request is sent.
-_RETRY_NEW_OPTS = {
+# The retry() parameters sent to the server as task parameters, mapped to the task parameter name
+# the server expects for each. Everything else about them - type, range and option names - comes
+# from their declarations in retry(). The server silently ignores task parameters a retry cannot
+# change, so newOpts keys that don't name one of these are refused before the request is sent.
+_RETRY_TASK_PARAMS = {
     "site": "site",
     "excludedSite": "excludedSite",
     "includedSite": "includedSite",
     "nFilesPerJob": "nFilesPerJob",
     "nMaxFilesPerJob": "nMaxFilesPerJob",
-    "maxNFilesPerJob": "nMaxFilesPerJob",
     "nGBPerJob": "nGBPerJob",
     "nFiles": "nFiles",
     "nEvents": "nEvents",
     "loopingCheck": "loopingCheck",
     "memory": "ramCount",
-    "ramCount": "ramCount",
     "avoidVP": "avoidVP",
     "ignoreMissingInDS": "ignoreMissingInDS",
     "forceStaged": "forceStaged",
@@ -774,8 +817,37 @@ _RETRY_NEW_OPTS = {
 }
 
 
+def _retry_new_opts_keys() -> dict:
+    """The keys newOpts accepts, mapped to the retry() parameter each one sets.
+
+    A key is the Python name of a parameter in _RETRY_TASK_PARAMS or one of its declared option
+    names without the leading dashes, so aliases like --maxNFilesPerJob or --ramCount are accepted
+    as well. The negative --no-... forms of flags are not.
+    """
+    params = _cli_params("retry")
+    keys = {}
+    for name in _RETRY_TASK_PARAMS:
+        keys[name] = name
+        for opt in params[name].opts:
+            keys[opt.lstrip("-")] = name
+    return keys
+
+
+def _report_invalid_retry_value(param: str, name: str, value) -> bool:
+    """Report a value that doesn't fit the declaration of the retry() parameter param; True if reported.
+
+    Values from the CLI were already checked by Click. The same declarations apply to values from a
+    plain Python call or from newOpts, which bypass it. name is how the caller referred to param.
+    """
+    error = _check_declared_value(_cli_params("retry")[param], name, value)
+    if error:
+        typer.echo(f"Error: {error} Nothing was retried.", err=True)
+        return True
+    return False
+
+
 def _translate_retry_new_opts(new_opts):
-    """newOpts as the task parameters to send, or None (with the error reported) when it is not valid."""
+    """newOpts as {retry() parameter: value}, or None (with the error reported) when it is not valid."""
     if not isinstance(new_opts, dict):
         typer.echo(
             f"Error: newOpts must be a dict of retry options, e.g. {{'excludedSite': 'siteA,siteB'}}, got {new_opts!r}. "
@@ -783,18 +855,21 @@ def _translate_retry_new_opts(new_opts):
             err=True,
         )
         return None
-    invalid = [key for key in new_opts if key not in _RETRY_NEW_OPTS]
+    keys = _retry_new_opts_keys()
+    invalid = [key for key in new_opts if key not in keys]
     if invalid:
         typer.echo(
-            f"Error: invalid option(s) in newOpts: {', '.join(map(str, invalid))}. Nothing was retried. Valid options: {', '.join(_RETRY_NEW_OPTS)}.",
+            f"Error: invalid option(s) in newOpts: {', '.join(map(str, invalid))}. Nothing was retried. Valid options: {', '.join(keys)}.",
             err=True,
         )
         return None
     translated = {}
     for key, value in new_opts.items():
-        param = _RETRY_NEW_OPTS[key]
+        param = keys[key]
+        if _report_invalid_retry_value(param, key, value):
+            return None
         if param in translated and translated[param] != value:
-            aliases = [k for k in new_opts if _RETRY_NEW_OPTS[k] == param]
+            aliases = [k for k in new_opts if keys[k] == param]
             typer.echo(f"Error: newOpts sets {' and '.join(aliases)} to different values. Nothing was retried.", err=True)
             return None
         translated[param] = value
@@ -819,8 +894,8 @@ def retry(
         ),
     ] = None,
     nGBPerJob: Annotated[
-        Optional[float],
-        typer.Option("--nGBPerJob", help="Maximum input size in GB to be processed by a single job in the task."),
+        Optional[int],
+        typer.Option("--nGBPerJob", min=1, help="Maximum input size in GB to be processed by a single job in the task."),
     ] = None,
     nFiles: Annotated[Optional[int], typer.Option("--nFiles", help="Total number of input files to be processed by the task.")] = None,
     nEvents: Annotated[
@@ -874,7 +949,8 @@ def retry(
     In interactive mode, newOpts can be passed with a raw dict of task-retry options and it overrides
     all of the individual options above. newOpts is not supported from the shell CLI. Its keys are
     the names of the individual options (site, excludedSite, ..., memory or ramCount, maxCore); any
-    other key is reported as an error and nothing is retried.
+    other key is reported as an error and nothing is retried. Its values must have the same types and
+    ranges as the individual options, e.g. a positive integer for nGBPerJob.
 
     example:
       >>> retry(123)
@@ -890,6 +966,8 @@ def retry(
       $ pbook retry all --days=30 --limit=2000
 
     """
+    # must stay the first statement: the parameters as passed (REPL) or parsed (CLI), nothing else
+    args = dict(locals())
     ids = _parse_ids(task_ids)
     for name, value in (("days", days), ("limit", limit)):
         if value is None:
@@ -906,32 +984,16 @@ def retry(
     days = 14 if days is None else days
     limit = 1000 if limit is None else limit
     if newOpts is not None:
-        opts = _translate_retry_new_opts(newOpts)
-        if opts is None:
+        values = _translate_retry_new_opts(newOpts)
+        if values is None:
             return
+    else:
+        values = {name: args[name] for name in _RETRY_TASK_PARAMS if args[name] is not None}
+        for name, value in values.items():
+            if _report_invalid_retry_value(name, name, value):
+                return
+    opts = {_RETRY_TASK_PARAMS[name]: value for name, value in values.items()} or None
     core = _ensure_init()
-    if newOpts is None:
-        new_opts = {
-            k: v
-            for k, v in {
-                "site": site,
-                "excludedSite": excludedSite,
-                "includedSite": includedSite,
-                "nFilesPerJob": nFilesPerJob,
-                "nMaxFilesPerJob": nMaxFilesPerJob,
-                "nGBPerJob": nGBPerJob,
-                "nFiles": nFiles,
-                "nEvents": nEvents,
-                "loopingCheck": loopingCheck,
-                "ramCount": memory,
-                "avoidVP": avoidVP,
-                "ignoreMissingInDS": ignoreMissingInDS,
-                "forceStaged": forceStaged,
-                "maxCoreCount": maxCore,
-            }.items()
-            if v is not None
-        }
-        opts = new_opts or None
     if isinstance(ids, list):
         return _parallel(lambda tid: core.retry(tid, newOpts=opts), ids)
     if ids == "all":
