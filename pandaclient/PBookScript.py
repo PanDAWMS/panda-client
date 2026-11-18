@@ -20,6 +20,7 @@ used to build the `pbook <command> --flag ...` CLI (argparse, plus bash completi
 import argparse
 import atexit
 import code
+import functools
 import inspect
 import os
 import re
@@ -116,13 +117,24 @@ class Opt:
 
     flags are the option names; extra names are aliases (Opt("--memory", "--ramCount")). A single
     "--name/--no-name" makes an on/off switch whose value is None when neither is given. Without
-    flags, the option is --<parameter name> with underscores turned into dashes.
+    flags, the option is --<parameter name> with underscores turned into dashes. min and max bound
+    a number (inclusive); they are checked on the command line and, through _check_declared_value,
+    for values passed from Python.
     """
 
-    def __init__(self, *flags: str, help: Optional[str] = None, hidden: bool = False) -> None:
+    def __init__(
+        self,
+        *flags: str,
+        help: Optional[str] = None,
+        hidden: bool = False,
+        min: Optional[float] = None,
+        max: Optional[float] = None,
+    ) -> None:
         self.flags = flags
         self.help = help
         self.hidden = hidden
+        self.min = min
+        self.max = max
 
 
 class Arg:
@@ -179,7 +191,7 @@ _INVALID = object()
 def _require_bool(name: str, value):
     """Report non-bool values for a bool parameter, without raising.
 
-    Click enforces this on the CLI path (a flag is present or absent, never a stray
+    The parser enforces this on the CLI path (a flag is present or absent, never a stray
     string) - unreachable from real CLI dispatch. Commands are also called directly
     from the REPL though, where a plain Python call - e.g. finish(123, soft='gfd') -
     bypasses that check entirely and would otherwise silently treat any truthy string
@@ -191,6 +203,68 @@ def _require_bool(name: str, value):
         print(f"Error: '{name}' must be True or False, got {value!r}", file=sys.stderr)
         return _INVALID
     return value
+
+
+@functools.lru_cache(maxsize=None)
+def _cli_params(command_name: str) -> dict:
+    """The command-line description of a command's parameters (_ParamSpec), keyed by Python parameter name.
+
+    They carry what the declaration says about each parameter - its type, its range (min/max),
+    its choices and its option names including aliases - so values that don't come through the
+    CLI can be checked against the same declaration.
+    """
+    return {spec.name: spec for spec in _param_specs(_COMMANDS[command_name])}
+
+
+def _declared_type(func, name: str):
+    """The type a parameter of func is declared with, without Annotated[...] and Optional[...]; None if unknown."""
+    try:
+        hints = get_type_hints(func, include_extras=True)
+    except Exception:
+        return None
+    ann = hints.get(name)
+    if ann is None:
+        return None
+    # On Python <= 3.10 a parameter defaulting to None comes back as Optional[Annotated[Optional[X], ...]]:
+    # _union_members flattens that to the same members as on newer Pythons
+    ann = _strip_annotated(ann)
+    if _is_union(ann):
+        non_none = [a for a in _union_members(ann) if a is not type(None)]
+        if len(non_none) == 1:
+            ann = non_none[0]
+    return ann
+
+
+# Checks for the Python type a value passed from Python must have, per declared type, with how to
+# name the type in an error message. bool is excluded from int and float explicitly since it is a
+# subclass of int.
+_DECLARED_PYTHON_TYPES = {
+    bool: (lambda v: isinstance(v, bool), "True or False"),
+    int: (lambda v: isinstance(v, int) and not isinstance(v, bool), "an integer"),
+    float: (lambda v: isinstance(v, (int, float)) and not isinstance(v, bool), "a number"),
+    str: (lambda v: isinstance(v, str), "a string"),
+}
+
+
+def _check_declared_value(func, param, name: str, value) -> Optional[str]:
+    """Error message when a value passed from Python doesn't fit the declaration of a parameter of func, else None.
+
+    param is its _ParamSpec (see _cli_params). The command-line parser checks values coming through
+    the CLI, but a plain Python call from the REPL, or a value inside a dict like retry's newOpts,
+    bypasses it. The parser's conversion can't simply be reused for these: it starts from strings
+    (and would turn 'yes' into True for a flag), so the Python type is checked strictly here
+    against the type hint, then the range and choices the declaration gives.
+    name is how the caller referred to the parameter, used in the message.
+    """
+    check = _DECLARED_PYTHON_TYPES.get(_declared_type(func, param.name))
+    if check is not None:
+        is_valid, description = check
+        if not is_valid(value):
+            return f"'{name}' must be {description}, got {value!r}."
+    error = param.value_error(value)
+    if error:
+        return f"Invalid value for '{name}': {error}"
+    return None
 
 
 def _setup() -> None:
@@ -297,19 +371,7 @@ def _kwarg_choices(func, name: str) -> list:
     Returned bare (unquoted) - readline's own quote-matching auto-closes an opening quote
     the user already typed, so we don't need to (and shouldn't try to) add one ourselves.
     """
-    try:
-        hints = get_type_hints(func, include_extras=True)
-    except Exception:
-        return []
-    ann = hints.get(name)
-    if ann is None:
-        return []
-    while hasattr(ann, "__metadata__"):
-        ann = ann.__origin__
-    if get_origin(ann) is Union:
-        non_none = [a for a in get_args(ann) if a is not type(None)]
-        if len(non_none) == 1:
-            ann = non_none[0]
+    ann = _declared_type(func, name)
     if get_origin(ann) is Literal:
         return [str(v) for v in get_args(ann)]
     if ann is bool:
@@ -789,23 +851,21 @@ def finish(
     return core.finish(ids, soft=soft)
 
 
-# The options newOpts accepts: the individual retry options below (including their aliases),
-# mapped to the task parameter the server expects for each, as the individual options are sent.
-# The server silently ignores task parameters a retry cannot change, so anything else is refused
-# before the request is sent.
-_RETRY_NEW_OPTS = {
+# The retry() parameters sent to the server as task parameters, mapped to the task parameter name
+# the server expects for each. Everything else about them - type, range and option names - comes
+# from their declarations in retry(). The server silently ignores task parameters a retry cannot
+# change, so newOpts keys that don't name one of these are refused before the request is sent.
+_RETRY_TASK_PARAMS = {
     "site": "site",
     "excludedSite": "excludedSite",
     "includedSite": "includedSite",
     "nFilesPerJob": "nFilesPerJob",
     "nMaxFilesPerJob": "nMaxFilesPerJob",
-    "maxNFilesPerJob": "nMaxFilesPerJob",
     "nGBPerJob": "nGBPerJob",
     "nFiles": "nFiles",
     "nEvents": "nEvents",
     "loopingCheck": "loopingCheck",
     "memory": "ramCount",
-    "ramCount": "ramCount",
     "avoidVP": "avoidVP",
     "ignoreMissingInDS": "ignoreMissingInDS",
     "forceStaged": "forceStaged",
@@ -813,8 +873,37 @@ _RETRY_NEW_OPTS = {
 }
 
 
+def _retry_new_opts_keys() -> dict:
+    """The keys newOpts accepts, mapped to the retry() parameter each one sets.
+
+    A key is the Python name of a parameter in _RETRY_TASK_PARAMS or one of its declared option
+    names without the leading dashes, so aliases like --maxNFilesPerJob or --ramCount are accepted
+    as well. The negative --no-... forms of flags are not.
+    """
+    params = _cli_params("retry")
+    keys = {}
+    for name in _RETRY_TASK_PARAMS:
+        keys[name] = name
+        for flag in params[name].flags:
+            keys[flag.lstrip("-")] = name
+    return keys
+
+
+def _report_invalid_retry_value(param: str, name: str, value) -> bool:
+    """Report a value that doesn't fit the declaration of the retry() parameter param; True if reported.
+
+    Values from the CLI were already checked by the parser. The same declarations apply to values from a
+    plain Python call or from newOpts, which bypass it. name is how the caller referred to param.
+    """
+    error = _check_declared_value(retry, _cli_params("retry")[param], name, value)
+    if error:
+        print(f"Error: {error} Nothing was retried.", file=sys.stderr)
+        return True
+    return False
+
+
 def _translate_retry_new_opts(new_opts):
-    """newOpts as the task parameters to send, or None (with the error reported) when it is not valid."""
+    """newOpts as {retry() parameter: value}, or None (with the error reported) when it is not valid."""
     if not isinstance(new_opts, dict):
         print(
             f"Error: newOpts must be a dict of retry options, e.g. {{'excludedSite': 'siteA,siteB'}}, got {new_opts!r}. "
@@ -822,18 +911,21 @@ def _translate_retry_new_opts(new_opts):
             file=sys.stderr,
         )
         return None
-    invalid = [key for key in new_opts if key not in _RETRY_NEW_OPTS]
+    keys = _retry_new_opts_keys()
+    invalid = [key for key in new_opts if key not in keys]
     if invalid:
         print(
-            f"Error: invalid option(s) in newOpts: {', '.join(map(str, invalid))}. Nothing was retried. Valid options: {', '.join(_RETRY_NEW_OPTS)}.",
+            f"Error: invalid option(s) in newOpts: {', '.join(map(str, invalid))}. Nothing was retried. Valid options: {', '.join(keys)}.",
             file=sys.stderr,
         )
         return None
     translated = {}
     for key, value in new_opts.items():
-        param = _RETRY_NEW_OPTS[key]
+        param = keys[key]
+        if _report_invalid_retry_value(param, key, value):
+            return None
         if param in translated and translated[param] != value:
-            aliases = [k for k in new_opts if _RETRY_NEW_OPTS[k] == param]
+            aliases = [k for k in new_opts if keys[k] == param]
             print(f"Error: newOpts sets {' and '.join(aliases)} to different values. Nothing was retried.", file=sys.stderr)
             return None
         translated[param] = value
@@ -858,8 +950,8 @@ def retry(
         ),
     ] = None,
     nGBPerJob: Annotated[
-        Optional[float],
-        Opt("--nGBPerJob", help="Maximum input size in GB to be processed by a single job in the task."),
+        Optional[int],
+        Opt("--nGBPerJob", min=1, help="Maximum input size in GB to be processed by a single job in the task."),
     ] = None,
     nFiles: Annotated[Optional[int], Opt("--nFiles", help="Total number of input files to be processed by the task.")] = None,
     nEvents: Annotated[
@@ -913,7 +1005,8 @@ def retry(
     In interactive mode, newOpts can be passed with a raw dict of task-retry options and it overrides
     all of the individual options above. newOpts is not supported from the shell CLI. Its keys are
     the names of the individual options (site, excludedSite, ..., memory or ramCount, maxCore); any
-    other key is reported as an error and nothing is retried.
+    other key is reported as an error and nothing is retried. Its values must have the same types and
+    ranges as the individual options, e.g. a positive integer for nGBPerJob.
 
     example:
       >>> retry(123)
@@ -929,6 +1022,8 @@ def retry(
       $ pbook retry all --days=30 --limit=2000
 
     """
+    # must stay the first statement: the parameters as passed (REPL) or parsed (CLI), nothing else
+    args = dict(locals())
     ids = _parse_ids(task_ids)
     for name, value in (("days", days), ("limit", limit)):
         if value is None:
@@ -945,32 +1040,16 @@ def retry(
     days = 14 if days is None else days
     limit = 1000 if limit is None else limit
     if newOpts is not None:
-        opts = _translate_retry_new_opts(newOpts)
-        if opts is None:
+        values = _translate_retry_new_opts(newOpts)
+        if values is None:
             return
+    else:
+        values = {name: args[name] for name in _RETRY_TASK_PARAMS if args[name] is not None}
+        for name, value in values.items():
+            if _report_invalid_retry_value(name, name, value):
+                return
+    opts = {_RETRY_TASK_PARAMS[name]: value for name, value in values.items()} or None
     core = _ensure_init()
-    if newOpts is None:
-        new_opts = {
-            k: v
-            for k, v in {
-                "site": site,
-                "excludedSite": excludedSite,
-                "includedSite": includedSite,
-                "nFilesPerJob": nFilesPerJob,
-                "nMaxFilesPerJob": nMaxFilesPerJob,
-                "nGBPerJob": nGBPerJob,
-                "nFiles": nFiles,
-                "nEvents": nEvents,
-                "loopingCheck": loopingCheck,
-                "ramCount": memory,
-                "avoidVP": avoidVP,
-                "ignoreMissingInDS": ignoreMissingInDS,
-                "forceStaged": forceStaged,
-                "maxCoreCount": maxCore,
-            }.items()
-            if v is not None
-        }
-        opts = new_opts or None
     if isinstance(ids, list):
         return _parallel(lambda tid: core.retry(tid, newOpts=opts), ids)
     if ids == "all":
@@ -1339,6 +1418,22 @@ class _ParamSpec:
         else:
             self.convert = base if base in (int, float) else str
 
+        self.min = getattr(info, "min", None)
+        self.max = getattr(info, "max", None)
+        if self.min is not None or self.max is not None:
+            to_number = self.convert
+
+            def convert(value):
+                number = to_number(value)
+                error = self.value_error(number)
+                if error:
+                    raise argparse.ArgumentTypeError(error)
+                return number
+
+            # argparse names the type in "invalid int value: 'x'"
+            convert.__name__ = to_number.__name__
+            self.convert = convert
+
         # option names; "--x/--no-x" is an on/off switch, None when neither is given
         self.flags, self.off_flags = [], []
         for flag in (info.flags if self.is_option else ()) or ([f"--{name.replace('_', '-')}"] if self.is_option else []):
@@ -1348,6 +1443,26 @@ class _ParamSpec:
                 self.off_flags.append(off)
         # an option that is only present or absent (--soft), as opposed to one taking a value
         self.is_switch = self.is_option and self.is_bool
+
+    def range_text(self) -> Optional[str]:
+        """The allowed range as Click wrote it (x>=1, 1<=x<=5, x<=5), or None if unbounded."""
+        if self.min is not None and self.max is not None:
+            return f"{self.min}<=x<={self.max}"
+        if self.min is not None:
+            return f"x>={self.min}"
+        if self.max is not None:
+            return f"x<={self.max}"
+        return None
+
+    def value_error(self, value) -> Optional[str]:
+        """Why an already-typed value is outside the declared range or choices, in Click's wording; None if it fits."""
+        if self.choices is not None and str(value) not in self.choices:
+            return f"{value!r} is not one of {', '.join(repr(c) for c in self.choices)}."
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return None  # not a number: the type check reports it, there is no range to compare against
+        if (self.min is not None and value < self.min) or (self.max is not None and value > self.max):
+            return f"{value} is not in the range {self.range_text()}."
+        return None
 
 
 def _param_specs(func) -> list:
@@ -1362,6 +1477,8 @@ def _help_with_default(spec: _ParamSpec) -> str:
     if spec.hidden:
         return argparse.SUPPRESS
     text = spec.help or ""
+    if spec.range_text():
+        text += f" [{spec.range_text()}]"
     if spec.default is not None and not spec.is_switch:
         text += f" [default: {spec.default}]"
     return text
