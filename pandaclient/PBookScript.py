@@ -41,7 +41,6 @@ from typing import (
     get_type_hints,
 )
 
-import click
 import typer
 from rich import box
 from rich.console import Console
@@ -174,34 +173,56 @@ def _cli_params(command_name: str) -> dict:
     return {param.name: param for param in typer.main.get_command(app).commands[command_name].params}
 
 
-# Python types a value passed from Python must have, per Click parameter type (subclasses such as
-# IntRange included), with how to name them in an error message. bool is excluded from int and
-# float explicitly since it is a subclass of int.
-_DECLARED_PYTHON_TYPES = (
-    (click.types.BoolParamType, lambda v: isinstance(v, bool), "True or False"),
-    (click.types.IntParamType, lambda v: isinstance(v, int) and not isinstance(v, bool), "an integer"),
-    (click.types.FloatParamType, lambda v: isinstance(v, (int, float)) and not isinstance(v, bool), "a number"),
-    (click.types.StringParamType, lambda v: isinstance(v, str), "a string"),
-)
+def _declared_type(func, name: str):
+    """The type a parameter of func is declared with, without Annotated[...] and Optional[...]; None if unknown."""
+    try:
+        hints = get_type_hints(func, include_extras=True)
+    except Exception:
+        return None
+    ann = hints.get(name)
+    if ann is None:
+        return None
+    while hasattr(ann, "__metadata__"):
+        ann = ann.__origin__
+    if get_origin(ann) is Union:
+        non_none = [a for a in get_args(ann) if a is not type(None)]
+        if len(non_none) == 1:
+            ann = non_none[0]
+    return ann
 
 
-def _check_declared_value(param: click.Parameter, name: str, value) -> Optional[str]:
-    """Error message when a value passed from Python doesn't fit the declaration of param, else None.
+# Checks for the Python type a value passed from Python must have, per declared type, with how to
+# name the type in an error message. bool is excluded from int and float explicitly since it is a
+# subclass of int.
+_DECLARED_PYTHON_TYPES = {
+    bool: (lambda v: isinstance(v, bool), "True or False"),
+    int: (lambda v: isinstance(v, int) and not isinstance(v, bool), "an integer"),
+    float: (lambda v: isinstance(v, (int, float)) and not isinstance(v, bool), "a number"),
+    str: (lambda v: isinstance(v, str), "a string"),
+}
 
-    Click checks values coming through the CLI, but a plain Python call from the REPL, or a
-    value inside a dict like retry's newOpts, bypasses it. Click's own conversion can't simply
-    be reused for these: it converts leniently (1.5 -> 1 for an integer, 'yes' -> True for a
-    flag), so the Python type is checked strictly here, and Click is only asked for the rest
-    (ranges, choices). name is how the caller referred to the parameter, used in the message.
+
+def _check_declared_value(func, param, name: str, value) -> Optional[str]:
+    """Error message when a value passed from Python doesn't fit the declaration of a parameter of func, else None.
+
+    param is the Click parameter Typer built for it (see _cli_params). Click checks values coming
+    through the CLI, but a plain Python call from the REPL, or a value inside a dict like retry's
+    newOpts, bypasses it. Click's own conversion can't simply be reused for these: it converts
+    leniently (1.5 -> 1 for an integer, 'yes' -> True for a flag), so the Python type is checked
+    strictly here against the type hint, and Click is only asked for the rest (ranges, choices).
+    name is how the caller referred to the parameter, used in the message.
+
+    Click is deliberately not imported: typer >= 0.26 bundles its own copy of it (typer._click)
+    instead of depending on the click package, so only typer's public names are used.
     """
-    for param_type, is_valid, description in _DECLARED_PYTHON_TYPES:
-        if isinstance(param.type, param_type):
-            if not is_valid(value):
-                return f"'{name}' must be {description}, got {value!r}."
-            break
+    check = _DECLARED_PYTHON_TYPES.get(_declared_type(func, param.name))
+    if check is not None:
+        is_valid, description = check
+        if not is_valid(value):
+            return f"'{name}' must be {description}, got {value!r}."
     try:
         param.type.convert(value, param, None)
-    except click.BadParameter as e:
+    except typer.BadParameter as e:
         return f"Invalid value for '{name}': {e.message}"
     return None
 
@@ -310,19 +331,7 @@ def _kwarg_choices(func, name: str) -> list:
     Returned bare (unquoted) - readline's own quote-matching auto-closes an opening quote
     the user already typed, so we don't need to (and shouldn't try to) add one ourselves.
     """
-    try:
-        hints = get_type_hints(func, include_extras=True)
-    except Exception:
-        return []
-    ann = hints.get(name)
-    if ann is None:
-        return []
-    while hasattr(ann, "__metadata__"):
-        ann = ann.__origin__
-    if get_origin(ann) is Union:
-        non_none = [a for a in get_args(ann) if a is not type(None)]
-        if len(non_none) == 1:
-            ann = non_none[0]
+    ann = _declared_type(func, name)
     if get_origin(ann) is Literal:
         return [str(v) for v in get_args(ann)]
     if ann is bool:
@@ -839,7 +848,7 @@ def _report_invalid_retry_value(param: str, name: str, value) -> bool:
     Values from the CLI were already checked by Click. The same declarations apply to values from a
     plain Python call or from newOpts, which bypass it. name is how the caller referred to param.
     """
-    error = _check_declared_value(_cli_params("retry")[param], name, value)
+    error = _check_declared_value(retry, _cli_params("retry")[param], name, value)
     if error:
         typer.echo(f"Error: {error} Nothing was retried.", err=True)
         return True
