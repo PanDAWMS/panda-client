@@ -1,6 +1,6 @@
 """Tests for the option checks of pbook retry.
 
-The retry options are checked against their declarations in PBookScript.retry: by Click on the CLI,
+The retry options are checked against their declarations in PBookScript.retry: by the parser on the CLI,
 and by PBookScript itself for values from a plain Python call (REPL) or from newOpts. The core is
 mocked, so nothing is sent to the server.
 
@@ -11,8 +11,6 @@ import contextlib
 import io
 import unittest
 from unittest import mock
-
-from typer.testing import CliRunner
 
 from pandaclient import PBookScript
 
@@ -140,18 +138,26 @@ class TestNewOpts(RetryTestBase):
 
 class TestCli(RetryTestBase):
     def invoke(self, *args):
-        return CliRunner().invoke(PBookScript.app, ["retry", "123", *args])
+        """Run `pbook retry 123 <args>`; returns the exit code and what was written to stdout and stderr."""
+        output = io.StringIO()
+        with mock.patch("sys.argv", ["pbook", "retry", "123", *args]), contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+            try:
+                PBookScript.main()
+                exit_code = 0
+            except SystemExit as exc:
+                exit_code = exc.code or 0
+        return exit_code, output.getvalue()
 
     def test_n_gb_per_job_rejected(self):
         for value in ("1.5", "0", "-1"):
             with self.subTest(value=value):
-                result = self.invoke("--nGBPerJob", value)
-                self.assertNotEqual(result.exit_code, 0)
+                exit_code, _ = self.invoke("--nGBPerJob", value)
+                self.assertNotEqual(exit_code, 0)
                 self.core.retry.assert_not_called()
 
     def test_n_gb_per_job_accepted(self):
-        result = self.invoke("--nGBPerJob", "10", "--ramCount", "4000")
-        self.assertEqual(result.exit_code, 0, result.output)
+        exit_code, output = self.invoke("--nGBPerJob", "10", "--ramCount", "4000")
+        self.assertEqual(exit_code, 0, output)
         self.core.retry.assert_called_once_with(123, newOpts={"nGBPerJob": 10, "ramCount": 4000})
 
 

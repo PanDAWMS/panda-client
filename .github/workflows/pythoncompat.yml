@@ -17,13 +17,19 @@ concurrency:
 
 jobs:
   compat:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
         python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        include:
+          # 3.9 is end-of-life: setup-python has no build of it for Ubuntu 26.04 (ubuntu-latest),
+          # the last one (3.9.25) is for 22.04/24.04. Drop this when 3.9 support is dropped, or
+          # move it to an almalinux:9 container (system python3.9) once 24.04 runners are retired.
+          - python-version: "3.9"
+            os: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v7
