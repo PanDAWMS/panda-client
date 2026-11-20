@@ -198,6 +198,12 @@ class TestShow(PbookTestCase):
                     ["username=joe", "taskname=t*", "days=3", "jeditaskid=5", "reqid=6", "status=done", "superstatus=x"],
                     [C("show", **all_filters)],
                 ),
+                # the word after an option that takes a value is its value, even when it starts with '-'
+                (["--taskname", "-analysis"], [C("show", taskname="-analysis", **SHOW_DEFAULTS)]),
+                (["--taskname=-analysis"], [C("show", taskname="-analysis", **SHOW_DEFAULTS)]),
+                (["--taskname", "--limit"], [C("show", taskname="--limit", **SHOW_DEFAULTS)]),
+                (["--username", "-x", "--taskname", "-y"], [C("show", username="-x", taskname="-y", **SHOW_DEFAULTS)]),
+                (["--", "-5"], [C("show", -5, **SHOW_DEFAULTS)]),
                 # a positional that merely contains '=' is not a legacy option
                 (["foo=bar"], [C("show", "foo=bar", **SHOW_DEFAULTS)]),
             ]
@@ -289,6 +295,8 @@ class TestRetry(PbookTestCase):
             (["123"], [R(123)]),
             (["123", "--excludedSite=a,b"], [R(123, {"excludedSite": "a,b"})]),
             (["123", "--excludedSite", "a,b"], [R(123, {"excludedSite": "a,b"})]),
+            (["123", "--excludedSite", "-x"], [R(123, {"excludedSite": "-x"})]),
+            (["123", "--ramCount", "-1"], [R(123, {"ramCount": -1})]),
             (["123", "excludedSite=a,b"], [R(123, {"excludedSite": "a,b"})]),
             (["123", "--nGBPerJob=1"], [R(123, {"nGBPerJob": 1})]),
             (["123", "nGBPerJob=10"], [R(123, {"nGBPerJob": 10})]),
@@ -504,6 +512,18 @@ class TestCodeSnippet(PbookTestCase):
     def test_exit_code_from_result(self):
         self.assertEqual(run_pbook(["-c", "show(123)"], func_return_value=False).exit, 1)
 
+    def test_reported_error_exits_1(self):
+        result = run_pbook(["-c", "kill('wrong')"])
+        self.assertEqual(result.exit, 1)
+        self.assertIn("invalid task ID(s): wrong", result.err)
+        self.assertNotIn("Traceback", result.err)
+        self.assertEqual(result.calls, [])
+
+    def test_snippet_starting_with_dash(self):
+        result = run_pbook(["-c", "-1"])
+        self.assertEqual(result.exit, 0, result.err)
+        self.assertEqual(result.calls, [])
+
     def test_python_values(self):
         result = run_pbook(["-c", "kill([1, 2])"])
         self.assertEqual(result.calls, [C("kill", 1), C("kill", 2)])
@@ -513,6 +533,35 @@ class TestCodeSnippet(PbookTestCase):
         self.assertEqual(result.exit, 0, result.err)
         self.assertTrue(result.verbose)
         self.assertEqual(result.calls, [C("show", **SHOW_DEFAULTS)])
+
+
+class TestInteractiveConsole(unittest.TestCase):
+    """Commands typed at the >>> prompt: an error ends that command, not the session."""
+
+    def run_console(self, lines):
+        core = RecorderCore()
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(PBookScript, "_ensure_init", lambda sanity_check=False: core))
+            input_mock = stack.enter_context(mock.patch("builtins.input", side_effect=list(lines) + [EOFError()]))
+            stack.enter_context(contextlib.redirect_stdout(stdout))
+            stack.enter_context(contextlib.redirect_stderr(stderr))
+            PBookScript._run_repl(PBookScript._build_namespace(), banner="")
+        return core, input_mock, stderr.getvalue()
+
+    def test_invalid_task_id_keeps_session(self):
+        for command in ("retry('wrong')", "kill('wrong')", "finish('wrong')"):
+            with self.subTest(command=command):
+                core, input_mock, err = self.run_console([command, "kill(5)"])
+                self.assertIn("invalid task ID(s): wrong", err)
+                self.assertNotIn("Traceback", err)
+                self.assertEqual(core.calls, [C("kill", 5)])
+                self.assertEqual(input_mock.call_count, 3)  # both lines, then the end of input
+
+    def test_unexpected_error_shows_traceback_and_keeps_session(self):
+        core, input_mock, err = self.run_console(["show(nosuch=1)", "kill(5)"])
+        self.assertIn("TypeError", err)
+        self.assertEqual(core.calls, [C("kill", 5)])
 
 
 class TestShellCompletion(unittest.TestCase):

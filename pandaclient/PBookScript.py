@@ -170,6 +170,15 @@ def _parallel(func, items):
         return list(pool.map(func, items))
 
 
+class _CommandFailed(Exception):
+    """A command stopped on an error it has already reported.
+
+    Batch mode and -c exit with status 1 on it; the interactive console just goes on to the next
+    prompt. Commands raise this rather than calling sys.exit(), which would end the whole console
+    session: InteractiveConsole deliberately lets SystemExit through.
+    """
+
+
 def _parse_ids(raw):
     """'all' -> 'all'; '42' -> 42; '1,2,3' -> [1,2,3]; anything not a string passes through as-is."""
     if not isinstance(raw, str):
@@ -182,7 +191,7 @@ def _parse_ids(raw):
         return ids[0] if len(ids) == 1 else ids
     except ValueError:
         print(f"Error: invalid task ID(s): {raw}", file=sys.stderr)
-        sys.exit(1)
+        raise _CommandFailed
 
 
 _INVALID = object()
@@ -432,6 +441,21 @@ class _PBookCompleter:
         return results
 
 
+class _Console(code.InteractiveConsole):
+    """InteractiveConsole that stays quiet about _CommandFailed: the command already reported its error."""
+
+    def runcode(self, code) -> None:
+        # same as InteractiveInterpreter.runcode (self.locals is the dict passed in), plus the _CommandFailed case
+        try:
+            exec(code, self.locals)  # noqa: S102  # pyright: ignore[reportArgumentType]
+        except SystemExit:
+            raise
+        except _CommandFailed:
+            pass
+        except BaseException:
+            self.showtraceback()
+
+
 def _run_repl(ns: dict, banner: str) -> None:
     """Manual REPL using InteractiveConsole.push() so we own readline setup entirely."""
     completer = _PBookCompleter(ns)
@@ -439,7 +463,7 @@ def _run_repl(ns: dict, banner: str) -> None:
     readline.parse_and_bind("tab: complete")
     readline.parse_and_bind("set show-all-if-ambiguous On")
 
-    console = code.InteractiveConsole(ns)
+    console = _Console(ns)
     print(banner)
 
     more = False
@@ -489,7 +513,10 @@ def _main(args: argparse.Namespace) -> None:
 
     func = getattr(args, "_func", None)
     if func is not None:
-        func(**{name: getattr(args, name) for name in signature(func).parameters})
+        try:
+            func(**{name: getattr(args, name) for name in signature(func).parameters})
+        except _CommandFailed:
+            sys.exit(1)
         return
 
     command_string = args.command_string
@@ -513,7 +540,10 @@ def _main(args: argparse.Namespace) -> None:
         ns = _build_namespace()
 
         if command_string:
-            exec(command_string, {}, ns)  # noqa: S102
+            try:
+                exec(command_string, {}, ns)  # noqa: S102
+            except _CommandFailed:
+                sys.exit(1)
             from pandaclient import PBookCore as _PBC
 
             sys.exit(0 if _PBC.func_return_value else 1)
@@ -1593,6 +1623,53 @@ def _rewrite_legacy_kwargs(argv: list) -> list:
     return rewritten
 
 
+def _attach_option_values(argv: list) -> list:
+    """Attach the value to each option that takes one: `--taskname -analysis` -> `--taskname=-analysis`.
+
+    Click took the word after such an option as its value whatever it looked like. argparse takes a
+    word starting with '-' for another option instead, and then reports the value as missing. With
+    the value attached, argparse uses it as it is, so `pbook show --taskname -analysis` keeps working.
+    Covers the command's options (aliases and unambiguous abbreviations included) and -c. Nothing
+    after `--` is touched.
+    """
+    i = _find_command(argv)
+    attached = []
+    j = 0
+    while j < i:
+        tok = argv[j]
+        if tok in _GLOBAL_VALUE_OPTS and j + 1 < len(argv):
+            # a short option: -c-1 is -c with the value -1 (-c=-1 would be the value "=-1")
+            value = argv[j + 1]
+            attached.extend([tok + value] if value.startswith("-") else [tok, value])
+            j += 2
+            continue
+        attached.append(tok)
+        j += 1
+    if i >= len(argv) or argv[i] not in _COMMANDS:
+        return attached + argv[i:]
+
+    specs = [spec for spec in _param_specs(_COMMANDS[argv[i]]) if spec.is_option]
+    takes_value = {flag for spec in specs if not spec.is_switch for flag in spec.flags}
+    all_flags = {flag for spec in specs for flag in spec.flags + spec.off_flags} | {"--help"}
+    attached.append(argv[i])
+    k = i + 1
+    while k < len(argv):
+        tok = argv[k]
+        if tok == "--":
+            attached.extend(argv[k:])
+            break
+        if tok.startswith("--") and "=" not in tok and k + 1 < len(argv):
+            # the option argparse will resolve tok to: an exact name, or the only one it abbreviates
+            matches = [tok] if tok in all_flags else [flag for flag in all_flags if flag.startswith(tok)]
+            if len(matches) == 1 and matches[0] in takes_value:
+                attached.append(f"{tok}={argv[k + 1]}")
+                k += 2
+                continue
+        attached.append(tok)
+        k += 1
+    return attached
+
+
 # ─── Bash completion ──────────────────────────────────────────────────────────
 
 # templates/pbook_completion.sh runs `_PBOOK_COMPLETE=complete_bash pbook` with the line being
@@ -1673,7 +1750,7 @@ def main() -> None:
         if os.environ[_COMPLETE_VAR] == "complete_bash":
             _complete_bash()
         sys.exit(0)
-    args = _build_parser().parse_args(_rewrite_legacy_kwargs(sys.argv[1:]))
+    args = _build_parser().parse_args(_attach_option_values(_rewrite_legacy_kwargs(sys.argv[1:])))
     try:
         _main(args)
     except KeyboardInterrupt:
