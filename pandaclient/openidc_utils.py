@@ -29,6 +29,15 @@ def _legacy_token_path():
     return os.path.join(os.path.abspath(os.path.expanduser(config_root)), LEGACY_TOKEN_BASENAME)
 
 
+# write a file readable by the owner only
+def _write_private(path, text):
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        # the mode above only applies to a new file: also fix one left world-readable by older versions
+        os.fchmod(f.fileno(), 0o600)
+        f.write(text)
+
+
 # create a directory and its missing parents, each readable by the owner only. Existing
 # directories are left as they are, since they may be shared
 def _makedirs_private(path):
@@ -105,13 +114,9 @@ class OpenIdConnect_Utils:
             if self.verbose:
                 self.log_stream.debug(f"failed to move {legacy_path} to {token_path}: {e}")
 
-    # write the token endpoint response, which holds the refresh token, readable by the owner only
+    # write the token endpoint response, which holds the refresh token
     def write_token(self, text):
-        fd = os.open(self.get_token_path(), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(fd, "w") as f:
-            # the mode above only applies to a new file: also fix one left world-readable by older versions
-            os.fchmod(f.fileno(), 0o600)
-            f.write(text)
+        _write_private(self.get_token_path(), text)
 
     # get device code
     def get_device_code(self, device_auth_endpoint, client_id, audience, jwt_profile):
@@ -221,8 +226,8 @@ class OpenIdConnect_Utils:
             text = conn.read().decode()
             if self.verbose:
                 self.log_stream.debug(text)
-            with open(path, "w") as f:
-                f.write(text)
+            # the auth config holds the client secret
+            _write_private(path, text)
             with open(path) as f:
                 return True, json.load(f)
         except HTTPError as e:
