@@ -69,7 +69,7 @@ def setup():
 # magic commands
 
 GETPASS_STRINGS = ["Enter GRID pass phrase for this identity:"]
-RAWINPUT_STRINGS = [">>> \n", "[y/n] \n"]
+RAWINPUT_STRINGS = [">>> \n"]
 
 
 def _execute(command):

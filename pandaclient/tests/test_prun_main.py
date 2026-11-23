@@ -37,18 +37,39 @@ class TestHomeDirConfirmation(unittest.TestCase):
         self.assertEqual(result.get("exit"), MiscUtils.EC_Config)
         self.assertNotIn(TOO_LARGE_CPU_COUNT_MESSAGE, result["output"])
         self.assertIn("is executed just under the HOME directory", result["output"])
-        input_mock.assert_called_once_with("y/N: ")
+        self.assertIn("use --useHomeDir to send the home directory", result["output"])
+        input_mock.assert_called_once_with("[y/N]: ")
+
+    def test_enter_is_no(self):
+        result, input_mock = self.run_in_home_dir([""])
+        self.assertEqual(result.get("exit"), MiscUtils.EC_Config)
+        self.assertNotIn(TOO_LARGE_CPU_COUNT_MESSAGE, result["output"])
+        input_mock.assert_called_once_with("[y/N]: ")
+
+    def test_no_terminal_is_no(self):
+        result, input_mock = self.run_in_home_dir(EOFError())
+        self.assertEqual(result.get("exit"), MiscUtils.EC_Config)
+        self.assertNotIn(TOO_LARGE_CPU_COUNT_MESSAGE, result["output"])
+
+    def test_answers_are_case_insensitive(self):
+        for answer in ("n", "no", "  NO  "):
+            with self.subTest(answer=answer):
+                result, _ = self.run_in_home_dir([answer])
+                self.assertEqual(result.get("exit"), MiscUtils.EC_Config)
+        for answer in ("Y", "yes", "  YES  "):
+            with self.subTest(answer=answer):
+                result, _ = self.run_in_home_dir([answer])
+                self.assertIn(TOO_LARGE_CPU_COUNT_MESSAGE, result["output"])
 
     def test_yes_continues(self):
         result, input_mock = self.run_in_home_dir(["y"])
         self.assertIn(TOO_LARGE_CPU_COUNT_MESSAGE, result["output"])
-        input_mock.assert_called_once_with("y/N: ")
+        input_mock.assert_called_once_with("[y/N]: ")
 
-    def test_asks_again_until_y_or_N(self):
-        # only exactly y or N are accepted, with surrounding spaces stripped
-        result, input_mock = self.run_in_home_dir(["", "n", "yes", "Y", "  N  "])
-        self.assertEqual(input_mock.call_count, 5)
-        self.assertNotIn(TOO_LARGE_CPU_COUNT_MESSAGE, result["output"])
+    def test_asks_again_on_other_answers(self):
+        result, input_mock = self.run_in_home_dir(["maybe", "ok", "y"])
+        self.assertEqual(input_mock.call_count, 3)
+        self.assertIn(TOO_LARGE_CPU_COUNT_MESSAGE, result["output"])
 
     def test_no_question_with_use_home_dir(self):
         result, input_mock = self.run_in_home_dir([], extra_args=["--useHomeDir"])

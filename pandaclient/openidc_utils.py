@@ -4,7 +4,6 @@ import glob
 import json
 import os
 import ssl
-import sys
 import time
 import uuid
 from urllib.error import HTTPError
@@ -142,16 +141,8 @@ class OpenIdConnect_Utils:
         except Exception as e:
             return False, str(e)
 
-    # get ID token
+    # get ID token, polling the token endpoint until the user has signed in or the device code expires
     def get_id_token(self, token_endpoint, client_id, client_secret, device_code, interval, expires_in):
-        self.log_stream.info("Ready to get ID token?")
-        while True:
-            sys.stdout.write("[y/n] \n")
-            choice = input().lower()
-            if choice == "y":
-                break
-            if choice == "n":
-                return False, "aborted"
         if self.verbose:
             self.log_stream.debug("getting ID token")
         deadline = time.monotonic() + expires_in
@@ -165,28 +156,37 @@ class OpenIdConnect_Utils:
         rdata = urlencode(data).encode()
         req = Request(token_endpoint, rdata)
         req.add_header("content-type", "application/x-www-form-urlencoded")
-        while time.monotonic() < deadline:
-            try:
-                conn = urlopen(req, context=_get_ssl_context())
-                text = conn.read().decode()
-                if self.verbose:
-                    self.log_stream.debug(text)
-                id_token = json.loads(text)["id_token"]
-                self.write_token(text)
-                return True, id_token
-            except HTTPError as e:
-                text = e.read()
+        try:
+            while time.monotonic() < deadline:
                 try:
-                    description = json.loads(text)
-                    # pending
-                    if description["error"] == "authorization_pending":
+                    conn = urlopen(req, context=_get_ssl_context())
+                    text = conn.read().decode()
+                    if self.verbose:
+                        self.log_stream.debug(text)
+                    id_token = json.loads(text)["id_token"]
+                    self.write_token(text)
+                    return True, id_token
+                except HTTPError as e:
+                    text = e.read()
+                    try:
+                        error = json.loads(text)["error"]
+                    except Exception:
+                        error = None
+                    # the user has not signed in yet
+                    if error == "authorization_pending":
                         time.sleep(interval + 1)
                         continue
-                except Exception:
-                    pass
-                return False, f"code={e.code}. reason={e.reason}. description={text}"
-            except Exception as e:
-                return False, str(e)
+                    # polling too often: wait 5 seconds longer from now on (RFC 8628)
+                    if error == "slow_down":
+                        interval += 5
+                        time.sleep(interval + 1)
+                        continue
+                    return False, f"code={e.code}. reason={e.reason}. description={text}"
+                except Exception as e:
+                    return False, str(e)
+        except KeyboardInterrupt:
+            return False, "aborted"
+        return False, f"sign-in was not completed within {round(expires_in / 60)} minutes"
 
     # refresh token
     def refresh_token(self, token_endpoint, client_id, client_secret, refresh_token_string):
@@ -299,7 +299,7 @@ class OpenIdConnect_Utils:
         if not s:
             return False, f"Failed to get device code: {o}"
         # get ID token
-        self.log_stream.info(f"Please go to {o['verification_uri_complete']} and sign in. Waiting until authentication is completed")
+        self.log_stream.info(f"Please go to {o['verification_uri_complete']} and sign in. Waiting until authentication is completed (Ctrl-C to abort)")
         if "interval" in o:
             interval = o["interval"]
         else:

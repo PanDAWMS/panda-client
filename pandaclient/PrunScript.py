@@ -829,7 +829,8 @@ def _confirm_home_dir_upload(options, dry_mode, tmp_log):
     """
     Ask before sending all the files under $HOME, when prun runs with the home directory as work dir
 
-    Not asked with --useHomeDir or --useAthenaPackages, or in dry mode. Exits with EC_Config when the answer is N
+    Not asked with --useHomeDir or --useAthenaPackages, or in dry mode. Exits with EC_Config unless the answer is
+    yes; just pressing Enter, or having no terminal to answer from, counts as no
     """
     in_home_dir = "HOME" in os.environ and os.path.realpath(os.path.expanduser(os.environ["HOME"])) == options.workDir
     if not in_home_dir or options.useHomeDir or options.useAthenaPackages or dry_mode:
@@ -840,9 +841,13 @@ def _confirm_home_dir_upload(options, dry_mode, tmp_log):
         "Do you really want that? (Please use --useHomeDir if you want to skip this confirmation)"
     )
     answer = None
-    while answer not in ("y", "N"):
-        answer = input("y/N: ").strip()
-    if answer == "N":
+    while answer not in ("y", "yes", "n", "no", ""):
+        try:
+            answer = input("[y/N]: ").strip().lower()
+        except EOFError:
+            answer = "n"
+    if answer not in ("y", "yes"):
+        tmp_log.error("Aborted. Run prun from a subdirectory, or use --useHomeDir to send the home directory")
         sys.exit(MiscUtils.EC_Config)
 
 
