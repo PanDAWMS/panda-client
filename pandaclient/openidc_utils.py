@@ -46,14 +46,23 @@ class OpenIdConnect_Utils:
         if token_dir is None:
             token_dir = os.environ.get("PANDA_CONFIG_ROOT", ".")
         self.token_dir = os.path.expanduser(token_dir)
-        if not os.path.exists(token_dir):
-            os.makedirs(token_dir)
+        if not os.path.exists(self.token_dir):
+            # only a directory created here is restricted: an existing one may be shared (e.g. the cwd)
+            os.makedirs(self.token_dir, mode=0o700)
         self.log_stream = log_stream
         self.verbose = verbose
 
     # get token path
     def get_token_path(self):
         return os.path.join(self.token_dir, TOKEN_BASENAME)
+
+    # write the token endpoint response, which holds the refresh token, readable by the owner only
+    def write_token(self, text):
+        fd = os.open(self.get_token_path(), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            # the mode above only applies to a new file: also fix one left world-readable by older versions
+            os.fchmod(f.fileno(), 0o600)
+            f.write(text)
 
     # get device code
     def get_device_code(self, device_auth_endpoint, client_id, audience, jwt_profile):
@@ -91,7 +100,7 @@ class OpenIdConnect_Utils:
                 return False, "aborted"
         if self.verbose:
             self.log_stream.debug("getting ID token")
-        startTime = datetime.datetime.utcnow()
+        deadline = time.monotonic() + expires_in
         data = {
             "client_id": client_id,
             "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
@@ -102,15 +111,14 @@ class OpenIdConnect_Utils:
         rdata = urlencode(data).encode()
         req = Request(token_endpoint, rdata)
         req.add_header("content-type", "application/x-www-form-urlencoded")
-        while datetime.datetime.utcnow() - startTime < datetime.timedelta(seconds=expires_in):
+        while time.monotonic() < deadline:
             try:
                 conn = urlopen(req, context=_get_ssl_context())
                 text = conn.read().decode()
                 if self.verbose:
                     self.log_stream.debug(text)
                 id_token = json.loads(text)["id_token"]
-                with open(self.get_token_path(), "w") as f:
-                    f.write(text)
+                self.write_token(text)
                 return True, id_token
             except HTTPError as e:
                 text = e.read()
@@ -140,8 +148,7 @@ class OpenIdConnect_Utils:
             if self.verbose:
                 self.log_stream.debug(text)
             id_token = json.loads(text)["id_token"]
-            with open(self.get_token_path(), "w") as f:
-                f.write(text)
+            self.write_token(text)
             return True, id_token
         except HTTPError as e:
             return False, f"code={e.code}. reason={e.reason}. description={e.read()}"
@@ -185,12 +192,11 @@ class OpenIdConnect_Utils:
                     # decode ID token
                     data = json.load(f)
                     dec = decode_id_token(data["id_token"])
-                    exp_time = datetime.datetime.utcfromtimestamp(dec["exp"])
-                    delta = exp_time - datetime.datetime.utcnow()
                     if self.verbose:
+                        exp_time = datetime.datetime.fromtimestamp(dec["exp"], datetime.timezone.utc)
                         self.log_stream.debug(f"token expiration time : {exp_time.strftime('%Y-%m-%d %H:%M:%S')} UTC")
                     # check expiration time
-                    if delta < datetime.timedelta(minutes=5):
+                    if dec["exp"] - time.time() < 5 * 60:
                         # return refresh token
                         if "refresh_token" in data:
                             if self.verbose:
