@@ -4,15 +4,55 @@ import glob
 import json
 import os
 import ssl
-import sys
 import time
 import uuid
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-TOKEN_BASENAME = ".token"
+# the token endpoint response (ID and refresh tokens) is kept in $PANDA_TOKEN_DIR/token, next to the
+# cached auth config and discovery pages
+TOKEN_DIR_ENV = "PANDA_TOKEN_DIR"
+DEFAULT_TOKEN_DIR = "~/.token/panda"
+TOKEN_BASENAME = "token"
 CACHE_PREFIX = ".page_cache_"
+# where versions before PANDA_TOKEN_DIR kept the token
+LEGACY_TOKEN_BASENAME = ".token"
+
+
+# path of the token file used by older versions, or None if $PANDA_CONFIG_ROOT is not set
+def _legacy_token_path():
+    config_root = os.environ.get("PANDA_CONFIG_ROOT")
+    if not config_root:
+        return None
+    return os.path.join(os.path.abspath(os.path.expanduser(config_root)), LEGACY_TOKEN_BASENAME)
+
+
+# write a file readable by the owner only
+def _write_private(path, text):
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        # the mode above only applies to a new file: also fix one left world-readable by older versions
+        os.fchmod(f.fileno(), 0o600)
+        f.write(text)
+
+
+# create a directory and its missing parents, each readable by the owner only. Existing
+# directories are left as they are, since they may be shared
+def _makedirs_private(path):
+    missing = []
+    while not os.path.isdir(path):
+        missing.append(path)
+        parent = os.path.dirname(path)
+        if parent == path:
+            break
+        path = parent
+    for directory in reversed(missing):
+        try:
+            os.mkdir(directory, 0o700)
+        except FileExistsError:
+            # created concurrently by another process
+            pass
 
 
 # get an SSL context with a usable CA trust store
@@ -43,17 +83,39 @@ class OpenIdConnect_Utils:
     # constructor
     def __init__(self, auth_config_url, token_dir=None, log_stream=None, verbose=False):
         self.auth_config_url = auth_config_url
-        if token_dir is None:
-            token_dir = os.environ.get("PANDA_CONFIG_ROOT", ".")
-        self.token_dir = os.path.expanduser(token_dir)
-        if not os.path.exists(token_dir):
-            os.makedirs(token_dir)
         self.log_stream = log_stream
         self.verbose = verbose
+        explicit_dir = token_dir is not None
+        if not explicit_dir:
+            token_dir = os.environ.get(TOKEN_DIR_ENV) or DEFAULT_TOKEN_DIR
+        self.token_dir = os.path.abspath(os.path.expanduser(token_dir))
+        _makedirs_private(self.token_dir)
+        if not explicit_dir:
+            self._migrate_legacy_token()
 
     # get token path
     def get_token_path(self):
         return os.path.join(self.token_dir, TOKEN_BASENAME)
+
+    # move a token left in $PANDA_CONFIG_ROOT by older versions, so the user does not have to log in again
+    def _migrate_legacy_token(self):
+        legacy_path = _legacy_token_path()
+        token_path = self.get_token_path()
+        if legacy_path is None or os.path.exists(token_path) or not os.path.isfile(legacy_path):
+            return
+        try:
+            os.replace(legacy_path, token_path)
+            os.chmod(token_path, 0o600)
+            if self.verbose:
+                self.log_stream.debug(f"moved {legacy_path} to {token_path}")
+        except OSError as e:
+            # not fatal: without the old token the user goes through the device flow again
+            if self.verbose:
+                self.log_stream.debug(f"failed to move {legacy_path} to {token_path}: {e}")
+
+    # write the token endpoint response, which holds the refresh token
+    def write_token(self, text):
+        _write_private(self.get_token_path(), text)
 
     # get device code
     def get_device_code(self, device_auth_endpoint, client_id, audience, jwt_profile):
@@ -79,19 +141,11 @@ class OpenIdConnect_Utils:
         except Exception as e:
             return False, str(e)
 
-    # get ID token
+    # get ID token, polling the token endpoint until the user has signed in or the device code expires
     def get_id_token(self, token_endpoint, client_id, client_secret, device_code, interval, expires_in):
-        self.log_stream.info("Ready to get ID token?")
-        while True:
-            sys.stdout.write("[y/n] \n")
-            choice = input().lower()
-            if choice == "y":
-                break
-            if choice == "n":
-                return False, "aborted"
         if self.verbose:
             self.log_stream.debug("getting ID token")
-        startTime = datetime.datetime.utcnow()
+        deadline = time.monotonic() + expires_in
         data = {
             "client_id": client_id,
             "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
@@ -102,29 +156,37 @@ class OpenIdConnect_Utils:
         rdata = urlencode(data).encode()
         req = Request(token_endpoint, rdata)
         req.add_header("content-type", "application/x-www-form-urlencoded")
-        while datetime.datetime.utcnow() - startTime < datetime.timedelta(seconds=expires_in):
-            try:
-                conn = urlopen(req, context=_get_ssl_context())
-                text = conn.read().decode()
-                if self.verbose:
-                    self.log_stream.debug(text)
-                id_token = json.loads(text)["id_token"]
-                with open(self.get_token_path(), "w") as f:
-                    f.write(text)
-                return True, id_token
-            except HTTPError as e:
-                text = e.read()
+        try:
+            while time.monotonic() < deadline:
                 try:
-                    description = json.loads(text)
-                    # pending
-                    if description["error"] == "authorization_pending":
+                    conn = urlopen(req, context=_get_ssl_context())
+                    text = conn.read().decode()
+                    if self.verbose:
+                        self.log_stream.debug(text)
+                    id_token = json.loads(text)["id_token"]
+                    self.write_token(text)
+                    return True, id_token
+                except HTTPError as e:
+                    text = e.read()
+                    try:
+                        error = json.loads(text)["error"]
+                    except Exception:
+                        error = None
+                    # the user has not signed in yet
+                    if error == "authorization_pending":
                         time.sleep(interval + 1)
                         continue
-                except Exception:
-                    pass
-                return False, f"code={e.code}. reason={e.reason}. description={text}"
-            except Exception as e:
-                return False, str(e)
+                    # polling too often: wait 5 seconds longer from now on (RFC 8628)
+                    if error == "slow_down":
+                        interval += 5
+                        time.sleep(interval + 1)
+                        continue
+                    return False, f"code={e.code}. reason={e.reason}. description={text}"
+                except Exception as e:
+                    return False, str(e)
+        except KeyboardInterrupt:
+            return False, "aborted"
+        return False, f"sign-in was not completed within {round(expires_in / 60)} minutes"
 
     # refresh token
     def refresh_token(self, token_endpoint, client_id, client_secret, refresh_token_string):
@@ -140,8 +202,7 @@ class OpenIdConnect_Utils:
             if self.verbose:
                 self.log_stream.debug(text)
             id_token = json.loads(text)["id_token"]
-            with open(self.get_token_path(), "w") as f:
-                f.write(text)
+            self.write_token(text)
             return True, id_token
         except HTTPError as e:
             return False, f"code={e.code}. reason={e.reason}. description={e.read()}"
@@ -165,8 +226,8 @@ class OpenIdConnect_Utils:
             text = conn.read().decode()
             if self.verbose:
                 self.log_stream.debug(text)
-            with open(path, "w") as f:
-                f.write(text)
+            # the auth config holds the client secret
+            _write_private(path, text)
             with open(path) as f:
                 return True, json.load(f)
         except HTTPError as e:
@@ -185,12 +246,11 @@ class OpenIdConnect_Utils:
                     # decode ID token
                     data = json.load(f)
                     dec = decode_id_token(data["id_token"])
-                    exp_time = datetime.datetime.utcfromtimestamp(dec["exp"])
-                    delta = exp_time - datetime.datetime.utcnow()
                     if self.verbose:
+                        exp_time = datetime.datetime.fromtimestamp(dec["exp"], datetime.timezone.utc)
                         self.log_stream.debug(f"token expiration time : {exp_time.strftime('%Y-%m-%d %H:%M:%S')} UTC")
                     # check expiration time
-                    if delta < datetime.timedelta(minutes=5):
+                    if dec["exp"] - time.time() < 5 * 60:
                         # return refresh token
                         if "refresh_token" in data:
                             if self.verbose:
@@ -239,7 +299,7 @@ class OpenIdConnect_Utils:
         if not s:
             return False, f"Failed to get device code: {o}"
         # get ID token
-        self.log_stream.info(f"Please go to {o['verification_uri_complete']} and sign in. Waiting until authentication is completed")
+        self.log_stream.info(f"Please go to {o['verification_uri_complete']} and sign in. Waiting until authentication is completed (Ctrl-C to abort)")
         if "interval" in o:
             interval = o["interval"]
         else:
@@ -254,6 +314,7 @@ class OpenIdConnect_Utils:
 
     # cleanup
     def cleanup(self):
-        for patt in [TOKEN_BASENAME, CACHE_PREFIX]:
-            for f in glob.glob(os.path.join(self.token_dir, f"{patt}*")):
-                os.remove(f)
+        # also a token left by older versions, which would otherwise be moved back in by the next run
+        for path in [self.get_token_path(), _legacy_token_path()] + glob.glob(os.path.join(self.token_dir, f"{CACHE_PREFIX}*")):
+            if path is not None and os.path.isfile(path):
+                os.remove(path)

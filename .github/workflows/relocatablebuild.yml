@@ -10,6 +10,11 @@ name: Build relocatable ALRB tarball
 # No interpreter is bundled: every dependency here is pure Python, so one
 # tarball works on any OS (CentOS7, Alma9, ...) for a given Python version --
 # only the *Python version* needs to match at the destination, not the OS.
+# That is enforced, not assumed: the build fails if any dependency brings in
+# compiled code (see "Reject compiled dependencies"), and every Python
+# version of the merged tarball is smoke-tested before it is released.
+#
+# Jobs: build-relocatable (per Python) -> merge -> smoke-test (per Python) -> release
 
 on:
   release:
@@ -21,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     container: almalinux:9
     strategy:
-      matrix:
+      matrix: &python-matrix
         include:
           - python-version: "3.9"
             install: dnf
@@ -38,7 +43,12 @@ jobs:
       - name: Install base tools
         # Unconditional: the from-source path skips its install step on a
         # cache hit, but tar is still needed below to pack the tree.
-        run: dnf install -y git tar gzip
+        # zstd: actions/cache keys entries on the compression it finds at
+        # lookup time (zstd if the binary exists, else gzip). It must already
+        # be here before the cache lookup; otherwise the lookup is gzip but
+        # "Development Tools" pulls zstd in afterwards and the entry is saved
+        # as zstd, so it never hits again (here or in smoke-test).
+        run: dnf install -y git tar gzip zstd
 
       - name: Install the target Python (dnf)
         if: matrix.install == 'dnf'
@@ -50,7 +60,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /opt/python-${{ matrix.python-version }}
-          key: python-source-${{ matrix.python-version }}-el9-v1
+          key: python-source-${{ matrix.python-version }}-el9-v2
 
       - name: Install the target Python (build from source)
         if: matrix.install == 'source' && steps.cache-python.outputs.cache-hit != 'true'
@@ -58,12 +68,16 @@ jobs:
         # 3.13/3.14 is needed. altinstall avoids overwriting the container's
         # own python3/python3.9. No --enable-optimizations: that's PGO, which
         # roughly doubles build time to speed up the *runtime* -- irrelevant
-        # here since this interpreter only ever runs `pip install` once and
-        # is never shipped. Cached above, so only the first run per version
-        # actually compiles at all.
+        # here since this interpreter only runs `pip install` and the smoke
+        # test, and is never shipped. Cached above, so only the first run per
+        # version actually compiles at all.
+        # It must still be a *complete* interpreter, like the ones users run
+        # the tarball with: smoke-test imports pbook, which needs readline
+        # (readline-devel/ncurses-devel). Bump the cache key's -vN suffix
+        # whenever this dependency list changes, or the old build is reused.
         run: |
           dnf groupinstall -y "Development Tools"
-          dnf install -y openssl-devel bzip2-devel libffi-devel zlib-devel xz-devel sqlite-devel
+          dnf install -y openssl-devel bzip2-devel libffi-devel zlib-devel xz-devel sqlite-devel readline-devel ncurses-devel
           curl -fsSL "https://www.python.org/ftp/python/${{ matrix.python-version }}.0/Python-${{ matrix.python-version }}.0.tgz" -o python-src.tgz
           mkdir src && tar xzf python-src.tgz -C src --strip-components=1
           cd src && ./configure --prefix="/opt/python-${{ matrix.python-version }}" && make -j"$(nproc)" && make altinstall
@@ -83,6 +97,22 @@ jobs:
           "python${{ matrix.python-version }}" -m pip install --upgrade pip
           "python${{ matrix.python-version }}" -m pip install . --prefix="$PANDA_INSTALL_TARGET" --ignore-installed
 
+      - name: Reject compiled dependencies
+        # A compiled extension breaks the "one tarball for any OS" assumption
+        # above, and on the dnf Pythons pip puts it under lib64/, which the
+        # merge job does not copy -- 2.5.0 shipped pydantic without
+        # pydantic_core that way. Fail here instead of on CVMFS.
+        run: |
+          T=/fixMe-PANDACLIENT_BASE
+          # compiled files anywhere, plus each package dir pip put under lib64/
+          offenders=$( { find "$T" -type f \( -name '*.so' -o -name '*.so.*' \); \
+                         find "$T"/lib64/python*/site-packages -mindepth 1 -maxdepth 1 2>/dev/null; } | sort -u)
+          if [ -n "$offenders" ]; then
+              echo "::error::compiled files in the install tree; panda-client's relocatable tarball must stay pure Python:"
+              echo "$offenders"
+              exit 1
+          fi
+
       - name: Strip non-relocatable, non-functional metadata
         # direct_url.json (PEP 610) records the local source checkout path
         # pip installed *from* on this runner -- meaningless downstream, and
@@ -99,11 +129,9 @@ jobs:
           name: build-py${{ matrix.python-version }}
           path: build.tar.gz
 
-  merge-and-release:
+  merge:
     needs: build-relocatable
     runs-on: ubuntu-latest
-    permissions:
-      contents: write   # needed by softprops/action-gh-release to attach the tarball
     env:
       # bin/ and etc/panda/ are shared/identical across every Python version
       # except etc/panda/site_path.sh, whose fallback path is baked in at
@@ -149,6 +177,60 @@ jobs:
         with:
           name: panda-client-relocatable
           path: panda-client-*-relocatable.tar.gz
+
+  smoke-test:
+    # Tests the merged tarball, not the per-version legs: the 2.5.0 breakage
+    # happened in the merge step, after each leg had installed correctly.
+    needs: merge
+    runs-on: ubuntu-latest
+    container: almalinux:9
+    strategy:
+      fail-fast: false   # report every broken Python version, not just the first
+      matrix: *python-matrix
+
+    steps:
+      - name: Install base tools
+        # zstd: must match build-relocatable, or the cache restore below misses
+        run: dnf install -y tar gzip zstd findutils
+
+      - name: Install the target Python (dnf)
+        if: matrix.install == 'dnf'
+        run: dnf install -y "python${{ matrix.python-version }}"
+
+      - name: Restore the from-source Python build
+        # Saved by build-relocatable in this same run, so it is always there.
+        if: matrix.install == 'source'
+        uses: actions/cache/restore@v4
+        with:
+          path: /opt/python-${{ matrix.python-version }}
+          key: python-source-${{ matrix.python-version }}-el9-v2
+          fail-on-cache-miss: true
+
+      - name: Add the from-source Python to PATH
+        if: matrix.install == 'source'
+        run: echo "/opt/python-${{ matrix.python-version }}/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: panda-client-relocatable
+
+      - name: Smoke-test the tarball
+        run: bash .github/scripts/smoke_test_relocatable.sh panda-client-*-relocatable.tar.gz "python${{ matrix.python-version }}"
+
+  release:
+    needs: smoke-test
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed by softprops/action-gh-release to attach the tarball
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: panda-client-relocatable
 
       - uses: softprops/action-gh-release@v2
         if: github.event_name == 'release' && github.event.action == 'published'

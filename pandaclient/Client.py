@@ -19,6 +19,7 @@ supports two auth modes, selected via $PANDA_AUTH:
   - "oidc": bearer token obtained via openidc_utils' device-authorization flow,
     or supplied directly through $PANDA_AUTH_ID_TOKEN/$OIDC_AUTH_TOKEN_FILE/
     $OIDC_AUTH_ID_TOKEN (see get_token_string).
+    A token from the device flow is kept in $PANDA_TOKEN_DIR (default ~/.token/panda).
 
 Server locations come from $PANDA_URL/$PANDA_URL_SSL/$PANDACACHE_URL, falling
 back to the ATLAS production servers at CERN when unset.

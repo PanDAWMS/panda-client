@@ -4,27 +4,29 @@ Import PBookCore instead.
 
 pbook CLI — PanDA task bookkeeper.
 
-Each command below is defined exactly once, as a Typer command using the
-Annotated[...] parameter style. Because the Typer/Click metadata lives in the
-annotation rather than in the default value, these functions remain ordinary
-callables with ordinary defaults - the same function is used to build the
-`pbook <command> --flag ...` CLI (with real shell completion) *and* is placed
-directly into the interactive REPL namespace (`>>> command(...)`).
+Each command below is defined exactly once, as a plain function registered with
+@command() and using the Annotated[...] parameter style. Because the command-line
+metadata (Opt/Arg) lives in the annotation rather than in the default value, these
+functions remain ordinary callables with ordinary defaults - the same function is
+used to build the `pbook <command> --flag ...` CLI (argparse, plus bash completion)
+*and* is placed directly into the interactive REPL namespace (`>>> command(...)`).
 """
 
 # No `from __future__ import annotations` here: it turns the annotations into strings that
-# Typer resolves with get_type_hints, which on Python <= 3.10 wraps an option defaulting to
-# None in an extra Optional around its Annotated[..., typer.Option(...)]. Typer then no longer
-# sees the typer.Option, and falls back to lowercased option names without help texts
-# (`--excludedsite` instead of `--excludedSite`).
+# get_type_hints resolves, and on Python <= 3.10 that wraps an option defaulting to None in an
+# extra Optional around its Annotated[..., Opt(...)]. _cli_info and _union_members cope with
+# that, but there is no reason to make every annotation go through it.
 
+import argparse
 import atexit
 import code
 import functools
+import inspect
 import os
 import re
 import readline
 import rlcompleter
+import shlex
 import signal
 import sys
 import tempfile
@@ -41,7 +43,6 @@ from typing import (
     get_type_hints,
 )
 
-import typer
 from rich import box
 from rich.console import Console
 from rich.markup import escape as _esc
@@ -108,13 +109,55 @@ $ pbook --help
 $ pbook command_name --help
 """
 
-app = typer.Typer(
-    name="pbook",
-    help=help_text,
-    invoke_without_command=True,
-    no_args_is_help=False,
-    context_settings={"help_option_names": ["-h", "--help"]},
-)
+# ─── Command registry ─────────────────────────────────────────────────────────
+
+
+class Opt:
+    """Command-line metadata for an option, kept in Annotated[...] so the command stays a plain function.
+
+    flags are the option names; extra names are aliases (Opt("--memory", "--ramCount")). A single
+    "--name/--no-name" makes an on/off switch whose value is None when neither is given. Without
+    flags, the option is --<parameter name> with underscores turned into dashes. min and max bound
+    a number (inclusive); they are checked on the command line and, through _check_declared_value,
+    for values passed from Python.
+    """
+
+    def __init__(
+        self,
+        *flags: str,
+        help: Optional[str] = None,
+        hidden: bool = False,
+        min: Optional[float] = None,
+        max: Optional[float] = None,
+    ) -> None:
+        self.flags = flags
+        self.help = help
+        self.hidden = hidden
+        self.min = min
+        self.max = max
+
+
+class Arg:
+    """Command-line metadata for a positional argument, kept in Annotated[...] like Opt."""
+
+    def __init__(self, help: Optional[str] = None) -> None:
+        self.help = help
+        self.hidden = False
+
+
+# command name -> function, in definition order (the order `pbook --help` lists them in)
+_COMMANDS: dict = {}
+
+
+def command(name: Optional[str] = None):
+    """Register a function as a pbook command. The function itself is returned unchanged."""
+
+    def register(func):
+        _COMMANDS[name or func.__name__] = func
+        return func
+
+    return register
+
 
 # ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -125,6 +168,15 @@ def _parallel(func, items):
     """
     with ThreadPoolExecutor(8) as pool:
         return list(pool.map(func, items))
+
+
+class _CommandFailed(Exception):
+    """A command stopped on an error it has already reported.
+
+    Batch mode and -c exit with status 1 on it; the interactive console just goes on to the next
+    prompt. Commands raise this rather than calling sys.exit(), which would end the whole console
+    session: InteractiveConsole deliberately lets SystemExit through.
+    """
 
 
 def _parse_ids(raw):
@@ -138,8 +190,8 @@ def _parse_ids(raw):
         ids = [int(p) for p in parts]
         return ids[0] if len(ids) == 1 else ids
     except ValueError:
-        typer.echo(f"Error: invalid task ID(s): {raw}", err=True)
-        raise typer.Exit(1)
+        print(f"Error: invalid task ID(s): {raw}", file=sys.stderr)
+        raise _CommandFailed
 
 
 _INVALID = object()
@@ -148,7 +200,7 @@ _INVALID = object()
 def _require_bool(name: str, value):
     """Report non-bool values for a bool parameter, without raising.
 
-    Click enforces this on the CLI path (a flag is present or absent, never a stray
+    The parser enforces this on the CLI path (a flag is present or absent, never a stray
     string) - unreachable from real CLI dispatch. Commands are also called directly
     from the REPL though, where a plain Python call - e.g. finish(123, soft='gfd') -
     bypasses that check entirely and would otherwise silently treat any truthy string
@@ -157,20 +209,20 @@ def _require_bool(name: str, value):
     return`.
     """
     if not isinstance(value, bool):
-        typer.echo(f"Error: '{name}' must be True or False, got {value!r}", err=True)
+        print(f"Error: '{name}' must be True or False, got {value!r}", file=sys.stderr)
         return _INVALID
     return value
 
 
 @functools.lru_cache(maxsize=None)
 def _cli_params(command_name: str) -> dict:
-    """The Click parameters Typer builds from a command's declaration, keyed by Python parameter name.
+    """The command-line description of a command's parameters (_ParamSpec), keyed by Python parameter name.
 
-    They carry what the declaration says about each parameter - its type, its range (min/max)
-    and its option names including aliases - so values that don't come through the CLI can be
-    checked against the same declaration.
+    They carry what the declaration says about each parameter - its type, its range (min/max),
+    its choices and its option names including aliases - so values that don't come through the
+    CLI can be checked against the same declaration.
     """
-    return {param.name: param for param in typer.main.get_command(app).commands[command_name].params}
+    return {spec.name: spec for spec in _param_specs(_COMMANDS[command_name])}
 
 
 def _declared_type(func, name: str):
@@ -182,10 +234,11 @@ def _declared_type(func, name: str):
     ann = hints.get(name)
     if ann is None:
         return None
-    while hasattr(ann, "__metadata__"):
-        ann = ann.__origin__
-    if get_origin(ann) is Union:
-        non_none = [a for a in get_args(ann) if a is not type(None)]
+    # On Python <= 3.10 a parameter defaulting to None comes back as Optional[Annotated[Optional[X], ...]]:
+    # _union_members flattens that to the same members as on newer Pythons
+    ann = _strip_annotated(ann)
+    if _is_union(ann):
+        non_none = [a for a in _union_members(ann) if a is not type(None)]
         if len(non_none) == 1:
             ann = non_none[0]
     return ann
@@ -205,25 +258,21 @@ _DECLARED_PYTHON_TYPES = {
 def _check_declared_value(func, param, name: str, value) -> Optional[str]:
     """Error message when a value passed from Python doesn't fit the declaration of a parameter of func, else None.
 
-    param is the Click parameter Typer built for it (see _cli_params). Click checks values coming
-    through the CLI, but a plain Python call from the REPL, or a value inside a dict like retry's
-    newOpts, bypasses it. Click's own conversion can't simply be reused for these: it converts
-    leniently (1.5 -> 1 for an integer, 'yes' -> True for a flag), so the Python type is checked
-    strictly here against the type hint, and Click is only asked for the rest (ranges, choices).
+    param is its _ParamSpec (see _cli_params). The command-line parser checks values coming through
+    the CLI, but a plain Python call from the REPL, or a value inside a dict like retry's newOpts,
+    bypasses it. The parser's conversion can't simply be reused for these: it starts from strings
+    (and would turn 'yes' into True for a flag), so the Python type is checked strictly here
+    against the type hint, then the range and choices the declaration gives.
     name is how the caller referred to the parameter, used in the message.
-
-    Click is deliberately not imported: typer >= 0.26 bundles its own copy of it (typer._click)
-    instead of depending on the click package, so only typer's public names are used.
     """
     check = _DECLARED_PYTHON_TYPES.get(_declared_type(func, param.name))
     if check is not None:
         is_valid, description = check
         if not is_valid(value):
             return f"'{name}' must be {description}, got {value!r}."
-    try:
-        param.type.convert(value, param, None)
-    except typer.BadParameter as e:
-        return f"Invalid value for '{name}': {e.message}"
+    error = param.value_error(value)
+    if error:
+        return f"Invalid value for '{name}': {error}"
     return None
 
 
@@ -316,8 +365,8 @@ def _catch_sig(sig, frame):
 
 
 def _build_namespace() -> dict:
-    """The REPL namespace: every registered Typer command, keyed by its real Python name."""
-    return {info.callback.__name__: info.callback for info in app.registered_commands}
+    """The REPL namespace: every registered command, keyed by its real Python name."""
+    return {func.__name__: func for func in _COMMANDS.values()}
 
 
 def _kwarg_names(func) -> list:
@@ -392,6 +441,21 @@ class _PBookCompleter:
         return results
 
 
+class _Console(code.InteractiveConsole):
+    """InteractiveConsole that stays quiet about _CommandFailed: the command already reported its error."""
+
+    def runcode(self, code) -> None:
+        # same as InteractiveInterpreter.runcode (self.locals is the dict passed in), plus the _CommandFailed case
+        try:
+            exec(code, self.locals)  # noqa: S102  # pyright: ignore[reportArgumentType]
+        except SystemExit:
+            raise
+        except _CommandFailed:
+            pass
+        except BaseException:
+            self.showtraceback()
+
+
 def _run_repl(ns: dict, banner: str) -> None:
     """Manual REPL using InteractiveConsole.push() so we own readline setup entirely."""
     completer = _PBookCompleter(ns)
@@ -399,7 +463,7 @@ def _run_repl(ns: dict, banner: str) -> None:
     readline.parse_and_bind("tab: complete")
     readline.parse_and_bind("set show-all-if-ambiguous On")
 
-    console = code.InteractiveConsole(ns)
+    console = _Console(ns)
     print(banner)
 
     more = False
@@ -419,34 +483,44 @@ def _run_repl(ns: dict, banner: str) -> None:
         more = console.push(line)
 
 
-# ─── Top-level callback ───────────────────────────────────────────────────────
+# ─── Top-level options ────────────────────────────────────────────────────────
+
+# (flags, dest, help); help None = hidden. All are on/off switches except -c, which takes a value.
+_GLOBAL_OPTIONS = [
+    (("-v",), "verbose", "Verbose"),
+    (("-c",), "command_string", "Execute a Python code snippet"),
+    (("--version",), "version", "Display version"),
+    (("--devSrv",), "dev_srv", None),
+    (("--intrSrv",), "intr_srv", None),
+    (("--prompt_with_newline",), "prompt_with_newline", None),
+    (("-3",), "python3", None),
+]
 
 
-@app.callback(invoke_without_command=True)
-def _main(
-    ctx: typer.Context,
-    verbose: bool = typer.Option(False, "-v", help="Verbose"),
-    command_string: Optional[str] = typer.Option(None, "-c", help="Execute a Python code snippet"),
-    version: bool = typer.Option(False, "--version", is_eager=True, help="Display version"),
-    dev_srv: bool = typer.Option(False, "--devSrv", hidden=True),
-    intr_srv: bool = typer.Option(False, "--intrSrv", hidden=True),
-    prompt_with_newline: bool = typer.Option(False, "--prompt_with_newline", hidden=True),
-    python3: bool = typer.Option(False, "-3", hidden=True),
-) -> None:
-    """PanDA task bookkeeper. Run without arguments for interactive mode."""
-    if version:
-        typer.echo(f"Version: {PandaToolsPkgInfo.release_version}")
-        raise typer.Exit()
+def _main(args: argparse.Namespace) -> None:
+    """Run what the parsed command line asks for: a command (batch mode), a -c snippet, or the REPL."""
+    if args.version:
+        print(f"Version: {PandaToolsPkgInfo.release_version}")
+        sys.exit(0)
 
-    if dev_srv:
+    if args.dev_srv:
         Client.useDevServer()
-    if intr_srv:
+    if args.intr_srv:
         Client.useIntrServer()
 
+    verbose = args.verbose
     _ctx_state.update({"verbose": verbose})
 
-    if ctx.invoked_subcommand is not None:
+    func = getattr(args, "_func", None)
+    if func is not None:
+        try:
+            func(**{name: getattr(args, name) for name in signature(func).parameters})
+        except _CommandFailed:
+            sys.exit(1)
         return
+
+    command_string = args.command_string
+    prompt_with_newline = args.prompt_with_newline
 
     # Interactive or snippet mode
     _setup()
@@ -454,22 +528,25 @@ def _main(
     _fork_child_pid = os.fork()
 
     if _fork_child_pid == -1:
-        typer.echo("ERROR: Failed to fork", err=True)
-        raise typer.Exit(1)
+        print("ERROR: Failed to fork", file=sys.stderr)
+        sys.exit(1)
 
     if _fork_child_pid == 0:
         if verbose:
-            typer.echo(str(ctx.params))
+            print(str({dest: getattr(args, dest) for _, dest, _ in _GLOBAL_OPTIONS}))
         if prompt_with_newline:
             sys.ps1 = ">>> \n"
         _ensure_init(sanity_check=True)
         ns = _build_namespace()
 
         if command_string:
-            exec(command_string, {}, ns)  # noqa: S102
+            try:
+                exec(command_string, {}, ns)  # noqa: S102
+            except _CommandFailed:
+                sys.exit(1)
             from pandaclient import PBookCore as _PBC
 
-            raise typer.Exit(0 if _PBC.func_return_value else 1)
+            sys.exit(0 if _PBC.func_return_value else 1)
         _run_repl(ns, banner=f"\nStart pBook {PandaToolsPkgInfo.release_version}")
 
     else:
@@ -478,10 +555,10 @@ def _main(
         signal.signal(signal.SIGTERM, _catch_sig)
         pid, status = os.wait()
         if os.WIFSIGNALED(status):
-            raise typer.Exit(-os.WTERMSIG(status))
+            sys.exit(-os.WTERMSIG(status))
         if os.WIFEXITED(status):
-            raise typer.Exit(os.WEXITSTATUS(status))
-        raise typer.Exit(0)
+            sys.exit(os.WEXITSTATUS(status))
+        sys.exit(0)
 
 
 # ─── Commands ──────────────────────────────────────────────────────────────────
@@ -515,7 +592,7 @@ def _union_members(ann) -> list:
     """The members of a union, flattened and deduplicated, with Annotated stripped from each.
 
     On Python <= 3.10 get_type_hints wraps a parameter defaulting to None in an extra
-    Optional, outside the Annotated: `site: Annotated[Optional[str], typer.Option()] = None`
+    Optional, outside the Annotated: `site: Annotated[Optional[str], Opt()] = None`
     comes back as Optional[Annotated[Optional[str], OptionInfo]]. Flattening turns that into
     the same (str, NoneType) as on newer Pythons.
     """
@@ -567,20 +644,20 @@ def _format_signature(func) -> str:
     return f"({', '.join(parts)})"
 
 
-def _typer_info(ann):
-    """The typer.Option/typer.Argument metadata in an annotation, or None.
+def _cli_info(ann):
+    """The Opt/Arg metadata in an annotation, or None.
 
-    It sits in Annotated[..., OptionInfo], which Python <= 3.10 nests inside an Optional
+    It sits in Annotated[..., Opt(...)], which Python <= 3.10 nests inside an Optional
     (see _union_members), so unions are searched too.
     """
     if get_origin(ann) is Annotated:
         for meta in ann.__metadata__:
-            if isinstance(meta, typer.models.ParameterInfo):
+            if isinstance(meta, (Opt, Arg)):
                 return meta
-        return _typer_info(get_args(ann)[0])
+        return _cli_info(get_args(ann)[0])
     if _is_union(ann):
         for arg in get_args(ann):
-            info = _typer_info(arg)
+            info = _cli_info(arg)
             if info is not None:
                 return info
     return None
@@ -597,15 +674,15 @@ def _param_help(func) -> list:
         return []
     params = []
     for pname in signature(func).parameters:
-        info = _typer_info(hints.get(pname))
+        info = _cli_info(hints.get(pname))
         if info is not None and info.help and not getattr(info, "hidden", False):
             params.append((pname, info.help))
     return params
 
 
-@app.command()
+@command()
 def help(
-    command: Annotated[Optional[str], typer.Argument(help="Command name for detailed help")] = None,
+    command: Annotated[Optional[str], Arg(help="Command name for detailed help")] = None,
 ) -> None:
     """Show available commands, or detailed help for a specific command."""
     ns = _build_namespace()
@@ -652,18 +729,18 @@ def help(
     console.print("Usage: [bold]help(show)[/bold]  or  [bold]pbook show --help[/bold]\n")
 
 
-@app.command()
+@command()
 def show(
-    task_id: Annotated[Optional[str], typer.Argument(help="jediTaskID, reqID, 'run' (active only), or 'fin' (terminated only)")] = None,
-    username: Annotated[Optional[str], typer.Option(help="Filter by username. By default, the name from the voms/token is used.")] = None,
-    limit: Annotated[int, typer.Option(help="Maximum number of records")] = 1000,
-    taskname: Annotated[Optional[str], typer.Option(help="Filter by task name")] = None,
-    days: Annotated[int, typer.Option(help="Look back N days (capped at 90 without a task ID)")] = 14,
-    jeditaskid: Annotated[Optional[int], typer.Option(help="Filter by jediTaskID")] = None,
-    reqid: Annotated[Optional[int], typer.Option(help="Filter by reqID")] = None,
-    status: Annotated[Optional[str], typer.Option(help="Filter by task status")] = None,
-    superstatus: Annotated[Optional[str], typer.Option(help="Filter by super-status")] = None,
-    format: Annotated[Literal["standard", "long", "json", "plain"], typer.Option("--format", help="Output format")] = "standard",
+    task_id: Annotated[Optional[str], Arg(help="jediTaskID, reqID, 'run' (active only), or 'fin' (terminated only)")] = None,
+    username: Annotated[Optional[str], Opt(help="Filter by username. By default, the name from the voms/token is used.")] = None,
+    limit: Annotated[int, Opt(help="Maximum number of records")] = 1000,
+    taskname: Annotated[Optional[str], Opt(help="Filter by task name")] = None,
+    days: Annotated[int, Opt(help="Look back N days (capped at 90 without a task ID)")] = 14,
+    jeditaskid: Annotated[Optional[int], Opt(help="Filter by jediTaskID")] = None,
+    reqid: Annotated[Optional[int], Opt(help="Filter by reqID")] = None,
+    status: Annotated[Optional[str], Opt(help="Filter by task status")] = None,
+    superstatus: Annotated[Optional[str], Opt(help="Filter by super-status")] = None,
+    format: Annotated[Literal["standard", "long", "json", "plain"], Opt("--format", help="Output format")] = "standard",
 ) -> None:
     """Print task records.
 
@@ -709,17 +786,17 @@ def show(
     return core.show(**kwargs)
 
 
-@app.command()
+@command()
 def showl(
-    task_id: Annotated[Optional[str], typer.Argument(help="jediTaskID, reqID, 'run', or 'fin'")] = None,
-    username: Annotated[Optional[str], typer.Option(help="Filter by username")] = None,
-    limit: Annotated[int, typer.Option(help="Maximum number of records")] = 1000,
-    taskname: Annotated[Optional[str], typer.Option(help="Filter by task name")] = None,
-    days: Annotated[int, typer.Option(help="Look back N days (capped at 90 without a task ID)")] = 14,
-    jeditaskid: Annotated[Optional[int], typer.Option(help="Filter by jediTaskID")] = None,
-    reqid: Annotated[Optional[int], typer.Option(help="Filter by reqID")] = None,
-    status: Annotated[Optional[str], typer.Option(help="Filter by task status")] = None,
-    superstatus: Annotated[Optional[str], typer.Option(help="Filter by super-status")] = None,
+    task_id: Annotated[Optional[str], Arg(help="jediTaskID, reqID, 'run', or 'fin'")] = None,
+    username: Annotated[Optional[str], Opt(help="Filter by username")] = None,
+    limit: Annotated[int, Opt(help="Maximum number of records")] = 1000,
+    taskname: Annotated[Optional[str], Opt(help="Filter by task name")] = None,
+    days: Annotated[int, Opt(help="Look back N days (capped at 90 without a task ID)")] = 14,
+    jeditaskid: Annotated[Optional[int], Opt(help="Filter by jediTaskID")] = None,
+    reqid: Annotated[Optional[int], Opt(help="Filter by reqID")] = None,
+    status: Annotated[Optional[str], Opt(help="Filter by task status")] = None,
+    superstatus: Annotated[Optional[str], Opt(help="Filter by super-status")] = None,
 ) -> None:
     """Print task records in long format (shortcut for show --format='long').
 
@@ -745,9 +822,9 @@ def showl(
     )
 
 
-@app.command()
+@command()
 def kill(
-    task_ids: Annotated[str, typer.Argument(help="Task ID, comma-separated IDs, or 'all'")],
+    task_ids: Annotated[str, Arg(help="Task ID, comma-separated IDs, or 'all'")],
 ) -> None:
     """Kill tasks.
 
@@ -772,10 +849,10 @@ def kill(
     return core.kill(ids)
 
 
-@app.command()
+@command()
 def finish(
-    task_ids: Annotated[str, typer.Argument(help="Task ID, comma-separated IDs, or 'all'")],
-    soft: Annotated[bool, typer.Option("--soft", help="Wait for running jobs to finish instead of killing them")] = False,
+    task_ids: Annotated[str, Arg(help="Task ID, comma-separated IDs, or 'all'")],
+    soft: Annotated[bool, Opt("--soft", help="Wait for running jobs to finish instead of killing them")] = False,
 ) -> None:
     """Finish tasks.
 
@@ -837,20 +914,20 @@ def _retry_new_opts_keys() -> dict:
     keys = {}
     for name in _RETRY_TASK_PARAMS:
         keys[name] = name
-        for opt in params[name].opts:
-            keys[opt.lstrip("-")] = name
+        for flag in params[name].flags:
+            keys[flag.lstrip("-")] = name
     return keys
 
 
 def _report_invalid_retry_value(param: str, name: str, value) -> bool:
     """Report a value that doesn't fit the declaration of the retry() parameter param; True if reported.
 
-    Values from the CLI were already checked by Click. The same declarations apply to values from a
+    Values from the CLI were already checked by the parser. The same declarations apply to values from a
     plain Python call or from newOpts, which bypass it. name is how the caller referred to param.
     """
     error = _check_declared_value(retry, _cli_params("retry")[param], name, value)
     if error:
-        typer.echo(f"Error: {error} Nothing was retried.", err=True)
+        print(f"Error: {error} Nothing was retried.", file=sys.stderr)
         return True
     return False
 
@@ -858,18 +935,18 @@ def _report_invalid_retry_value(param: str, name: str, value) -> bool:
 def _translate_retry_new_opts(new_opts):
     """newOpts as {retry() parameter: value}, or None (with the error reported) when it is not valid."""
     if not isinstance(new_opts, dict):
-        typer.echo(
+        print(
             f"Error: newOpts must be a dict of retry options, e.g. {{'excludedSite': 'siteA,siteB'}}, got {new_opts!r}. "
             "newOpts is only supported in interactive mode. Nothing was retried.",
-            err=True,
+            file=sys.stderr,
         )
         return None
     keys = _retry_new_opts_keys()
     invalid = [key for key in new_opts if key not in keys]
     if invalid:
-        typer.echo(
+        print(
             f"Error: invalid option(s) in newOpts: {', '.join(map(str, invalid))}. Nothing was retried. Valid options: {', '.join(keys)}.",
-            err=True,
+            file=sys.stderr,
         )
         return None
     translated = {}
@@ -879,24 +956,24 @@ def _translate_retry_new_opts(new_opts):
             return None
         if param in translated and translated[param] != value:
             aliases = [k for k in new_opts if keys[k] == param]
-            typer.echo(f"Error: newOpts sets {' and '.join(aliases)} to different values. Nothing was retried.", err=True)
+            print(f"Error: newOpts sets {' and '.join(aliases)} to different values. Nothing was retried.", file=sys.stderr)
             return None
         translated[param] = value
     return translated
 
 
-@app.command()
+@command()
 def retry(
-    task_ids: Annotated[str, typer.Argument(help="Task ID, comma-separated IDs, or 'all'")],
-    days: Annotated[Optional[int], typer.Option("--days", help="Look-back window in days when task_ids='all' (default 14)")] = None,
-    limit: Annotated[Optional[int], typer.Option("--limit", help="Max tasks to retry when task_ids='all' (default 1000)")] = None,
-    site: Annotated[Optional[str], typer.Option("--site", help="Run the task on a particular PanDA queue")] = None,
-    excludedSite: Annotated[Optional[str], typer.Option("--excludedSite", help="Comma separated list of PanDA queues to exclude, e.g. 'siteA,siteB'")] = None,
-    includedSite: Annotated[Optional[str], typer.Option("--includedSite", help="Comma separated list of PanDA queues to include, e.g. 'siteA,siteB'")] = None,
-    nFilesPerJob: Annotated[Optional[int], typer.Option("--nFilesPerJob", help="Number of files on which each sub-job runs (default 50)")] = None,
+    task_ids: Annotated[str, Arg(help="Task ID, comma-separated IDs, or 'all'")],
+    days: Annotated[Optional[int], Opt("--days", help="Look-back window in days when task_ids='all' (default 14)")] = None,
+    limit: Annotated[Optional[int], Opt("--limit", help="Max tasks to retry when task_ids='all' (default 1000)")] = None,
+    site: Annotated[Optional[str], Opt("--site", help="Run the task on a particular PanDA queue")] = None,
+    excludedSite: Annotated[Optional[str], Opt("--excludedSite", help="Comma separated list of PanDA queues to exclude, e.g. 'siteA,siteB'")] = None,
+    includedSite: Annotated[Optional[str], Opt("--includedSite", help="Comma separated list of PanDA queues to include, e.g. 'siteA,siteB'")] = None,
+    nFilesPerJob: Annotated[Optional[int], Opt("--nFilesPerJob", help="Number of files on which each sub-job runs (default 50)")] = None,
     nMaxFilesPerJob: Annotated[
         Optional[int],
-        typer.Option(
+        Opt(
             "--nMaxFilesPerJob",
             "--maxNFilesPerJob",
             help="Maximum number of input files to be processed by a single job in the task.",
@@ -904,40 +981,40 @@ def retry(
     ] = None,
     nGBPerJob: Annotated[
         Optional[int],
-        typer.Option("--nGBPerJob", min=1, help="Maximum input size in GB to be processed by a single job in the task."),
+        Opt("--nGBPerJob", min=1, help="Maximum input size in GB to be processed by a single job in the task."),
     ] = None,
-    nFiles: Annotated[Optional[int], typer.Option("--nFiles", help="Total number of input files to be processed by the task.")] = None,
+    nFiles: Annotated[Optional[int], Opt("--nFiles", help="Total number of input files to be processed by the task.")] = None,
     nEvents: Annotated[
         Optional[int],
-        typer.Option("--nEvents", help="Total number of events to be processed by the task."),
+        Opt("--nEvents", help="Total number of events to be processed by the task."),
     ] = None,
-    memory: Annotated[Optional[int], typer.Option("--memory", "--ramCount", help="Required memory size in MB per core")] = None,
-    maxCore: Annotated[Optional[int], typer.Option("--maxCore", help="Maximum number of CPU cores that a single job is allowed to utilize")] = None,
+    memory: Annotated[Optional[int], Opt("--memory", "--ramCount", help="Required memory size in MB per core")] = None,
+    maxCore: Annotated[Optional[int], Opt("--maxCore", help="Maximum number of CPU cores that a single job is allowed to utilize")] = None,
     loopingCheck: Annotated[
         Optional[bool],
-        typer.Option(
+        Opt(
             "--loopingCheck/--no-loopingCheck",
             help="Enable/disable the automatic check that kills jobs suspected of being stuck in a loop",
         ),
     ] = None,
-    avoidVP: Annotated[Optional[bool], typer.Option("--avoidVP/--no-avoidVP", help="Avoid PanDA queues which use Virtual Placement")] = None,
+    avoidVP: Annotated[Optional[bool], Opt("--avoidVP/--no-avoidVP", help="Avoid PanDA queues which use Virtual Placement")] = None,
     ignoreMissingInDS: Annotated[
         Optional[bool],
-        typer.Option(
+        Opt(
             "--ignoreMissingInDS/--no-ignoreMissingInDS",
             help="Ignore missing input datasets which were deleted after the task is submitted.",
         ),
     ] = None,
     forceStaged: Annotated[
         Optional[bool],
-        typer.Option(
+        Opt(
             "--forceStaged/--no-forceStaged",
             help="Force files from the primary dataset to be staged to local disk instead of using direct access",
         ),
     ] = None,
     newOpts: Annotated[
         Optional[str],
-        typer.Option(
+        Opt(
             "--new-opts",
             help="Interactive mode only: raw dict of task-retry options, e.g. {'excludedSite': 'siteA,siteB'}, "
             "overriding the individual options. Not supported from the shell CLI.",
@@ -982,13 +1059,13 @@ def retry(
         if value is None:
             continue
         if isinstance(value, dict):
-            typer.echo(f"Error: '{name}' got a dict; pass retry options by name, e.g. newOpts={value!r}. Nothing was retried.", err=True)
+            print(f"Error: '{name}' got a dict; pass retry options by name, e.g. newOpts={value!r}. Nothing was retried.", file=sys.stderr)
             return
         if isinstance(value, bool) or not isinstance(value, int):
-            typer.echo(f"Error: '{name}' must be an integer, got {value!r}. Nothing was retried.", err=True)
+            print(f"Error: '{name}' must be an integer, got {value!r}. Nothing was retried.", file=sys.stderr)
             return
         if ids != "all":
-            typer.echo(f"Error: '{name}' is only valid when task_ids is 'all'. Nothing was retried.", err=True)
+            print(f"Error: '{name}' is only valid when task_ids is 'all'. Nothing was retried.", file=sys.stderr)
             return
     days = 14 if days is None else days
     limit = 1000 if limit is None else limit
@@ -1011,10 +1088,10 @@ def retry(
     return core.retry(ids, newOpts=opts)
 
 
-@app.command()
+@command()
 def debug(
-    panda_id: Annotated[int, typer.Argument(help="PanDA subjob ID")],
-    mode_on: Annotated[bool, typer.Argument(help="True to enable, False to disable")],
+    panda_id: Annotated[int, Arg(help="PanDA subjob ID")],
+    mode_on: Annotated[bool, Arg(help="True to enable, False to disable")],
 ) -> None:
     """Toggle debug mode for a subjob.
 
@@ -1034,10 +1111,10 @@ def debug(
     core.debug(panda_id, mode_on)
 
 
-@app.command(name="get_user_job_metadata")
+@command(name="get_user_job_metadata")
 def get_user_job_metadata(
-    task_id: Annotated[int, typer.Argument(help="Task ID")],
-    output_file: Annotated[str, typer.Argument(help="Output JSON file path")],
+    task_id: Annotated[int, Arg(help="Task ID")],
+    output_file: Annotated[str, Arg(help="Output JSON file path")],
 ) -> None:
     """Write user metadata of successful jobs to a JSON file.
 
@@ -1052,9 +1129,9 @@ def get_user_job_metadata(
     core.getUserJobMetadata(task_id, output_file)
 
 
-@app.command(name="reload_input")
+@command(name="reload_input")
 def reload_input(
-    task_id: Annotated[int, typer.Argument(help="Task ID")],
+    task_id: Annotated[int, Arg(help="Task ID")],
 ) -> None:
     """Reload input dataset and retry the task with new contents.
 
@@ -1069,10 +1146,10 @@ def reload_input(
     core.reload_input(task_id)
 
 
-@app.command(name="recover_lost_files")
+@command(name="recover_lost_files")
 def recover_lost_files(
-    task_id: Annotated[int, typer.Argument(help="Task ID")],
-    test_mode: Annotated[bool, typer.Option("--test_mode", help="Dry-run mode")] = False,
+    task_id: Annotated[int, Arg(help="Task ID")],
+    test_mode: Annotated[bool, Opt("--test_mode", help="Dry-run mode")] = False,
 ) -> None:
     """Request recovery of lost files from a task.
 
@@ -1092,9 +1169,9 @@ def recover_lost_files(
     core.recover_lost_files(task_id, test_mode)
 
 
-@app.command(name="show_workflow")
+@command(name="show_workflow")
 def show_workflow(
-    request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
+    request_id: Annotated[int, Arg(help="Workflow request ID")],
 ) -> None:
     """Show workflow status.
 
@@ -1111,11 +1188,11 @@ def show_workflow(
         print(output)
 
 
-@app.command(name="show_native_workflow")
+@command(name="show_native_workflow")
 def show_native_workflow(
-    workflow_id: Annotated[int, typer.Argument(help="Native workflow ID")],
-    format: Annotated[Literal["standard", "long", "json", "plain"], typer.Option("--format", help="Output format")] = "standard",
-    show_data: Annotated[bool, typer.Option("--show_data", help="Also show the data passing between the steps")] = False,
+    workflow_id: Annotated[int, Arg(help="Native workflow ID")],
+    format: Annotated[Literal["standard", "long", "json", "plain"], Opt("--format", help="Output format")] = "standard",
+    show_data: Annotated[bool, Opt("--show_data", help="Also show the data passing between the steps")] = False,
 ) -> None:
     """Show a PanDA native workflow.
 
@@ -1141,9 +1218,9 @@ def show_native_workflow(
     core.show_native_workflow(workflow_id, format=format, show_data=show_data)
 
 
-@app.command(name="kill_workflow")
+@command(name="kill_workflow")
 def kill_workflow(
-    request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
+    request_id: Annotated[int, Arg(help="Workflow request ID")],
 ) -> None:
     """Kill a workflow.
 
@@ -1160,9 +1237,9 @@ def kill_workflow(
         print(output[0][-1])
 
 
-@app.command(name="retry_workflow")
+@command(name="retry_workflow")
 def retry_workflow(
-    request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
+    request_id: Annotated[int, Arg(help="Workflow request ID")],
 ) -> None:
     """Retry a workflow.
 
@@ -1179,9 +1256,9 @@ def retry_workflow(
         print(output[0][-1])
 
 
-@app.command(name="finish_workflow")
+@command(name="finish_workflow")
 def finish_workflow(
-    request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
+    request_id: Annotated[int, Arg(help="Workflow request ID")],
 ) -> None:
     """Finish a workflow.
 
@@ -1198,9 +1275,9 @@ def finish_workflow(
         print(output[0][-1])
 
 
-@app.command(name="pause_workflow")
+@command(name="pause_workflow")
 def pause_workflow(
-    request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
+    request_id: Annotated[int, Arg(help="Workflow request ID")],
 ) -> None:
     """Pause a workflow.
 
@@ -1217,9 +1294,9 @@ def pause_workflow(
         print(output[0][-1])
 
 
-@app.command(name="resume_workflow")
+@command(name="resume_workflow")
 def resume_workflow(
-    request_id: Annotated[int, typer.Argument(help="Workflow request ID")],
+    request_id: Annotated[int, Arg(help="Workflow request ID")],
 ) -> None:
     """Resume a workflow.
 
@@ -1236,11 +1313,11 @@ def resume_workflow(
         print(output[0][-1])
 
 
-@app.command(name="set_secret")
+@command(name="set_secret")
 def set_secret(
-    key: Annotated[str, typer.Argument(help="Secret key")],
-    value: Annotated[str, typer.Argument(help="Secret value or file path")],
-    is_file: Annotated[bool, typer.Option("--is_file", help="Treat value as a file path to upload")] = False,
+    key: Annotated[str, Arg(help="Secret key")],
+    value: Annotated[str, Arg(help="Secret value or file path")],
+    is_file: Annotated[bool, Opt("--is_file", help="Treat value as a file path to upload")] = False,
 ) -> None:
     """Set a secret key-value pair.
 
@@ -1261,9 +1338,9 @@ def set_secret(
     core.set_secret(key, value, is_file)
 
 
-@app.command(name="delete_secret")
+@command(name="delete_secret")
 def delete_secret(
-    key: Annotated[str, typer.Argument(help="Secret key to delete")],
+    key: Annotated[str, Arg(help="Secret key to delete")],
 ) -> None:
     """Delete a secret.
 
@@ -1276,7 +1353,7 @@ def delete_secret(
     core.set_secret(key, None)
 
 
-@app.command(name="delete_all_secrets")
+@command(name="delete_all_secrets")
 def delete_all_secrets() -> None:
     """Delete all secrets.
 
@@ -1289,9 +1366,9 @@ def delete_all_secrets() -> None:
     core.set_secret(None, None)
 
 
-@app.command(name="list_secrets")
+@command(name="list_secrets")
 def list_secrets(
-    full: Annotated[bool, typer.Option("--full", help="Show complete secret values instead of truncating them")] = False,
+    full: Annotated[bool, Opt("--full", help="Show complete secret values instead of truncating them")] = False,
 ) -> None:
     """List secrets.
 
@@ -1311,29 +1388,184 @@ def list_secrets(
     core.list_secrets(full)
 
 
-@app.command(name="generate_credential")
+@command(name="generate_credential")
 def generate_credential() -> None:
     """Generate a new proxy or token."""
     core = _get_core()
     core.generate_credential()
 
 
-# ─── Entry point ──────────────────────────────────────────────────────────────
+# ─── Command line ─────────────────────────────────────────────────────────────
+
+# The strings click/typer accepted for a bool positional (pbook debug 1234 yes), kept so the same
+# command lines keep working; matched after strip() and lower().
+_BOOL_STATES = {
+    "1": True,
+    "0": False,
+    "yes": True,
+    "no": False,
+    "true": True,
+    "false": False,
+    "on": True,
+    "off": False,
+    "t": True,
+    "f": False,
+    "y": True,
+    "n": False,
+    "": False,
+}
+
+
+def _parse_bool(value: str) -> bool:
+    try:
+        return _BOOL_STATES[value.strip().lower()]
+    except KeyError:
+        raise argparse.ArgumentTypeError(f"{value!r} is not a valid boolean")
+
+
+class _ParamSpec:
+    """How one command parameter appears on the command line, derived from its signature and Opt/Arg."""
+
+    def __init__(self, name: str, param: Parameter, ann) -> None:
+        info = _cli_info(ann)
+        self.name = name
+        self.is_option = isinstance(info, Opt)
+        self.help = info.help if info is not None else None
+        self.hidden = info.hidden if info is not None else False
+        self.required = param.default is Parameter.empty
+        self.default = None if self.required else param.default
+
+        base = _strip_annotated(ann)
+        if _is_union(base):
+            non_none = [a for a in _union_members(base) if a is not type(None)]
+            base = non_none[0] if len(non_none) == 1 else str
+        self.choices = [str(v) for v in get_args(base)] if get_origin(base) is Literal else None
+        self.is_bool = base is bool
+        if self.choices is not None:
+            self.convert = str
+        elif self.is_bool:
+            self.convert = _parse_bool
+        else:
+            self.convert = base if base in (int, float) else str
+
+        self.min = getattr(info, "min", None)
+        self.max = getattr(info, "max", None)
+        if self.min is not None or self.max is not None:
+            to_number = self.convert
+
+            def convert(value):
+                number = to_number(value)
+                error = self.value_error(number)
+                if error:
+                    raise argparse.ArgumentTypeError(error)
+                return number
+
+            # argparse names the type in "invalid int value: 'x'"
+            convert.__name__ = to_number.__name__
+            self.convert = convert
+
+        # option names; "--x/--no-x" is an on/off switch, None when neither is given
+        self.flags, self.off_flags = [], []
+        for flag in (info.flags if self.is_option else ()) or ([f"--{name.replace('_', '-')}"] if self.is_option else []):
+            on, _, off = flag.partition("/")
+            self.flags.append(on)
+            if off:
+                self.off_flags.append(off)
+        # an option that is only present or absent (--soft), as opposed to one taking a value
+        self.is_switch = self.is_option and self.is_bool
+
+    def range_text(self) -> Optional[str]:
+        """The allowed range as Click wrote it (x>=1, 1<=x<=5, x<=5), or None if unbounded."""
+        if self.min is not None and self.max is not None:
+            return f"{self.min}<=x<={self.max}"
+        if self.min is not None:
+            return f"x>={self.min}"
+        if self.max is not None:
+            return f"x<={self.max}"
+        return None
+
+    def value_error(self, value) -> Optional[str]:
+        """Why an already-typed value is outside the declared range or choices, in Click's wording; None if it fits."""
+        if self.choices is not None and str(value) not in self.choices:
+            return f"{value!r} is not one of {', '.join(repr(c) for c in self.choices)}."
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return None  # not a number: the type check reports it, there is no range to compare against
+        if (self.min is not None and value < self.min) or (self.max is not None and value > self.max):
+            return f"{value} is not in the range {self.range_text()}."
+        return None
+
+
+def _param_specs(func) -> list:
+    try:
+        hints = get_type_hints(func, include_extras=True)
+    except Exception:
+        hints = {}
+    return [_ParamSpec(name, param, hints.get(name)) for name, param in signature(func).parameters.items()]
+
+
+def _help_with_default(spec: _ParamSpec) -> str:
+    if spec.hidden:
+        return argparse.SUPPRESS
+    text = spec.help or ""
+    if spec.range_text():
+        text += f" [{spec.range_text()}]"
+    if spec.default is not None and not spec.is_switch:
+        text += f" [default: {spec.default}]"
+    return text
+
+
+def _add_param(parser: argparse.ArgumentParser, spec: _ParamSpec) -> None:
+    if not spec.is_option:
+        kwargs = dict(type=spec.convert, help=_help_with_default(spec), metavar=spec.name)
+        if spec.choices is not None:
+            kwargs["choices"] = spec.choices
+        if not spec.required:
+            kwargs.update(nargs="?", default=spec.default)
+        parser.add_argument(spec.name, **kwargs)
+    elif spec.off_flags:
+        parser.add_argument(*spec.flags, dest=spec.name, action="store_const", const=True, default=spec.default, help=_help_with_default(spec))
+        off_help = argparse.SUPPRESS if spec.hidden else f"Opposite of {spec.flags[0]}"
+        parser.add_argument(*spec.off_flags, dest=spec.name, action="store_const", const=False, help=off_help)
+    elif spec.is_switch:
+        parser.add_argument(*spec.flags, dest=spec.name, action="store_true", default=spec.default, help=_help_with_default(spec))
+    else:
+        kwargs = dict(dest=spec.name, type=spec.convert, default=spec.default, help=_help_with_default(spec))
+        if spec.choices is not None:
+            kwargs["choices"] = spec.choices
+        else:
+            kwargs["metavar"] = f"<{spec.convert.__name__}>"
+        parser.add_argument(*spec.flags, **kwargs)
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="pbook", description=help_text, formatter_class=argparse.RawDescriptionHelpFormatter)
+    for flags, dest, help_ in _GLOBAL_OPTIONS:
+        if dest == "command_string":
+            parser.add_argument(*flags, dest=dest, metavar="<str>", help=help_)
+        else:
+            parser.add_argument(*flags, dest=dest, action="store_true", help=help_ if help_ is not None else argparse.SUPPRESS)
+    subparsers = parser.add_subparsers(title="commands", metavar="command")
+    for name, func in _COMMANDS.items():
+        doc = inspect.cleandoc(func.__doc__ or "")
+        sub = subparsers.add_parser(
+            name,
+            help=doc.splitlines()[0] if doc else "",
+            description=doc,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        for spec in _param_specs(func):
+            _add_param(sub, spec)
+        sub.set_defaults(_func=func)
+    return parser
+
 
 # Global options that consume the following argv token as their own value, so the
-# subcommand-token scan below can skip over both.
-_GLOBAL_VALUE_OPTS = {"-c"}
+# command-token scan below can skip over both.
+_GLOBAL_VALUE_OPTS = {flags[0] for flags, dest, _ in _GLOBAL_OPTIONS if dest == "command_string"}
 
 
-def _rewrite_legacy_kwargs(argv: list) -> list:
-    """Rewrite legacy bare `key=value` batch args into `--key=value`.
-
-    The pre-Typer pbook batch mode accepted `pbook show format=long`; Click only
-    recognizes `--format=long`. Find the subcommand, look up its real option names via
-    introspection (never a separately maintained list), and rewrite any later bare
-    `key=value` token whose key matches one of them. Anything else - already-dashed
-    flags, positional args that happen to contain "=" - passes through untouched.
-    """
+def _find_command(argv: list) -> int:
+    """Index of the command name in argv (after the global options), or len(argv) if there is none."""
     i = 0
     while i < len(argv):
         tok = argv[i]
@@ -1344,52 +1576,183 @@ def _rewrite_legacy_kwargs(argv: list) -> list:
             i += 1
             continue
         break
-    if i >= len(argv):
+    return min(i, len(argv))
+
+
+def _rewrite_legacy_kwargs(argv: list) -> list:
+    """Rewrite legacy bare `key=value` batch args into `--key=value`.
+
+    The old pbook batch mode accepted `pbook show format=long`; the parser only
+    recognizes `--format=long`. Find the command, look up its real option names via
+    introspection (never a separately maintained list), and rewrite any later bare
+    `key=value` token whose key matches one of them. Anything else - already-dashed
+    flags, positional args that happen to contain "=" - passes through untouched.
+    """
+    i = _find_command(argv)
+    if i >= len(argv) or argv[i] not in _COMMANDS:
         return argv
 
-    sub_cmd = typer.main.get_command(app).commands.get(argv[i])
-    if sub_cmd is None:
-        return argv
-
-    option_flags = {}
-    flag_only = set()
-    for param in sub_cmd.params:
-        flags = [o for o in getattr(param, "opts", []) if o.startswith("--")]
-        if flags:
-            primary = flags[0]
-            # Register every alias (e.g. --ramCount for --memory), not just the primary
-            # name, so the legacy bare `key=value` syntax recognizes them too.
-            for flag in flags:
-                option_flags[flag.lstrip("-")] = primary
-            if getattr(param, "is_flag", False):
-                flag_only.add(param.name)
+    # key -> spec, for every name of every option, aliases included (ramCount as well as memory)
+    options = {}
+    for spec in _param_specs(_COMMANDS[argv[i]]):
+        for flag in spec.flags:
+            options[flag.lstrip("-")] = spec
 
     rewritten = argv[: i + 1]
     for tok in argv[i + 1 :]:
         key, sep, value = tok.partition("=")
-        if sep and not tok.startswith("-") and key in option_flags:
-            flag = option_flags[key]
-            if key in flag_only:
-                # Click flag-style options (e.g. --soft) take no value at all; the legacy
-                # syntax passed an explicit True/False, so translate that into presence
-                # (truthy) or absence (falsy - same as the option's own default) instead.
-                normalized = value.strip().lower()
-                if normalized in ("true", "1", "yes"):
-                    rewritten.append(flag)
-                elif normalized not in ("false", "0", "no"):
-                    typer.echo(
-                        f"Error: '{key}' is a flag and expects True/False (got '{value}' in '{tok}')",
-                        err=True,
-                    )
-                    sys.exit(1)
-                continue
-            rewritten.append(f"{flag}={value}")
-        else:
+        if not (sep and not tok.startswith("-") and key in options):
             rewritten.append(tok)
+            continue
+        spec = options[key]
+        if not spec.is_switch:
+            rewritten.append(f"{spec.flags[0]}={value}")
+            continue
+        # Switches (--soft, --loopingCheck/--no-loopingCheck) take no value; the legacy syntax
+        # passed an explicit True/False, so translate that into the on or off option. A switch
+        # without an off option is off by default, so False just leaves it out.
+        normalized = value.strip().lower()
+        if normalized in ("true", "1", "yes"):
+            rewritten.append(spec.flags[0])
+        elif normalized in ("false", "0", "no"):
+            if spec.off_flags:
+                rewritten.append(spec.off_flags[0])
+        else:
+            print(f"Error: '{key}' is a flag and expects True/False (got '{value}' in '{tok}')", file=sys.stderr)
+            sys.exit(1)
     return rewritten
+
+
+def _attach_option_values(argv: list) -> list:
+    """Attach the value to each option that takes one: `--taskname -analysis` -> `--taskname=-analysis`.
+
+    Click took the word after such an option as its value whatever it looked like. argparse takes a
+    word starting with '-' for another option instead, and then reports the value as missing. With
+    the value attached, argparse uses it as it is, so `pbook show --taskname -analysis` keeps working.
+    Covers the command's options (aliases and unambiguous abbreviations included) and -c. Nothing
+    after `--` is touched.
+    """
+    i = _find_command(argv)
+    attached = []
+    j = 0
+    while j < i:
+        tok = argv[j]
+        if tok in _GLOBAL_VALUE_OPTS and j + 1 < len(argv):
+            # a short option: -c-1 is -c with the value -1 (-c=-1 would be the value "=-1")
+            value = argv[j + 1]
+            attached.extend([tok + value] if value.startswith("-") else [tok, value])
+            j += 2
+            continue
+        attached.append(tok)
+        j += 1
+    if i >= len(argv) or argv[i] not in _COMMANDS:
+        return attached + argv[i:]
+
+    specs = [spec for spec in _param_specs(_COMMANDS[argv[i]]) if spec.is_option]
+    takes_value = {flag for spec in specs if not spec.is_switch for flag in spec.flags}
+    all_flags = {flag for spec in specs for flag in spec.flags + spec.off_flags} | {"--help"}
+    attached.append(argv[i])
+    k = i + 1
+    while k < len(argv):
+        tok = argv[k]
+        if tok == "--":
+            attached.extend(argv[k:])
+            break
+        if tok.startswith("--") and "=" not in tok and k + 1 < len(argv):
+            # the option argparse will resolve tok to: an exact name, or the only one it abbreviates
+            matches = [tok] if tok in all_flags else [flag for flag in all_flags if flag.startswith(tok)]
+            if len(matches) == 1 and matches[0] in takes_value:
+                attached.append(f"{tok}={argv[k + 1]}")
+                k += 2
+                continue
+        attached.append(tok)
+        k += 1
+    return attached
+
+
+# ─── Bash completion ──────────────────────────────────────────────────────────
+
+# templates/pbook_completion.sh runs `_PBOOK_COMPLETE=complete_bash pbook` with the line being
+# completed in COMP_WORDS (words joined by newlines) and the index of the word under the cursor in
+# COMP_CWORD, and offers whatever comes back, one candidate per line. Completions installed with
+# typer's --install-completion use the same protocol.
+_COMPLETE_VAR = "_PBOOK_COMPLETE"
+
+
+def _completions(words: list, cword: int) -> list:
+    args = words[1:cword]
+    incomplete = words[cword] if cword < len(words) else ""
+
+    i = _find_command(args)
+    if i >= len(args):
+        # still before the command: global options or the command name
+        if incomplete.startswith("-"):
+            names = [f for flags, _, help_ in _GLOBAL_OPTIONS if help_ is not None for f in flags] + ["-h", "--help"]
+        else:
+            names = list(_COMMANDS)
+        return [n for n in names if n.startswith(incomplete)]
+
+    func = _COMMANDS.get(args[i])
+    if func is None:
+        return []
+    specs = [s for s in _param_specs(func) if s.is_option and not s.hidden]
+
+    def values_of(flag):
+        for spec in specs:
+            if flag in spec.flags and not spec.is_switch:
+                return spec.choices or []
+        return None
+
+    # the value of an option: `--format j` or `--format=j`
+    if "=" in incomplete and incomplete.startswith("--"):
+        flag, _, partial = incomplete.partition("=")
+        return [v for v in values_of(flag) or [] if v.startswith(partial)]
+    if args[i + 1 :] and values_of(args[-1]) is not None:
+        return [v for v in values_of(args[-1]) if v.startswith(incomplete)]
+
+    if incomplete.startswith("-"):
+        names = [f for spec in specs for f in spec.flags + spec.off_flags] + ["-h", "--help"]
+        return [n for n in names if n.startswith(incomplete)]
+    return []
+
+
+def _split_words(line: str) -> list:
+    """Split COMP_WORDS shell-style. pbook_completion.sh joins the words with newlines (it sets
+    IFS to a newline), so any whitespace separates them. An unclosed quote is kept as the last word."""
+    lexer = shlex.shlex(line, posix=True)
+    lexer.whitespace_split = True
+    lexer.commenters = ""
+    words = []
+    try:
+        for word in lexer:
+            words.append(word)
+    except ValueError:
+        words.append(lexer.token)
+    return words
+
+
+def _complete_bash() -> None:
+    words = _split_words(os.environ.get("COMP_WORDS", ""))
+    try:
+        cword = int(os.environ.get("COMP_CWORD", ""))
+    except ValueError:
+        cword = len(words) - 1
+    for candidate in _completions(words, cword):
+        print(candidate)
+
+
+# ─── Entry point ──────────────────────────────────────────────────────────────
 
 
 def main() -> None:
     sys.argv[0] = "pbook"
-    sys.argv[1:] = _rewrite_legacy_kwargs(sys.argv[1:])
-    app()
+    if os.environ.get(_COMPLETE_VAR):
+        if os.environ[_COMPLETE_VAR] == "complete_bash":
+            _complete_bash()
+        sys.exit(0)
+    args = _build_parser().parse_args(_attach_option_values(_rewrite_legacy_kwargs(sys.argv[1:])))
+    try:
+        _main(args)
+    except KeyboardInterrupt:
+        print("\nAborted!", file=sys.stderr)
+        sys.exit(1)
