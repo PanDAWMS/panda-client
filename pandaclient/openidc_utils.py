@@ -11,8 +11,40 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-TOKEN_BASENAME = ".token"
+# the token endpoint response (ID and refresh tokens) is kept in $PANDA_TOKEN_DIR/token, next to the
+# cached auth config and discovery pages
+TOKEN_DIR_ENV = "PANDA_TOKEN_DIR"
+DEFAULT_TOKEN_DIR = "~/.token/panda"
+TOKEN_BASENAME = "token"
 CACHE_PREFIX = ".page_cache_"
+# where versions before PANDA_TOKEN_DIR kept the token
+LEGACY_TOKEN_BASENAME = ".token"
+
+
+# path of the token file used by older versions, or None if $PANDA_CONFIG_ROOT is not set
+def _legacy_token_path():
+    config_root = os.environ.get("PANDA_CONFIG_ROOT")
+    if not config_root:
+        return None
+    return os.path.join(os.path.abspath(os.path.expanduser(config_root)), LEGACY_TOKEN_BASENAME)
+
+
+# create a directory and its missing parents, each readable by the owner only. Existing
+# directories are left as they are, since they may be shared
+def _makedirs_private(path):
+    missing = []
+    while not os.path.isdir(path):
+        missing.append(path)
+        parent = os.path.dirname(path)
+        if parent == path:
+            break
+        path = parent
+    for directory in reversed(missing):
+        try:
+            os.mkdir(directory, 0o700)
+        except FileExistsError:
+            # created concurrently by another process
+            pass
 
 
 # get an SSL context with a usable CA trust store
@@ -43,18 +75,35 @@ class OpenIdConnect_Utils:
     # constructor
     def __init__(self, auth_config_url, token_dir=None, log_stream=None, verbose=False):
         self.auth_config_url = auth_config_url
-        if token_dir is None:
-            token_dir = os.environ.get("PANDA_CONFIG_ROOT", ".")
-        self.token_dir = os.path.expanduser(token_dir)
-        if not os.path.exists(self.token_dir):
-            # only a directory created here is restricted: an existing one may be shared (e.g. the cwd)
-            os.makedirs(self.token_dir, mode=0o700)
         self.log_stream = log_stream
         self.verbose = verbose
+        explicit_dir = token_dir is not None
+        if not explicit_dir:
+            token_dir = os.environ.get(TOKEN_DIR_ENV) or DEFAULT_TOKEN_DIR
+        self.token_dir = os.path.abspath(os.path.expanduser(token_dir))
+        _makedirs_private(self.token_dir)
+        if not explicit_dir:
+            self._migrate_legacy_token()
 
     # get token path
     def get_token_path(self):
         return os.path.join(self.token_dir, TOKEN_BASENAME)
+
+    # move a token left in $PANDA_CONFIG_ROOT by older versions, so the user does not have to log in again
+    def _migrate_legacy_token(self):
+        legacy_path = _legacy_token_path()
+        token_path = self.get_token_path()
+        if legacy_path is None or os.path.exists(token_path) or not os.path.isfile(legacy_path):
+            return
+        try:
+            os.replace(legacy_path, token_path)
+            os.chmod(token_path, 0o600)
+            if self.verbose:
+                self.log_stream.debug(f"moved {legacy_path} to {token_path}")
+        except OSError as e:
+            # not fatal: without the old token the user goes through the device flow again
+            if self.verbose:
+                self.log_stream.debug(f"failed to move {legacy_path} to {token_path}: {e}")
 
     # write the token endpoint response, which holds the refresh token, readable by the owner only
     def write_token(self, text):
@@ -260,6 +309,7 @@ class OpenIdConnect_Utils:
 
     # cleanup
     def cleanup(self):
-        for patt in [TOKEN_BASENAME, CACHE_PREFIX]:
-            for f in glob.glob(os.path.join(self.token_dir, f"{patt}*")):
-                os.remove(f)
+        # also a token left by older versions, which would otherwise be moved back in by the next run
+        for path in [self.get_token_path(), _legacy_token_path()] + glob.glob(os.path.join(self.token_dir, f"{CACHE_PREFIX}*")):
+            if path is not None and os.path.isfile(path):
+                os.remove(path)
