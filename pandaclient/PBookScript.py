@@ -1028,6 +1028,10 @@ def retry(
     If input files were used or are being used by other jobs for the same output dataset container, those
     files are skipped to avoid job duplication when retrying failed subjobs.
 
+    If a task is still running, scouting or pending, only the input files that have used up their
+    attempts get 3 more attempts, and the task keeps running. Files that still have attempts left
+    are not changed, so retrying a running task several times doesn't keep raising their limits.
+
     If task_ids is 'all', it retries 1000 tasks at most that have finished for the last 14
     days. It is possible to retry more tasks by setting the days and limit options, which are
     only valid with 'all'. If named arguments are specified, they are applied to all retried tasks.
